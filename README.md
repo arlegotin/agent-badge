@@ -1,18 +1,18 @@
 # Recorded AI usage
 
-Input set: a8c24ee32dc8e6e635e226ced920aca519f0222168b77f4663a7da69370b6002
+Input set: 68d3156a69b98c39308b0dd70bf3270d659c55744326fea0998499650872f77f
 
 Repository-wide completeness is unknown. Coverage describes recorded accounting units only; absent contributors, machines and unreadable sources cannot be inferred.
 
-- Recorded units: 966
-- Included units: 966
+- Recorded units: 1949
+- Included units: 1949
 - Excluded units: 0
 - Conflicting units (quarantined): 0
-- Partial units: 208
-- Known recorded tokens: 86343442
+- Partial units: 251
+- Known recorded tokens: 187431823
 - Included units with unknown token totals: 33
 - Fully priced included units: 0
-- Unpriced or partly priced included units: 966
+- Unpriced or partly priced included units: 1949
 
 Current-catalog valuation: all recorded included usage valued at catalog version 1, snapshot 2026-10-22. Known API-equivalent cost subtotal: ~$0 (0 micro-USD). Unknown dimensions and unsupported tariffs remain unpriced. This estimate is not subscription billing or an actual charge.
 
