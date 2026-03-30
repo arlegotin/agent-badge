@@ -16,6 +16,10 @@ describe("agentBadgeConfigSchema", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
     expect(defaultAgentBadgeConfig.publish.badgeUrl).toBeNull();
+    expect(defaultAgentBadgeConfig.repo.aliases).toEqual({
+      remotes: [],
+      slugs: []
+    });
   });
 
   it("rejects missing required keys", () => {
@@ -24,5 +28,55 @@ describe("agentBadgeConfigSchema", () => {
         version: 1
       })
     ).toThrow();
+  });
+
+  it("parses privacy-safe repo aliases", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        repo: {
+          aliases: {
+            remotes: ["https://github.com/openai/agent-badge"],
+            slugs: ["openai/agent-badge"]
+          }
+        }
+      })
+    ).toMatchObject({
+      repo: {
+        aliases: {
+          remotes: ["https://github.com/openai/agent-badge"],
+          slugs: ["openai/agent-badge"]
+        }
+      }
+    });
+  });
+
+  it("rejects path-like repo aliases", () => {
+    expect(() =>
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        repo: {
+          aliases: {
+            remotes: [],
+            slugs: [],
+            paths: ["/Users/example/project"]
+          }
+        }
+      })
+    ).toThrowErrorMatchingInlineSnapshot(`
+      [ZodError: [
+        {
+          "code": "unrecognized_keys",
+          "keys": [
+            "paths"
+          ],
+          "path": [
+            "repo",
+            "aliases"
+          ],
+          "message": "Unrecognized key: \\"paths\\""
+        }
+      ]]
+    `);
   });
 });

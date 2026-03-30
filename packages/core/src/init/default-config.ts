@@ -25,6 +25,12 @@ export function createDefaultAgentBadgeConfig(
           options.providers?.claude.available ??
           defaultAgentBadgeConfig.providers.claude.enabled
       }
+    },
+    repo: {
+      aliases: {
+        remotes: [...defaultAgentBadgeConfig.repo.aliases.remotes],
+        slugs: [...defaultAgentBadgeConfig.repo.aliases.slugs]
+      }
     }
   });
 }

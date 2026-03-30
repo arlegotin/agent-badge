@@ -19,6 +19,16 @@ export const agentBadgeConfigSchema = z
         claude: providerConfigSchema
       })
       .strict(),
+    repo: z
+      .object({
+        aliases: z
+          .object({
+            remotes: z.array(z.string().min(1)),
+            slugs: z.array(z.string().min(1))
+          })
+          .strict()
+      })
+      .strict(),
     badge: z
       .object({
         label: z.string().min(1),
@@ -63,6 +73,12 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
     },
     claude: {
       enabled: true
+    }
+  },
+  repo: {
+    aliases: {
+      remotes: [],
+      slugs: []
     }
   },
   badge: {
