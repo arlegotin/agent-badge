@@ -304,7 +304,71 @@ describe("runRefreshCommand", () => {
     }
   });
 
-  it("returns a soft failure for pre-push mode", async () => {
+  it("keeps pre-push output concise", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_789",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig
+    });
+    const output = createOutputCapture();
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 2,
+        includedTokens: 140,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-concise",
+        claude: "claude-concise"
+      },
+      cache: {
+        version: 1 as const,
+        entries: {}
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockResolvedValueOnce({
+      decision: "skipped" as const,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          status: "published" as const,
+          gistId: "gist_789",
+          lastPublishedHash: "hash_789",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+        }
+      }
+    });
+
+    try {
+      await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer,
+        hook: "pre-push"
+      });
+
+      expect(output.read()).toContain("agent-badge refresh");
+      expect(output.read()).toContain("- Scan mode: incremental");
+      expect(output.read()).toContain("- Publish: skipped");
+      expect(output.read()).not.toContain("last published");
+      expect(output.read().trim().split("\n")).toHaveLength(5);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("swallows hook errors in fail-soft mode", async () => {
     const configuredConfig = {
       ...defaultAgentBadgeConfig,
       publish: {
@@ -378,6 +442,60 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("Refresh status: failed-soft");
       expect(output.read()).toContain("GitHub authentication missing");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("surfaces hook errors in strict mode", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_strict",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_strict%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig
+    });
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 90,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-strict",
+        claude: "claude-strict"
+      },
+      cache: {
+        version: 1 as const,
+        entries: {}
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new Error("GitHub authentication missing")
+    );
+
+    try {
+      await expect(
+        runRefreshCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          hook: "pre-push"
+        })
+      ).rejects.toThrow("GitHub authentication missing");
+
+      const persistedState = await readStateFile(fixture.statePath);
+
+      expect(persistedState.refresh.lastPublishDecision).toBe("failed");
+      expect(persistedState.publish.status).toBe("error");
     } finally {
       await fixture.cleanup();
     }

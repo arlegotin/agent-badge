@@ -6,11 +6,14 @@ import {
   parseAgentBadgeConfig,
   type AgentBadgeBadgeMode,
   type AgentBadgeConfig,
+  type AgentBadgePrivacyOutput,
   type AgentBadgeRefreshMode
 } from "../config/config-schema.js";
 import {
   parseAgentBadgeState,
   type AgentBadgePublishStatus,
+  type AgentBadgeRefreshPublishDecision,
+  type AgentBadgeRefreshScanMode,
   type AgentBadgeState
 } from "../state/state-schema.js";
 import { createDefaultAgentBadgeConfig } from "./default-config.js";
@@ -33,12 +36,21 @@ const scaffoldVersion = 1;
 const invalidJsonMarker = Symbol("invalid-json");
 const badgeModes: AgentBadgeBadgeMode[] = ["sessions", "tokens", "cost"];
 const refreshModes: AgentBadgeRefreshMode[] = ["fail-soft", "strict"];
+const privacyOutputs: AgentBadgePrivacyOutput[] = ["standard", "minimal"];
 const publishStatuses: AgentBadgePublishStatus[] = [
   "idle",
   "deferred",
   "pending",
   "published",
   "error"
+];
+const refreshScanModes: AgentBadgeRefreshScanMode[] = ["full", "incremental"];
+const refreshPublishDecisions: AgentBadgeRefreshPublishDecision[] = [
+  "published",
+  "skipped",
+  "deferred",
+  "not-configured",
+  "failed"
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -203,7 +215,10 @@ function reconcileConfig(
           aggregateOnly:
             privacy.aggregateOnly === true
               ? true
-              : defaults.privacy.aggregateOnly
+              : defaults.privacy.aggregateOnly,
+          output:
+            readEnumValue(privacy.output, privacyOutputs) ??
+            defaults.privacy.output
         }
       }),
       changed: true,
@@ -274,6 +289,8 @@ function reconcileState(
   const init = readJsonObject(state.init);
   const checkpoints = readJsonObject(state.checkpoints);
   const publish = readJsonObject(state.publish);
+  const refresh = readJsonObject(state.refresh);
+  const refreshSummary = readJsonObject(refresh.summary);
   const overrides = readJsonObject(state.overrides);
 
   const value = parseAgentBadgeState({
@@ -298,7 +315,44 @@ function reconcileState(
       gistId: readNullableString(publish.gistId) ?? defaults.publish.gistId,
       lastPublishedHash:
         readNullableString(publish.lastPublishedHash) ??
-        defaults.publish.lastPublishedHash
+        defaults.publish.lastPublishedHash,
+      lastPublishedAt:
+        readNullableString(publish.lastPublishedAt) ??
+        defaults.publish.lastPublishedAt
+    },
+    refresh: {
+      lastRefreshedAt:
+        readNullableString(refresh.lastRefreshedAt) ??
+        defaults.refresh.lastRefreshedAt,
+      lastScanMode:
+        readEnumValue(refresh.lastScanMode, refreshScanModes) ??
+        defaults.refresh.lastScanMode,
+      lastPublishDecision:
+        readEnumValue(
+          refresh.lastPublishDecision,
+          refreshPublishDecisions
+        ) ?? defaults.refresh.lastPublishDecision,
+      summary:
+        isRecord(refresh.summary)
+          ? {
+              includedSessions:
+                readPositiveInteger(refreshSummary.includedSessions) ??
+                defaults.refresh.summary?.includedSessions ??
+                0,
+              includedTokens:
+                readPositiveInteger(refreshSummary.includedTokens) ??
+                defaults.refresh.summary?.includedTokens ??
+                0,
+              ambiguousSessions:
+                readPositiveInteger(refreshSummary.ambiguousSessions) ??
+                defaults.refresh.summary?.ambiguousSessions ??
+                0,
+              excludedSessions:
+                readPositiveInteger(refreshSummary.excludedSessions) ??
+                defaults.refresh.summary?.excludedSessions ??
+                0
+            }
+          : defaults.refresh.summary
     },
     overrides: {
       ambiguousSessions: reconcileAmbiguousSessions(overrides.ambiguousSessions)

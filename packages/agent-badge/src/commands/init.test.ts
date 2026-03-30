@@ -144,7 +144,7 @@ async function getExpectedRuntimeDependencySpecifier(): Promise<string> {
 }
 
 describe("runInitCommand", () => {
-  it("runs the shared init flow end to end for a repository", async () => {
+  it("creates exactly one managed pre-push block by default", async () => {
     const repo = await createRepoFixture({
       files: {
         "package-lock.json": "{}"
@@ -227,7 +227,8 @@ describe("runInitCommand", () => {
       expect(publishFiles.state.publish).toEqual({
         status: "deferred",
         gistId: null,
-        lastPublishedHash: null
+        lastPublishedHash: null,
+        lastPublishedAt: null
       });
       expect(readmeContent).toBe("# Fixture Repo\n");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
@@ -322,6 +323,83 @@ describe("runInitCommand", () => {
       expect(readmeContent).toContain(
         "![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=3600)"
       );
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("reconciles runtime wiring from persisted refresh config on rerun", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome({
+      claude: false
+    });
+    const deferredGistClient = {
+      getGist: async () => {
+        throw new Error("get should not run");
+      },
+      createPublicGist: async () => {
+        throw new Error("simulated gist create failure");
+      },
+      updateGistFile: async () => {
+        throw new Error("update should not run");
+      }
+    };
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        env: {
+          GITHUB_TOKEN: "test-token"
+        },
+        gistClient: deferredGistClient
+      });
+
+      const configPath = join(repo.root, ".agent-badge/config.json");
+      const config = await readJsonObject(configPath);
+
+      await writeFile(
+        configPath,
+        `${JSON.stringify(
+          {
+            ...config,
+            refresh: {
+              prePush: {
+                enabled: true,
+                mode: "strict"
+              }
+            }
+          },
+          null,
+          2
+        )}\n`,
+        "utf8"
+      );
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        env: {
+          GITHUB_TOKEN: "test-token"
+        },
+        gistClient: deferredGistClient
+      });
+
+      const packageJson = await readJsonObject(join(repo.root, "package.json"));
+      const packageScripts = packageJson.scripts as Record<string, string>;
+      const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+
+      expect(packageScripts["agent-badge:refresh"]).toBe(
+        "agent-badge refresh --hook pre-push"
+      );
+      expect(hookContent).toContain("npm run --silent agent-badge:refresh");
+      expect(hookContent).not.toContain("|| true");
+      expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
+      expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }

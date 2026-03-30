@@ -2,6 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import {
+  applyRepoLocalRuntimeWiring,
+  detectPackageManager,
   parseAgentBadgeConfig,
   type AgentBadgeBadgeMode,
   type AgentBadgeConfig,
@@ -44,6 +46,8 @@ export interface ConfigCommandResult {
 const CONFIG_PATH = ".agent-badge/config.json";
 const PRIVACY_AGGREGATE_ONLY_ERROR =
   "privacy.aggregateOnly must remain true because agent-badge only publishes aggregate data.";
+const publishableSemverPattern =
+  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const supportedConfigKeys = [
   "providers.codex.enabled",
   "providers.claude.enabled",
@@ -54,6 +58,10 @@ const supportedConfigKeys = [
   "privacy.aggregateOnly",
   "privacy.output"
 ] as const satisfies readonly SupportedConfigKey[];
+
+interface RuntimePackageManifest {
+  readonly version?: unknown;
+}
 
 async function readJsonFile(targetPath: string): Promise<unknown> {
   let rawContent: string;
@@ -155,6 +163,10 @@ function readConfigValue(config: AgentBadgeConfig, key: SupportedConfigKey): str
 
 function buildSettingsLines(config: AgentBadgeConfig): string[] {
   return supportedConfigKeys.map((key) => `${key}=${readConfigValue(config, key)}`);
+}
+
+function keyRequiresRuntimeWiring(key: SupportedConfigKey): boolean {
+  return key === "refresh.prePush.enabled" || key === "refresh.prePush.mode";
 }
 
 function applyConfigMutation(
@@ -267,6 +279,49 @@ function buildReport(
   );
 }
 
+async function readRuntimePackageManifest(): Promise<RuntimePackageManifest> {
+  const runtimePackagePath = new URL("../../package.json", import.meta.url);
+  let rawManifest: unknown;
+
+  try {
+    rawManifest = JSON.parse(
+      await readFile(runtimePackagePath, "utf8")
+    ) as unknown;
+  } catch (error) {
+    const detail = error instanceof Error ? `: ${error.message}` : ".";
+
+    throw new Error(`Unable to read agent-badge runtime package metadata${detail}`);
+  }
+
+  if (
+    typeof rawManifest !== "object" ||
+    rawManifest === null ||
+    Array.isArray(rawManifest)
+  ) {
+    throw new Error("Unable to read agent-badge runtime package metadata.");
+  }
+
+  return rawManifest as RuntimePackageManifest;
+}
+
+function normalizeRuntimeDependencySpecifier(version: unknown): string {
+  if (
+    typeof version !== "string" ||
+    version === "0.0.0" ||
+    !publishableSemverPattern.test(version)
+  ) {
+    return "latest";
+  }
+
+  return `^${version}`;
+}
+
+async function resolveRuntimeDependencySpecifier(): Promise<string> {
+  const runtimePackageManifest = await readRuntimePackageManifest();
+
+  return normalizeRuntimeDependencySpecifier(runtimePackageManifest.version);
+}
+
 export async function runConfigCommand(
   options: RunConfigCommandOptions = {}
 ): Promise<ConfigCommandResult> {
@@ -318,6 +373,25 @@ export async function runConfigCommand(
   const nextConfig = applyConfigMutation(config, options.key, options.value);
 
   await writeConfigFile(configPath, nextConfig);
+
+  if (keyRequiresRuntimeWiring(options.key)) {
+    try {
+      await applyRepoLocalRuntimeWiring({
+        cwd,
+        packageManager: detectPackageManager(cwd),
+        runtimeDependencySpecifier: await resolveRuntimeDependencySpecifier(),
+        refresh: nextConfig.refresh
+      });
+    } catch (error) {
+      try {
+        await writeConfigFile(configPath, config);
+      } catch {
+        // Preserve the wiring failure for callers.
+      }
+
+      throw error;
+    }
+  }
 
   const report = buildReport(action, nextConfig, options.key);
 

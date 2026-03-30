@@ -387,18 +387,19 @@ export async function runInitCommand(
     cwd: preflight.cwd,
     preflight
   });
+  const config = await loadPersistedConfig(preflight.cwd);
 
   writeScaffoldSummary(stdout, scaffold);
 
   const runtimeWiring = await applyRepoLocalRuntimeWiring({
     cwd: preflight.cwd,
     packageManager: preflight.packageManager.name,
-    runtimeDependencySpecifier: await resolveRuntimeDependencySpecifier()
+    runtimeDependencySpecifier: await resolveRuntimeDependencySpecifier(),
+    refresh: config.refresh
   });
 
   writeRuntimeWiringSummary(stdout, runtimeWiring);
 
-  const config = await loadPersistedConfig(preflight.cwd);
   const state = await loadPersistedState(preflight.cwd);
   const gistClient =
     options.gistClient ??

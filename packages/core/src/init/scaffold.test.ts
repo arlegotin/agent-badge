@@ -190,6 +190,9 @@ describe("applyAgentBadgeScaffold", () => {
             version: 1,
             badge: {
               label: "Custom Label"
+            },
+            privacy: {
+              output: "minimal"
             }
           },
           null,
@@ -203,7 +206,19 @@ describe("applyAgentBadgeScaffold", () => {
           {
             version: 1,
             publish: {
-              lastPublishedHash: "abc123"
+              lastPublishedHash: "abc123",
+              lastPublishedAt: "2026-03-30T01:00:00.000Z"
+            },
+            refresh: {
+              lastRefreshedAt: "2026-03-30T02:00:00.000Z",
+              lastScanMode: "incremental",
+              lastPublishDecision: "skipped",
+              summary: {
+                includedSessions: 2,
+                includedTokens: 120,
+                ambiguousSessions: 1,
+                excludedSessions: 0
+              }
             }
           },
           null,
@@ -232,11 +247,24 @@ describe("applyAgentBadgeScaffold", () => {
       expect(result.warnings).toHaveLength(2);
       expect(config.badge.label).toBe("Custom Label");
       expect(config.providers.claude.enabled).toBe(false);
+      expect(config.privacy.output).toBe("minimal");
       expect(config.repo.aliases).toEqual({
         remotes: [],
         slugs: []
       });
       expect(state.publish.lastPublishedHash).toBe("abc123");
+      expect(state.publish.lastPublishedAt).toBe("2026-03-30T01:00:00.000Z");
+      expect(state.refresh).toEqual({
+        lastRefreshedAt: "2026-03-30T02:00:00.000Z",
+        lastScanMode: "incremental",
+        lastPublishDecision: "skipped",
+        summary: {
+          includedSessions: 2,
+          includedTokens: 120,
+          ambiguousSessions: 1,
+          excludedSessions: 0
+        }
+      });
       expect(state.init.initialized).toBe(true);
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
