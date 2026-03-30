@@ -8,7 +8,7 @@
 ### Bootstrap
 
 - [x] **BOOT-01**: Developer can initialize an existing repository through `npm init agent-badge@latest` without requiring a global install.
-- [ ] **BOOT-02**: Developer can initialize a non-git directory by letting the tool create git or by receiving a precise blocking message with the next action.
+- [x] **BOOT-02**: Developer can initialize a non-git directory by letting the tool create git or by receiving a precise blocking message with the next action.
 - [x] **BOOT-03**: Init installs or wires a repo-local runtime so package scripts and git hooks can invoke `agent-badge` after normal dependency install.
 - [x] **BOOT-04**: Init creates `.agent-badge/config.json`, `.agent-badge/state.json`, `.agent-badge/cache/`, and `.agent-badge/logs/`.
 - [ ] **BOOT-05**: Init inserts one stable badge URL into the repository README or prints a pasteable snippet when no README exists.
@@ -86,7 +86,7 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | BOOT-01 | Phase 1 | Complete |
-| BOOT-02 | Phase 1 | Pending |
+| BOOT-02 | Phase 1 | Complete |
 | BOOT-03 | Phase 1 | Complete |
 | BOOT-04 | Phase 1 | Complete |
 | ATTR-01 | Phase 2 | Pending |
