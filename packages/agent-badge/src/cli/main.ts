@@ -17,6 +17,6 @@ export function buildProgram(): Command {
   return program;
 }
 
-export async function run(argv: string[]): Promise<void> {
+export async function run(argv: string[] = process.argv): Promise<void> {
   await buildProgram().parseAsync(argv);
 }
