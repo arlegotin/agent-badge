@@ -30,6 +30,7 @@ export interface AgentBadgeScaffoldResult {
 }
 
 const scaffoldVersion = 1;
+const invalidJsonMarker = Symbol("invalid-json");
 const badgeModes: AgentBadgeBadgeMode[] = ["sessions", "tokens", "cost"];
 const refreshModes: AgentBadgeRefreshMode[] = ["fail-soft", "strict"];
 const publishStatuses: AgentBadgePublishStatus[] = [
@@ -82,13 +83,19 @@ function jsonEquals(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-async function readJsonFile(targetPath: string): Promise<unknown | undefined> {
+async function readJsonFile(
+  targetPath: string
+): Promise<unknown | typeof invalidJsonMarker | undefined> {
   if (!existsSync(targetPath)) {
     return undefined;
   }
 
-  const content = await readFile(targetPath, "utf8");
-  return JSON.parse(content) as unknown;
+  try {
+    const content = await readFile(targetPath, "utf8");
+    return JSON.parse(content) as unknown;
+  } catch {
+    return invalidJsonMarker;
+  }
 }
 
 async function writeJsonFile(targetPath: string, value: unknown): Promise<void> {
@@ -96,13 +103,22 @@ async function writeJsonFile(targetPath: string, value: unknown): Promise<void> 
 }
 
 function reconcileConfig(
-  rawConfig: unknown,
+  rawConfig: unknown | typeof invalidJsonMarker,
   defaults: AgentBadgeConfig
 ): { value: AgentBadgeConfig; changed: boolean; warning?: string } {
   if (rawConfig === undefined) {
     return {
       value: defaults,
       changed: true
+    };
+  }
+
+  if (rawConfig === invalidJsonMarker) {
+    return {
+      value: defaults,
+      changed: true,
+      warning:
+        "Reset .agent-badge/config.json because it contained invalid JSON."
     };
   }
 
@@ -149,10 +165,7 @@ function reconcileConfig(
             readEnumValue(badge.mode, badgeModes) ?? defaults.badge.mode
         },
         publish: {
-          provider:
-            publish.provider === defaults.publish.provider
-              ? defaults.publish.provider
-              : defaults.publish.provider,
+          provider: defaults.publish.provider,
           gistId:
             readNullableString(publish.gistId) ?? defaults.publish.gistId,
           badgeUrl:
@@ -210,7 +223,7 @@ function reconcileCheckpoint(
 }
 
 function reconcileState(
-  rawState: unknown,
+  rawState: unknown | typeof invalidJsonMarker,
   defaults: AgentBadgeState
 ): { value: AgentBadgeState; changed: boolean; warning?: string } {
   let parsedExisting: AgentBadgeState | null = null;
@@ -227,6 +240,15 @@ function reconcileState(
     return {
       value: defaults,
       changed: true
+    };
+  }
+
+  if (rawState === invalidJsonMarker) {
+    return {
+      value: defaults,
+      changed: true,
+      warning:
+        "Reset .agent-badge/state.json because it contained invalid JSON."
     };
   }
 
