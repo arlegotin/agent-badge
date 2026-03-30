@@ -16,7 +16,7 @@
   },
   "badge": {
     "label": "AI Usage",
-    "mode": "sessions"
+    "mode": "tokens"
   },
   "publish": {
     "provider": "github-gist",
