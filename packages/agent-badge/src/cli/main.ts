@@ -1,6 +1,11 @@
 import { Command } from "commander";
 
 import { runInitCommand } from "../commands/init.js";
+import { runScanCommand } from "../commands/scan.js";
+
+function collectOptionValue(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -15,6 +20,33 @@ export function buildProgram(): Command {
     .action(async () => {
       await runInitCommand();
     });
+
+  program
+    .command("scan")
+    .description("Scan local agent history and report attributed usage.")
+    .option(
+      "--include-session <provider:sessionId>",
+      "Include an ambiguous session in the current repo totals.",
+      collectOptionValue,
+      []
+    )
+    .option(
+      "--exclude-session <provider:sessionId>",
+      "Exclude an ambiguous session from the current repo totals.",
+      collectOptionValue,
+      []
+    )
+    .action(
+      async (options: {
+        includeSession: string[];
+        excludeSession: string[];
+      }) => {
+        await runScanCommand({
+          includeSession: options.includeSession,
+          excludeSession: options.excludeSession
+        });
+      }
+    );
 
   return program;
 }
