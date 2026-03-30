@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  agentBadgeRefreshScriptName,
+  getAgentBadgeInitScriptCommand,
+  getAgentBadgeRefreshScriptCommand,
   getLocalAgentBadgeCommand,
+  getPackageScriptRunnerCommand,
   getPrePushRefreshCommand
 } from "./local-cli.js";
 
@@ -13,18 +17,40 @@ describe("getLocalAgentBadgeCommand", () => {
     expect(getLocalAgentBadgeCommand("bun")).toBe("bunx --bun agent-badge");
   });
 
-  it("returns the exact pre-push refresh command for each supported package manager", () => {
+  it("returns stable managed script commands", () => {
+    expect(getAgentBadgeInitScriptCommand()).toBe("agent-badge init");
+    expect(getAgentBadgeRefreshScriptCommand()).toBe(
+      "agent-badge refresh --hook pre-push --fail-soft"
+    );
+  });
+
+  it("returns package-manager-specific script runner commands", () => {
+    expect(getPackageScriptRunnerCommand("npm", agentBadgeRefreshScriptName)).toBe(
+      "npm run --silent agent-badge:refresh"
+    );
+    expect(getPackageScriptRunnerCommand("pnpm", agentBadgeRefreshScriptName)).toBe(
+      "pnpm run --silent agent-badge:refresh"
+    );
+    expect(getPackageScriptRunnerCommand("yarn", agentBadgeRefreshScriptName)).toBe(
+      "yarn run agent-badge:refresh"
+    );
+    expect(getPackageScriptRunnerCommand("bun", agentBadgeRefreshScriptName)).toBe(
+      "bun run agent-badge:refresh"
+    );
+  });
+
+  it("returns the exact pre-push refresh hook command for each supported package manager", () => {
     expect(getPrePushRefreshCommand("npm")).toBe(
-      "npx --no-install agent-badge refresh --hook pre-push --fail-soft"
+      "npm run --silent agent-badge:refresh"
     );
     expect(getPrePushRefreshCommand("pnpm")).toBe(
-      "pnpm exec agent-badge refresh --hook pre-push --fail-soft"
+      "pnpm run --silent agent-badge:refresh"
     );
     expect(getPrePushRefreshCommand("yarn")).toBe(
-      "yarn agent-badge refresh --hook pre-push --fail-soft"
+      "yarn run agent-badge:refresh"
     );
     expect(getPrePushRefreshCommand("bun")).toBe(
-      "bunx --bun agent-badge refresh --hook pre-push --fail-soft"
+      "bun run agent-badge:refresh"
     );
   });
 });
