@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: "03"
-current_phase_name: historical-backfill-and-attribution-review
+current_phase: "04"
+current_phase_name: publish-and-readme-badge-integration
 status: ready_to_plan
-stopped_at: Phase 02 complete; ready to plan Phase 3
-last_updated: "2026-03-30T12:18:10Z"
-last_activity: 2026-03-30 -- Phase 02 complete; ready to plan Phase 3
+stopped_at: Phase 03 complete; ready to plan Phase 4
+last_updated: "2026-03-30T14:09:37.793Z"
+last_activity: 2026-03-30 -- Phase 03 complete; ready to plan Phase 4
 progress:
   total_phases: 7
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 11
   percent: 100
 ---
 
@@ -23,24 +23,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 03 — historical-backfill-and-attribution-review
+**Current focus:** Phase 04 — publish-and-readme-badge-integration
 
 ## Current Position
 
-Phase: 3 of 7 (historical backfill and attribution review)
+Phase: 4 of 7 (publish and README badge integration)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-03-30 -- Phase 02 complete; ready to plan Phase 3
+Last activity: 2026-03-30 -- Phase 03 complete; ready to plan Phase 4
 
-Progress: [██████████] 8/8 plans (100%)
+Progress: [██████████] 11/11 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
+- Total plans completed: 11
 - Average duration: 7 min
-- Total execution time: 59 min
+- Total execution time: 80 min
 
 **By Phase:**
 
@@ -48,13 +48,16 @@ Progress: [██████████] 8/8 plans (100%)
 |-------|-------|-------|----------|
 | 01 | 5 | 25 min | 5 min |
 | 02 | 3 | 34 min | 11 min |
+| 03 | 3 | 21 min | 7 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 02-03 (9 min), 02-02 (17 min), 02-01 (8 min), 01-05 (9 min), 01-04 (3 min)
+- Last 5 plans: 03-03 (9 min), 03-02 (5 min), 03-01 (7 min), 02-03 (9 min), 02-02 (17 min)
 - Trend: Stable
 
 *Updated after each plan completion*
+| Phase 03 P02 | 5 min | 3 tasks | 6 files |
+| Phase 03 P03 | 9 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -69,6 +72,12 @@ Recent decisions affecting current work:
 - Phase 01 routed `create-agent-badge` through the runtime init command so both entrypoints share one scaffold path.
 - Phase 01 generated repo-local scripts and a failure-soft managed `pre-push` hook from package-manager-specific templates.
 - Phase 02 uses Codex SQLite as the authoritative local source and limits `history.jsonl` to zero-total fallback metadata when SQLite cannot be read.
+- [Phase 03]: Only repo-root and normalized remote matches auto-include; cwd-only and transcript-only evidence stay ambiguous until a developer override exists.
+- [Phase 03]: Override persistence stores only stable provider:providerSessionId keys in overrides.ambiguousSessions, never raw cwd or transcript correlation values.
+- [Phase 03]: Override reuse changes final include/exclude status while preserving the raw evidence reason for later scan reporting.
+- [Phase 03]: The scan report prints stable provider:providerSessionId keys plus evidence kinds and reasons, never raw cwd realpaths or transcript paths. — Operator-facing scan output must remain reviewable without leaking local filesystem evidence.
+- [Phase 03]: Completed-scan state updates only advance lastScannedAt for providers scanned successfully and preserve existing cursors unless a concrete cursor is supplied. — Phase 3 should not invent incremental cursor semantics or rewrite checkpoint data after partial failures.
+- [Phase 03]: Explicit include/exclude session keys are applied only when the current scan still marks that session ambiguous; invalid override requests warn without mutating state. — Manual override requests should be conservative and visible instead of silently changing persisted data.
 
 ### Pending Todos
 
@@ -77,11 +86,10 @@ None yet.
 ### Blockers/Concerns
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
-- Phase 03 still needs ambiguity and attribution validation beyond the provider fixture coverage landed in Phase 02.
 - npm package-name availability for `agent-badge` must be checked at publish time.
 
 ## Session Continuity
 
-Last session: 2026-03-30T12:18:10Z
-Stopped at: Phase 02 complete; ready to plan Phase 3
+Last session: 2026-03-30T13:59:35.186Z
+Stopped at: Phase 03 complete; ready to plan Phase 4
 Resume file: None

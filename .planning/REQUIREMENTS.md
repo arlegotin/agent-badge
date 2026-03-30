@@ -16,10 +16,10 @@
 ### Attribution
 
 - [ ] **ATTR-01**: Tool derives a canonical repo fingerprint from git root, normalized origin URL, repo owner/name when available, and local aliases.
-- [ ] **ATTR-02**: First run performs a full historical backfill across enabled providers before the first badge publish.
-- [ ] **ATTR-03**: Session attribution applies evidence in priority order: exact repo root, exact remote, normalized cwd, transcript correlation, then persisted override.
-- [ ] **ATTR-04**: Ambiguous sessions are excluded from totals until the developer explicitly approves or rejects them.
-- [ ] **ATTR-05**: Attribution overrides are persisted and reused on later scans.
+- [x] **ATTR-02**: First run performs a full historical backfill across enabled providers before the first badge publish.
+- [x] **ATTR-03**: Session attribution applies evidence in priority order: exact repo root, exact remote, normalized cwd, transcript correlation, then persisted override.
+- [x] **ATTR-04**: Ambiguous sessions are excluded from totals until the developer explicitly approves or rejects them.
+- [x] **ATTR-05**: Attribution overrides are persisted and reused on later scans.
 
 ### Scanning
 
@@ -27,7 +27,7 @@
 - [ ] **SCAN-02**: Tool can scan Codex local session data under `~/.codex` and compute deduped per-session token totals for the repo.
 - [ ] **SCAN-03**: Tool can scan Claude local data under `~/.claude` and map session metadata into the same normalized session model.
 - [ ] **SCAN-04**: `refresh` performs incremental scanning using persisted checkpoints instead of a full historical rescan.
-- [ ] **SCAN-05**: `scan` reports included totals, ambiguous sessions, and excluded sessions in a human-readable attribution report.
+- [x] **SCAN-05**: `scan` reports included totals, ambiguous sessions, and excluded sessions in a human-readable attribution report.
 
 ### Publishing
 
@@ -93,11 +93,11 @@
 | SCAN-01 | Phase 2 | Pending |
 | SCAN-02 | Phase 2 | Pending |
 | SCAN-03 | Phase 2 | Pending |
-| ATTR-02 | Phase 3 | Pending |
-| ATTR-03 | Phase 3 | Pending |
-| ATTR-04 | Phase 3 | Pending |
-| ATTR-05 | Phase 3 | Pending |
-| SCAN-05 | Phase 3 | Pending |
+| ATTR-02 | Phase 3 | Complete |
+| ATTR-03 | Phase 3 | Complete |
+| ATTR-04 | Phase 3 | Complete |
+| ATTR-05 | Phase 3 | Complete |
+| SCAN-05 | Phase 3 | Complete |
 | BOOT-05 | Phase 4 | Pending |
 | PUBL-01 | Phase 4 | Pending |
 | PUBL-02 | Phase 4 | Pending |
@@ -125,4 +125,4 @@
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-30 after completing Phase 1*
+*Last updated: 2026-03-30 after completing Phase 3*

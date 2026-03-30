@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Workspace and Init Foundation** - Establish the monorepo, shared runtime primitives, and safe init preflight/scaffolding. (completed 2026-03-30)
 - [x] **Phase 2: Repo Identity and Provider Parsing** - Build the canonical repo model plus normalized Codex and Claude scanners. (completed 2026-03-30)
-- [ ] **Phase 3: Historical Backfill and Attribution Review** - Turn normalized sessions into trustworthy repo totals with ambiguity handling.
+- [x] **Phase 3: Historical Backfill and Attribution Review** - Turn normalized sessions into trustworthy repo totals with ambiguity handling. (completed 2026-03-30)
 - [ ] **Phase 4: Publish and README Badge Integration** - Create/connect the public Gist, publish aggregate badge JSON, and insert the stable README badge.
 - [ ] **Phase 5: Incremental Refresh and Operator Commands** - Add fast refresh, status/config UX, and failure-soft automation.
 - [ ] **Phase 6: Doctor, Uninstall, and Safety Hardening** - Make recovery, privacy, logging, and idempotent re-entry production-safe.
@@ -68,12 +68,12 @@ Plans:
   2. Attribution uses ordered evidence and excludes ambiguous sessions from totals by default.
   3. Approved or rejected ambiguous sessions persist as overrides and stay stable on later scans.
   4. `scan` shows included totals, ambiguous sessions, and excluded sessions in a human-readable report.
-**Plans**: 3 plans
+**Plans**: 3/3 plans complete
 
 Plans:
-- [ ] 03-01: Implement full backfill orchestration and deduped aggregation by provider session
-- [ ] 03-02: Build evidence-based attribution scoring, ambiguity thresholds, and override persistence
-- [ ] 03-03: Produce the attribution report and checkpoint-aware state updates for completed scans
+- [x] 03-01: Implement full backfill orchestration and deduped aggregation by provider session
+- [x] 03-02: Build evidence-based attribution scoring, ambiguity thresholds, and override persistence
+- [x] 03-03: Produce the attribution report and checkpoint-aware state updates for completed scans
 
 ### Phase 4: Publish and README Badge Integration
 **Goal**: Publish privacy-safe aggregate badge JSON and connect it to a stable README badge URL.
@@ -154,7 +154,7 @@ Phases execute in numeric order: 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4
 |-------|----------------|--------|-----------|
 | 1. Workspace and Init Foundation | 5/5 | Complete | 2026-03-30 |
 | 2. Repo Identity and Provider Parsing | 3/3 | Complete | 2026-03-30 |
-| 3. Historical Backfill and Attribution Review | 0/3 | Not started | - |
+| 3. Historical Backfill and Attribution Review | 3/3 | Complete | 2026-03-30 |
 | 4. Publish and README Badge Integration | 0/3 | Not started | - |
 | 5. Incremental Refresh and Operator Commands | 0/3 | Not started | - |
 | 6. Doctor, Uninstall, and Safety Hardening | 0/3 | Not started | - |
