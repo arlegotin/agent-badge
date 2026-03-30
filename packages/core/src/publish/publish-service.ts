@@ -19,6 +19,20 @@ export interface PublishBadgeToGistOptions {
   readonly client: GitHubGistClient;
 }
 
+export interface PublishBadgeIfChangedOptions {
+  readonly config: Pick<AgentBadgeConfig, "badge" | "publish">;
+  readonly state: AgentBadgeState;
+  readonly includedTotals: IncludedTotals;
+  readonly client: GitHubGistClient;
+  readonly now: string;
+  readonly skipIfUnchanged: boolean;
+}
+
+export interface PublishBadgeIfChangedResult {
+  readonly state: AgentBadgeState;
+  readonly decision: "published" | "skipped";
+}
+
 function buildSessionKey(
   session: { readonly provider: string; readonly providerSessionId: string }
 ): string {
@@ -54,24 +68,54 @@ function collectIncludedTotals(
   };
 }
 
-export async function publishBadgeToGist({
+function buildSerializedBadgePayload(
+  options: Pick<PublishBadgeIfChangedOptions, "config" | "includedTotals">
+): string {
+  const payload = buildEndpointBadgePayload({
+    label: options.config.badge.label,
+    mode: options.config.badge.mode,
+    includedTotals: options.includedTotals
+  });
+
+  return `${JSON.stringify(payload, null, 2)}\n`;
+}
+
+function buildPayloadHash(serializedPayload: string): string {
+  return createHash("sha256").update(serializedPayload).digest("hex");
+}
+
+export async function publishBadgeIfChanged({
   config,
   state,
-  scan,
-  attribution,
-  client
-}: PublishBadgeToGistOptions): Promise<AgentBadgeState> {
+  includedTotals,
+  client,
+  now,
+  skipIfUnchanged
+}: PublishBadgeIfChangedOptions): Promise<PublishBadgeIfChangedResult> {
   if (config.publish.gistId === null) {
     throw new Error("Cannot publish badge JSON without a configured gist id.");
   }
 
-  const includedTotals = collectIncludedTotals(scan, attribution);
-  const payload = buildEndpointBadgePayload({
-    label: config.badge.label,
-    mode: config.badge.mode,
+  const serializedPayload = buildSerializedBadgePayload({
+    config,
     includedTotals
   });
-  const serializedPayload = `${JSON.stringify(payload, null, 2)}\n`;
+  const nextHash = buildPayloadHash(serializedPayload);
+
+  if (skipIfUnchanged && nextHash === state.publish.lastPublishedHash) {
+    return {
+      decision: "skipped",
+      state: {
+        ...state,
+        publish: {
+          ...state.publish,
+          status: "published",
+          gistId: config.publish.gistId,
+          lastPublishedHash: nextHash
+        }
+      }
+    };
+  }
 
   // Publish always overwrites the deterministic agent-badge.json file in place.
   await client.updateGistFile({
@@ -84,14 +128,36 @@ export async function publishBadgeToGist({
   });
 
   return {
-    ...state,
-    publish: {
-      ...state.publish,
-      status: "published",
-      gistId: config.publish.gistId,
-      lastPublishedHash: createHash("sha256")
-        .update(serializedPayload)
-        .digest("hex")
+    decision: "published",
+    state: {
+      ...state,
+      publish: {
+        ...state.publish,
+        status: "published",
+        gistId: config.publish.gistId,
+        lastPublishedHash: nextHash,
+        lastPublishedAt: now
+      }
     }
   };
+}
+
+export async function publishBadgeToGist({
+  config,
+  state,
+  scan,
+  attribution,
+  client
+}: PublishBadgeToGistOptions): Promise<AgentBadgeState> {
+  const includedTotals = collectIncludedTotals(scan, attribution);
+  const result = await publishBadgeIfChanged({
+    config,
+    state,
+    includedTotals,
+    client,
+    now: new Date().toISOString(),
+    skipIfUnchanged: false
+  });
+
+  return result.state;
 }
