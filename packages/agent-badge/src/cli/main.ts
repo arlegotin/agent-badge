@@ -1,6 +1,7 @@
 import { Command } from "commander";
 
 import { runInitCommand } from "../commands/init.js";
+import { runPublishCommand } from "../commands/publish.js";
 import { runScanCommand } from "../commands/scan.js";
 
 function collectOptionValue(value: string, previous: string[] = []): string[] {
@@ -50,6 +51,13 @@ export function buildProgram(): Command {
         });
       }
     );
+
+  program
+    .command("publish")
+    .description("Publish aggregate badge JSON to the configured remote target.")
+    .action(async () => {
+      await runPublishCommand();
+    });
 
   return program;
 }

@@ -15,4 +15,11 @@ describe("buildProgram", () => {
 
     expect(commandNames).toContain("init");
   });
+
+  it("registers the publish command", () => {
+    const program = buildProgram();
+    const commandNames = program.commands.map((command) => command.name());
+
+    expect(commandNames).toContain("publish");
+  });
 });
