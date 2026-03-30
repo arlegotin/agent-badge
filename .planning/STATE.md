@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-30T20:19:57Z"
+last_updated: "2026-03-30T20:25:25Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 Phase: 05 (incremental-refresh-and-operator-commands) — EXECUTING
 Plan: 3 of 3
 Status: Phase complete — ready for verification
-Last activity: 2026-03-30 - Completed quick task 260330-uxa: ignored local runtime state
+Last activity: 2026-03-30 - Completed quick task 260330-v47: lowered badge cache window
 
 Progress: [█████████░] 16/17 plans (94%)
 
@@ -102,6 +102,7 @@ Recent decisions affecting current work:
 - [Phase 05]: Refresh config mutations immediately reconcile package.json scripts and the managed hook with the repo's detected package manager.
 - [Phase 05]: Init scaffold reconciliation must preserve newly added Phase 5 config and state fields so reruns do not downgrade persisted schema.
 - [Quick 260330-uxa]: Mutable `.agent-badge/state.json` is local runtime state, not a tracked repo artifact; init/runtime wiring must ensure it is gitignored alongside cache/logs so refresh and pre-push stay invisible in normal git workflows.
+- [Quick 260330-v47]: The stable Shields badge URL should use a short cache window (`300` seconds) so visible badge changes do not feel stale after a publish, while still avoiding overly aggressive refetching.
 
 ### Pending Todos
 
@@ -119,6 +120,7 @@ None yet.
 | 260330-uip | Add a real README with the live badge, brief project description, installation instructions, then commit and push | 2026-03-30 | e432521 | [260330-uip-add-a-real-readme-with-the-live-badge-br](./quick/260330-uip-add-a-real-readme-with-the-live-badge-br/) |
 | 260330-uo2 | Switch the live badge from sessions to tokens, republish it, commit the repo-local state, and push main | 2026-03-30 | 5e4d51f | [260330-uo2-switch-the-live-badge-from-sessions-to-t](./quick/260330-uo2-switch-the-live-badge-from-sessions-to-t/) |
 | 260330-uxa | Auto-ignore agent-badge local runtime state so refresh/push do not dirty repos, and stop tracking this repo's state.json | 2026-03-30 | ae6b8c2 | [260330-uxa-auto-ignore-agent-badge-local-runtime-st](./quick/260330-uxa-auto-ignore-agent-badge-local-runtime-st/) |
+| 260330-v47 | Lower agent-badge Shields cacheSeconds to a shorter default and update this repo's configured badge URL/README to match | 2026-03-30 | cda747b | [260330-v47-lower-agent-badge-shields-cacheseconds-t](./quick/260330-v47-lower-agent-badge-shields-cacheseconds-t/) |
 
 ## Session Continuity
 
