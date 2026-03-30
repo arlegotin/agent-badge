@@ -15,6 +15,22 @@ const publishStatusSchema = z.enum([
   "published",
   "error"
 ]);
+const refreshScanModeSchema = z.enum(["full", "incremental"]);
+const refreshPublishDecisionSchema = z.enum([
+  "published",
+  "skipped",
+  "deferred",
+  "not-configured",
+  "failed"
+]);
+const refreshSummarySchema = z
+  .object({
+    includedSessions: z.number().int().nonnegative(),
+    includedTokens: z.number().int().nonnegative(),
+    ambiguousSessions: z.number().int().nonnegative(),
+    excludedSessions: z.number().int().nonnegative()
+  })
+  .strict();
 const ambiguousSessionOverrideSchema = z.enum(["include", "exclude"]);
 
 export const agentBadgeStateSchema = z
@@ -37,7 +53,16 @@ export const agentBadgeStateSchema = z
       .object({
         status: publishStatusSchema,
         gistId: z.string().min(1).nullable(),
-        lastPublishedHash: z.string().min(1).nullable()
+        lastPublishedHash: z.string().min(1).nullable(),
+        lastPublishedAt: isoDateTimeSchema.nullable()
+      })
+      .strict(),
+    refresh: z
+      .object({
+        lastRefreshedAt: isoDateTimeSchema.nullable(),
+        lastScanMode: refreshScanModeSchema.nullable(),
+        lastPublishDecision: refreshPublishDecisionSchema.nullable(),
+        summary: refreshSummarySchema.nullable()
       })
       .strict(),
     overrides: z
@@ -50,6 +75,11 @@ export const agentBadgeStateSchema = z
 
 export type AgentBadgeState = z.infer<typeof agentBadgeStateSchema>;
 export type AgentBadgePublishStatus = z.infer<typeof publishStatusSchema>;
+export type AgentBadgeRefreshScanMode = z.infer<typeof refreshScanModeSchema>;
+export type AgentBadgeRefreshPublishDecision = z.infer<
+  typeof refreshPublishDecisionSchema
+>;
+export type AgentBadgeRefreshSummary = z.infer<typeof refreshSummarySchema>;
 export type AgentBadgeAmbiguousSessionOverride = z.infer<
   typeof ambiguousSessionOverrideSchema
 >;
@@ -74,7 +104,14 @@ export const defaultAgentBadgeState: AgentBadgeState = {
   publish: {
     status: "idle",
     gistId: null,
-    lastPublishedHash: null
+    lastPublishedHash: null,
+    lastPublishedAt: null
+  },
+  refresh: {
+    lastRefreshedAt: null,
+    lastScanMode: null,
+    lastPublishDecision: null,
+    summary: null
   },
   overrides: {
     ambiguousSessions: {}

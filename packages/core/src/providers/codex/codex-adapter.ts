@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import { z } from "zod";
 
 import { normalizeGitRemoteUrl } from "../../repo/repo-fingerprint.js";
 import {
@@ -16,9 +19,78 @@ export interface ScanCodexSessionsOptions {
   readonly homeRoot: string;
 }
 
+export interface ScanCodexSessionsIncrementalOptions {
+  readonly homeRoot: string;
+  readonly cursor: string | null;
+}
+
+export interface ScanCodexSessionsIncrementalResult {
+  readonly sessions: NormalizedSessionSummary[];
+  readonly cursor: string;
+  readonly mode: "incremental" | "full";
+}
+
 interface CodexHistoryRow {
   readonly session_id?: unknown;
   readonly ts?: unknown;
+}
+
+const codexIncrementalCursorSchema = z
+  .object({
+    kind: z.literal("codex-session-digest-v1"),
+    sessions: z.record(z.string(), z.string().min(1))
+  })
+  .strict();
+
+function buildCodexSessionDigest(session: NormalizedSessionSummary): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        providerSessionId: session.providerSessionId,
+        startedAt: session.startedAt,
+        updatedAt: session.updatedAt,
+        cwd: session.cwd,
+        gitBranch: session.gitBranch,
+        observedRemoteUrlNormalized: session.observedRemoteUrlNormalized,
+        transcriptProjectKey: session.attributionHints.transcriptProjectKey,
+        tokenTotal: session.tokenUsage.total,
+        parentSessionId: session.lineage.parentSessionId,
+        sourceKind: session.metadata.sourceKind,
+        cliVersion: session.metadata.cliVersion
+      })
+    )
+    .digest("hex");
+}
+
+export function buildCodexIncrementalCursor(
+  sessions: readonly NormalizedSessionSummary[]
+): string {
+  const entries = sessions
+    .filter((session) => session.provider === "codex")
+    .map((session) => [
+      session.providerSessionId,
+      buildCodexSessionDigest(session)
+    ] as const)
+    .sort(([left], [right]) => left.localeCompare(right));
+
+  return JSON.stringify({
+    kind: "codex-session-digest-v1",
+    sessions: Object.fromEntries(entries)
+  });
+}
+
+function parseCodexIncrementalCursor(
+  cursor: string | null
+): Record<string, string> | null {
+  if (typeof cursor !== "string" || cursor.length === 0) {
+    return null;
+  }
+
+  try {
+    return codexIncrementalCursorSchema.parse(JSON.parse(cursor)).sessions;
+  } catch {
+    return null;
+  }
 }
 
 async function loadCodexHistoryFallback(
@@ -186,4 +258,31 @@ export async function scanCodexSessions(
   } catch {
     return loadCodexHistoryFallback(codexRoot);
   }
+}
+
+export async function scanCodexSessionsIncremental({
+  homeRoot,
+  cursor
+}: ScanCodexSessionsIncrementalOptions): Promise<ScanCodexSessionsIncrementalResult> {
+  const sessions = await scanCodexSessions({ homeRoot });
+  const previousDigests = parseCodexIncrementalCursor(cursor);
+  const nextCursor = buildCodexIncrementalCursor(sessions);
+
+  if (previousDigests === null) {
+    return {
+      sessions,
+      cursor: nextCursor,
+      mode: "full"
+    };
+  }
+
+  return {
+    sessions: sessions.filter(
+      (session) =>
+        previousDigests[session.providerSessionId] !==
+        buildCodexSessionDigest(session)
+    ),
+    cursor: nextCursor,
+    mode: "incremental"
+  };
 }
