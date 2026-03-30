@@ -4,4 +4,5 @@ export * from "./logging/index.js";
 export * from "./providers/index.js";
 export * from "./repo/index.js";
 export * from "./runtime/index.js";
+export * from "./scan/index.js";
 export * from "./state/index.js";
