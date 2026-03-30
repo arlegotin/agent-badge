@@ -5,9 +5,9 @@ import type {
   AttributedSession,
   AttributionCounts,
   AttributionEvidence,
-  AttributionStatus,
   AttributeBackfillSessionsResult
 } from "./attribution-types.js";
+import { buildAmbiguousSessionKey } from "./override-store.js";
 
 export interface AttributeBackfillSessionsOptions {
   readonly repo: RepoFingerprint;
@@ -187,7 +187,7 @@ function applyOverride(
   rawDecision: Omit<AttributedSession, "session" | "overrideApplied">,
   overrides: Record<string, "include" | "exclude">
 ): AttributedSession {
-  const sessionKey = `${session.provider}:${session.providerSessionId}`;
+  const sessionKey = buildAmbiguousSessionKey(session);
   const persistedDecision = overrides[sessionKey] ?? null;
 
   if (persistedDecision === null) {
