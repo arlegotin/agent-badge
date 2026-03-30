@@ -1,0 +1,22 @@
+{
+  "name": "create-agent-badge",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "create-agent-badge": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@agent-badge/core": "file:../core"
+  }
+}
