@@ -9,12 +9,14 @@ import {
   getAgentBadgeRefreshScriptCommand,
   getPrePushRefreshCommand
 } from "../runtime/local-cli.js";
+import type { AgentBadgeConfig } from "../config/config-schema.js";
 import type { PackageManager } from "../runtime/package-manager.js";
 
 export interface ApplyRepoLocalRuntimeWiringOptions {
   readonly cwd: string;
   readonly packageManager: PackageManager;
   readonly runtimeDependencySpecifier: string;
+  readonly refresh: AgentBadgeConfig["refresh"];
 }
 
 export interface RepoLocalRuntimeWiringResult {
@@ -81,62 +83,70 @@ function getOrCreateObject(parent: JsonObject, field: string): JsonObject {
   return currentValue;
 }
 
-function upsertManagedStringValue(options: {
+function syncManagedStringValue(options: {
   readonly container: JsonObject;
   readonly key: string;
   readonly desiredValue: string;
-  readonly createdLabel: string;
-  readonly result: {
-    created: string[];
-    reused: string[];
-    warnings: string[];
-  };
+  readonly label: string;
+  readonly overwriteExisting: boolean;
+  readonly result: RepoLocalRuntimeWiringResult;
 }): boolean {
   const currentValue = options.container[options.key];
 
   if (currentValue === undefined) {
     options.container[options.key] = options.desiredValue;
-    options.result.created.push(options.createdLabel);
+    options.result.created.push(options.label);
     return true;
   }
 
   if (typeof currentValue !== "string") {
     options.container[options.key] = options.desiredValue;
-    options.result.created.push(options.createdLabel);
+    options.result.updated.push(options.label);
     options.result.warnings.push(
-      `Replaced non-string ${options.createdLabel} with managed runtime wiring.`
+      `Replaced non-string ${options.label} with managed runtime wiring.`
     );
     return true;
   }
 
   if (currentValue === options.desiredValue) {
-    options.result.reused.push(options.createdLabel);
+    options.result.reused.push(options.label);
     return false;
   }
 
-  options.result.reused.push(options.createdLabel);
-  options.result.warnings.push(
-    `Preserved existing ${options.createdLabel} instead of overwriting it with managed runtime wiring.`
-  );
-  return false;
+  if (!options.overwriteExisting) {
+    options.result.reused.push(options.label);
+    options.result.warnings.push(
+      `Preserved existing ${options.label} instead of overwriting it with managed runtime wiring.`
+    );
+    return false;
+  }
+
+  options.container[options.key] = options.desiredValue;
+  options.result.updated.push(options.label);
+  return true;
 }
 
 function escapeForRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function createManagedHookBlock(packageManager: PackageManager): string {
+function createManagedHookBlock(
+  packageManager: PackageManager,
+  refresh: AgentBadgeConfig["refresh"]
+): string {
+  const command = getPrePushRefreshCommand(packageManager);
+
   return [
     agentBadgeHookStartMarker,
-    `${getPrePushRefreshCommand(packageManager)} || true`,
+    refresh.prePush.mode === "fail-soft" ? `${command} || true` : command,
     agentBadgeHookEndMarker
   ].join("\n");
 }
 
-function upsertManagedHookBlock(
-  existingContent: string,
-  managedBlock: string
-): { content: string; hadManagedBlock: boolean } {
+function stripManagedHookBlock(existingContent: string): {
+  baseContent: string;
+  hadManagedBlock: boolean;
+} {
   const normalizedContent = existingContent.replace(/\r\n/g, "\n");
   const managedBlockPattern = new RegExp(
     `${escapeForRegExp(agentBadgeHookStartMarker)}[\\s\\S]*?${escapeForRegExp(agentBadgeHookEndMarker)}\\n?`,
@@ -151,12 +161,26 @@ function upsertManagedHookBlock(
   const trimmedBase = baseContent.trimEnd();
 
   return {
-    content:
-      trimmedBase.length > 0
-        ? `${trimmedBase}\n\n${managedBlock}\n`
-        : `${managedBlock}\n`,
+    baseContent: trimmedBase,
     hadManagedBlock
   };
+}
+
+function buildHookContent(
+  baseContent: string,
+  managedBlock?: string
+): string {
+  if (managedBlock === undefined) {
+    return baseContent.length > 0 && baseContent !== "#!/bin/sh"
+      ? `${baseContent}\n`
+      : "#!/bin/sh\n";
+  }
+
+  if (baseContent.length === 0 || baseContent === "#!/bin/sh") {
+    return `#!/bin/sh\n\n${managedBlock}\n`;
+  }
+
+  return `${baseContent}\n\n${managedBlock}\n`;
 }
 
 async function ensureExecutable(targetPath: string): Promise<boolean> {
@@ -202,27 +226,30 @@ export async function applyRepoLocalRuntimeWiring(
   const scripts = getOrCreateObject(packageJson, "scripts");
 
   packageJsonChanged =
-    upsertManagedStringValue({
+    syncManagedStringValue({
       container: devDependencies,
       key: "agent-badge",
       desiredValue: options.runtimeDependencySpecifier,
-      createdLabel: "package.json#devDependencies.agent-badge",
+      label: "package.json#devDependencies.agent-badge",
+      overwriteExisting: false,
       result
     }) || packageJsonChanged;
   packageJsonChanged =
-    upsertManagedStringValue({
+    syncManagedStringValue({
       container: scripts,
       key: agentBadgeInitScriptName,
       desiredValue: getAgentBadgeInitScriptCommand(),
-      createdLabel: `package.json#scripts.${agentBadgeInitScriptName}`,
+      label: `package.json#scripts.${agentBadgeInitScriptName}`,
+      overwriteExisting: true,
       result
     }) || packageJsonChanged;
   packageJsonChanged =
-    upsertManagedStringValue({
+    syncManagedStringValue({
       container: scripts,
       key: agentBadgeRefreshScriptName,
-      desiredValue: getAgentBadgeRefreshScriptCommand(),
-      createdLabel: `package.json#scripts.${agentBadgeRefreshScriptName}`,
+      desiredValue: getAgentBadgeRefreshScriptCommand(options.refresh.prePush.mode),
+      label: `package.json#scripts.${agentBadgeRefreshScriptName}`,
+      overwriteExisting: true,
       result
     }) || packageJsonChanged;
 
@@ -240,12 +267,18 @@ export async function applyRepoLocalRuntimeWiring(
 
   await mkdir(hooksDir, { recursive: true });
 
-  const managedHookBlock = createManagedHookBlock(options.packageManager);
-
   if (!existsSync(prePushHookPath)) {
+    if (!options.refresh.prePush.enabled) {
+      result.reused.push(prePushHookPathLabel);
+      return result;
+    }
+
     await writeFile(
       prePushHookPath,
-      `#!/bin/sh\n\n${managedHookBlock}\n`,
+      buildHookContent(
+        "",
+        createManagedHookBlock(options.packageManager, options.refresh)
+      ),
       "utf8"
     );
     await chmod(prePushHookPath, 0o755);
@@ -254,12 +287,19 @@ export async function applyRepoLocalRuntimeWiring(
   }
 
   const existingHookContent = await readFile(prePushHookPath, "utf8");
-  const nextHook = upsertManagedHookBlock(existingHookContent, managedHookBlock);
-  const hookContentChanged = nextHook.content !== existingHookContent.replace(/\r\n/g, "\n");
+  const strippedHook = stripManagedHookBlock(existingHookContent);
+  const nextHookContent = options.refresh.prePush.enabled
+    ? buildHookContent(
+        strippedHook.baseContent,
+        createManagedHookBlock(options.packageManager, options.refresh)
+      )
+    : buildHookContent(strippedHook.baseContent);
+  const hookContentChanged =
+    nextHookContent !== existingHookContent.replace(/\r\n/g, "\n");
   const hookModeChanged = await ensureExecutable(prePushHookPath);
 
   if (hookContentChanged) {
-    await writeFile(prePushHookPath, nextHook.content, "utf8");
+    await writeFile(prePushHookPath, nextHookContent, "utf8");
   }
 
   if (hookContentChanged || hookModeChanged) {

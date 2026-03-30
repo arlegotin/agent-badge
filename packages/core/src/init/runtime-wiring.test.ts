@@ -22,6 +22,24 @@ import {
 } from "./runtime-wiring.js";
 
 const execFileAsync = promisify(execFile);
+const failSoftRefresh = {
+  prePush: {
+    enabled: true,
+    mode: "fail-soft"
+  }
+} as const;
+const strictRefresh = {
+  prePush: {
+    enabled: true,
+    mode: "strict"
+  }
+} as const;
+const disabledPrePushRefresh = {
+  prePush: {
+    enabled: false,
+    mode: "fail-soft"
+  }
+} as const;
 
 interface Fixture {
   readonly root: string;
@@ -60,7 +78,8 @@ describe("applyRepoLocalRuntimeWiring", () => {
       const result = await applyRepoLocalRuntimeWiring({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "latest"
+        runtimeDependencySpecifier: "latest",
+        refresh: failSoftRefresh
       });
 
       expect(result.created).toEqual(
@@ -140,7 +159,8 @@ describe("applyRepoLocalRuntimeWiring", () => {
       const firstRun = await applyRepoLocalRuntimeWiring({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3"
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: failSoftRefresh
       });
 
       expect(firstRun.updated).toEqual(
@@ -150,7 +170,8 @@ describe("applyRepoLocalRuntimeWiring", () => {
       const secondRun = await applyRepoLocalRuntimeWiring({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3"
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: failSoftRefresh
       });
 
       expect(secondRun.created).toEqual([]);
@@ -187,6 +208,113 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
       expect(hookStats.mode & 0o111).toBe(0o111);
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("writes a strict pre-push hook without fail-soft fallback", async () => {
+    const repo = await createGitRepoFixture();
+    const packageJsonPath = join(repo.root, "package.json");
+    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
+
+    try {
+      await applyRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm",
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: failSoftRefresh
+      });
+
+      const result = await applyRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm",
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: strictRefresh
+      });
+
+      expect(result.updated).toEqual(
+        expect.arrayContaining([
+          "package.json#scripts.agent-badge:refresh",
+          "package.json",
+          ".git/hooks/pre-push"
+        ])
+      );
+
+      const packageJson = JSON.parse(
+        await readFile(packageJsonPath, "utf8")
+      ) as Record<string, unknown>;
+      const packageScripts = packageJson.scripts as Record<string, string>;
+      const hookContent = await readFile(prePushHookPath, "utf8");
+
+      expect(packageScripts["agent-badge:refresh"]).toBe(
+        "agent-badge refresh --hook pre-push"
+      );
+      expect(hookContent).toContain("npm run --silent agent-badge:refresh");
+      expect(hookContent).not.toContain("|| true");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("removes only the managed hook block when pre-push is disabled", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        ".git/hooks/pre-push":
+          "#!/bin/sh\n\necho custom-check\n\n# agent-badge:start\nnpm run --silent agent-badge:refresh || true\n# agent-badge:end\n"
+      }
+    });
+    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
+
+    try {
+      const result = await applyRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm",
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: disabledPrePushRefresh
+      });
+
+      expect(result.created).toEqual(
+        expect.arrayContaining([
+          "package.json",
+          "package.json#devDependencies.agent-badge",
+          "package.json#scripts.agent-badge:init",
+          "package.json#scripts.agent-badge:refresh"
+        ])
+      );
+      expect(result.updated).toEqual(
+        expect.arrayContaining([".git/hooks/pre-push"])
+      );
+
+      const hookContent = await readFile(prePushHookPath, "utf8");
+
+      expect(hookContent).toBe("#!/bin/sh\n\necho custom-check\n");
+      expect(hookContent).not.toContain(agentBadgeHookStartMarker);
+      expect(hookContent).not.toContain(agentBadgeHookEndMarker);
+
+      const managedOnlyRepo = await createGitRepoFixture();
+
+      try {
+        const managedOnlyHookPath = join(managedOnlyRepo.root, ".git/hooks/pre-push");
+
+        await applyRepoLocalRuntimeWiring({
+          cwd: managedOnlyRepo.root,
+          packageManager: "npm",
+          runtimeDependencySpecifier: "^1.2.3",
+          refresh: failSoftRefresh
+        });
+
+        await applyRepoLocalRuntimeWiring({
+          cwd: managedOnlyRepo.root,
+          packageManager: "npm",
+          runtimeDependencySpecifier: "^1.2.3",
+          refresh: disabledPrePushRefresh
+        });
+
+        expect(await readFile(managedOnlyHookPath, "utf8")).toBe("#!/bin/sh\n");
+      } finally {
+        await managedOnlyRepo.cleanup();
+      }
     } finally {
       await repo.cleanup();
     }

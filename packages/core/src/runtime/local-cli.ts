@@ -2,6 +2,7 @@ import {
   packageManagerSchema,
   type PackageManager
 } from "./package-manager.js";
+import type { AgentBadgeRefreshMode } from "../config/config-schema.js";
 
 export const agentBadgeInitScriptName = "agent-badge:init";
 export const agentBadgeRefreshScriptName = "agent-badge:refresh";
@@ -28,8 +29,12 @@ export function getAgentBadgeInitScriptCommand(): string {
   return "agent-badge init";
 }
 
-export function getAgentBadgeRefreshScriptCommand(): string {
-  return "agent-badge refresh --hook pre-push --fail-soft";
+export function getAgentBadgeRefreshScriptCommand(
+  mode: AgentBadgeRefreshMode = "fail-soft"
+): string {
+  return mode === "fail-soft"
+    ? "agent-badge refresh --hook pre-push --fail-soft"
+    : "agent-badge refresh --hook pre-push";
 }
 
 export function getPackageScriptRunnerCommand(
