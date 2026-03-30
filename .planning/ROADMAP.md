@@ -108,7 +108,7 @@ Plans:
 Plans:
 - [x] 05-01: Implement incremental checkpoints and diff-aware publish decisions
 - [x] 05-02: Build `refresh`, `status`, and `config` command flows on top of shared services
-- [ ] 05-03: Install and validate the lightweight failure-soft `pre-push` integration
+- [x] 05-03: Install and validate the lightweight failure-soft `pre-push` integration
 
 ### Phase 6: Doctor, Uninstall, and Safety Hardening
 **Goal**: Close the production-readiness gaps around recovery, privacy, logging, and re-entry safety.

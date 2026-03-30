@@ -39,7 +39,7 @@
 
 ### Operations
 
-- [ ] **OPER-01**: Default `pre-push` integration runs a fast failure-soft refresh and respects normal git bypass behavior.
+- [x] **OPER-01**: Default `pre-push` integration runs a fast failure-soft refresh and respects normal git bypass behavior.
 - [x] **OPER-02**: `refresh` can recover local badge state end to end without manual file edits.
 - [x] **OPER-03**: `status` shows current totals, enabled providers, publish state, and last scan/publish checkpoints.
 - [x] **OPER-04**: `config` lets the developer change enabled providers, badge mode, label, privacy, and refresh behavior after init.
@@ -105,7 +105,7 @@
 | PUBL-04 | Phase 4 | Complete |
 | SCAN-04 | Phase 5 | Complete |
 | PUBL-05 | Phase 5 | Complete |
-| OPER-01 | Phase 5 | Pending |
+| OPER-01 | Phase 5 | Complete |
 | OPER-02 | Phase 5 | Complete |
 | OPER-03 | Phase 5 | Complete |
 | OPER-04 | Phase 5 | Complete |
