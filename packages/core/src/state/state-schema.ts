@@ -8,7 +8,13 @@ const checkpointSchema = z
   })
   .strict();
 
-const publishStatusSchema = z.enum(["idle", "pending", "published", "error"]);
+const publishStatusSchema = z.enum([
+  "idle",
+  "deferred",
+  "pending",
+  "published",
+  "error"
+]);
 const ambiguousSessionOverrideSchema = z.enum(["include", "exclude"]);
 
 export const agentBadgeStateSchema = z

@@ -14,6 +14,23 @@ describe("agentBadgeStateSchema", () => {
     expect(defaultAgentBadgeState.publish.lastPublishedHash).toBeNull();
   });
 
+  it("parses the deferred publish state without dropping gist bookkeeping", () => {
+    expect(
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          status: "deferred",
+          gistId: "gist_123",
+          lastPublishedHash: "hash_123"
+        }
+      }).publish
+    ).toEqual({
+      status: "deferred",
+      gistId: "gist_123",
+      lastPublishedHash: "hash_123"
+    });
+  });
+
   it("rejects transcript-like fields", () => {
     expect(() =>
       parseAgentBadgeState({
@@ -33,6 +50,30 @@ describe("agentBadgeStateSchema", () => {
             ...defaultAgentBadgeState.checkpoints.codex,
             fileName: "session.jsonl"
           }
+        }
+      })
+    ).toThrow();
+  });
+
+  it("rejects transcript-like publish fields", () => {
+    expect(() =>
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          transcript: "do not persist prompt text"
+        }
+      })
+    ).toThrow();
+  });
+
+  it("rejects path-like publish fields", () => {
+    expect(() =>
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          localPath: "/Users/example/.codex/session.jsonl"
         }
       })
     ).toThrow();

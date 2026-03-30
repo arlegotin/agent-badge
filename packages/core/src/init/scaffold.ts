@@ -35,6 +35,7 @@ const badgeModes: AgentBadgeBadgeMode[] = ["sessions", "tokens", "cost"];
 const refreshModes: AgentBadgeRefreshMode[] = ["fail-soft", "strict"];
 const publishStatuses: AgentBadgePublishStatus[] = [
   "idle",
+  "deferred",
   "pending",
   "published",
   "error"

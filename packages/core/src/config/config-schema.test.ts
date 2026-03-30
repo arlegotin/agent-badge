@@ -22,6 +22,25 @@ describe("agentBadgeConfigSchema", () => {
     });
   });
 
+  it("keeps publish config aggregate-only", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        publish: {
+          provider: "github-gist",
+          gistId: "gist_123",
+          badgeUrl:
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+        }
+      }).publish
+    ).toEqual({
+      provider: "github-gist",
+      gistId: "gist_123",
+      badgeUrl:
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+    });
+  });
+
   it("rejects missing required keys", () => {
     expect(() =>
       parseAgentBadgeConfig({
@@ -78,5 +97,29 @@ describe("agentBadgeConfigSchema", () => {
         }
       ]]
     `);
+  });
+
+  it("rejects transcript-like publish fields", () => {
+    expect(() =>
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          transcript: "do not persist prompt text"
+        }
+      })
+    ).toThrow();
+  });
+
+  it("rejects path-like publish fields", () => {
+    expect(() =>
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          localPath: "/Users/example/.codex/session.jsonl"
+        }
+      })
+    ).toThrow();
   });
 });
