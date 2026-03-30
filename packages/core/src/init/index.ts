@@ -1,11 +1,4 @@
-export interface InitModule {
-  readonly status: "placeholder";
-  readonly command: "init";
-}
-
-export function createInitModule(): InitModule {
-  return {
-    status: "placeholder",
-    command: "init"
-  };
-}
+export * from "./github-auth.js";
+export * from "./preflight.js";
+export * from "./provider-detection.js";
+export * from "../repo/git-context.js";
