@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "init": {
+    "initialized": true,
+    "scaffoldVersion": 1,
+    "lastInitializedAt": "2026-03-30T19:37:59.132Z"
+  },
+  "checkpoints": {
+    "codex": {
+      "cursor": null,
+      "lastScannedAt": null
+    },
+    "claude": {
+      "cursor": null,
+      "lastScannedAt": null
+    }
+  },
+  "publish": {
+    "status": "published",
+    "gistId": "f9f1989fe5ddd0f04e25df81c6dd051e",
+    "lastPublishedHash": "563e13818cde085abf240d6d8d205b84d81a4e9b5a917b39a6cde6175c28efed",
+    "lastPublishedAt": "2026-03-30T19:43:11.454Z"
+  },
+  "refresh": {
+    "lastRefreshedAt": null,
+    "lastScanMode": null,
+    "lastPublishDecision": null,
+    "summary": null
+  },
+  "overrides": {
+    "ambiguousSessions": {}
+  }
+}
