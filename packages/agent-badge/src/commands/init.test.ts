@@ -127,6 +127,32 @@ describe("runInitCommand", () => {
     }
   });
 
+  it("bootstraps git before scaffolding when non-git initialization is allowed", async () => {
+    const repo = await createRepoFixture({
+      git: false,
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const output = createOutputCapture();
+
+    try {
+      const result = await runInitCommand({
+        cwd: repo.root,
+        allowGitInit: true,
+        stdout: output.writer
+      });
+
+      expect(result.preflight.git.isRepo).toBe(true);
+      expect(existsSync(join(repo.root, ".git"))).toBe(true);
+      expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
+      expect(output.read()).toContain("Git bootstrap: running");
+      expect(output.read()).toContain("Git bootstrap: repository initialized");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
   it("blocks a non-git directory when non-git initialization is disabled", async () => {
     const repo = await createRepoFixture({
       git: false
@@ -143,7 +169,9 @@ describe("runInitCommand", () => {
       ).rejects.toThrow(/non-git workspace/i);
 
       expect(output.read()).toContain("non-git directory");
+      expect(output.read()).toContain("Git bootstrap: blocked");
       expect(output.read()).toContain("Blocked:");
+      expect(existsSync(join(repo.root, ".git"))).toBe(false);
       expect(existsSync(join(repo.root, ".agent-badge"))).toBe(false);
     } finally {
       await repo.cleanup();
