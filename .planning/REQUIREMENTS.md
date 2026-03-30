@@ -26,7 +26,7 @@
 - [ ] **SCAN-01**: Tool detects which provider directories exist and enables only those providers by default.
 - [ ] **SCAN-02**: Tool can scan Codex local session data under `~/.codex` and compute deduped per-session token totals for the repo.
 - [ ] **SCAN-03**: Tool can scan Claude local data under `~/.claude` and map session metadata into the same normalized session model.
-- [ ] **SCAN-04**: `refresh` performs incremental scanning using persisted checkpoints instead of a full historical rescan.
+- [x] **SCAN-04**: `refresh` performs incremental scanning using persisted checkpoints instead of a full historical rescan.
 - [x] **SCAN-05**: `scan` reports included totals, ambiguous sessions, and excluded sessions in a human-readable attribution report.
 
 ### Publishing
@@ -35,13 +35,13 @@
 - [x] **PUBL-02**: If automatic Gist creation fails, developer can retry, connect an existing Gist, or continue in explicit unpublished mode.
 - [x] **PUBL-03**: `publish` writes aggregate-only Shields endpoint JSON with `schemaVersion`, `label`, `message`, `color`, and cache behavior fields.
 - [x] **PUBL-04**: The README badge URL stays stable after init; later updates modify only the remote JSON.
-- [ ] **PUBL-05**: Publish skips remote updates when the visible badge value has not changed.
+- [x] **PUBL-05**: Publish skips remote updates when the visible badge value has not changed.
 
 ### Operations
 
 - [ ] **OPER-01**: Default `pre-push` integration runs a fast failure-soft refresh and respects normal git bypass behavior.
 - [ ] **OPER-02**: `refresh` can recover local badge state end to end without manual file edits.
-- [ ] **OPER-03**: `status` shows current totals, enabled providers, publish state, and last scan/publish checkpoints.
+- [x] **OPER-03**: `status` shows current totals, enabled providers, publish state, and last scan/publish checkpoints.
 - [ ] **OPER-04**: `config` lets the developer change enabled providers, badge mode, label, privacy, and refresh behavior after init.
 - [ ] **OPER-05**: `uninstall` removes local integration cleanly without deleting published badge data unless the developer explicitly requests it.
 
@@ -103,11 +103,11 @@
 | PUBL-02 | Phase 4 | Complete |
 | PUBL-03 | Phase 4 | Complete |
 | PUBL-04 | Phase 4 | Complete |
-| SCAN-04 | Phase 5 | Pending |
-| PUBL-05 | Phase 5 | Pending |
+| SCAN-04 | Phase 5 | Complete |
+| PUBL-05 | Phase 5 | Complete |
 | OPER-01 | Phase 5 | Pending |
 | OPER-02 | Phase 5 | Pending |
-| OPER-03 | Phase 5 | Pending |
+| OPER-03 | Phase 5 | Complete |
 | OPER-04 | Phase 5 | Pending |
 | OPER-05 | Phase 6 | Pending |
 | SAFE-01 | Phase 6 | Pending |

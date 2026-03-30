@@ -2,18 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: "05"
-current_phase_name: incremental-refresh-and-operator-commands
-status: ready_to_plan
-stopped_at: Phase 04 complete; ready to plan Phase 5
-last_updated: "2026-03-30T17:10:01.323Z"
-last_activity: 2026-03-30 -- Phase 04 complete; ready to plan Phase 5
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-30T18:07:50Z"
+last_activity: 2026-03-30 -- Completed 05-01 plan
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 14
-  completed_plans: 14
-  percent: 100
+  total_plans: 17
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -27,20 +25,20 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-30 -- Phase 04 complete; ready to plan Phase 5
+Phase: 05 (incremental-refresh-and-operator-commands) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-03-30 -- Completed 05-01 plan
 
-Progress: [██████████] 14/14 plans (100%)
+Progress: [█████████░] 15/17 plans (88%)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: 8 min
-- Total execution time: 112 min
+- Total execution time: 125 min
 
 **By Phase:**
 
@@ -50,10 +48,11 @@ Progress: [██████████] 14/14 plans (100%)
 | 02 | 3 | 34 min | 11 min |
 | 03 | 3 | 21 min | 7 min |
 | 04 | 3 | 32 min | 11 min |
+| 05 | 1 | 13 min | 13 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 04-03 (13 min), 04-02 (6 min), 04-01 (13 min), 03-03 (9 min), 03-02 (5 min)
+- Last 5 plans: 05-01 (13 min), 04-03 (13 min), 04-02 (6 min), 04-01 (13 min), 03-03 (9 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -62,6 +61,7 @@ Progress: [██████████] 14/14 plans (100%)
 | Phase 04 P01 | 13 min | 3 tasks | 16 files |
 | Phase 04 P02 | 6 min | 2 tasks | 10 files |
 | Phase 04 P03 | 13 min | 2 tasks | 5 files |
+| Phase 05 P01 | 13 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -90,6 +90,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Init reuses runFullBackfillScan(), attributeBackfillSessions(), and publishBadgeToGist() so README edits only happen after a live remote JSON publish succeeds.
 - [Phase 04]: README mutation is marker-bounded and idempotent, while repositories without a README receive a pasteable snippet instead of a silently created file.
 - [Phase 04]: Deferred publish-target setup or first-publish failures print actionable badge-setup guidance and leave README content untouched.
+- [Phase 05]: Provider checkpoints now use opaque per-session digest maps keyed by stable providerSessionId values instead of lastScannedAt-derived semantics.
+- [Phase 05]: Refresh totals are derived from a local session-index cache that stores only stable keys plus aggregate contributions.
+- [Phase 05]: Publish skipping compares the exact serialized endpoint payload hash and leaves lastPublishedAt unchanged when a write is skipped.
 
 ### Pending Todos
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T16:33:17.547Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-03-30T18:06:38.031Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None

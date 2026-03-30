@@ -103,10 +103,10 @@ Plans:
   3. `status` shows totals, provider enablement, publish state, and checkpoint timestamps clearly.
   4. `config` can change badge mode, label, providers, privacy, and refresh settings after init.
   5. Default `pre-push` automation remains failure-soft and fast enough for normal git usage.
-**Plans**: 3 plans
+**Plans**: 1/3 plans complete
 
 Plans:
-- [ ] 05-01: Implement incremental checkpoints and diff-aware publish decisions
+- [x] 05-01: Implement incremental checkpoints and diff-aware publish decisions
 - [ ] 05-02: Build `refresh`, `status`, and `config` command flows on top of shared services
 - [ ] 05-03: Install and validate the lightweight failure-soft `pre-push` integration
 
@@ -156,6 +156,6 @@ Phases execute in numeric order: 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4
 | 2. Repo Identity and Provider Parsing | 3/3 | Complete | 2026-03-30 |
 | 3. Historical Backfill and Attribution Review | 3/3 | Complete | 2026-03-30 |
 | 4. Publish and README Badge Integration | 3/3 | Complete | 2026-03-30 |
-| 5. Incremental Refresh and Operator Commands | 0/3 | Not started | - |
+| 5. Incremental Refresh and Operator Commands | 1/3 | In Progress | - |
 | 6. Doctor, Uninstall, and Safety Hardening | 0/3 | Not started | - |
 | 7. Release Readiness | 0/3 | Not started | - |
