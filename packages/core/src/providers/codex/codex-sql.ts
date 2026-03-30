@@ -124,11 +124,12 @@ export async function loadCodexThreadRows(
 
 export async function loadCodexThreadRowsSince(
   dbPath: string,
-  watermark: string,
+  watermark: string | null,
   sessionIdsAtWatermark: readonly string[]
 ): Promise<CodexThreadRow[]> {
   const threadWatermarkSql = "COALESCE(updated_at, created_at, '')";
-  const params: unknown[] = [watermark];
+  const effectiveWatermark = watermark ?? "";
+  const params: unknown[] = [effectiveWatermark];
   let sql = `
       SELECT id, created_at, updated_at, source, model_provider, cwd, tokens_used,
         git_sha, git_branch, git_origin_url, cli_version, agent_nickname,
@@ -143,7 +144,12 @@ export async function loadCodexThreadRowsSince(
     sql += `
       OR (${threadWatermarkSql} = ? AND id NOT IN (${placeholders}))
     `;
-    params.push(watermark, ...sessionIdsAtWatermark);
+    params.push(effectiveWatermark, ...sessionIdsAtWatermark);
+  } else if (watermark === null) {
+    sql += `
+      OR ${threadWatermarkSql} = ?
+    `;
+    params.push(effectiveWatermark);
   }
 
   sql += `

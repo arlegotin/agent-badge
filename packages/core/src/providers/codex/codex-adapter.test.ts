@@ -1,4 +1,5 @@
-import { rename } from "node:fs/promises";
+import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -35,6 +36,94 @@ async function withCodexFixture<T>(
     return await callback(fixture);
   } finally {
     await fixture.cleanup();
+  }
+}
+
+async function withNullTimestampCodexHome<T>(
+  threadIds: readonly string[],
+  callback: (homeRoot: string, dbPath: string) => Promise<T>
+): Promise<T> {
+  const homeRoot = await mkdtemp(join(tmpdir(), "agent-badge-codex-null-"));
+  const codexRoot = join(homeRoot, ".codex");
+  const dbPath = join(codexRoot, "state_9.sqlite");
+  const sqliteModule = (await import(sqliteModuleName)) as {
+    default: new (path: string) => {
+      exec(statement: string): void;
+      prepare(statement: string): { run(...params: unknown[]): void };
+      close(): void;
+    };
+  };
+
+  await mkdir(codexRoot, { recursive: true });
+
+  const database = new sqliteModule.default(dbPath);
+
+  try {
+    database.exec(`
+      CREATE TABLE threads (
+        id TEXT PRIMARY KEY,
+        created_at TEXT,
+        updated_at TEXT,
+        source TEXT,
+        model_provider TEXT,
+        cwd TEXT,
+        tokens_used INTEGER,
+        git_sha TEXT,
+        git_branch TEXT,
+        git_origin_url TEXT,
+        cli_version TEXT,
+        agent_nickname TEXT,
+        agent_role TEXT,
+        model TEXT
+      );
+      CREATE TABLE thread_spawn_edges (
+        parent_thread_id TEXT NOT NULL,
+        child_thread_id TEXT NOT NULL
+      );
+    `);
+
+    const insertThread = database.prepare(`
+      INSERT INTO threads (
+        id,
+        created_at,
+        updated_at,
+        source,
+        model_provider,
+        cwd,
+        tokens_used,
+        git_sha,
+        git_branch,
+        git_origin_url,
+        cli_version,
+        agent_nickname,
+        agent_role,
+        model
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const threadId of threadIds) {
+      insertThread.run(
+        threadId,
+        null,
+        null,
+        "chat",
+        "openai",
+        "/tmp/repo",
+        10,
+        null,
+        "main",
+        "https://github.com/openai/agent-badge",
+        "1.0.0",
+        null,
+        null,
+        "gpt-5"
+      );
+    }
+
+    return await callback(homeRoot, dbPath);
+  } finally {
+    database.close();
+    await rm(homeRoot, { recursive: true, force: true });
   }
 }
 
@@ -130,6 +219,104 @@ describe("scanCodexSessions", () => {
 });
 
 describe("scanCodexSessionsIncremental", () => {
+  it("keeps null-watermark cursors incremental when unchanged", async () => {
+    await withNullTimestampCodexHome(
+      ["thread-null-1", "thread-null-2"],
+      async (homeRoot) => {
+        const cursor = buildCodexIncrementalCursor(
+          await scanCodexSessions({ homeRoot })
+        );
+
+        expect(cursor).toContain('"watermark":null');
+        expect(cursor).toContain('"thread-null-1"');
+        expect(cursor).toContain('"thread-null-2"');
+
+        const result = await scanCodexSessionsIncremental({
+          homeRoot,
+          cursor
+        });
+
+        expect(result.mode).toBe("incremental");
+        expect(result.sessions).toEqual([]);
+        expect(result.cursor).toContain('"thread-null-1"');
+        expect(result.cursor).toContain('"thread-null-2"');
+      }
+    );
+  });
+
+  it("detects newly added null-timestamp threads without forcing a full scan", async () => {
+    await withNullTimestampCodexHome(["thread-null-1"], async (homeRoot, dbPath) => {
+      const cursor = buildCodexIncrementalCursor(
+        await scanCodexSessions({ homeRoot })
+      );
+      const sqliteModule = (await import(sqliteModuleName)) as {
+        default: new (path: string) => {
+          prepare(statement: string): { run(...params: unknown[]): void };
+          close(): void;
+        };
+      };
+      const database = new sqliteModule.default(dbPath);
+
+      try {
+        database
+          .prepare(
+            `
+              INSERT INTO threads (
+                id,
+                created_at,
+                updated_at,
+                source,
+                model_provider,
+                cwd,
+                tokens_used,
+                git_sha,
+                git_branch,
+                git_origin_url,
+                cli_version,
+                agent_nickname,
+                agent_role,
+                model
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(
+            "thread-null-2",
+            null,
+            null,
+            "chat",
+            "openai",
+            "/tmp/repo",
+            20,
+            null,
+            "main",
+            "https://github.com/openai/agent-badge",
+            "1.0.0",
+            null,
+            null,
+            "gpt-5"
+          );
+      } finally {
+        database.close();
+      }
+
+      const result = await scanCodexSessionsIncremental({
+        homeRoot,
+        cursor
+      });
+
+      expect(result.mode).toBe("incremental");
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]).toMatchObject({
+        providerSessionId: "thread-null-2",
+        tokenUsage: {
+          total: 20
+        }
+      });
+      expect(result.cursor).toContain('"thread-null-1"');
+      expect(result.cursor).toContain('"thread-null-2"');
+    });
+  });
+
   it("returns no sessions when the cursor watermark is unchanged", async () => {
     await withCodexFixture(async (fixture) => {
       const cursor = buildCodexIncrementalCursor(

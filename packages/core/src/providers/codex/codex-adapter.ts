@@ -73,7 +73,9 @@ export function buildCodexIncrementalCursor(
   }, null);
   const sessionIdsAtWatermark =
     watermark === null
-      ? []
+      ? codexSessions
+          .map((session) => session.providerSessionId)
+          .sort((left, right) => left.localeCompare(right))
       : codexSessions
           .filter(
             (session) => getCodexSessionWatermark(session) === watermark
@@ -179,6 +181,19 @@ function advanceCodexIncrementalCursor(
   );
 
   if (maxChangedWatermark === null) {
+    if (previous.watermark === null) {
+      return JSON.stringify({
+        kind: "codex-thread-watermark-v1",
+        watermark: null,
+        sessionIdsAtWatermark: [
+          ...new Set([
+            ...previous.sessionIdsAtWatermark,
+            ...changedSessions.map((session) => session.providerSessionId)
+          ])
+        ].sort((left, right) => left.localeCompare(right))
+      });
+    }
+
     return JSON.stringify({
       kind: "codex-thread-watermark-v1",
       watermark: previous.watermark,
@@ -347,7 +362,7 @@ export async function scanCodexSessionsIncremental({
   const codexRoot = join(homeRoot, ".codex");
   const dbPath = await findLatestCodexStateDatabase(codexRoot);
 
-  if (dbPath === null || previousCursor === null || previousCursor.watermark === null) {
+  if (dbPath === null || previousCursor === null) {
     const sessions = await scanCodexSessions({ homeRoot });
 
     return {
