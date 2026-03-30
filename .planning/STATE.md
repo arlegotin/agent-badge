@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: "01"
-current_phase_name: workspace-and-init-foundation
-current_plan: 5
-status: verifying
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-03-30T10:03:01Z"
-last_activity: 2026-03-30 -- completed 01-05 gap-closure plan; phase ready for re-verification
+current_phase: "2"
+current_phase_name: repo-identity-and-provider-parsing
+status: ready_to_plan
+stopped_at: Phase 01 complete; ready to plan Phase 2
+last_updated: "2026-03-30T10:09:19.562Z"
+last_activity: 2026-03-30 -- Phase 01 verified passed and transitioned to Phase 2
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
   percent: 100
@@ -21,19 +20,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-29)
+See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 01 — workspace-and-init-foundation
+**Current focus:** Phase 2 — repo-identity-and-provider-parsing
 
 ## Current Position
 
-Phase: 01 (workspace-and-init-foundation) — EXECUTING
-Plan: 5 of 5
-Status: Gap-closure plan 01-05 complete — ready for re-verification
-Last activity: 2026-03-30 -- completed 01-05 gap-closure plan; phase ready for re-verification
+Phase: 2 of 7 (repo identity and provider parsing)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-03-30 — Phase 01 verified passed and transitioned to Phase 2
 
-Progress: [██████████] 100%
+Progress: [████████████████████] 5/5 plans (100%)
 
 ## Performance Metrics
 
@@ -63,17 +62,11 @@ Progress: [██████████] 100%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Initialization-first package split: ship `agent-badge` and `create-agent-badge` from one workspace
-- Local directories remain the source of truth; derived state stores checkpoints, overrides, and publish bookkeeping only
-- Public Gist plus Shields endpoint is the only v1 publish path
-- [Phase 01-workspace-and-init-foundation]: Persist .agent-badge config, state, and logs as strict aggregate-only Zod schemas that reject transcript-like and path-like fields.
-- [Phase 01-workspace-and-init-foundation]: Generate repo-local agent-badge and pre-push commands from package-manager-specific templates chosen by lockfile detection.
-- [Phase 01-workspace-and-init-foundation]: Keep init preflight privacy-safe by reporting normalized provider home labels instead of absolute paths.
-- [Phase 01-workspace-and-init-foundation]: Route `create-agent-badge` through the runtime init command so both entrypoints share the same scaffold implementation.
-- [Phase 01]: Keep `getGitContext()` read-only and perform git bootstrap through a separate shared helper.
-- [Phase 01]: Rerun init preflight after git bootstrap so scaffold and callers consume actual repository state.
-- [Phase 01]: Derive target agent-badge dependency specs from packages/agent-badge/package.json and fall back to latest when the runtime version is not publishable.
-- [Phase 01]: Keep package scripts local-bin based and let the managed pre-push hook invoke `agent-badge:refresh` through the detected package manager.
+- Initialization-first package split: ship `agent-badge` and `create-agent-badge` from one workspace.
+- Phase 01 kept persisted `.agent-badge` data aggregate-only through strict Zod schemas.
+- Phase 01 kept init preflight privacy-safe and `getGitContext()` read-only, with git bootstrap moved to a separate helper.
+- Phase 01 routed `create-agent-badge` through the runtime init command so both entrypoints share one scaffold path.
+- Phase 01 generated repo-local scripts and a failure-soft managed `pre-push` hook from package-manager-specific templates.
 
 ### Pending Todos
 
@@ -81,13 +74,13 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 01 gap-closure work is complete, but the phase still needs re-verification to clear the existing `01-VERIFICATION.md` report.
+- `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
 - Exact Codex local artifact details need fixture-backed validation during Phase 2.
 - Claude local backfill behavior needs implementation-time validation beyond the documented status-line schema.
 - npm package-name availability for `agent-badge` must be checked at publish time.
 
 ## Session Continuity
 
-Last session: 2026-03-30T10:03:01Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-03-30T10:09:19Z
+Stopped at: Phase 01 verified passed and transitioned to Phase 2
 Resume file: None

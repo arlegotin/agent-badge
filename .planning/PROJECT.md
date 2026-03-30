@@ -14,7 +14,7 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 ### Validated
 
-(None yet - ship to validate)
+(None yet - top-level end-to-end requirements still span later phases)
 
 ### Active
 
@@ -32,6 +32,8 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - GitHub Actions-based collection from `~/.codex` or `~/.claude` - repository CI cannot access the local-first data sources reliably.
 
 ## Context
+
+Phase 1 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, and repo-local runtime wiring. The remaining work is repo identity, provider parsing, attribution, publishing, and operator flows on top of that foundation.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, and lightweight refresh installed for future pushes.
 
@@ -52,12 +54,14 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use `create-agent-badge` as the initializer package and `agent-badge` as the runtime CLI | Matches npm initializer conventions while keeping the product name clean for normal usage | Pending |
+| Use `create-agent-badge` as the initializer package and `agent-badge` as the runtime CLI | Matches npm initializer conventions while keeping the product name clean for normal usage | Implemented in Phase 1 |
 | Use local directory scanning as the v1 system of record | It keeps trust high and avoids introducing a second opaque ledger | Pending |
 | Publish only Shields endpoint JSON through a public Gist | This is the simplest serverless way to render a stable dynamic README badge | Pending |
 | Insert the README badge once and refresh only the remote JSON afterward | Stable badge URLs avoid repeated README churn and match common badge patterns | Pending |
-| Use a lightweight `pre-push` hook as the default automation path | It captures normal developer workflow while remaining bypassable with `--no-verify` | Pending |
+| Use a lightweight `pre-push` hook as the default automation path | It captures normal developer workflow while remaining bypassable with `--no-verify` | Implemented in Phase 1 as a failure-soft managed hook |
 | Treat ambiguous historical sessions as opt-in rather than auto-counted | Credibility matters more than inflating totals with weak attribution | Pending |
+| Keep init preflight privacy-safe by reporting normalized provider home labels instead of absolute paths | Prevents local path leakage while still showing actionable provider availability | Implemented in Phase 1 |
+| Keep git inspection read-only and perform bootstrap through a separate helper | Preserves non-mutating preflight semantics while still supporting non-git init when allowed | Implemented in Phase 1 |
 
 ## Evolution
 
@@ -77,4 +81,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after initialization*
+*Last updated: 2026-03-30 after Phase 1*

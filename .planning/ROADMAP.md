@@ -12,7 +12,7 @@ Build `agent-badge` as a two-package local-first npm workspace that first establ
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Workspace and Init Foundation** - Establish the monorepo, shared runtime primitives, and safe init preflight/scaffolding.
+- [x] **Phase 1: Workspace and Init Foundation** - Establish the monorepo, shared runtime primitives, and safe init preflight/scaffolding. (completed 2026-03-30)
 - [ ] **Phase 2: Repo Identity and Provider Parsing** - Build the canonical repo model plus normalized Codex and Claude scanners.
 - [ ] **Phase 3: Historical Backfill and Attribution Review** - Turn normalized sessions into trustworthy repo totals with ambiguity handling.
 - [ ] **Phase 4: Publish and README Badge Integration** - Create/connect the public Gist, publish aggregate badge JSON, and insert the stable README badge.
@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `agent-badge init` can detect git state, README presence, package manager, provider paths, and GitHub auth prerequisites before mutating the repo.
   3. Init creates the `.agent-badge` directory structure and repo-local runtime wiring without requiring a global install.
   4. Re-running the preflight path on a clean repo does not create duplicate scaffolding.
-**Plans**: 5 plans
+**Plans**: 5/5 plans complete
 
 Plans:
 - [x] 01-01: Create workspace/package skeleton, shared TypeScript config, test harness, and release tooling baseline
