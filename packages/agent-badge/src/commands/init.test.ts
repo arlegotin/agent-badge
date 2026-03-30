@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -10,6 +10,8 @@ import { describe, expect, it } from "vitest";
 import { runInitCommand } from "./init.js";
 
 const execFileAsync = promisify(execFile);
+const publishableSemverPattern =
+  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 interface Fixture {
   readonly root: string;
@@ -89,6 +91,29 @@ function createOutputCapture(): OutputCapture {
   };
 }
 
+async function readJsonObject(
+  targetPath: string | URL
+): Promise<Record<string, unknown>> {
+  return JSON.parse(await readFile(targetPath, "utf8")) as Record<string, unknown>;
+}
+
+async function getExpectedRuntimeDependencySpecifier(): Promise<string> {
+  const runtimePackageJson = await readJsonObject(
+    new URL("../../package.json", import.meta.url)
+  );
+  const version = runtimePackageJson.version;
+
+  if (
+    typeof version !== "string" ||
+    version === "0.0.0" ||
+    !publishableSemverPattern.test(version)
+  ) {
+    return "latest";
+  }
+
+  return `^${version}`;
+}
+
 describe("runInitCommand", () => {
   it("runs the shared init flow end to end for a repository", async () => {
     const repo = await createRepoFixture({
@@ -100,8 +125,16 @@ describe("runInitCommand", () => {
       claude: false
     });
     const output = createOutputCapture();
+    const secondOutput = createOutputCapture();
+    const packageJsonPath = join(repo.root, "package.json");
+    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
+      const expectedRuntimeDependencySpecifier =
+        await getExpectedRuntimeDependencySpecifier();
+      const initializerPackageJson = await readJsonObject(
+        new URL("../../../create-agent-badge/package.json", import.meta.url)
+      );
       const result = await runInitCommand({
         cwd: repo.root,
         homeRoot: providers.root,
@@ -118,10 +151,64 @@ describe("runInitCommand", () => {
           ".agent-badge/state.json"
         ])
       );
+      expect(result.runtimeWiring.created).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.agent-badge",
+          "package.json#scripts.agent-badge:init",
+          "package.json#scripts.agent-badge:refresh",
+          ".git/hooks/pre-push"
+        ])
+      );
       expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
+      expect(existsSync(packageJsonPath)).toBe(true);
+      expect(existsSync(prePushHookPath)).toBe(true);
+
+      const packageJson = await readJsonObject(packageJsonPath);
+      const packageScripts = packageJson.scripts as Record<string, string>;
+      const devDependencies = packageJson.devDependencies as Record<string, string>;
+      const hookContent = await readFile(prePushHookPath, "utf8");
+
+      expect(devDependencies["agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
+      expect(devDependencies["agent-badge"]).not.toBe(
+        (initializerPackageJson.dependencies as Record<string, string>)["agent-badge"]
+      );
+      expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
+      expect(packageScripts["agent-badge:refresh"]).toBe(
+        "agent-badge refresh --hook pre-push --fail-soft"
+      );
+      expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
+      expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
+
+      const secondRun = await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        env: {
+          GITHUB_TOKEN: "test-token"
+        },
+        stdout: secondOutput.writer
+      });
+
+      expect(secondRun.runtimeWiring.created).toEqual([]);
+      expect(secondRun.runtimeWiring.updated).toEqual([]);
+      expect(secondRun.runtimeWiring.reused).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.agent-badge",
+          "package.json#scripts.agent-badge:init",
+          "package.json#scripts.agent-badge:refresh",
+          "package.json",
+          ".git/hooks/pre-push"
+        ])
+      );
+
+      const secondHookContent = await readFile(prePushHookPath, "utf8");
+
+      expect(secondHookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
+      expect(secondHookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
       expect(output.read()).toContain("agent-badge init preflight");
       expect(output.read()).toContain("agent-badge init scaffold");
+      expect(output.read()).toContain("agent-badge init runtime wiring");
       expect(output.read()).toContain("GitHub auth: env:GITHUB_TOKEN");
+      expect(secondOutput.read()).toContain("agent-badge init runtime wiring");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
@@ -144,8 +231,15 @@ describe("runInitCommand", () => {
       });
 
       expect(result.preflight.git.isRepo).toBe(true);
+      expect(result.runtimeWiring.created).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.agent-badge",
+          ".git/hooks/pre-push"
+        ])
+      );
       expect(existsSync(join(repo.root, ".git"))).toBe(true);
       expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
+      expect(existsSync(join(repo.root, "package.json"))).toBe(true);
       expect(output.read()).toContain("Git bootstrap: running");
       expect(output.read()).toContain("Git bootstrap: repository initialized");
     } finally {

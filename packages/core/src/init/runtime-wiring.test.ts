@@ -1,10 +1,18 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 
-import { createGitRepoFixture } from "@agent-badge/testkit";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -14,6 +22,33 @@ import {
 } from "./runtime-wiring.js";
 
 const execFileAsync = promisify(execFile);
+
+interface Fixture {
+  readonly root: string;
+  cleanup(): Promise<void>;
+}
+
+async function createGitRepoFixture(options: {
+  readonly files?: Record<string, string>;
+} = {}): Promise<Fixture> {
+  const root = await mkdtemp(join(tmpdir(), "agent-badge-runtime-wiring-"));
+
+  await execFileAsync("git", ["init", "--quiet"], { cwd: root });
+
+  for (const [relativePath, content] of Object.entries(options.files ?? {})) {
+    const targetPath = join(root, relativePath);
+
+    await mkdir(dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, content, "utf8");
+  }
+
+  return {
+    root,
+    cleanup() {
+      return rm(root, { recursive: true, force: true });
+    }
+  };
+}
 
 describe("applyRepoLocalRuntimeWiring", () => {
   it("creates package.json wiring and a runnable first-run pre-push hook", async () => {
