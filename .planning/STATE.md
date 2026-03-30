@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-30T20:25:25Z"
+last_updated: "2026-03-30T20:45:00.586Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 20
+  completed_plans: 18
   percent: 94
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 05 — incremental-refresh-and-operator-commands
+**Current focus:** Phase 06 — doctor-uninstall-and-safety-hardening
 
 ## Current Position
 
-Phase: 05 (incremental-refresh-and-operator-commands) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-03-30 - Completed quick task 260330-v47: lowered badge cache window
+Phase: 06 (doctor-uninstall-and-safety-hardening) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-03-30
 
 Progress: [█████████░] 16/17 plans (94%)
 
@@ -103,6 +103,7 @@ Recent decisions affecting current work:
 - [Phase 05]: Init scaffold reconciliation must preserve newly added Phase 5 config and state fields so reruns do not downgrade persisted schema.
 - [Quick 260330-uxa]: Mutable `.agent-badge/state.json` is local runtime state, not a tracked repo artifact; init/runtime wiring must ensure it is gitignored alongside cache/logs so refresh and pre-push stay invisible in normal git workflows.
 - [Quick 260330-v47]: The stable Shields badge URL should use a short cache window (`300` seconds) so visible badge changes do not feel stale after a publish, while still avoiding overly aggressive refetching.
+- [Phase 06-doctor-uninstall-and-safety-hardening]: Keep runDoctorChecks read-only by default and isolate write checks behind --probe-write.
 
 ### Pending Todos
 

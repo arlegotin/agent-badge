@@ -49,7 +49,7 @@
 
 - [ ] **SAFE-01**: Published data never contains raw transcripts, prompt text, filenames, or local absolute paths.
 - [ ] **SAFE-02**: Logs contain scan/publish summaries only and rotate under `.agent-badge/logs/`.
-- [ ] **SAFE-03**: `doctor` verifies git root, provider paths, scan access, Gist auth/write, Shields endpoint, README badge, and hook installation, then prints actionable fixes.
+- [x] **SAFE-03**: `doctor` verifies git root, provider paths, scan access, Gist auth/write, Shields endpoint, README badge, and hook installation, then prints actionable fixes.
 - [ ] **SAFE-04**: Re-running `init` does not duplicate README badges, hooks, or Gists and does not overwrite user settings silently.
 
 ### Release Readiness
@@ -112,7 +112,7 @@
 | OPER-05 | Phase 6 | Pending |
 | SAFE-01 | Phase 6 | Pending |
 | SAFE-02 | Phase 6 | Pending |
-| SAFE-03 | Phase 6 | Pending |
+| SAFE-03 | Phase 6 | Complete |
 | SAFE-04 | Phase 6 | Pending |
 | REL-01 | Phase 7 | Pending |
 | REL-02 | Phase 7 | Pending |

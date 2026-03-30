@@ -124,7 +124,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: Build `doctor` checks, result formatting, and common fix guidance
+- [x] 06-01: Build `doctor` checks, result formatting, and common fix guidance
 - [ ] 06-02: Implement `uninstall` plus reconciliation logic for safe re-init
 - [ ] 06-03: Add log rotation, privacy guards, and idempotency coverage across setup/publish paths
 
