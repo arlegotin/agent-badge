@@ -86,15 +86,11 @@ function buildEvidence(
   const normalizedCwdMatched = matchesNormalizedCwd(session, repo);
   const transcriptMatched = matchesTranscriptCorrelation(session, repo);
 
-  if (session.attributionHints.cwdRealPath !== null) {
+  if (session.attributionHints.cwdRealPath !== null && repoRootMatched) {
     evidence.push({
-      kind: repoRootMatched ? "repo-root" : "normalized-cwd",
-      matched: repoRootMatched || normalizedCwdMatched,
-      detail: repoRootMatched
-        ? "cwd realpath exactly matches repo.gitRootRealPath"
-        : normalizedCwdMatched
-          ? "cwd realpath is nested beneath repo.gitRootRealPath"
-          : "cwd realpath does not resolve inside the current repo"
+      kind: "repo-root",
+      matched: true,
+      detail: "cwd realpath exactly matches repo.gitRootRealPath"
     });
   }
 
@@ -105,6 +101,16 @@ function buildEvidence(
       detail: gitRemoteMatched
         ? "observedRemoteUrlNormalized matches repo.originUrlNormalized or an alias remote"
         : "observedRemoteUrlNormalized does not match repo.originUrlNormalized or any alias remote"
+    });
+  }
+
+  if (session.attributionHints.cwdRealPath !== null && !repoRootMatched) {
+    evidence.push({
+      kind: "normalized-cwd",
+      matched: normalizedCwdMatched,
+      detail: normalizedCwdMatched
+        ? "cwd realpath is nested beneath repo.gitRootRealPath"
+        : "cwd realpath does not resolve inside the current repo"
     });
   }
 
