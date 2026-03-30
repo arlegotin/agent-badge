@@ -4,7 +4,7 @@ import { attributeBackfillSessions } from "../attribution/attribution-engine.js"
 import type { AttributedSession } from "../attribution/attribution-types.js";
 import type { AgentBadgeConfig } from "../config/config-schema.js";
 import {
-  buildClaudeIncrementalCursor,
+  buildClaudeIncrementalCursorFromSource,
   scanClaudeSessionsIncremental
 } from "../providers/claude/claude-adapter.js";
 import {
@@ -146,10 +146,11 @@ async function resolveCwdRealPath(
   }
 }
 
-function buildProviderCursorsFromSessions(
+async function buildProviderCursorsFromSessions(
+  homeRoot: string,
   sessions: readonly NormalizedSessionSummary[],
   providers: readonly ProviderName[]
-): Partial<Record<ProviderName, string | null>> {
+): Promise<Partial<Record<ProviderName, string | null>>> {
   const providerSet = new Set(providers);
   const providerCursors: Partial<Record<ProviderName, string | null>> = {};
 
@@ -158,7 +159,7 @@ function buildProviderCursorsFromSessions(
   }
 
   if (providerSet.has("claude")) {
-    providerCursors.claude = buildClaudeIncrementalCursor(sessions);
+    providerCursors.claude = await buildClaudeIncrementalCursorFromSource(homeRoot);
   }
 
   return providerCursors;
@@ -186,7 +187,11 @@ async function runFullRefresh(
   return {
     scanMode: "full",
     summary: summarizeRefreshCache(cache),
-    providerCursors: buildProviderCursorsFromSessions(fullScan.sessions, providers),
+    providerCursors: await buildProviderCursorsFromSessions(
+      options.homeRoot,
+      fullScan.sessions,
+      providers
+    ),
     cache
   };
 }

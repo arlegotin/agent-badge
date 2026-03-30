@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 
 export interface ClaudeUsage {
@@ -24,8 +24,18 @@ export interface ClaudeProjectJsonlRow {
 export interface ClaudeProjectJsonlSession {
   readonly sessionId: string;
   readonly filePath: string;
+  readonly relativePath: string;
   readonly projectKey: string;
   readonly rows: ClaudeProjectJsonlRow[];
+}
+
+export interface ClaudeProjectJsonlFile {
+  readonly filePath: string;
+  readonly relativePath: string;
+  readonly projectKey: string;
+  readonly fallbackSessionId: string;
+  readonly modifiedAtMs: number;
+  readonly size: number;
 }
 
 interface ClaudeJsonlMessage {
@@ -88,6 +98,32 @@ async function findJsonlFiles(root: string): Promise<string[]> {
   return nestedFiles.flat().sort();
 }
 
+export async function listClaudeProjectJsonlFiles(
+  claudeRoot: string
+): Promise<ClaudeProjectJsonlFile[]> {
+  const projectsRoot = join(claudeRoot, "projects");
+  const jsonlFiles = await findJsonlFiles(projectsRoot);
+
+  return Promise.all(
+    jsonlFiles.map(async (filePath) => {
+      const fileStat = await stat(filePath);
+      const relativePath = relative(projectsRoot, filePath);
+      const pathSegments = relativePath
+        .split(sep)
+        .filter((segment) => segment.length > 0);
+
+      return {
+        filePath,
+        relativePath,
+        projectKey: pathSegments[0] ?? basename(filePath, ".jsonl"),
+        fallbackSessionId: basename(filePath, ".jsonl"),
+        modifiedAtMs: fileStat.mtimeMs,
+        size: fileStat.size
+      };
+    })
+  );
+}
+
 function parseClaudeJsonlLine(
   line: string,
   fallbackSessionId: string
@@ -126,32 +162,33 @@ function parseClaudeJsonlLine(
   };
 }
 
-export async function readClaudeProjectJsonlSessions(
-  claudeRoot: string
+export async function readClaudeProjectJsonlSessionsFromFiles(
+  files: readonly ClaudeProjectJsonlFile[]
 ): Promise<ClaudeProjectJsonlSession[]> {
-  const projectsRoot = join(claudeRoot, "projects");
-  const jsonlFiles = await findJsonlFiles(projectsRoot);
-
   return Promise.all(
-    jsonlFiles.map(async (filePath) => {
-      const content = await readFile(filePath, "utf8");
-      const fallbackSessionId = basename(filePath, ".jsonl");
-      const relativePath = relative(projectsRoot, filePath);
-      const pathSegments = relativePath
-        .split(sep)
-        .filter((segment) => segment.length > 0);
+    files.map(async (file) => {
+      const content = await readFile(file.filePath, "utf8");
       const rows = content
         .split(/\r?\n/)
         .filter((line) => line.trim().length > 0)
-        .map((line) => parseClaudeJsonlLine(line, fallbackSessionId))
+        .map((line) => parseClaudeJsonlLine(line, file.fallbackSessionId))
         .filter((row): row is ClaudeProjectJsonlRow => row !== null);
 
       return {
-        sessionId: rows[0]?.sessionId ?? fallbackSessionId,
-        filePath,
-        projectKey: pathSegments[0] ?? fallbackSessionId,
+        sessionId: rows[0]?.sessionId ?? file.fallbackSessionId,
+        filePath: file.filePath,
+        relativePath: file.relativePath,
+        projectKey: file.projectKey,
         rows
       };
     })
   );
+}
+
+export async function readClaudeProjectJsonlSessions(
+  claudeRoot: string
+): Promise<ClaudeProjectJsonlSession[]> {
+  const files = await listClaudeProjectJsonlFiles(claudeRoot);
+
+  return readClaudeProjectJsonlSessionsFromFiles(files);
 }

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -11,6 +10,7 @@ import {
 } from "../session-summary.js";
 import {
   findLatestCodexStateDatabase,
+  loadCodexThreadRowsSince,
   loadCodexSpawnEdges,
   loadCodexThreadRows
 } from "./codex-sql.js";
@@ -37,60 +37,182 @@ interface CodexHistoryRow {
 
 const codexIncrementalCursorSchema = z
   .object({
-    kind: z.literal("codex-session-digest-v1"),
-    sessions: z.record(z.string(), z.string().min(1))
+    kind: z.literal("codex-thread-watermark-v1"),
+    watermark: z.string().min(1).nullable(),
+    sessionIdsAtWatermark: z.array(z.string().min(1))
   })
   .strict();
 
-function buildCodexSessionDigest(session: NormalizedSessionSummary): string {
-  return createHash("sha256")
-    .update(
-      JSON.stringify({
-        providerSessionId: session.providerSessionId,
-        startedAt: session.startedAt,
-        updatedAt: session.updatedAt,
-        cwd: session.cwd,
-        gitBranch: session.gitBranch,
-        observedRemoteUrlNormalized: session.observedRemoteUrlNormalized,
-        transcriptProjectKey: session.attributionHints.transcriptProjectKey,
-        tokenTotal: session.tokenUsage.total,
-        parentSessionId: session.lineage.parentSessionId,
-        sourceKind: session.metadata.sourceKind,
-        cliVersion: session.metadata.cliVersion
-      })
-    )
-    .digest("hex");
+interface CodexIncrementalCursor {
+  readonly watermark: string | null;
+  readonly sessionIdsAtWatermark: readonly string[];
+}
+
+function getCodexSessionWatermark(
+  session: Pick<NormalizedSessionSummary, "startedAt" | "updatedAt">
+): string | null {
+  return session.updatedAt ?? session.startedAt;
 }
 
 export function buildCodexIncrementalCursor(
   sessions: readonly NormalizedSessionSummary[]
 ): string {
-  const entries = sessions
-    .filter((session) => session.provider === "codex")
-    .map((session) => [
-      session.providerSessionId,
-      buildCodexSessionDigest(session)
-    ] as const)
-    .sort(([left], [right]) => left.localeCompare(right));
+  const codexSessions = sessions.filter((session) => session.provider === "codex");
+  const watermark = codexSessions.reduce<string | null>((current, session) => {
+    const sessionWatermark = getCodexSessionWatermark(session);
+
+    if (sessionWatermark === null) {
+      return current;
+    }
+
+    if (current === null || sessionWatermark > current) {
+      return sessionWatermark;
+    }
+
+    return current;
+  }, null);
+  const sessionIdsAtWatermark =
+    watermark === null
+      ? []
+      : codexSessions
+          .filter(
+            (session) => getCodexSessionWatermark(session) === watermark
+          )
+          .map((session) => session.providerSessionId)
+          .sort((left, right) => left.localeCompare(right));
 
   return JSON.stringify({
-    kind: "codex-session-digest-v1",
-    sessions: Object.fromEntries(entries)
+    kind: "codex-thread-watermark-v1",
+    watermark,
+    sessionIdsAtWatermark
   });
 }
 
 function parseCodexIncrementalCursor(
   cursor: string | null
-): Record<string, string> | null {
+): CodexIncrementalCursor | null {
   if (typeof cursor !== "string" || cursor.length === 0) {
     return null;
   }
 
   try {
-    return codexIncrementalCursorSchema.parse(JSON.parse(cursor)).sessions;
+    const parsed = codexIncrementalCursorSchema.parse(JSON.parse(cursor));
+
+    return {
+      watermark: parsed.watermark,
+      sessionIdsAtWatermark: parsed.sessionIdsAtWatermark
+    };
   } catch {
     return null;
   }
+}
+
+function mapCodexRowsToSessions(
+  rows: Awaited<ReturnType<typeof loadCodexThreadRows>>,
+  spawnEdges: Awaited<ReturnType<typeof loadCodexSpawnEdges>>
+): NormalizedSessionSummary[] {
+  const parentByChildId = new Map(
+    spawnEdges.map((edge) => [edge.childThreadId, edge.parentThreadId])
+  );
+  const uniqueRows = new Map(rows.map((row) => [row.id, row]));
+
+  return [...uniqueRows.values()].map((row) => {
+    const normalizedRemote = row.gitOriginUrl
+      ? normalizeGitRemoteUrl(row.gitOriginUrl)
+      : null;
+    const parentSessionId = parentByChildId.get(row.id) ?? null;
+
+    return parseNormalizedSessionSummary({
+      provider: "codex",
+      providerSessionId: row.id,
+      startedAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      cwd: row.cwd,
+      gitBranch: row.gitBranch,
+      observedRemoteUrl: row.gitOriginUrl,
+      observedRemoteUrlNormalized: normalizedRemote?.normalizedUrl ?? null,
+      attributionHints: {
+        cwdRealPath: null,
+        transcriptProjectKey: null
+      },
+      tokenUsage: {
+        total: Math.max(row.tokensUsed ?? 0, 0),
+        input: null,
+        output: null,
+        cacheCreation: null,
+        cacheRead: null,
+        reasoningOutput: null
+      },
+      lineage: {
+        parentSessionId,
+        kind: parentSessionId === null ? "root" : "child"
+      },
+      metadata: {
+        model: row.model,
+        modelProvider: row.modelProvider,
+        sourceKind: row.source,
+        cliVersion: row.cliVersion
+      }
+    });
+  });
+}
+
+function advanceCodexIncrementalCursor(
+  previous: CodexIncrementalCursor,
+  changedSessions: readonly NormalizedSessionSummary[]
+): string {
+  const maxChangedWatermark = changedSessions.reduce<string | null>(
+    (current, session) => {
+      const sessionWatermark = getCodexSessionWatermark(session);
+
+      if (sessionWatermark === null) {
+        return current;
+      }
+
+      if (current === null || sessionWatermark > current) {
+        return sessionWatermark;
+      }
+
+      return current;
+    },
+    null
+  );
+
+  if (maxChangedWatermark === null) {
+    return JSON.stringify({
+      kind: "codex-thread-watermark-v1",
+      watermark: previous.watermark,
+      sessionIdsAtWatermark: [...previous.sessionIdsAtWatermark]
+    });
+  }
+
+  if (previous.watermark === null || maxChangedWatermark > previous.watermark) {
+    return JSON.stringify({
+      kind: "codex-thread-watermark-v1",
+      watermark: maxChangedWatermark,
+      sessionIdsAtWatermark: changedSessions
+        .filter(
+          (session) => getCodexSessionWatermark(session) === maxChangedWatermark
+        )
+        .map((session) => session.providerSessionId)
+        .sort((left, right) => left.localeCompare(right))
+    });
+  }
+
+  return JSON.stringify({
+    kind: "codex-thread-watermark-v1",
+    watermark: previous.watermark,
+    sessionIdsAtWatermark: [
+      ...new Set([
+        ...previous.sessionIdsAtWatermark,
+        ...changedSessions
+          .filter(
+            (session) => getCodexSessionWatermark(session) === previous.watermark
+          )
+          .map((session) => session.providerSessionId)
+      ])
+    ].sort((left, right) => left.localeCompare(right))
+  });
 }
 
 async function loadCodexHistoryFallback(
@@ -211,50 +333,7 @@ export async function scanCodexSessions(
       loadCodexThreadRows(dbPath),
       loadCodexSpawnEdges(dbPath)
     ]);
-    const parentByChildId = new Map(
-      spawnEdges.map((edge) => [edge.childThreadId, edge.parentThreadId])
-    );
-    const uniqueRows = new Map(threadRows.map((row) => [row.id, row]));
-
-    return [...uniqueRows.values()].map((row) => {
-      const normalizedRemote = row.gitOriginUrl
-        ? normalizeGitRemoteUrl(row.gitOriginUrl)
-        : null;
-      const parentSessionId = parentByChildId.get(row.id) ?? null;
-
-      return parseNormalizedSessionSummary({
-        provider: "codex",
-        providerSessionId: row.id,
-        startedAt: row.createdAt,
-        updatedAt: row.updatedAt,
-        cwd: row.cwd,
-        gitBranch: row.gitBranch,
-        observedRemoteUrl: row.gitOriginUrl,
-        observedRemoteUrlNormalized: normalizedRemote?.normalizedUrl ?? null,
-        attributionHints: {
-          cwdRealPath: null,
-          transcriptProjectKey: null
-        },
-        tokenUsage: {
-          total: Math.max(row.tokensUsed ?? 0, 0),
-          input: null,
-          output: null,
-          cacheCreation: null,
-          cacheRead: null,
-          reasoningOutput: null
-        },
-        lineage: {
-          parentSessionId,
-          kind: parentSessionId === null ? "root" : "child"
-        },
-        metadata: {
-          model: row.model,
-          modelProvider: row.modelProvider,
-          sourceKind: row.source,
-          cliVersion: row.cliVersion
-        }
-      });
-    });
+    return mapCodexRowsToSessions(threadRows, spawnEdges);
   } catch {
     return loadCodexHistoryFallback(codexRoot);
   }
@@ -264,25 +343,43 @@ export async function scanCodexSessionsIncremental({
   homeRoot,
   cursor
 }: ScanCodexSessionsIncrementalOptions): Promise<ScanCodexSessionsIncrementalResult> {
-  const sessions = await scanCodexSessions({ homeRoot });
-  const previousDigests = parseCodexIncrementalCursor(cursor);
-  const nextCursor = buildCodexIncrementalCursor(sessions);
+  const previousCursor = parseCodexIncrementalCursor(cursor);
+  const codexRoot = join(homeRoot, ".codex");
+  const dbPath = await findLatestCodexStateDatabase(codexRoot);
 
-  if (previousDigests === null) {
+  if (dbPath === null || previousCursor === null || previousCursor.watermark === null) {
+    const sessions = await scanCodexSessions({ homeRoot });
+
     return {
       sessions,
-      cursor: nextCursor,
+      cursor: buildCodexIncrementalCursor(sessions),
       mode: "full"
     };
   }
 
-  return {
-    sessions: sessions.filter(
-      (session) =>
-        previousDigests[session.providerSessionId] !==
-        buildCodexSessionDigest(session)
-    ),
-    cursor: nextCursor,
-    mode: "incremental"
-  };
+  try {
+    const [threadRows, spawnEdges] = await Promise.all([
+      loadCodexThreadRowsSince(
+        dbPath,
+        previousCursor.watermark,
+        previousCursor.sessionIdsAtWatermark
+      ),
+      loadCodexSpawnEdges(dbPath)
+    ]);
+    const sessions = mapCodexRowsToSessions(threadRows, spawnEdges);
+
+    return {
+      sessions,
+      cursor: advanceCodexIncrementalCursor(previousCursor, sessions),
+      mode: "incremental"
+    };
+  } catch {
+    const sessions = await scanCodexSessions({ homeRoot });
+
+    return {
+      sessions,
+      cursor: buildCodexIncrementalCursor(sessions),
+      mode: "full"
+    };
+  }
 }

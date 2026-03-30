@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 import { z } from "zod";
@@ -9,7 +8,10 @@ import {
   type NormalizedSessionSummary
 } from "../session-summary.js";
 import {
+  listClaudeProjectJsonlFiles,
+  readClaudeProjectJsonlSessionsFromFiles,
   readClaudeProjectJsonlSessions,
+  type ClaudeProjectJsonlFile,
   type ClaudeProjectJsonlRow
 } from "./claude-jsonl.js";
 
@@ -30,10 +32,16 @@ export interface ScanClaudeSessionsIncrementalResult {
 
 const claudeIncrementalCursorSchema = z
   .object({
-    kind: z.literal("claude-session-digest-v1"),
-    sessions: z.record(z.string(), z.string().min(1))
+    kind: z.literal("claude-project-jsonl-watermark-v1"),
+    watermarkMs: z.number().nonnegative().nullable(),
+    filesAtWatermark: z.record(z.string(), z.number().int().nonnegative())
   })
   .strict();
+
+interface ClaudeIncrementalCursor {
+  readonly watermarkMs: number | null;
+  readonly filesAtWatermark: Readonly<Record<string, number>>;
+}
 
 function compareTimestamps(
   left: string | null,
@@ -102,57 +110,146 @@ function latestRowValue(
   return row ? selector(row) : null;
 }
 
-function buildClaudeSessionDigest(session: NormalizedSessionSummary): string {
-  return createHash("sha256")
-    .update(
-      JSON.stringify({
-        providerSessionId: session.providerSessionId,
-        startedAt: session.startedAt,
-        updatedAt: session.updatedAt,
-        cwd: session.cwd,
-        gitBranch: session.gitBranch,
-        observedRemoteUrlNormalized: session.observedRemoteUrlNormalized,
-        transcriptProjectKey: session.attributionHints.transcriptProjectKey,
-        tokenTotal: session.tokenUsage.total,
-        input: session.tokenUsage.input,
-        output: session.tokenUsage.output,
-        cacheCreation: session.tokenUsage.cacheCreation,
-        cacheRead: session.tokenUsage.cacheRead,
-        model: session.metadata.model
-      })
-    )
-    .digest("hex");
-}
-
-export function buildClaudeIncrementalCursor(
-  sessions: readonly NormalizedSessionSummary[]
+function buildClaudeIncrementalCursorFromFiles(
+  files: readonly ClaudeProjectJsonlFile[]
 ): string {
-  const entries = sessions
-    .filter((session) => session.provider === "claude")
-    .map((session) => [
-      session.providerSessionId,
-      buildClaudeSessionDigest(session)
-    ] as const)
-    .sort(([left], [right]) => left.localeCompare(right));
+  const watermarkMs = files.reduce<number | null>((current, file) => {
+    if (current === null || file.modifiedAtMs > current) {
+      return file.modifiedAtMs;
+    }
+
+    return current;
+  }, null);
+  const filesAtWatermark =
+    watermarkMs === null
+      ? {}
+      : Object.fromEntries(
+          files
+            .filter((file) => file.modifiedAtMs === watermarkMs)
+            .map((file) => [file.relativePath, file.size] as const)
+            .sort(([left], [right]) => left.localeCompare(right))
+        );
 
   return JSON.stringify({
-    kind: "claude-session-digest-v1",
-    sessions: Object.fromEntries(entries)
+    kind: "claude-project-jsonl-watermark-v1",
+    watermarkMs,
+    filesAtWatermark
   });
+}
+
+export async function buildClaudeIncrementalCursorFromSource(
+  homeRoot: string
+): Promise<string> {
+  const files = await listClaudeProjectJsonlFiles(join(homeRoot, ".claude"));
+
+  return buildClaudeIncrementalCursorFromFiles(files);
 }
 
 function parseClaudeIncrementalCursor(
   cursor: string | null
-): Record<string, string> | null {
+): ClaudeIncrementalCursor | null {
   if (typeof cursor !== "string" || cursor.length === 0) {
     return null;
   }
 
   try {
-    return claudeIncrementalCursorSchema.parse(JSON.parse(cursor)).sessions;
+    const parsed = claudeIncrementalCursorSchema.parse(JSON.parse(cursor));
+
+    return {
+      watermarkMs: parsed.watermarkMs,
+      filesAtWatermark: parsed.filesAtWatermark
+    };
   } catch {
     return null;
   }
+}
+
+function normalizeClaudeProjectSession(
+  session: Awaited<ReturnType<typeof readClaudeProjectJsonlSessions>>[number]
+): NormalizedSessionSummary {
+  const assistantRows = latestAssistantUsageRows(session.rows);
+  const startedAt = session.rows.reduce<string | null>(
+    (current, row) =>
+      current === null || compareTimestamps(row.timestamp, current) < 0
+        ? row.timestamp
+        : current,
+    null
+  );
+  const updatedAt = session.rows.reduce<string | null>(
+    (current, row) =>
+      current === null || compareTimestamps(row.timestamp, current) > 0
+        ? row.timestamp
+        : current,
+    null
+  );
+  const observedRemoteUrl = latestRowValue(session.rows, (row) => row.gitOriginUrl);
+  const observedRemoteUrlNormalized = observedRemoteUrl
+    ? normalizeGitRemoteUrl(observedRemoteUrl)?.normalizedUrl ?? null
+    : null;
+
+  return parseNormalizedSessionSummary({
+    provider: "claude",
+    providerSessionId: session.sessionId,
+    startedAt,
+    updatedAt,
+    cwd: latestRowValue(session.rows, (row) => row.cwd),
+    gitBranch: latestRowValue(session.rows, (row) => row.gitBranch),
+    observedRemoteUrl,
+    observedRemoteUrlNormalized,
+    attributionHints: {
+      cwdRealPath: null,
+      transcriptProjectKey: session.projectKey
+    },
+    tokenUsage: {
+      total: assistantRows.reduce((sum, row) => sum + usageTotal(row), 0),
+      input: assistantRows.reduce(
+        (sum, row) => sum + (row.usage?.inputTokens ?? 0),
+        0
+      ),
+      output: assistantRows.reduce(
+        (sum, row) => sum + (row.usage?.outputTokens ?? 0),
+        0
+      ),
+      cacheCreation: assistantRows.reduce(
+        (sum, row) => sum + (row.usage?.cacheCreationInputTokens ?? 0),
+        0
+      ),
+      cacheRead: assistantRows.reduce(
+        (sum, row) => sum + (row.usage?.cacheReadInputTokens ?? 0),
+        0
+      ),
+      reasoningOutput: null
+    },
+    lineage: {
+      parentSessionId: null,
+      kind: "root"
+    },
+    metadata: {
+      model: latestRowValue(assistantRows, (row) => row.model),
+      modelProvider: "anthropic",
+      sourceKind: "project-jsonl",
+      cliVersion: null
+    }
+  });
+}
+
+function isClaudeFileChanged(
+  file: ClaudeProjectJsonlFile,
+  cursor: ClaudeIncrementalCursor
+): boolean {
+  if (cursor.watermarkMs === null) {
+    return true;
+  }
+
+  if (file.modifiedAtMs > cursor.watermarkMs) {
+    return true;
+  }
+
+  if (file.modifiedAtMs < cursor.watermarkMs) {
+    return false;
+  }
+
+  return cursor.filesAtWatermark[file.relativePath] !== file.size;
 }
 
 export async function scanClaudeSessions(
@@ -161,101 +258,44 @@ export async function scanClaudeSessions(
   const claudeRoot = join(options.homeRoot, ".claude");
   const sessions = await readClaudeProjectJsonlSessions(claudeRoot);
 
-  return sessions.map((session) => {
-    const assistantRows = latestAssistantUsageRows(session.rows);
-    const startedAt = session.rows.reduce<string | null>(
-      (current, row) =>
-        current === null || compareTimestamps(row.timestamp, current) < 0
-          ? row.timestamp
-          : current,
-      null
-    );
-    const updatedAt = session.rows.reduce<string | null>(
-      (current, row) =>
-        current === null || compareTimestamps(row.timestamp, current) > 0
-          ? row.timestamp
-          : current,
-      null
-    );
-    const observedRemoteUrl = latestRowValue(
-      session.rows,
-      (row) => row.gitOriginUrl
-    );
-    const observedRemoteUrlNormalized = observedRemoteUrl
-      ? normalizeGitRemoteUrl(observedRemoteUrl)?.normalizedUrl ?? null
-      : null;
-
-    return parseNormalizedSessionSummary({
-      provider: "claude",
-      providerSessionId: session.sessionId,
-      startedAt,
-      updatedAt,
-      cwd: latestRowValue(session.rows, (row) => row.cwd),
-      gitBranch: latestRowValue(session.rows, (row) => row.gitBranch),
-      observedRemoteUrl,
-      observedRemoteUrlNormalized,
-      attributionHints: {
-        cwdRealPath: null,
-        transcriptProjectKey: session.projectKey
-      },
-      tokenUsage: {
-        // Maps Claude `input_tokens`, `output_tokens`,
-        // `cache_creation_input_tokens`, and `cache_read_input_tokens`.
-        total: assistantRows.reduce((sum, row) => sum + usageTotal(row), 0),
-        input: assistantRows.reduce(
-          (sum, row) => sum + (row.usage?.inputTokens ?? 0),
-          0
-        ),
-        output: assistantRows.reduce(
-          (sum, row) => sum + (row.usage?.outputTokens ?? 0),
-          0
-        ),
-        cacheCreation: assistantRows.reduce(
-          (sum, row) => sum + (row.usage?.cacheCreationInputTokens ?? 0),
-          0
-        ),
-        cacheRead: assistantRows.reduce(
-          (sum, row) => sum + (row.usage?.cacheReadInputTokens ?? 0),
-          0
-        ),
-        reasoningOutput: null
-      },
-      lineage: {
-        parentSessionId: null,
-        kind: "root"
-      },
-      metadata: {
-        model: latestRowValue(assistantRows, (row) => row.model),
-        modelProvider: "anthropic",
-        sourceKind: "project-jsonl",
-        cliVersion: null
-      }
-    });
-  });
+  return sessions.map(normalizeClaudeProjectSession);
 }
 
 export async function scanClaudeSessionsIncremental({
   homeRoot,
   cursor
 }: ScanClaudeSessionsIncrementalOptions): Promise<ScanClaudeSessionsIncrementalResult> {
-  const sessions = await scanClaudeSessions({ homeRoot });
-  const previousDigests = parseClaudeIncrementalCursor(cursor);
-  const nextCursor = buildClaudeIncrementalCursor(sessions);
+  const claudeRoot = join(homeRoot, ".claude");
+  const files = await listClaudeProjectJsonlFiles(claudeRoot);
+  const nextCursor = buildClaudeIncrementalCursorFromFiles(files);
+  const previousCursor = parseClaudeIncrementalCursor(cursor);
 
-  if (previousDigests === null) {
+  if (previousCursor === null || previousCursor.watermarkMs === null) {
+    const sessions = await readClaudeProjectJsonlSessionsFromFiles(files);
+
     return {
-      sessions,
+      sessions: sessions.map(normalizeClaudeProjectSession),
       cursor: nextCursor,
       mode: "full"
     };
   }
 
+  const changedFiles = files.filter((file) =>
+    isClaudeFileChanged(file, previousCursor)
+  );
+
+  if (changedFiles.length === 0) {
+    return {
+      sessions: [],
+      cursor: nextCursor,
+      mode: "incremental"
+    };
+  }
+
+  const sessions = await readClaudeProjectJsonlSessionsFromFiles(changedFiles);
+
   return {
-    sessions: sessions.filter(
-      (session) =>
-        previousDigests[session.providerSessionId] !==
-        buildClaudeSessionDigest(session)
-    ),
+    sessions: sessions.map(normalizeClaudeProjectSession),
     cursor: nextCursor,
     mode: "incremental"
   };

@@ -46,14 +46,33 @@ interface RawCodexSpawnEdgeRow {
   readonly child_thread_id: string;
 }
 
-function readRows<T>(dbPath: string, sql: string): T[] {
+function readRows<T>(dbPath: string, sql: string, params: readonly unknown[] = []): T[] {
   const database = new Database(dbPath, { readonly: true });
 
   try {
-    return database.prepare(sql).all() as T[];
+    return database.prepare(sql).all(...params) as T[];
   } finally {
     database.close();
   }
+}
+
+function mapCodexThreadRow(row: RawCodexThreadRow): CodexThreadRow {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    source: row.source,
+    modelProvider: row.model_provider,
+    cwd: row.cwd,
+    tokensUsed: row.tokens_used,
+    gitSha: row.git_sha,
+    gitBranch: row.git_branch,
+    gitOriginUrl: row.git_origin_url,
+    cliVersion: row.cli_version,
+    agentNickname: row.agent_nickname,
+    agentRole: row.agent_role,
+    model: row.model
+  };
 }
 
 export async function findLatestCodexStateDatabase(
@@ -100,22 +119,40 @@ export async function loadCodexThreadRows(
     `
   );
 
-  return rows.map((row) => ({
-    id: row.id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    source: row.source,
-    modelProvider: row.model_provider,
-    cwd: row.cwd,
-    tokensUsed: row.tokens_used,
-    gitSha: row.git_sha,
-    gitBranch: row.git_branch,
-    gitOriginUrl: row.git_origin_url,
-    cliVersion: row.cli_version,
-    agentNickname: row.agent_nickname,
-    agentRole: row.agent_role,
-    model: row.model
-  }));
+  return rows.map(mapCodexThreadRow);
+}
+
+export async function loadCodexThreadRowsSince(
+  dbPath: string,
+  watermark: string,
+  sessionIdsAtWatermark: readonly string[]
+): Promise<CodexThreadRow[]> {
+  const threadWatermarkSql = "COALESCE(updated_at, created_at, '')";
+  const params: unknown[] = [watermark];
+  let sql = `
+      SELECT id, created_at, updated_at, source, model_provider, cwd, tokens_used,
+        git_sha, git_branch, git_origin_url, cli_version, agent_nickname,
+        agent_role, model
+      FROM threads
+      WHERE ${threadWatermarkSql} > ?
+    `;
+
+  if (sessionIdsAtWatermark.length > 0) {
+    const placeholders = sessionIdsAtWatermark.map(() => "?").join(", ");
+
+    sql += `
+      OR (${threadWatermarkSql} = ? AND id NOT IN (${placeholders}))
+    `;
+    params.push(watermark, ...sessionIdsAtWatermark);
+  }
+
+  sql += `
+      ORDER BY created_at ASC
+    `;
+
+  const rows = readRows<RawCodexThreadRow>(dbPath, sql, params);
+
+  return rows.map(mapCodexThreadRow);
 }
 
 export async function loadCodexSpawnEdges(

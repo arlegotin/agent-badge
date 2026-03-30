@@ -270,8 +270,10 @@ describe("runIncrementalRefresh", () => {
           includedTokens: 42
         })
       );
-      expect(result.providerCursors.codex).toContain("codex-session-digest-v1");
-      expect(result.providerCursors.claude).toContain("claude-session-digest-v1");
+      expect(result.providerCursors.codex).toContain("codex-thread-watermark-v1");
+      expect(result.providerCursors.claude).toContain(
+        "claude-project-jsonl-watermark-v1"
+      );
     });
   });
 

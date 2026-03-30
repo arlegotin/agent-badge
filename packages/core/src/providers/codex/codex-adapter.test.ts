@@ -3,9 +3,14 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { scanCodexSessions } from "./codex-adapter.js";
+import {
+  buildCodexIncrementalCursor,
+  scanCodexSessions,
+  scanCodexSessionsIncremental
+} from "./codex-adapter.js";
 
 const testkitModuleName = "@agent-badge/testkit";
+const sqliteModuleName = "better-sqlite3";
 
 interface CodexFixture {
   readonly homeRoot: string;
@@ -120,6 +125,70 @@ describe("scanCodexSessions", () => {
           })
         })
       ]);
+    });
+  });
+});
+
+describe("scanCodexSessionsIncremental", () => {
+  it("returns no sessions when the cursor watermark is unchanged", async () => {
+    await withCodexFixture(async (fixture) => {
+      const cursor = buildCodexIncrementalCursor(
+        await scanCodexSessions({ homeRoot: fixture.homeRoot })
+      );
+      const result = await scanCodexSessionsIncremental({
+        homeRoot: fixture.homeRoot,
+        cursor
+      });
+
+      expect(result.mode).toBe("incremental");
+      expect(result.sessions).toEqual([]);
+      expect(result.cursor).toBe(cursor);
+    });
+  });
+
+  it("returns only threads updated after the stored watermark", async () => {
+    await withCodexFixture(async (fixture) => {
+      if (fixture.codexRoot === null) {
+        throw new Error("Codex fixture root missing.");
+      }
+
+      const cursor = buildCodexIncrementalCursor(
+        await scanCodexSessions({ homeRoot: fixture.homeRoot })
+      );
+      const dbPath = join(fixture.codexRoot, "state_5.sqlite");
+      const sqliteModule = (await import(sqliteModuleName)) as {
+        default: new (path: string) => {
+          prepare(statement: string): { run(...params: unknown[]): void };
+          close(): void;
+        };
+      };
+      const database = new sqliteModule.default(dbPath);
+
+      try {
+        database
+          .prepare(
+            "UPDATE threads SET updated_at = ?, tokens_used = ? WHERE id = ?"
+          )
+          .run("2026-03-07T12:00:00Z", 999, "thread-child");
+      } finally {
+        database.close();
+      }
+
+      const result = await scanCodexSessionsIncremental({
+        homeRoot: fixture.homeRoot,
+        cursor
+      });
+
+      expect(result.mode).toBe("incremental");
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]).toMatchObject({
+        providerSessionId: "thread-child",
+        updatedAt: "2026-03-07T12:00:00Z",
+        tokenUsage: {
+          total: 999
+        }
+      });
+      expect(result.cursor).toContain("codex-thread-watermark-v1");
     });
   });
 });
