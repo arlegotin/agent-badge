@@ -2,14 +2,16 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   attributeBackfillSessionsMock,
+  createGitHubGistClientMock,
   publishBadgeToGistMock,
   runFullBackfillScanMock
 } = vi.hoisted(() => ({
   attributeBackfillSessionsMock: vi.fn(),
+  createGitHubGistClientMock: vi.fn(),
   publishBadgeToGistMock: vi.fn(),
   runFullBackfillScanMock: vi.fn()
 }));
@@ -22,6 +24,7 @@ vi.mock("@agent-badge/core", async () => {
   return {
     ...actual,
     attributeBackfillSessions: attributeBackfillSessionsMock,
+    createGitHubGistClient: createGitHubGistClientMock,
     publishBadgeToGist: publishBadgeToGistMock,
     runFullBackfillScan: runFullBackfillScanMock
   };
@@ -264,8 +267,13 @@ function createAttributionResult(
 
 beforeEach(() => {
   attributeBackfillSessionsMock.mockReset();
+  createGitHubGistClientMock.mockReset();
   publishBadgeToGistMock.mockReset();
   runFullBackfillScanMock.mockReset();
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("runPublishCommand", () => {
@@ -355,6 +363,57 @@ describe("runPublishCommand", () => {
       expect(runFullBackfillScanMock).not.toHaveBeenCalled();
       expect(attributeBackfillSessionsMock).not.toHaveBeenCalled();
       expect(publishBadgeToGistMock).not.toHaveBeenCalled();
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("uses process.env GitHub auth when no explicit env override is passed", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig
+    });
+    const output = createOutputCapture();
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution = createAttributionResult(scan);
+    const gistClient = {
+      getGist: vi.fn(),
+      createPublicGist: vi.fn(),
+      updateGistFile: vi.fn()
+    };
+
+    vi.stubEnv("GH_TOKEN", "process-env-token");
+    createGitHubGistClientMock.mockReturnValue(gistClient);
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockResolvedValueOnce({
+      ...defaultAgentBadgeState,
+      publish: {
+        ...defaultAgentBadgeState.publish,
+        status: "published",
+        gistId: "gist_publish",
+        lastPublishedHash: "hash_process_env"
+      }
+    });
+
+    try {
+      await runPublishCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer
+      });
+
+      expect(createGitHubGistClientMock).toHaveBeenCalledWith({
+        authToken: "process-env-token"
+      });
     } finally {
       await fixture.cleanup();
     }

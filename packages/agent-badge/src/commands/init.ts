@@ -330,11 +330,12 @@ export async function runInitCommand(
 ): Promise<InitCommandResult> {
   const stdout = options.stdout ?? process.stdout;
   const homeRoot = resolve(options.homeRoot ?? homedir());
+  const env = options.env ?? process.env;
   const preflightOptions = {
     cwd: options.cwd,
     allowGitInit: options.allowGitInit,
     homeRoot,
-    env: options.env,
+    env,
     checker: options.checker
   };
   const initialPreflight = await runInitPreflight(preflightOptions);
@@ -404,7 +405,7 @@ export async function runInitCommand(
   const gistClient =
     options.gistClient ??
     createGitHubGistClient({
-      authToken: resolveGitHubAuthToken(options.env)
+      authToken: resolveGitHubAuthToken(env)
     });
   const publishTarget = await ensurePublishTarget({
     config,

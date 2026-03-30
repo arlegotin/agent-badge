@@ -304,6 +304,83 @@ describe("runRefreshCommand", () => {
     }
   });
 
+  it("uses process.env GitHub auth when no explicit env override is passed", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_123",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig
+    });
+    const output = createOutputCapture();
+    const gistClient = {
+      getGist: vi.fn(),
+      createPublicGist: vi.fn(),
+      updateGistFile: vi.fn()
+    };
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 1 as const,
+        entries: {}
+      }
+    };
+
+    vi.stubEnv("GH_TOKEN", "process-env-token");
+    createGitHubGistClientMock.mockReturnValue(gistClient);
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockResolvedValueOnce({
+      decision: "skipped" as const,
+      state: {
+        ...defaultAgentBadgeState,
+        checkpoints: {
+          codex: {
+            cursor: "codex-next",
+            lastScannedAt: "2026-03-30T19:00:00.000Z"
+          },
+          claude: {
+            cursor: "claude-next",
+            lastScannedAt: "2026-03-30T19:00:00.000Z"
+          }
+        },
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_123"
+        }
+      }
+    });
+
+    try {
+      await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer
+      });
+
+      expect(createGitHubGistClientMock).toHaveBeenCalledWith({
+        authToken: "process-env-token"
+      });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("keeps pre-push output concise", async () => {
     const configuredConfig = {
       ...defaultAgentBadgeConfig,

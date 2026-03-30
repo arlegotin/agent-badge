@@ -90,6 +90,7 @@ export async function runPublishCommand(
   const cwd = resolve(options.cwd ?? process.cwd());
   const homeRoot = resolve(options.homeRoot ?? homedir());
   const stdout = options.stdout ?? process.stdout;
+  const env = options.env ?? process.env;
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
   const config = parseAgentBadgeConfig(await readJsonFile(configPath));
@@ -117,7 +118,7 @@ export async function runPublishCommand(
     client:
       options.gistClient ??
       createGitHubGistClient({
-        authToken: resolveGitHubAuthToken(options.env)
+        authToken: resolveGitHubAuthToken(env)
       })
   });
 
@@ -133,4 +134,3 @@ export async function runPublishCommand(
     state: nextState
   };
 }
-

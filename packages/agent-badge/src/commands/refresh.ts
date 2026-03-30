@@ -181,6 +181,7 @@ export async function runRefreshCommand(
   const cwd = resolve(options.cwd ?? process.cwd());
   const homeRoot = resolve(options.homeRoot ?? homedir());
   const stdout = options.stdout ?? process.stdout;
+  const env = options.env ?? process.env;
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
   let persistedState: AgentBadgeState | null = null;
@@ -250,7 +251,7 @@ export async function runRefreshCommand(
         client:
           options.gistClient ??
           createGitHubGistClient({
-            authToken: resolveGitHubAuthToken(options.env)
+            authToken: resolveGitHubAuthToken(env)
           }),
         now,
         skipIfUnchanged: true
