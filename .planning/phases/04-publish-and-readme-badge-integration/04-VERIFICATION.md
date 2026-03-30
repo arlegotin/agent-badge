@@ -1,20 +1,23 @@
 ---
 phase: 04-publish-and-readme-badge-integration
-verified: 2026-03-30T16:43:20Z
-status: human_needed
+verified: 2026-03-30T17:08:55Z
+status: passed
 score: 4/4 must-haves verified
-human_verification:
-  - test: "Run a live GitHub + Shields smoke test with a real public gist target"
-    expected: "`agent-badge init` creates or connects a public gist, publishes `agent-badge.json`, inserts exactly one managed README badge block or prints one snippet when README is missing, and a second `agent-badge publish` keeps the same badge URL while the Shields badge renders successfully."
-    why_human: "This path depends on real GitHub auth, public Gist writes, and Shields badge rendering, which were not exercised in the local stubbed test suite."
+re_verification:
+  previous_status: human_needed
+  previous_score: 4/4
+  gaps_closed:
+    - "Completed the live GitHub + Shields smoke test with a real `GH_TOKEN` and public gist create/update path."
+  gaps_remaining: []
+  regressions: []
 ---
 
 # Phase 04: Publish and README Badge Integration Verification Report
 
 **Phase Goal:** Publish privacy-safe aggregate badge JSON and connect it to a stable README badge URL.
-**Verified:** 2026-03-30T16:43:20Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Verified:** 2026-03-30T17:08:55Z
+**Status:** passed
+**Re-verification:** Yes — after live GitHub + Shields smoke test
 
 ## Goal Achievement
 
@@ -71,6 +74,7 @@ human_verification:
 | --- | --- | --- | --- |
 | Phase 4 publish + README integration regression suite | `PATH="/tmp/agent-badge-deps/node_modules/.bin:$PATH" npm test -- --run packages/core/src/publish/github-gist-client.test.ts packages/core/src/publish/publish-state.test.ts packages/core/src/publish/badge-payload.test.ts packages/core/src/publish/publish-service.test.ts packages/core/src/publish/readme-badge.test.ts packages/agent-badge/src/commands/publish.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/cli/main.test.ts` | 8 files / 34 tests passed | ✓ PASS |
 | Repository regression gate | `PATH="/tmp/agent-badge-deps/node_modules/.bin:$PATH" npm test -- --run` | 22 files / 97 tests passed | ✓ PASS |
+| Live GitHub + Shields smoke test | `source .env` then run the temp Phase 4 smoke repo through `runInitCommand()` and `runPublishCommand()` with a real `GH_TOKEN` | Public gist created, `agent-badge.json` published, README gained exactly one managed badge block, second publish preserved the badge URL, raw gist JSON fetched successfully, Shields returned SVG, and the temp gist was deleted after verification | ✓ PASS |
 
 ### Requirements Coverage
 
@@ -92,17 +96,13 @@ Phase 4 plan requirements match the Phase 4 traceability entries in `.planning/R
 
 ### Human Verification Required
 
-### 1. Live GitHub + Shields publish smoke test
-
-**Test:** In a throwaway repository with a real `GH_TOKEN`, run `agent-badge init`, inspect the created or connected public gist, then run `agent-badge publish` again.
-**Expected:** The public gist contains `agent-badge.json`; the stored badge URL renders through Shields; README contains exactly one managed badge block or init prints exactly one snippet if no README exists; the second publish keeps the same badge URL and README block.
-**Why human:** This depends on live GitHub auth, real public Gist writes, and the external Shields rendering path.
+None. The required live GitHub + Shields smoke test has been completed successfully in a throwaway repository with a real `GH_TOKEN`.
 
 ### Gaps Summary
 
-No code or test gaps were found in Phase 4. The remaining work is one live external smoke check against GitHub + Shields, so automated verification is complete but final sign-off still needs human confirmation.
+No code or verification gaps remain in Phase 4. Automated checks are green and the live external smoke check against GitHub + Shields passed.
 
 ---
 
-_Verified: 2026-03-30T16:43:20Z_
+_Verified: 2026-03-30T17:08:55Z_
 _Verifier: Claude (gsd-verifier)_
