@@ -1,15 +1,20 @@
-export { buildProgram, run } from "./cli/main.js";
 export {
   runInitCommand,
   type InitCommandResult,
-  type RunInitCommandOptions,
+  type RunInitCommandOptions
+} from "./init.js";
+export {
   runPublishCommand,
   type PublishCommandResult,
-  type RunPublishCommandOptions,
+  type RunPublishCommandOptions
+} from "./publish.js";
+export {
   runRefreshCommand,
   type RefreshCommandResult,
-  type RunRefreshCommandOptions,
+  type RunRefreshCommandOptions
+} from "./refresh.js";
+export {
   runScanCommand,
   type RunScanCommandOptions,
   type ScanCommandResult
-} from "./commands/index.js";
+} from "./scan.js";
