@@ -1,7 +1,7 @@
 ---
 quick_task: 260330-uip
 title: Add a real README with the live badge, brief project description, installation instructions, then commit and push
-status: in_progress
+status: completed
 created: 2026-03-30T19:58:27.786Z
 ---
 

@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-30T18:53:34.708Z"
+last_updated: "2026-03-30T19:59:13Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 Phase: 05 (incremental-refresh-and-operator-commands) — EXECUTING
 Plan: 3 of 3
 Status: Phase complete — ready for verification
-Last activity: 2026-03-30
+Last activity: 2026-03-30 - Completed quick task 260330-uip: added project README
 
 Progress: [█████████░] 16/17 plans (94%)
 
@@ -110,6 +110,12 @@ None yet.
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
 - npm package-name availability for `agent-badge` must be checked at publish time.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260330-uip | Add a real README with the live badge, brief project description, installation instructions, then commit and push | 2026-03-30 | e432521 | [260330-uip-add-a-real-readme-with-the-live-badge-br](./quick/260330-uip-add-a-real-readme-with-the-live-badge-br/) |
 
 ## Session Continuity
 
