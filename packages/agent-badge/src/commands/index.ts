@@ -28,3 +28,8 @@ export {
   type RunStatusCommandOptions,
   type StatusCommandResult
 } from "./status.js";
+export {
+  runDoctorCommand,
+  type DoctorCommandResult,
+  type RunDoctorCommandOptions
+} from "./doctor.js";

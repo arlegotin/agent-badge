@@ -52,6 +52,13 @@ describe("buildProgram", () => {
     expect(commandNames).toContain("publish");
   });
 
+  it("registers the doctor command", () => {
+    const program = buildProgram();
+    const commandNames = program.commands.map((command) => command.name());
+
+    expect(commandNames).toContain("doctor");
+  });
+
   it("registers the refresh, status, and config commands", () => {
     const program = buildProgram();
     const commandNames = program.commands.map((command) => command.name());
@@ -78,5 +85,13 @@ describe("buildProgram", () => {
 
     expect(subcommandNames).toContain("get");
     expect(subcommandNames).toContain("set");
+  });
+
+  it("registers doctor output and recovery options", () => {
+    const doctorCommand = findCommand("doctor");
+    const optionFlags = doctorCommand?.options.map((option) => option.flags);
+
+    expect(optionFlags).toContain("--json");
+    expect(optionFlags).toContain("--probe-write");
   });
 });

@@ -6,6 +6,7 @@ import { Command } from "commander";
 
 import { runConfigCommand } from "../commands/config.js";
 import { runInitCommand } from "../commands/init.js";
+import { runDoctorCommand } from "../commands/doctor.js";
 import { runPublishCommand } from "../commands/publish.js";
 import { runRefreshCommand } from "../commands/refresh.js";
 import { runScanCommand } from "../commands/scan.js";
@@ -103,6 +104,18 @@ export function buildProgram(): Command {
     .description("Print the current persisted badge, provider, and publish state.")
     .action(async () => {
       await runStatusCommand();
+    });
+
+  program
+    .command("doctor")
+    .description("Inspect repository setup, scan readiness, and publish wiring.")
+    .option("--json", "Print a machine-readable result object.")
+    .option("--probe-write", "Validate gist write credentials with a no-op update.")
+    .action(async (options: { json?: boolean; probeWrite?: boolean }) => {
+      await runDoctorCommand({
+        json: options.json ?? false,
+        probeWrite: options.probeWrite ?? false
+      });
     });
 
   const configCommand = program
