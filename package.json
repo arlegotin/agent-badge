@@ -1,0 +1,22 @@
+{
+  "name": "agent-badge",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json",
+    "test": "vitest",
+    "typecheck": "tsc -b --pretty false packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json",
+    "dev:agent-badge": "tsx packages/agent-badge/src/cli/main.ts",
+    "dev:create-agent-badge": "tsx packages/create-agent-badge/src/index.ts"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.0",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.0"
+  }
+}

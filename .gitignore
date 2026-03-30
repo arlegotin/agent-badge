@@ -1,0 +1,6 @@
+node_modules
+dist/
+coverage/
+.agent-badge/cache/
+.agent-badge/logs/
+*.tsbuildinfo
