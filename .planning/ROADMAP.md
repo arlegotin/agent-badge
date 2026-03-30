@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Workspace and Init Foundation** - Establish the monorepo, shared runtime primitives, and safe init preflight/scaffolding. (completed 2026-03-30)
 - [x] **Phase 2: Repo Identity and Provider Parsing** - Build the canonical repo model plus normalized Codex and Claude scanners. (completed 2026-03-30)
 - [x] **Phase 3: Historical Backfill and Attribution Review** - Turn normalized sessions into trustworthy repo totals with ambiguity handling. (completed 2026-03-30)
-- [ ] **Phase 4: Publish and README Badge Integration** - Create/connect the public Gist, publish aggregate badge JSON, and insert the stable README badge.
+- [x] **Phase 4: Publish and README Badge Integration** - Create/connect the public Gist, publish aggregate badge JSON, and insert the stable README badge. (completed 2026-03-30)
 - [ ] **Phase 5: Incremental Refresh and Operator Commands** - Add fast refresh, status/config UX, and failure-soft automation.
 - [ ] **Phase 6: Doctor, Uninstall, and Safety Hardening** - Make recovery, privacy, logging, and idempotent re-entry production-safe.
 - [ ] **Phase 7: Release Readiness** - Validate the scenario matrix, finalize packaging, and ship public docs.
@@ -85,12 +85,12 @@ Plans:
   2. Publish writes aggregate-only Shields endpoint JSON with the expected badge fields.
   3. The README receives one stable badge URL or a pasteable snippet when no README exists.
   4. Re-running init or publish does not duplicate README badge entries.
-**Plans**: 3 plans
+**Plans**: 3/3 plans complete
 
 Plans:
 - [x] 04-01: Implement Gist create/connect flows and publish-state bookkeeping
 - [x] 04-02: Serialize badge totals into Shields endpoint JSON and publish aggregate-only payloads
-- [ ] 04-03: Insert the stable README badge once and handle no-README/degraded paths cleanly
+- [x] 04-03: Insert the stable README badge once and handle no-README/degraded paths cleanly
 
 ### Phase 5: Incremental Refresh and Operator Commands
 **Goal**: Make day-to-day badge maintenance fast, transparent, and low-friction.
@@ -155,7 +155,7 @@ Phases execute in numeric order: 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4
 | 1. Workspace and Init Foundation | 5/5 | Complete | 2026-03-30 |
 | 2. Repo Identity and Provider Parsing | 3/3 | Complete | 2026-03-30 |
 | 3. Historical Backfill and Attribution Review | 3/3 | Complete | 2026-03-30 |
-| 4. Publish and README Badge Integration | 0/3 | Not started | - |
+| 4. Publish and README Badge Integration | 3/3 | Complete | 2026-03-30 |
 | 5. Incremental Refresh and Operator Commands | 0/3 | Not started | - |
 | 6. Doctor, Uninstall, and Safety Hardening | 0/3 | Not started | - |
 | 7. Release Readiness | 0/3 | Not started | - |

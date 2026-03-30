@@ -11,7 +11,7 @@
 - [x] **BOOT-02**: Developer can initialize a non-git directory by letting the tool create git or by receiving a precise blocking message with the next action.
 - [x] **BOOT-03**: Init installs or wires a repo-local runtime so package scripts and git hooks can invoke `agent-badge` after normal dependency install.
 - [x] **BOOT-04**: Init creates `.agent-badge/config.json`, `.agent-badge/state.json`, `.agent-badge/cache/`, and `.agent-badge/logs/`.
-- [ ] **BOOT-05**: Init inserts one stable badge URL into the repository README or prints a pasteable snippet when no README exists.
+- [x] **BOOT-05**: Init inserts one stable badge URL into the repository README or prints a pasteable snippet when no README exists.
 
 ### Attribution
 
@@ -34,7 +34,7 @@
 - [x] **PUBL-01**: Init can create a public Gist automatically when GitHub auth is available.
 - [x] **PUBL-02**: If automatic Gist creation fails, developer can retry, connect an existing Gist, or continue in explicit unpublished mode.
 - [x] **PUBL-03**: `publish` writes aggregate-only Shields endpoint JSON with `schemaVersion`, `label`, `message`, `color`, and cache behavior fields.
-- [ ] **PUBL-04**: The README badge URL stays stable after init; later updates modify only the remote JSON.
+- [x] **PUBL-04**: The README badge URL stays stable after init; later updates modify only the remote JSON.
 - [ ] **PUBL-05**: Publish skips remote updates when the visible badge value has not changed.
 
 ### Operations
@@ -98,11 +98,11 @@
 | ATTR-04 | Phase 3 | Complete |
 | ATTR-05 | Phase 3 | Complete |
 | SCAN-05 | Phase 3 | Complete |
-| BOOT-05 | Phase 4 | Pending |
+| BOOT-05 | Phase 4 | Complete |
 | PUBL-01 | Phase 4 | Complete |
 | PUBL-02 | Phase 4 | Complete |
 | PUBL-03 | Phase 4 | Complete |
-| PUBL-04 | Phase 4 | Pending |
+| PUBL-04 | Phase 4 | Complete |
 | SCAN-04 | Phase 5 | Pending |
 | PUBL-05 | Phase 5 | Pending |
 | OPER-01 | Phase 5 | Pending |
@@ -125,4 +125,4 @@
 
 ---
 *Requirements defined: 2026-03-29*
-*Last updated: 2026-03-30 after completing Phase 3*
+*Last updated: 2026-03-30 after completing Phase 4*
