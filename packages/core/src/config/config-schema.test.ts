@@ -12,6 +12,12 @@ describe("agentBadgeConfigSchema", () => {
     );
   });
 
+  it("ships privacy-safe defaults", () => {
+    expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
+    expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
+    expect(defaultAgentBadgeConfig.publish.badgeUrl).toBeNull();
+  });
+
   it("rejects missing required keys", () => {
     expect(() =>
       parseAgentBadgeConfig({
