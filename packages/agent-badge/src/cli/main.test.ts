@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { buildProgram } from "./main.js";
 
+function findCommand(name: string) {
+  return buildProgram().commands.find((command) => command.name() === name);
+}
+
 describe("buildProgram", () => {
   it("sets the CLI name", () => {
     const program = buildProgram();
@@ -21,5 +25,33 @@ describe("buildProgram", () => {
     const commandNames = program.commands.map((command) => command.name());
 
     expect(commandNames).toContain("publish");
+  });
+
+  it("registers the refresh, status, and config commands", () => {
+    const program = buildProgram();
+    const commandNames = program.commands.map((command) => command.name());
+
+    expect(commandNames).toContain("refresh");
+    expect(commandNames).toContain("status");
+    expect(commandNames).toContain("config");
+  });
+
+  it("registers refresh hook and recovery options", () => {
+    const refreshCommand = findCommand("refresh");
+    const optionFlags = refreshCommand?.options.map((option) => option.flags);
+
+    expect(optionFlags).toContain("--hook <name>");
+    expect(optionFlags).toContain("--fail-soft");
+    expect(optionFlags).toContain("--force-full");
+  });
+
+  it("registers config get and set subcommands", () => {
+    const configCommand = findCommand("config");
+    const subcommandNames = configCommand?.commands.map((command) =>
+      command.name()
+    );
+
+    expect(subcommandNames).toContain("get");
+    expect(subcommandNames).toContain("set");
   });
 });

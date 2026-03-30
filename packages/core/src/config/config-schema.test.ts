@@ -14,6 +14,7 @@ describe("agentBadgeConfigSchema", () => {
 
   it("ships privacy-safe defaults", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
+    expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
     expect(defaultAgentBadgeConfig.publish.badgeUrl).toBeNull();
     expect(defaultAgentBadgeConfig.repo.aliases).toEqual({
@@ -121,5 +122,20 @@ describe("agentBadgeConfigSchema", () => {
         }
       })
     ).toThrow();
+  });
+
+  it("allows privacy output to switch between standard and minimal", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        privacy: {
+          ...defaultAgentBadgeConfig.privacy,
+          output: "minimal"
+        }
+      }).privacy
+    ).toEqual({
+      aggregateOnly: true,
+      output: "minimal"
+    });
   });
 });

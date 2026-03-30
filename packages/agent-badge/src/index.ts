@@ -1,5 +1,8 @@
 export { buildProgram, run } from "./cli/main.js";
 export {
+  runConfigCommand,
+  type ConfigCommandResult,
+  type RunConfigCommandOptions,
   runInitCommand,
   type InitCommandResult,
   type RunInitCommandOptions,
@@ -11,5 +14,8 @@ export {
   type RunRefreshCommandOptions,
   runScanCommand,
   type RunScanCommandOptions,
-  type ScanCommandResult
+  type ScanCommandResult,
+  runStatusCommand,
+  type RunStatusCommandOptions,
+  type StatusCommandResult
 } from "./commands/index.js";

@@ -54,7 +54,8 @@ export const agentBadgeConfigSchema = z
       .strict(),
     privacy: z
       .object({
-        aggregateOnly: z.literal(true)
+        aggregateOnly: z.literal(true),
+        output: z.enum(["standard", "minimal"])
       })
       .strict()
   })
@@ -64,6 +65,7 @@ export type AgentBadgeConfig = z.infer<typeof agentBadgeConfigSchema>;
 export type AgentBadgeBadgeMode = z.infer<typeof badgeModeSchema>;
 export type AgentBadgePublishProvider = z.infer<typeof publishProviderSchema>;
 export type AgentBadgeRefreshMode = z.infer<typeof refreshModeSchema>;
+export type AgentBadgePrivacyOutput = AgentBadgeConfig["privacy"]["output"];
 
 export const defaultAgentBadgeConfig: AgentBadgeConfig = {
   version: 1,
@@ -97,7 +99,8 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
     }
   },
   privacy: {
-    aggregateOnly: true
+    aggregateOnly: true,
+    output: "standard"
   }
 };
 

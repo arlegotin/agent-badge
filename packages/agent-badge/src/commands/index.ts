@@ -1,4 +1,9 @@
 export {
+  runConfigCommand,
+  type ConfigCommandResult,
+  type RunConfigCommandOptions
+} from "./config.js";
+export {
   runInitCommand,
   type InitCommandResult,
   type RunInitCommandOptions
@@ -18,3 +23,8 @@ export {
   type RunScanCommandOptions,
   type ScanCommandResult
 } from "./scan.js";
+export {
+  runStatusCommand,
+  type RunStatusCommandOptions,
+  type StatusCommandResult
+} from "./status.js";

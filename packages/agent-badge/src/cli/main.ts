@@ -1,11 +1,26 @@
 import { Command } from "commander";
 
+import { runConfigCommand } from "../commands/config.js";
 import { runInitCommand } from "../commands/init.js";
 import { runPublishCommand } from "../commands/publish.js";
+import { runRefreshCommand } from "../commands/refresh.js";
 import { runScanCommand } from "../commands/scan.js";
+import { runStatusCommand } from "../commands/status.js";
 
 function collectOptionValue(value: string, previous: string[] = []): string[] {
   return [...previous, value];
+}
+
+function parseRefreshHook(value: string | undefined): "pre-push" | undefined {
+  if (typeof value === "undefined") {
+    return undefined;
+  }
+
+  if (value === "pre-push") {
+    return value;
+  }
+
+  throw new Error(`Unsupported hook: ${value}`);
 }
 
 export function buildProgram(): Command {
@@ -57,6 +72,63 @@ export function buildProgram(): Command {
     .description("Publish aggregate badge JSON to the configured remote target.")
     .action(async () => {
       await runPublishCommand();
+    });
+
+  program
+    .command("refresh")
+    .description("Refresh persisted badge state and publish when needed.")
+    .option("--hook <name>", "Run the refresh flow for a supported hook mode.")
+    .option("--fail-soft", "Return a structured soft failure instead of throwing.")
+    .option("--force-full", "Rebuild refresh state from a full scan.")
+    .action(
+      async (options: {
+        hook?: string;
+        failSoft?: boolean;
+        forceFull?: boolean;
+      }) => {
+        await runRefreshCommand({
+          hook: parseRefreshHook(options.hook),
+          failSoft: options.failSoft ?? false,
+          forceFull: options.forceFull ?? false
+        });
+      }
+    );
+
+  program
+    .command("status")
+    .description("Print the current persisted badge, provider, and publish state.")
+    .action(async () => {
+      await runStatusCommand();
+    });
+
+  const configCommand = program
+    .command("config")
+    .description("View or update supported post-init agent-badge settings.")
+    .action(async () => {
+      await runConfigCommand({
+        action: "get"
+      });
+    });
+
+  configCommand
+    .command("get [key]")
+    .description("Print the current value for a supported config key.")
+    .action(async (key?: string) => {
+      await runConfigCommand({
+        action: "get",
+        key
+      });
+    });
+
+  configCommand
+    .command("set <key> <value>")
+    .description("Update a supported config key.")
+    .action(async (key: string, value: string) => {
+      await runConfigCommand({
+        action: "set",
+        key,
+        value
+      });
     });
 
   return program;
