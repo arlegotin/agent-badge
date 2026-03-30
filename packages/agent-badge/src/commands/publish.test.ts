@@ -296,6 +296,7 @@ describe("runPublishCommand", () => {
     publishBadgeToGistMock.mockResolvedValueOnce({
       ...defaultAgentBadgeState,
       publish: {
+        ...defaultAgentBadgeState.publish,
         status: "published",
         gistId: "gist_publish",
         lastPublishedHash: "hash_123"
@@ -359,4 +360,3 @@ describe("runPublishCommand", () => {
     }
   });
 });
-

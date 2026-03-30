@@ -53,7 +53,8 @@ describe("applyPublishTargetResult", () => {
         publish: {
           status: "pending",
           gistId: "gist_123",
-          lastPublishedHash: "hash_123"
+          lastPublishedHash: "hash_123",
+          lastPublishedAt: null
         }
       }
     });
@@ -74,6 +75,7 @@ describe("applyPublishTargetResult", () => {
         state: {
           ...defaultAgentBadgeState,
           publish: {
+            ...defaultAgentBadgeState.publish,
             status: "pending",
             gistId: "stale_gist",
             lastPublishedHash: "hash_123"
@@ -93,7 +95,8 @@ describe("applyPublishTargetResult", () => {
         publish: {
           status: "deferred",
           gistId: null,
-          lastPublishedHash: "hash_123"
+          lastPublishedHash: "hash_123",
+          lastPublishedAt: null
         }
       }
     });
