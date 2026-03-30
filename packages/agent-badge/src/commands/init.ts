@@ -1,16 +1,23 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 
 import {
+  attributeBackfillSessions,
   applyPublishTargetResult,
   applyAgentBadgeScaffold,
   applyRepoLocalRuntimeWiring,
+  buildReadmeBadgeMarkdown,
+  buildReadmeBadgeSnippet,
   createGitHubGistClient,
   initializeGitRepository,
   ensurePublishTarget,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
+  publishBadgeToGist,
   runInitPreflight,
+  runFullBackfillScan,
+  upsertReadmeBadge,
   type AgentBadgeScaffoldResult,
   type AgentBadgeConfig,
   type DetectGitHubAuthOptions,
@@ -156,13 +163,81 @@ function writePublishTargetSummary(
   target: PublishTargetResult
 ): void {
   writeLines(stdout, [`- Publish target: ${summarizePublishTarget(target)}`]);
+}
 
-  if (target.status !== "deferred") {
+function buildDeferredBadgeSetupMessage(
+  target: PublishTargetResult
+): string {
+  switch (target.reason) {
+    case "auth-unavailable":
+      return "set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.";
+    case "gist-create-failed":
+      return "public gist creation failed. Check GitHub auth and rerun `agent-badge init`, or connect an existing public gist with `--gist-id <id>`.";
+    case "gist-not-public":
+      return "the configured gist is not public. Use a public gist and rerun `agent-badge init --gist-id <id>`.";
+    case "gist-missing-owner":
+      return "the configured gist did not report an owner. Reconnect a valid public gist with `--gist-id <id>` and rerun init.";
+    case "gist-unreachable":
+      return "the configured gist could not be reached. Verify the gist id or GitHub access, then rerun `agent-badge init`.";
+    default:
+      return "rerun `agent-badge init --gist-id <id>` to connect an existing public gist, or set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create one automatically.";
+  }
+}
+
+function writeBadgeSetupDeferred(
+  stdout: OutputWriter,
+  message: string
+): void {
+  writeLines(stdout, [`- Badge setup deferred: ${message}`]);
+}
+
+function buildPublishFailureMessage(error: unknown): string {
+  const detail = error instanceof Error ? error.message : "unknown publish error";
+
+  return `first publish failed (${detail}). Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT so init can publish the live badge JSON, then rerun \`agent-badge init\`.`;
+}
+
+function getConfiguredBadgeUrl(config: AgentBadgeConfig): string | null {
+  return config.publish.gistId !== null && config.publish.badgeUrl !== null
+    ? config.publish.badgeUrl
+    : null;
+}
+
+async function writeReadmeBadgeOutput(options: {
+  readonly cwd: string;
+  readonly preflight: InitPreflightResult;
+  readonly config: AgentBadgeConfig;
+  readonly stdout: OutputWriter;
+}): Promise<void> {
+  const badgeUrl = getConfiguredBadgeUrl(options.config);
+
+  if (badgeUrl === null) {
     return;
   }
 
-  writeLines(stdout, [
-    "- Next step: rerun `agent-badge init --gist-id <id>` to connect an existing public gist, or set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create one automatically."
+  if (!options.preflight.readme.exists || options.preflight.readme.fileName === null) {
+    writeLines(options.stdout, [
+      `- Badge snippet: ${buildReadmeBadgeSnippet({
+        label: options.config.badge.label,
+        badgeUrl
+      })}`
+    ]);
+    return;
+  }
+
+  const readmePath = join(options.cwd, options.preflight.readme.fileName);
+  const readmeContent = await readFile(readmePath, "utf8");
+  const nextReadmeContent = upsertReadmeBadge(
+    readmeContent,
+    buildReadmeBadgeMarkdown({
+      label: options.config.badge.label,
+      badgeUrl
+    })
+  );
+
+  await writeFile(readmePath, nextReadmeContent, "utf8");
+  writeLines(options.stdout, [
+    `- README badge: updated ${options.preflight.readme.fileName}`
   ]);
 }
 
@@ -254,10 +329,11 @@ export async function runInitCommand(
   options: RunInitCommandOptions = {}
 ): Promise<InitCommandResult> {
   const stdout = options.stdout ?? process.stdout;
+  const homeRoot = resolve(options.homeRoot ?? homedir());
   const preflightOptions = {
     cwd: options.cwd,
     allowGitInit: options.allowGitInit,
-    homeRoot: options.homeRoot,
+    homeRoot,
     env: options.env,
     checker: options.checker
   };
@@ -324,16 +400,17 @@ export async function runInitCommand(
 
   const config = await loadPersistedConfig(preflight.cwd);
   const state = await loadPersistedState(preflight.cwd);
+  const gistClient =
+    options.gistClient ??
+    createGitHubGistClient({
+      authToken: resolveGitHubAuthToken(options.env)
+    });
   const publishTarget = await ensurePublishTarget({
     config,
     state,
     githubAuth: preflight.githubAuth,
     gistId: options.gistId,
-    client:
-      options.gistClient ??
-      createGitHubGistClient({
-        authToken: resolveGitHubAuthToken(options.env)
-      })
+    client: gistClient
   });
   const nextPublishState = applyPublishTargetResult({
     config,
@@ -347,6 +424,64 @@ export async function runInitCommand(
     nextPublishState.state
   );
   writePublishTargetSummary(stdout, publishTarget);
+
+  if (publishTarget.status === "deferred") {
+    writeBadgeSetupDeferred(
+      stdout,
+      buildDeferredBadgeSetupMessage(publishTarget)
+    );
+
+    return {
+      preflight,
+      scaffold,
+      runtimeWiring
+    };
+  }
+
+  const badgeUrl = getConfiguredBadgeUrl(nextPublishState.config);
+
+  if (badgeUrl === null) {
+    writeBadgeSetupDeferred(
+      stdout,
+      "a stable badge URL was not configured. Rerun `agent-badge init` after reconnecting the publish target."
+    );
+
+    return {
+      preflight,
+      scaffold,
+      runtimeWiring
+    };
+  }
+
+  try {
+    const scan = await runFullBackfillScan({
+      cwd: preflight.cwd,
+      homeRoot,
+      config: nextPublishState.config
+    });
+    const attribution = attributeBackfillSessions({
+      repo: scan.repo,
+      sessions: scan.sessions,
+      overrides: nextPublishState.state.overrides.ambiguousSessions
+    });
+    const publishedState = await publishBadgeToGist({
+      config: nextPublishState.config,
+      state: nextPublishState.state,
+      scan,
+      attribution,
+      client: gistClient
+    });
+
+    await writePersistedState(preflight.cwd, nextPublishState.config, publishedState);
+    await writeReadmeBadgeOutput({
+      cwd: preflight.cwd,
+      preflight,
+      config: nextPublishState.config,
+      stdout
+    });
+  } catch (error) {
+    writeBadgeSetupDeferred(stdout, buildPublishFailureMessage(error));
+  }
 
   return {
     preflight,

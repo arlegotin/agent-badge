@@ -108,6 +108,10 @@ async function readPublishFiles(repoRoot: string): Promise<{
   };
 }
 
+async function readReadmeContent(repoRoot: string): Promise<string> {
+  return readFile(join(repoRoot, "README.md"), "utf8");
+}
+
 async function getExpectedRuntimeDependencySpecifier(): Promise<string> {
   const runtimePackageJson = await readJsonObject(
     new URL("../../package.json", import.meta.url)
@@ -137,8 +141,8 @@ describe("runInitCommand", () => {
     });
     const output = createOutputCapture();
     const secondOutput = createOutputCapture();
-      const packageJsonPath = join(repo.root, "package.json");
-      const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
+    const packageJsonPath = join(repo.root, "package.json");
+    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
       const expectedRuntimeDependencySpecifier =
@@ -179,6 +183,7 @@ describe("runInitCommand", () => {
       const packageScripts = packageJson.scripts as Record<string, string>;
       const devDependencies = packageJson.devDependencies as Record<string, string>;
       const hookContent = await readFile(prePushHookPath, "utf8");
+      const readmeContent = await readReadmeContent(repo.root);
 
       expect(devDependencies["agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
       expect(devDependencies["agent-badge"]).not.toBe(
@@ -198,6 +203,7 @@ describe("runInitCommand", () => {
         gistId: null,
         lastPublishedHash: null
       });
+      expect(readmeContent).toBe("# Fixture Repo\n");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
 
@@ -231,8 +237,10 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("agent-badge init runtime wiring");
       expect(output.read()).toContain("GitHub auth: env:GITHUB_TOKEN");
       expect(output.read()).toContain("- Publish target: deferred");
+      expect(output.read()).toContain("- Badge setup deferred:");
       expect(secondOutput.read()).toContain("agent-badge init runtime wiring");
       expect(secondOutput.read()).toContain("- Publish target: deferred");
+      expect(secondOutput.read()).toContain("- Badge setup deferred:");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
@@ -244,6 +252,7 @@ describe("runInitCommand", () => {
         "package-lock.json": "{}"
       }
     });
+    const providers = await createProviderHome();
     const output = createOutputCapture();
 
     try {
@@ -259,18 +268,18 @@ describe("runInitCommand", () => {
 
       await runInitCommand({
         cwd: repo.root,
+        homeRoot: providers.root,
         gistId: "gist_connected",
         stdout: output.writer,
         gistClient: {
           getGist,
           createPublicGist,
-          updateGistFile: async () => {
-            throw new Error("update should not run");
-          }
+          updateGistFile: async () => undefined
         }
       });
 
       const publishFiles = await readPublishFiles(repo.root);
+      const readmeContent = await readReadmeContent(repo.root);
 
       expect(publishFiles.config.publish).toEqual({
         provider: "github-gist",
@@ -278,14 +287,21 @@ describe("runInitCommand", () => {
         badgeUrl:
           "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
       });
-      expect(publishFiles.state.publish).toEqual({
-        status: "pending",
-        gistId: "gist_connected",
-        lastPublishedHash: null
+      expect(publishFiles.state.publish).toMatchObject({
+        status: "published",
+        gistId: "gist_connected"
       });
+      expect(
+        (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash
+      ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: connected existing gist");
+      expect(readmeContent).toContain("<!-- agent-badge:start -->");
+      expect(readmeContent).toContain("<!-- agent-badge:end -->");
+      expect(readmeContent).toContain(
+        "![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=3600)"
+      );
     } finally {
-      await repo.cleanup();
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
   });
 
@@ -295,12 +311,14 @@ describe("runInitCommand", () => {
         "package-lock.json": "{}"
       }
     });
+    const providers = await createProviderHome();
     const output = createOutputCapture();
     let createCalls = 0;
 
     try {
       await runInitCommand({
         cwd: repo.root,
+        homeRoot: providers.root,
         env: {
           GH_TOKEN: "test-token"
         },
@@ -322,13 +340,12 @@ describe("runInitCommand", () => {
               files: ["agent-badge.json"]
             };
           },
-          updateGistFile: async () => {
-            throw new Error("update should not run");
-          }
+          updateGistFile: async () => undefined
         }
       });
 
       const publishFiles = await readPublishFiles(repo.root);
+      const readmeContent = await readReadmeContent(repo.root);
 
       expect(createCalls).toBe(1);
       expect(publishFiles.config.publish).toEqual({
@@ -337,14 +354,17 @@ describe("runInitCommand", () => {
         badgeUrl:
           "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_created%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
       });
-      expect(publishFiles.state.publish).toEqual({
-        status: "pending",
-        gistId: "gist_created",
-        lastPublishedHash: null
+      expect(publishFiles.state.publish).toMatchObject({
+        status: "published",
+        gistId: "gist_created"
       });
+      expect(
+        (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash
+      ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: created public gist");
+      expect(readmeContent).toContain("<!-- agent-badge:start -->");
     } finally {
-      await repo.cleanup();
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
   });
 
@@ -384,6 +404,7 @@ describe("runInitCommand", () => {
         )}\n`
       }
     });
+    const providers = await createProviderHome();
     const output = createOutputCapture();
     let createCalls = 0;
     let getCalls = 0;
@@ -391,6 +412,7 @@ describe("runInitCommand", () => {
     try {
       await runInitCommand({
         cwd: repo.root,
+        homeRoot: providers.root,
         stdout: output.writer,
         gistClient: {
           getGist: async () => {
@@ -407,13 +429,12 @@ describe("runInitCommand", () => {
             createCalls += 1;
             throw new Error("create should not run");
           },
-          updateGistFile: async () => {
-            throw new Error("update should not run");
-          }
+          updateGistFile: async () => undefined
         }
       });
 
       const publishFiles = await readPublishFiles(repo.root);
+      const readmeContent = await readReadmeContent(repo.root);
 
       expect(getCalls).toBe(1);
       expect(createCalls).toBe(0);
@@ -423,14 +444,142 @@ describe("runInitCommand", () => {
         badgeUrl:
           "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
       });
-      expect(publishFiles.state.publish).toEqual({
-        status: "pending",
-        gistId: "gist_existing",
-        lastPublishedHash: null
+      expect(publishFiles.state.publish).toMatchObject({
+        status: "published",
+        gistId: "gist_existing"
       });
+      expect(
+        (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash
+      ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: reused existing gist");
+      expect(readmeContent).toContain("<!-- agent-badge:start -->");
     } finally {
-      await repo.cleanup();
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("prints a pasteable snippet when README is missing", async () => {
+    const repo = await createRepoFixture({
+      readme: false,
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const output = createOutputCapture();
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_snippet",
+        stdout: output.writer,
+        gistClient: {
+          getGist: async () => ({
+            id: "gist_snippet",
+            ownerLogin: "octocat",
+            public: true,
+            files: ["agent-badge.json"]
+          }),
+          createPublicGist: async () => {
+            throw new Error("create should not run");
+          },
+          updateGistFile: async () => undefined
+        }
+      });
+
+      expect(existsSync(join(repo.root, "README.md"))).toBe(false);
+      expect(output.read()).toContain(
+        "- Badge snippet: ![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=3600)"
+      );
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("does not duplicate the badge on re-running init", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const firstOutput = createOutputCapture();
+    const secondOutput = createOutputCapture();
+
+    try {
+      const gistClient = {
+        getGist: async () => ({
+          id: "gist_idempotent",
+          ownerLogin: "octocat",
+          public: true,
+          files: ["agent-badge.json"]
+        }),
+        createPublicGist: async () => {
+          throw new Error("create should not run");
+        },
+        updateGistFile: async () => undefined
+      };
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_idempotent",
+        stdout: firstOutput.writer,
+        gistClient
+      });
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        stdout: secondOutput.writer,
+        gistClient
+      });
+
+      const readmeContent = await readReadmeContent(repo.root);
+
+      expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
+      expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
+      expect(
+        readmeContent.match(
+          /!\[AI Usage\]\(https:\/\/img\.shields\.io\/endpoint\?url=https%3A%2F%2Fgist\.githubusercontent\.com%2Foctocat%2Fgist_idempotent%2Fraw%2Fagent-badge\.json&cacheSeconds=3600\)/g
+        )
+      ).toHaveLength(1);
+      expect(secondOutput.read()).toContain("- Publish target: reused existing gist");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("does not insert a broken badge when publish target is deferred", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome({
+      codex: false,
+      claude: false
+    });
+    const output = createOutputCapture();
+
+    try {
+      const originalReadme = await readReadmeContent(repo.root);
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        stdout: output.writer
+      });
+
+      const readmeContent = await readReadmeContent(repo.root);
+
+      expect(readmeContent).toBe(originalReadme);
+      expect(readmeContent).not.toContain("<!-- agent-badge:start -->");
+      expect(readmeContent).not.toContain("https://img.shields.io/endpoint");
+      expect(output.read()).toContain("- Publish target: deferred");
+      expect(output.read()).toContain("- Badge setup deferred:");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
   });
 
