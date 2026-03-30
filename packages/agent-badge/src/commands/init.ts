@@ -1,5 +1,6 @@
 import {
   applyAgentBadgeScaffold,
+  initializeGitRepository,
   runInitPreflight,
   type AgentBadgeScaffoldResult,
   type DetectGitHubAuthOptions,
@@ -22,6 +23,13 @@ export interface RunInitCommandOptions
 export interface InitCommandResult {
   readonly preflight: InitPreflightResult;
   readonly scaffold: AgentBadgeScaffoldResult;
+}
+
+function getBlockedMessage(preflight: InitPreflightResult): string {
+  return (
+    preflight.git.blockingMessage ??
+    "Init is blocked because this directory cannot be prepared safely yet."
+  );
 }
 
 function writeLines(stdout: OutputWriter, lines: string[]): void {
@@ -86,23 +94,57 @@ export async function runInitCommand(
   options: RunInitCommandOptions = {}
 ): Promise<InitCommandResult> {
   const stdout = options.stdout ?? process.stdout;
-  const preflight = await runInitPreflight({
+  const preflightOptions = {
     cwd: options.cwd,
     allowGitInit: options.allowGitInit,
     homeRoot: options.homeRoot,
     env: options.env,
     checker: options.checker
-  });
+  };
+  const initialPreflight = await runInitPreflight(preflightOptions);
 
-  writePreflightSummary(stdout, preflight);
+  writePreflightSummary(stdout, initialPreflight);
 
-  if (!preflight.git.canInitialize) {
-    const message =
-      preflight.git.blockingMessage ??
-      "Init is blocked because this directory cannot be prepared safely yet.";
-
+  if (!initialPreflight.git.canInitialize) {
+    const message = getBlockedMessage(initialPreflight);
+    writeLines(stdout, ["- Git bootstrap: blocked"]);
     writeLines(stdout, [`- Blocked: ${message}`]);
     throw new Error(message);
+  }
+
+  let preflight = initialPreflight;
+
+  if (!initialPreflight.git.isRepo) {
+    writeLines(stdout, ["- Git bootstrap: running `git init --quiet`"]);
+
+    try {
+      await initializeGitRepository({
+        cwd: initialPreflight.cwd,
+        context: initialPreflight.git
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? ` ${error.message}` : "";
+      const message = `Git bootstrap failed, so init stopped before writing .agent-badge.${detail}`;
+
+      writeLines(stdout, [`- Blocked: ${message}`]);
+      throw new Error(message);
+    }
+
+    preflight = await runInitPreflight(preflightOptions);
+
+    if (!preflight.git.isRepo) {
+      const message =
+        "Git bootstrap did not produce a repository, so init stopped before writing .agent-badge.";
+
+      writeLines(stdout, [`- Blocked: ${message}`]);
+      throw new Error(message);
+    }
+
+    writeLines(stdout, [
+      "- Git bootstrap: repository initialized and preflight refreshed"
+    ]);
+  } else {
+    writeLines(stdout, ["- Git bootstrap: not needed"]);
   }
 
   const scaffold = await applyAgentBadgeScaffold({

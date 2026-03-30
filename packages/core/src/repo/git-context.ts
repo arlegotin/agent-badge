@@ -15,6 +15,11 @@ export interface GetGitContextOptions {
   readonly allowGitInit?: boolean;
 }
 
+export interface InitializeGitRepositoryOptions {
+  readonly cwd: string;
+  readonly context: GitContext;
+}
+
 async function execGit(
   cwd: string,
   args: string[]
@@ -91,4 +96,14 @@ export async function getGitContext(
     hasOrigin: false,
     blockingMessage: null
   };
+}
+
+export async function initializeGitRepository(
+  options: InitializeGitRepositoryOptions
+): Promise<void> {
+  if (options.context.isRepo || !options.context.canInitialize) {
+    return;
+  }
+
+  await execGit(options.cwd, ["init", "--quiet"]);
 }
