@@ -100,6 +100,7 @@ describe("runInitPreflight", () => {
         available: false,
         homeLabel: "~/.claude"
       });
+      expect(JSON.stringify(preflight.providers)).not.toContain(providers.root);
       expect(preflight.existingScaffold.exists).toBe(false);
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
