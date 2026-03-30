@@ -1,0 +1,2 @@
+{"type":"system","sessionId":"session-secondary","timestamp":"2026-03-07T10:00:00Z","cwd":"/repo/main","gitBranch":"feature/scan","gitOriginUrl":"https://github.com/openai/agent-badge.git"}
+{"type":"assistant","sessionId":"session-secondary","timestamp":"2026-03-07T10:01:00Z","cwd":"/repo/main","gitBranch":"feature/scan","gitOriginUrl":"https://github.com/openai/agent-badge.git","message":{"role":"assistant","id":"assistant-secondary","model":"claude-3-7-sonnet","usage":{"input_tokens":3,"output_tokens":8,"cache_creation_input_tokens":0,"cache_read_input_tokens":2}}}

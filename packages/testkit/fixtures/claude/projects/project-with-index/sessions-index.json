@@ -1,0 +1,9 @@
+{
+  "ignoredByAdapter": true,
+  "sessions": [
+    {
+      "sessionId": "session-tertiary",
+      "summary": "This file exists only to prove the adapter ignores it."
+    }
+  ]
+}
