@@ -1,7 +1,7 @@
 export const AGENT_BADGE_GIST_FILE = "agent-badge.json";
 
 const BADGE_ENDPOINT_URL = "https://img.shields.io/endpoint";
-const BADGE_CACHE_QUERY = "cacheSeconds=3600";
+const BADGE_CACHE_QUERY = "cacheSeconds=300";
 
 export interface StableBadgeUrlInput {
   readonly ownerLogin: string;

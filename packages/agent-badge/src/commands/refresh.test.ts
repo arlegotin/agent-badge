@@ -211,7 +211,7 @@ describe("runRefreshCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_123",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({
@@ -311,7 +311,7 @@ describe("runRefreshCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_123",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({
@@ -388,7 +388,7 @@ describe("runRefreshCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_789",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({
@@ -452,7 +452,7 @@ describe("runRefreshCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_456",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_456%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_456%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({
@@ -531,7 +531,7 @@ describe("runRefreshCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_strict",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_strict%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_strict%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({

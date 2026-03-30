@@ -284,7 +284,7 @@ describe("runPublishCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_publish",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({
@@ -375,7 +375,7 @@ describe("runPublishCommand", () => {
         ...defaultAgentBadgeConfig.publish,
         gistId: "gist_publish",
         badgeUrl:
-          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       }
     };
     const fixture = await createFixture({

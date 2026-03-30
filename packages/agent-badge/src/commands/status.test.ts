@@ -117,7 +117,7 @@ describe("runStatusCommand", () => {
           ...defaultAgentBadgeConfig.publish,
           gistId: "gist_789",
           badgeUrl:
-            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=300"
         }
       },
       state: configuredState()
@@ -202,7 +202,7 @@ describe("runStatusCommand", () => {
           ...defaultAgentBadgeConfig.publish,
           gistId: "gist_minimal",
           badgeUrl:
-            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_minimal%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_minimal%2Fraw%2Fagent-badge.json&cacheSeconds=300"
         },
         privacy: {
           ...defaultAgentBadgeConfig.privacy,

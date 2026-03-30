@@ -14,7 +14,7 @@ describe("buildStableBadgeUrl", () => {
         gistId: "gist_123"
       })
     ).toBe(
-      "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
     );
   });
 });
@@ -35,7 +35,7 @@ describe("applyPublishTargetResult", () => {
           status: "connected",
           gistId: "gist_123",
           badgeUrl:
-            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
         }
       })
     ).toEqual({
@@ -45,7 +45,7 @@ describe("applyPublishTargetResult", () => {
           ...defaultAgentBadgeConfig.publish,
           gistId: "gist_123",
           badgeUrl:
-            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
         }
       },
       state: {
@@ -69,7 +69,7 @@ describe("applyPublishTargetResult", () => {
             ...defaultAgentBadgeConfig.publish,
             gistId: "stale_gist",
             badgeUrl:
-              "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fstale_gist%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+              "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fstale_gist%2Fraw%2Fagent-badge.json&cacheSeconds=300"
           }
         },
         state: {
@@ -132,7 +132,7 @@ describe("ensurePublishTarget", () => {
       status: "connected",
       gistId: "gist_connected",
       badgeUrl:
-        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300"
     });
     expect(createPublicGist).not.toHaveBeenCalled();
   });
@@ -170,7 +170,7 @@ describe("ensurePublishTarget", () => {
       status: "reused",
       gistId: "gist_existing",
       badgeUrl:
-        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=300"
     });
     expect(createPublicGist).not.toHaveBeenCalled();
   });
@@ -201,7 +201,7 @@ describe("ensurePublishTarget", () => {
       status: "created",
       gistId: "gist_created",
       badgeUrl:
-        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_created%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_created%2Fraw%2Fagent-badge.json&cacheSeconds=300"
     });
     expect(createPublicGist).toHaveBeenCalledWith({
       description: "agent-badge publish target",
