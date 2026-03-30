@@ -51,10 +51,10 @@ Plans:
   2. The runtime detects which providers are locally available and enables only those by default.
   3. Codex data under `~/.codex` can be parsed into deduped normalized session summaries.
   4. Claude data under `~/.claude` can be parsed into the same normalized session model.
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
-- [ ] 02-01: Implement repo fingerprint, remote normalization, and alias-aware identity services
+- [x] 02-01: Implement repo fingerprint, remote normalization, and alias-aware identity services
 - [ ] 02-02: Build the Codex adapter with fixture-backed normalized session output
 - [ ] 02-03: Build the Claude adapter and provider-detection defaults on top of the shared session schema
 
@@ -153,7 +153,7 @@ Phases execute in numeric order: 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Workspace and Init Foundation | 5/5 | Complete | 2026-03-30 |
-| 2. Repo Identity and Provider Parsing | 0/3 | Not started | - |
+| 2. Repo Identity and Provider Parsing | 1/3 | In Progress | - |
 | 3. Historical Backfill and Attribution Review | 0/3 | Not started | - |
 | 4. Publish and README Badge Integration | 0/3 | Not started | - |
 | 5. Incremental Refresh and Operator Commands | 0/3 | Not started | - |
