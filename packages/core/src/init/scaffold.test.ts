@@ -232,6 +232,10 @@ describe("applyAgentBadgeScaffold", () => {
       expect(result.warnings).toHaveLength(2);
       expect(config.badge.label).toBe("Custom Label");
       expect(config.providers.claude.enabled).toBe(false);
+      expect(config.repo.aliases).toEqual({
+        remotes: [],
+        slugs: []
+      });
       expect(state.publish.lastPublishedHash).toBe("abc123");
       expect(state.init.initialized).toBe(true);
     } finally {

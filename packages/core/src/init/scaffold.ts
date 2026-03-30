@@ -66,6 +66,12 @@ function readPositiveInteger(value: unknown): number | undefined {
     : undefined;
 }
 
+function readStringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string")
+    ? [...value]
+    : undefined;
+}
+
 function readEnumValue<T extends string>(
   value: unknown,
   allowed: readonly T[]
@@ -138,6 +144,8 @@ function reconcileConfig(
     }
 
     const providers = readJsonObject(rawConfig.providers);
+    const repo = readJsonObject(rawConfig.repo);
+    const aliases = readJsonObject(repo.aliases);
     const badge = readJsonObject(rawConfig.badge);
     const publish = readJsonObject(rawConfig.publish);
     const refresh = readJsonObject(rawConfig.refresh);
@@ -157,6 +165,15 @@ function reconcileConfig(
             enabled:
               readBoolean(readJsonObject(providers.claude).enabled) ??
               defaults.providers.claude.enabled
+          }
+        },
+        repo: {
+          aliases: {
+            remotes:
+              readStringArray(aliases.remotes) ??
+              defaults.repo.aliases.remotes,
+            slugs:
+              readStringArray(aliases.slugs) ?? defaults.repo.aliases.slugs
           }
         },
         badge: {
