@@ -112,6 +112,20 @@ async function readReadmeContent(repoRoot: string): Promise<string> {
   return readFile(join(repoRoot, "README.md"), "utf8");
 }
 
+function createGistMetadata(id: string): {
+  id: string;
+  ownerLogin: string;
+  public: true;
+  files: string[];
+} {
+  return {
+    id,
+    ownerLogin: "octocat",
+    public: true,
+    files: ["agent-badge.json"]
+  };
+}
+
 async function getExpectedRuntimeDependencySpecifier(): Promise<string> {
   const runtimePackageJson = await readJsonObject(
     new URL("../../package.json", import.meta.url)
@@ -143,6 +157,17 @@ describe("runInitCommand", () => {
     const secondOutput = createOutputCapture();
     const packageJsonPath = join(repo.root, "package.json");
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
+    const deferredGistClient = {
+      getGist: async () => {
+        throw new Error("get should not run");
+      },
+      createPublicGist: async () => {
+        throw new Error("simulated gist create failure");
+      },
+      updateGistFile: async () => {
+        throw new Error("update should not run");
+      }
+    };
 
     try {
       const expectedRuntimeDependencySpecifier =
@@ -156,7 +181,8 @@ describe("runInitCommand", () => {
         env: {
           GITHUB_TOKEN: "test-token"
         },
-        stdout: output.writer
+        stdout: output.writer,
+        gistClient: deferredGistClient
       });
 
       expect(result.preflight.git.isRepo).toBe(true);
@@ -213,7 +239,8 @@ describe("runInitCommand", () => {
         env: {
           GITHUB_TOKEN: "test-token"
         },
-        stdout: secondOutput.writer
+        stdout: secondOutput.writer,
+        gistClient: deferredGistClient
       });
 
       expect(secondRun.runtimeWiring.created).toEqual([]);
@@ -256,12 +283,7 @@ describe("runInitCommand", () => {
     const output = createOutputCapture();
 
     try {
-      const getGist = async () => ({
-        id: "gist_connected",
-        ownerLogin: "octocat",
-        public: true,
-        files: ["agent-badge.json"]
-      });
+      const getGist = async () => createGistMetadata("gist_connected");
       const createPublicGist = async () => {
         throw new Error("create should not run");
       };
@@ -274,7 +296,7 @@ describe("runInitCommand", () => {
         gistClient: {
           getGist,
           createPublicGist,
-          updateGistFile: async () => undefined
+          updateGistFile: async () => createGistMetadata("gist_connected")
         }
       });
 
@@ -324,23 +346,13 @@ describe("runInitCommand", () => {
         },
         stdout: output.writer,
         gistClient: {
-          getGist: async () => ({
-            id: "unused",
-            ownerLogin: "octocat",
-            public: true,
-            files: ["agent-badge.json"]
-          }),
+          getGist: async () => createGistMetadata("unused"),
           createPublicGist: async () => {
             createCalls += 1;
 
-            return {
-              id: "gist_created",
-              ownerLogin: "octocat",
-              public: true,
-              files: ["agent-badge.json"]
-            };
+            return createGistMetadata("gist_created");
           },
-          updateGistFile: async () => undefined
+          updateGistFile: async () => createGistMetadata("gist_created")
         }
       });
 
@@ -418,18 +430,13 @@ describe("runInitCommand", () => {
           getGist: async () => {
             getCalls += 1;
 
-            return {
-              id: "gist_existing",
-              ownerLogin: "octocat",
-              public: true,
-              files: ["agent-badge.json"]
-            };
+            return createGistMetadata("gist_existing");
           },
           createPublicGist: async () => {
             createCalls += 1;
             throw new Error("create should not run");
           },
-          updateGistFile: async () => undefined
+          updateGistFile: async () => createGistMetadata("gist_existing")
         }
       });
 
@@ -475,16 +482,11 @@ describe("runInitCommand", () => {
         gistId: "gist_snippet",
         stdout: output.writer,
         gistClient: {
-          getGist: async () => ({
-            id: "gist_snippet",
-            ownerLogin: "octocat",
-            public: true,
-            files: ["agent-badge.json"]
-          }),
+          getGist: async () => createGistMetadata("gist_snippet"),
           createPublicGist: async () => {
             throw new Error("create should not run");
           },
-          updateGistFile: async () => undefined
+          updateGistFile: async () => createGistMetadata("gist_snippet")
         }
       });
 
@@ -509,16 +511,11 @@ describe("runInitCommand", () => {
 
     try {
       const gistClient = {
-        getGist: async () => ({
-          id: "gist_idempotent",
-          ownerLogin: "octocat",
-          public: true,
-          files: ["agent-badge.json"]
-        }),
+        getGist: async () => createGistMetadata("gist_idempotent"),
         createPublicGist: async () => {
           throw new Error("create should not run");
         },
-        updateGistFile: async () => undefined
+        updateGistFile: async () => createGistMetadata("gist_idempotent")
       };
 
       await runInitCommand({

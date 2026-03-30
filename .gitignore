@@ -3,4 +3,5 @@ dist/
 coverage/
 .agent-badge/cache/
 .agent-badge/logs/
+.env
 *.tsbuildinfo
