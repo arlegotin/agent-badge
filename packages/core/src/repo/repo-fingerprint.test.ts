@@ -3,7 +3,6 @@ import { realpath } from "node:fs/promises";
 import { basename } from "node:path";
 import { promisify } from "node:util";
 
-import { createGitRepoFixture } from "@agent-badge/testkit";
 import { describe, expect, it } from "vitest";
 
 import { defaultAgentBadgeConfig } from "../config/config-schema.js";
@@ -13,6 +12,20 @@ import {
 } from "./repo-fingerprint.js";
 
 const execFileAsync = promisify(execFile);
+const testkitModuleName = "@agent-badge/testkit";
+
+interface GitRepoFixture {
+  readonly root: string;
+  cleanup(): Promise<void>;
+}
+
+async function createGitRepoFixture(): Promise<GitRepoFixture> {
+  const testkitModule = (await import(testkitModuleName)) as {
+    createGitRepoFixture(): Promise<GitRepoFixture>;
+  };
+
+  return testkitModule.createGitRepoFixture();
+}
 
 describe("normalizeGitRemoteUrl", () => {
   it("normalizes git@github.com:Owner/Repo.git", () => {

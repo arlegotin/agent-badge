@@ -1,4 +1,7 @@
 export {
+  createCodexFixtureHome
+} from "./codex-fixtures.js";
+export {
   createProviderFixture,
   type CreateProviderFixtureOptions,
   type ProviderFixture,
