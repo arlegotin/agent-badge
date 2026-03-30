@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01: Create workspace/package skeleton, shared TypeScript config, test harness, and release tooling baseline
-- [ ] 01-02: Implement shared config/state/log schemas and repo-local runtime invocation strategy
+- [x] 01-02: Implement shared config/state/log schemas and repo-local runtime invocation strategy
 - [ ] 01-03: Build init preflight, git bootstrap handling, and `.agent-badge` scaffolding flow
 
 ### Phase 2: Repo Identity and Provider Parsing
@@ -150,7 +150,7 @@ Phases execute in numeric order: 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Workspace and Init Foundation | 1/3 | In Progress |   |
+| 1. Workspace and Init Foundation | 2/3 | In Progress |   |
 | 2. Repo Identity and Provider Parsing | 0/3 | Not started | - |
 | 3. Historical Backfill and Attribution Review | 0/3 | Not started | - |
 | 4. Publish and README Badge Integration | 0/3 | Not started | - |
