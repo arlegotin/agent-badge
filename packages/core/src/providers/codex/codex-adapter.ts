@@ -98,6 +98,10 @@ async function loadCodexHistoryFallback(
       gitBranch: null,
       observedRemoteUrl: null,
       observedRemoteUrlNormalized: null,
+      attributionHints: {
+        cwdRealPath: null,
+        transcriptProjectKey: null
+      },
       tokenUsage: {
         total: 0,
         input: null,
@@ -155,6 +159,10 @@ export async function scanCodexSessions(
         gitBranch: row.gitBranch,
         observedRemoteUrl: row.gitOriginUrl,
         observedRemoteUrlNormalized: normalizedRemote?.normalizedUrl ?? null,
+        attributionHints: {
+          cwdRealPath: null,
+          transcriptProjectKey: null
+        },
         tokenUsage: {
           total: Math.max(row.tokensUsed ?? 0, 0),
           input: null,

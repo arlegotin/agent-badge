@@ -1,5 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 
 export interface ClaudeUsage {
   readonly inputTokens: number | null;
@@ -24,6 +24,7 @@ export interface ClaudeProjectJsonlRow {
 export interface ClaudeProjectJsonlSession {
   readonly sessionId: string;
   readonly filePath: string;
+  readonly projectKey: string;
   readonly rows: ClaudeProjectJsonlRow[];
 }
 
@@ -128,12 +129,17 @@ function parseClaudeJsonlLine(
 export async function readClaudeProjectJsonlSessions(
   claudeRoot: string
 ): Promise<ClaudeProjectJsonlSession[]> {
-  const jsonlFiles = await findJsonlFiles(join(claudeRoot, "projects"));
+  const projectsRoot = join(claudeRoot, "projects");
+  const jsonlFiles = await findJsonlFiles(projectsRoot);
 
   return Promise.all(
     jsonlFiles.map(async (filePath) => {
       const content = await readFile(filePath, "utf8");
       const fallbackSessionId = basename(filePath, ".jsonl");
+      const relativePath = relative(projectsRoot, filePath);
+      const pathSegments = relativePath
+        .split(sep)
+        .filter((segment) => segment.length > 0);
       const rows = content
         .split(/\r?\n/)
         .filter((line) => line.trim().length > 0)
@@ -143,6 +149,7 @@ export async function readClaudeProjectJsonlSessions(
       return {
         sessionId: rows[0]?.sessionId ?? fallbackSessionId,
         filePath,
+        projectKey: pathSegments[0] ?? fallbackSessionId,
         rows
       };
     })

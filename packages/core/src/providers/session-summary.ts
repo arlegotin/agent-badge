@@ -10,6 +10,12 @@ export const normalizedSessionSummarySchema = z
     gitBranch: z.string().min(1).nullable(),
     observedRemoteUrl: z.string().min(1).nullable(),
     observedRemoteUrlNormalized: z.string().min(1).nullable(),
+    attributionHints: z
+      .object({
+        cwdRealPath: z.string().min(1).nullable(),
+        transcriptProjectKey: z.string().min(1).nullable()
+      })
+      .strict(),
     tokenUsage: z
       .object({
         total: z.number().int().nonnegative(),

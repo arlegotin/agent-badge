@@ -120,6 +120,10 @@ export async function scanClaudeSessions(
       gitBranch: latestRowValue(session.rows, (row) => row.gitBranch),
       observedRemoteUrl,
       observedRemoteUrlNormalized,
+      attributionHints: {
+        cwdRealPath: null,
+        transcriptProjectKey: session.projectKey
+      },
       tokenUsage: {
         // Maps Claude `input_tokens`, `output_tokens`,
         // `cache_creation_input_tokens`, and `cache_read_input_tokens`.
