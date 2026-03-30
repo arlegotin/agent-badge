@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-30T16:02:29.734Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-30T16:16:39.264Z"
 last_activity: 2026-03-30
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 ## Current Position
 
 Phase: 04 (publish-and-readme-badge-integration) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-30
 
@@ -57,6 +57,7 @@ Progress: [██████████] 11/11 plans (100%)
 | Phase 03 P02 | 5 min | 3 tasks | 6 files |
 | Phase 03 P03 | 9 min | 3 tasks | 8 files |
 | Phase 04 P01 | 13 min | 3 tasks | 16 files |
+| Phase 04 P02 | 6 min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Publish target setup writes deferred explicitly when no safe gist target is available instead of leaving stale config or broken state.
 - [Phase 04]: Stable badge URLs are derived from owner login, gist id, and agent-badge.json instead of revision-specific Gist API raw_url values.
 - [Phase 04]: Init marks publish state as pending only after target selection succeeds; remote JSON publishing remains a later phase.
+- [Phase 04]: Core publish hashes the exact uploaded endpoint JSON so Phase 5 can compare real remote payload content.
+- [Phase 04]: The publish command reruns full backfill plus attribution internally and only persists publish state, leaving scan checkpoint updates to the scan flow.
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T16:02:29.732Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-30T16:16:39.262Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
