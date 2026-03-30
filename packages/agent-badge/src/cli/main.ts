@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { Command } from "commander";
 
 import { runConfigCommand } from "../commands/config.js";
@@ -136,4 +138,23 @@ export function buildProgram(): Command {
 
 export async function run(argv: string[] = process.argv): Promise<void> {
   await buildProgram().parseAsync(argv);
+}
+
+function isDirectExecution(argv: readonly string[] = process.argv): boolean {
+  const entryPath = argv[1];
+
+  if (typeof entryPath !== "string" || entryPath.length === 0) {
+    return false;
+  }
+
+  return fileURLToPath(import.meta.url) === entryPath;
+}
+
+if (isDirectExecution()) {
+  void run().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+
+    console.error(message);
+    process.exitCode = 1;
+  });
 }

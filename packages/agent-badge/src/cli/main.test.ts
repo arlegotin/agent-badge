@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildProgram } from "./main.js";
+import { buildProgram, run } from "./main.js";
 
 function findCommand(name: string) {
   return buildProgram().commands.find((command) => command.name() === name);
@@ -53,5 +53,11 @@ describe("buildProgram", () => {
 
     expect(subcommandNames).toContain("get");
     expect(subcommandNames).toContain("set");
+  });
+
+  it("can execute the publish command through the exported run entrypoint", async () => {
+    await expect(run(["node", "agent-badge", "publish"])).rejects.toThrow(
+      ".agent-badge/config.json"
+    );
   });
 });
