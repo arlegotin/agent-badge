@@ -39,7 +39,7 @@ Plans:
 - [x] 01-02: Implement shared config/state/log schemas and repo-local runtime invocation strategy
 - [x] 01-03: Build init preflight, git bootstrap handling, and `.agent-badge` scaffolding flow
 - [x] 01-04: Close the non-git bootstrap verification gap by creating git before scaffold writes
-- [ ] 01-05: Close the repo-local runtime wiring verification gap in init
+- [x] 01-05: Close the repo-local runtime wiring verification gap in init
 
 ### Phase 2: Repo Identity and Provider Parsing
 **Goal**: Build the normalized repo and provider data model that all attribution logic depends on.
@@ -152,7 +152,7 @@ Phases execute in numeric order: 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Workspace and Init Foundation | 4/5 | In Progress | - |
+| 1. Workspace and Init Foundation | 5/5 | Complete | 2026-03-30 |
 | 2. Repo Identity and Provider Parsing | 0/3 | Not started | - |
 | 3. Historical Backfill and Attribution Review | 0/3 | Not started | - |
 | 4. Publish and README Badge Integration | 0/3 | Not started | - |

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: "01"
 current_phase_name: workspace-and-init-foundation
-current_plan: 4
-status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-03-30T09:44:51Z"
-last_activity: 2026-03-30 -- completed 01-04 gap-closure plan; 01-05 remains
+current_plan: 5
+status: verifying
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-03-30T10:03:01Z"
+last_activity: 2026-03-30 -- completed 01-05 gap-closure plan; phase ready for re-verification
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
-  percent: 80
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -29,29 +29,29 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 ## Current Position
 
 Phase: 01 (workspace-and-init-foundation) — EXECUTING
-Plan: 4 of 5
-Status: Gap-closure plan 01-04 complete — 01-05 still pending
-Last activity: 2026-03-30 -- completed 01-04 gap-closure plan; 01-05 remains
+Plan: 5 of 5
+Status: Gap-closure plan 01-05 complete — ready for re-verification
+Last activity: 2026-03-30 -- completed 01-05 gap-closure plan; phase ready for re-verification
 
-Progress: [████████░░] 80%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: 4.0 min
-- Total execution time: 16 min
+- Total plans completed: 5
+- Average duration: 5 min
+- Total execution time: 25 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 4 | 16 min | 4.0 min |
+| 01 | 5 | 25 min | 5 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-04 (3 min), 01-03 (6 min), 01-02 (6 min), 01-01 (1 min)
+- Last 5 plans: 01-05 (9 min), 01-04 (3 min), 01-03 (6 min), 01-02 (6 min), 01-01 (1 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -72,6 +72,8 @@ Recent decisions affecting current work:
 - [Phase 01-workspace-and-init-foundation]: Route `create-agent-badge` through the runtime init command so both entrypoints share the same scaffold implementation.
 - [Phase 01]: Keep `getGitContext()` read-only and perform git bootstrap through a separate shared helper.
 - [Phase 01]: Rerun init preflight after git bootstrap so scaffold and callers consume actual repository state.
+- [Phase 01]: Derive target agent-badge dependency specs from packages/agent-badge/package.json and fall back to latest when the runtime version is not publishable.
+- [Phase 01]: Keep package scripts local-bin based and let the managed pre-push hook invoke `agent-badge:refresh` through the detected package manager.
 
 ### Pending Todos
 
@@ -79,13 +81,13 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 01 still has one open execution gap: init does not yet wire repo-local runtime scripts and hooks. Plan `01-05` closes BOOT-03.
+- Phase 01 gap-closure work is complete, but the phase still needs re-verification to clear the existing `01-VERIFICATION.md` report.
 - Exact Codex local artifact details need fixture-backed validation during Phase 2.
 - Claude local backfill behavior needs implementation-time validation beyond the documented status-line schema.
 - npm package-name availability for `agent-badge` must be checked at publish time.
 
 ## Session Continuity
 
-Last session: 2026-03-30T09:44:51Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-03-30T10:03:01Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
