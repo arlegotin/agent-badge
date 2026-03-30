@@ -1,5 +1,7 @@
 import { Command } from "commander";
 
+import { runInitCommand } from "../commands/init.js";
+
 export function buildProgram(): Command {
   const program = new Command();
 
@@ -10,8 +12,8 @@ export function buildProgram(): Command {
   program
     .command("init")
     .description("Initialize agent-badge in the current repository.")
-    .action(() => {
-      process.stdout.write("agent-badge init is not implemented yet.\n");
+    .action(async () => {
+      await runInitCommand();
     });
 
   return program;

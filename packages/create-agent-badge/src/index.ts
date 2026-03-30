@@ -1,11 +1,25 @@
 import { pathToFileURL } from "node:url";
 
-export async function main(): Promise<string> {
-  const message = "create-agent-badge is not implemented yet.";
-  process.stdout.write(`${message}\n`);
-  return message;
+import {
+  runInitCommand,
+  type InitCommandResult,
+  type RunInitCommandOptions
+} from "agent-badge";
+
+export interface RunCreateAgentBadgeOptions
+  extends Omit<RunInitCommandOptions, "cwd"> {}
+
+export async function runCreateAgentBadge(
+  options: RunCreateAgentBadgeOptions = {}
+): Promise<InitCommandResult> {
+  return runInitCommand({
+    ...options,
+    cwd: process.cwd()
+  });
 }
 
+export const main = runCreateAgentBadge;
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  void main();
+  void runCreateAgentBadge();
 }
