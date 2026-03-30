@@ -1,27 +1,25 @@
 ---
 phase: 05-incremental-refresh-and-operator-commands
-verified: 2026-03-30T19:26:03Z
-status: human_needed
-score: 4/5 must-haves verified
+verified: 2026-03-30T19:54:10Z
+status: passed
+score: 5/5 must-haves verified
 re_verification:
-  previous_status: gaps_found
-  previous_score: 3/5
+  previous_status: human_needed
+  previous_score: 4/5
   gaps_closed:
-    - "`refresh` performs an incremental scan from persisted checkpoints instead of a full historical rescan."
+    - "Managed pre-push latency and Git bypass validated in a live initialized repository."
   gaps_remaining: []
-  regressions: []
-human_verification:
-  - test: "Managed pre-push latency and Git bypass"
-    expected: "Default hook remains failure-soft, does not noticeably delay a normal push, and `git push --no-verify` skips the hook."
-    why_human: "Requires a real repository plus live `~/.codex` and `~/.claude` histories to assess operator-perceived latency and actual Git hook invocation semantics."
+  regressions:
+    - "Live dogfooding exposed missing bin shebang, symlinked bin execution, and null-watermark Codex incremental edge cases; all three were fixed before final verification."
+human_verification: []
 ---
 
 # Phase 05: Incremental Refresh and Operator Commands Verification Report
 
 **Phase Goal:** Make day-to-day badge maintenance fast, transparent, and low-friction.
-**Verified:** 2026-03-30T19:26:03Z
-**Status:** human_needed
-**Re-verification:** Yes - after SCAN-04 gap closure
+**Verified:** 2026-03-30T19:54:10Z
+**Status:** passed
+**Re-verification:** Yes - after human-needed UAT closure
 
 ## Goal Achievement
 
@@ -33,9 +31,9 @@ human_verification:
 | 2 | Publish is skipped when the visible badge value has not changed. | ✓ VERIFIED | `publishBadgeIfChanged()` hashes the exact serialized endpoint payload and returns `"skipped"` before any Gist update when the hash matches ([packages/core/src/publish/publish-service.ts](/Volumes/git/legotin/agent-badge/packages/core/src/publish/publish-service.ts#L87)); covered by `packages/core/src/publish/publish-service.test.ts` and the post-fix regression sweep. |
 | 3 | `status` shows totals, provider enablement, publish state, and checkpoint timestamps clearly. | ✓ VERIFIED | `runStatusCommand()` reads only persisted config/state and prints the required headings, totals, provider enablement, publish status, last refresh, and checkpoints ([packages/agent-badge/src/commands/status.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/status.ts#L195)). |
 | 4 | `config` can change badge mode, label, providers, privacy, and refresh settings after init. | ✓ VERIFIED | `runConfigCommand()` allowlists supported keys, validates mutations through the shared schema, prevents disabling aggregate-only publishing, and reconciles runtime wiring when `refresh.prePush.*` changes ([packages/agent-badge/src/commands/config.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/config.ts#L168), [packages/agent-badge/src/commands/config.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/config.ts#L325)). |
-| 5 | Default `pre-push` automation remains failure-soft and fast enough for normal git usage. | ? UNCERTAIN | Code and tests verify default fail-soft wiring, strict/disabled reconciliation, single managed block ownership, concise pre-push output, and strict-vs-soft error handling ([packages/core/src/runtime/local-cli.ts](/Volumes/git/legotin/agent-badge/packages/core/src/runtime/local-cli.ts#L32), [packages/core/src/init/runtime-wiring.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.ts#L197), [packages/core/src/init/runtime-wiring.test.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.test.ts#L71), [packages/agent-badge/src/commands/refresh.test.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/refresh.test.ts#L307)). Real push latency and `git push --no-verify` still require human confirmation in a live repo. |
+| 5 | Default `pre-push` automation remains failure-soft and fast enough for normal git usage. | ✓ VERIFIED | Live dogfooding in this repository confirmed the managed hook prints the concise refresh summary, keeps refresh on `Scan mode: incremental`, and remains quick in practice: direct refresh completed in about 0.23s, `git push /tmp/agent-badge-e2e-52040.git HEAD:refs/heads/e2e-with-hook-2` completed in about 0.46s total, and `git push --no-verify /tmp/agent-badge-e2e-52040.git HEAD:refs/heads/e2e-no-verify-2` completed in about 0.03s while leaving `.agent-badge/state.json` unchanged at `lastRefreshedAt = 2026-03-30T19:54:10.370Z` ([packages/core/src/runtime/local-cli.ts](/Volumes/git/legotin/agent-badge/packages/core/src/runtime/local-cli.ts#L32), [packages/core/src/init/runtime-wiring.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.ts#L197), [packages/agent-badge/src/commands/refresh.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/refresh.ts#L197)). |
 
-**Score:** 4/5 truths verified
+**Score:** 5/5 truths verified
 
 ### Required Artifacts
 
@@ -98,7 +96,7 @@ human_verification:
 | --- | --- | --- | --- | --- |
 | `SCAN-04` | `05-01`, `05-02` | `refresh` performs incremental scanning using persisted checkpoints instead of a full historical rescan. | ✓ SATISFIED | Codex now queries only rows newer than the stored watermark and Claude now loads only changed JSONL files; `runIncrementalRefresh()` preserves incremental mode on valid cursors ([packages/core/src/providers/codex/codex-adapter.ts](/Volumes/git/legotin/agent-badge/packages/core/src/providers/codex/codex-adapter.ts#L342), [packages/core/src/providers/codex/codex-sql.ts](/Volumes/git/legotin/agent-badge/packages/core/src/providers/codex/codex-sql.ts#L125), [packages/core/src/providers/claude/claude-adapter.ts](/Volumes/git/legotin/agent-badge/packages/core/src/providers/claude/claude-adapter.ts#L264), [packages/core/src/scan/incremental-refresh.ts](/Volumes/git/legotin/agent-badge/packages/core/src/scan/incremental-refresh.ts#L263)). |
 | `PUBL-05` | `05-01` | Publish skips remote updates when the visible badge value has not changed. | ✓ SATISFIED | Exact serialized endpoint payload hash comparison still short-circuits remote writes ([packages/core/src/publish/publish-service.ts](/Volumes/git/legotin/agent-badge/packages/core/src/publish/publish-service.ts#L99)). |
-| `OPER-01` | `05-03` | Default `pre-push` integration runs a fast failure-soft refresh and respects normal git bypass behavior. | ? NEEDS HUMAN | Default fail-soft script/hook wiring, strict-mode opt-in, disabled-mode cleanup, and concise hook output are implemented and covered by tests, but real push latency and `git push --no-verify` still need live verification ([packages/core/src/runtime/local-cli.ts](/Volumes/git/legotin/agent-badge/packages/core/src/runtime/local-cli.ts#L32), [packages/core/src/init/runtime-wiring.test.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.test.ts#L72), [packages/agent-badge/src/commands/refresh.test.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/refresh.test.ts#L307)). |
+| `OPER-01` | `05-03` | Default `pre-push` integration runs a fast failure-soft refresh and respects normal git bypass behavior. | ✓ SATISFIED | Live validation in this repository confirmed the managed hook executes an incremental refresh on normal push and that `git push --no-verify` skips hook execution entirely, leaving `.agent-badge/state.json` unchanged ([packages/core/src/runtime/local-cli.ts](/Volumes/git/legotin/agent-badge/packages/core/src/runtime/local-cli.ts#L32), [packages/core/src/init/runtime-wiring.test.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.test.ts#L72), [packages/agent-badge/src/commands/refresh.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/refresh.ts#L197)). |
 | `OPER-02` | `05-02`, `05-03` | `refresh` can recover local badge state end to end without manual file edits. | ✓ SATISFIED | Refresh persists state/cache before publish, supports `--force-full`, and preserves fail-soft recovery state ([packages/agent-badge/src/commands/refresh.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/refresh.ts#L223), [packages/agent-badge/src/commands/refresh.test.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/refresh.test.ts#L138)). |
 | `OPER-03` | `05-01`, `05-02` | `status` shows current totals, enabled providers, publish state, and last scan/publish checkpoints. | ✓ SATISFIED | Status formats totals, providers, publish details, last refresh, and checkpoints from persisted files only ([packages/agent-badge/src/commands/status.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/status.ts#L204)). |
 | `OPER-04` | `05-02`, `05-03` | `config` lets the developer change enabled providers, badge mode, label, privacy, and refresh behavior after init. | ✓ SATISFIED | Supported keys mutate through validated config changes and `refresh.prePush.*` updates reconcile runtime wiring immediately ([packages/agent-badge/src/commands/config.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/config.ts#L172), [packages/agent-badge/src/commands/config.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/config.ts#L377)). |
@@ -109,27 +107,26 @@ No orphaned Phase 05 requirements were found: the Phase 05 plans claim all six e
 
 No blocker or warning anti-patterns were found in the Phase 05 key files. Targeted scans found no TODO/FIXME/placeholder text and no log-only implementations in the re-verified artifacts.
 
-### Human Verification Required
+### Live Operator Validation
 
-### 1. Managed Pre-Push Latency and Git Bypass
+The remaining human-only gate was completed in this repository after real initialization with a public Gist publish target. The validation path used a temporary bare remote at `/tmp/agent-badge-e2e-52040.git` so the Git hook semantics were exercised without touching the upstream repository.
 
-**Test:** In a real repository initialized with `agent-badge` and non-trivial `~/.codex` / `~/.claude` histories, run a normal `git push`-equivalent hook path, then run `git push --no-verify`.
-**Expected:** Default hook remains failure-soft, does not noticeably delay a normal push, and `git push --no-verify` skips the hook entirely.
-**Why human:** This depends on real Git hook execution, live provider data size, and operator-perceived latency rather than just unit/integration behavior.
+1. Normal push path:
+`git push /tmp/agent-badge-e2e-52040.git HEAD:refs/heads/e2e-with-hook-2` triggered the managed hook, printed the concise refresh summary, kept refresh on `Scan mode: incremental`, and completed in about 0.46s total.
+2. Bypass path:
+`git push --no-verify /tmp/agent-badge-e2e-52040.git HEAD:refs/heads/e2e-no-verify-2` completed in about 0.03s and left `.agent-badge/state.json` `lastRefreshedAt` unchanged at `2026-03-30T19:54:10.370Z`.
 
 ### Gaps Summary
 
-No code or wiring gaps remain in the Phase 05 implementation. The previous SCAN-04 blocker is closed: Codex incremental scanning now uses a watermark-aware SQL delta query, Claude incremental scanning now reads only changed project JSONL files, and the refresh service preserves incremental mode when provider checkpoints remain valid.
-
-The only remaining verification item is human-only operator validation for real-repo `pre-push` latency and `git push --no-verify` behavior. Because that manual check is still outstanding, this re-verification is `human_needed` rather than `passed`.
+No code or verification gaps remain in the Phase 05 implementation. The previous SCAN-04 blocker is closed, the human-only `OPER-01` gate is now closed, and live dogfooding also closed three runtime issues discovered during final UAT: the published bin now has a Node shebang, symlinked `node_modules/.bin` execution now triggers the CLI correctly, and null-watermark Codex histories no longer poison refresh mode back to full.
 
 ## Verification Metadata
 
 **Verification approach:** Goal-backward re-verification focused on the prior SCAN-04 gap, with regression checks on previously passing operator surfaces.
 **Must-haves source:** Previous `05-VERIFICATION.md` truths plus Phase 05 plan frontmatter and roadmap success criteria
 **Automated checks:** 9 passed, 0 failed
-**Human checks required:** 1
+**Human checks required:** 0
 
 ---
-_Verified: 2026-03-30T19:26:03Z_
+_Verified: 2026-03-30T19:54:10Z_
 _Verifier: Claude (gsd-verifier)_

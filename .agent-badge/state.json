@@ -7,12 +7,12 @@
   },
   "checkpoints": {
     "codex": {
-      "cursor": null,
-      "lastScannedAt": null
+      "cursor": "{\"kind\":\"codex-thread-watermark-v1\",\"watermark\":null,\"sessionIdsAtWatermark\":[]}",
+      "lastScannedAt": "2026-03-30T19:54:10.370Z"
     },
     "claude": {
-      "cursor": null,
-      "lastScannedAt": null
+      "cursor": "{\"kind\":\"claude-project-jsonl-watermark-v1\",\"watermarkMs\":1774862359292.3525,\"filesAtWatermark\":{\"-Volumes-git-legotin-agent-badge/ff1c6463-8cc1-44c9-a27e-396484f4fe88.jsonl\":85889}}",
+      "lastScannedAt": "2026-03-30T19:54:10.370Z"
     }
   },
   "publish": {
@@ -22,10 +22,15 @@
     "lastPublishedAt": "2026-03-30T19:43:11.454Z"
   },
   "refresh": {
-    "lastRefreshedAt": null,
-    "lastScanMode": null,
-    "lastPublishDecision": null,
-    "summary": null
+    "lastRefreshedAt": "2026-03-30T19:54:10.370Z",
+    "lastScanMode": "incremental",
+    "lastPublishDecision": "skipped",
+    "summary": {
+      "includedSessions": 2,
+      "includedTokens": 296530,
+      "ambiguousSessions": 0,
+      "excludedSessions": 549
+    }
   },
   "overrides": {
     "ambiguousSessions": {}
