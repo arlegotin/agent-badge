@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 import { buildProgram } from "./main.js";
@@ -7,6 +9,12 @@ function findCommand(name: string) {
 }
 
 describe("buildProgram", () => {
+  it("declares a node shebang for the published bin entry", async () => {
+    const source = await readFile(new URL("./main.ts", import.meta.url), "utf8");
+
+    expect(source.startsWith("#!/usr/bin/env node\n")).toBe(true);
+  });
+
   it("sets the CLI name", () => {
     const program = buildProgram();
 
