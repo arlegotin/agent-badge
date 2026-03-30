@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
@@ -141,14 +142,20 @@ export async function run(argv: string[] = process.argv): Promise<void> {
   await buildProgram().parseAsync(argv);
 }
 
-function isDirectExecution(argv: readonly string[] = process.argv): boolean {
+export function isDirectExecution(
+  argv: readonly string[] = process.argv
+): boolean {
   const entryPath = argv[1];
 
   if (typeof entryPath !== "string" || entryPath.length === 0) {
     return false;
   }
 
-  return fileURLToPath(import.meta.url) === entryPath;
+  try {
+    return fileURLToPath(import.meta.url) === realpathSync(entryPath);
+  } catch {
+    return false;
+  }
 }
 
 if (isDirectExecution()) {

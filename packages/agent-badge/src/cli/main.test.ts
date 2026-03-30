@@ -1,8 +1,11 @@
 import { readFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildProgram } from "./main.js";
+import { buildProgram, isDirectExecution } from "./main.js";
 
 function findCommand(name: string) {
   return buildProgram().commands.find((command) => command.name() === name);
@@ -13,6 +16,20 @@ describe("buildProgram", () => {
     const source = await readFile(new URL("./main.ts", import.meta.url), "utf8");
 
     expect(source.startsWith("#!/usr/bin/env node\n")).toBe(true);
+  });
+
+  it("treats a symlinked bin path as direct execution", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "agent-badge-cli-"));
+    const symlinkPath = join(tempRoot, "agent-badge");
+    const mainPath = new URL("./main.ts", import.meta.url);
+
+    try {
+      await symlink(mainPath, symlinkPath);
+
+      expect(isDirectExecution([process.execPath, symlinkPath])).toBe(true);
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true });
+    }
   });
 
   it("sets the CLI name", () => {
