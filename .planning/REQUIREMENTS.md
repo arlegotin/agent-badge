@@ -31,8 +31,8 @@
 
 ### Publishing
 
-- [ ] **PUBL-01**: Init can create a public Gist automatically when GitHub auth is available.
-- [ ] **PUBL-02**: If automatic Gist creation fails, developer can retry, connect an existing Gist, or continue in explicit unpublished mode.
+- [x] **PUBL-01**: Init can create a public Gist automatically when GitHub auth is available.
+- [x] **PUBL-02**: If automatic Gist creation fails, developer can retry, connect an existing Gist, or continue in explicit unpublished mode.
 - [ ] **PUBL-03**: `publish` writes aggregate-only Shields endpoint JSON with `schemaVersion`, `label`, `message`, `color`, and cache behavior fields.
 - [ ] **PUBL-04**: The README badge URL stays stable after init; later updates modify only the remote JSON.
 - [ ] **PUBL-05**: Publish skips remote updates when the visible badge value has not changed.
@@ -99,8 +99,8 @@
 | ATTR-05 | Phase 3 | Complete |
 | SCAN-05 | Phase 3 | Complete |
 | BOOT-05 | Phase 4 | Pending |
-| PUBL-01 | Phase 4 | Pending |
-| PUBL-02 | Phase 4 | Pending |
+| PUBL-01 | Phase 4 | Complete |
+| PUBL-02 | Phase 4 | Complete |
 | PUBL-03 | Phase 4 | Pending |
 | PUBL-04 | Phase 4 | Pending |
 | SCAN-04 | Phase 5 | Pending |

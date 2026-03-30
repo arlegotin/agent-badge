@@ -88,7 +88,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Implement Gist create/connect flows and publish-state bookkeeping
+- [x] 04-01: Implement Gist create/connect flows and publish-state bookkeeping
 - [ ] 04-02: Serialize badge totals into Shields endpoint JSON and publish aggregate-only payloads
 - [ ] 04-03: Insert the stable README badge once and handle no-README/degraded paths cleanly
 

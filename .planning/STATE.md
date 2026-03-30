@@ -2,17 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: "04"
-current_phase_name: publish-and-readme-badge-integration
-status: ready_to_plan
-stopped_at: Phase 03 complete; ready to plan Phase 4
-last_updated: "2026-03-30T14:09:37.793Z"
-last_activity: 2026-03-30 -- Phase 03 complete; ready to plan Phase 4
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-30T16:02:29.734Z"
+last_activity: 2026-03-30
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 14
+  completed_plans: 12
   percent: 100
 ---
 
@@ -27,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 
 ## Current Position
 
-Phase: 4 of 7 (publish and README badge integration)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-03-30 -- Phase 03 complete; ready to plan Phase 4
+Phase: 04 (publish-and-readme-badge-integration) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-03-30
 
 Progress: [██████████] 11/11 plans (100%)
 
@@ -58,6 +56,7 @@ Progress: [██████████] 11/11 plans (100%)
 *Updated after each plan completion*
 | Phase 03 P02 | 5 min | 3 tasks | 6 files |
 | Phase 03 P03 | 9 min | 3 tasks | 8 files |
+| Phase 04 P01 | 13 min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -78,6 +77,9 @@ Recent decisions affecting current work:
 - [Phase 03]: The scan report prints stable provider:providerSessionId keys plus evidence kinds and reasons, never raw cwd realpaths or transcript paths. — Operator-facing scan output must remain reviewable without leaking local filesystem evidence.
 - [Phase 03]: Completed-scan state updates only advance lastScannedAt for providers scanned successfully and preserve existing cursors unless a concrete cursor is supplied. — Phase 3 should not invent incremental cursor semantics or rewrite checkpoint data after partial failures.
 - [Phase 03]: Explicit include/exclude session keys are applied only when the current scan still marks that session ambiguous; invalid override requests warn without mutating state. — Manual override requests should be conservative and visible instead of silently changing persisted data.
+- [Phase 04]: Publish target setup writes deferred explicitly when no safe gist target is available instead of leaving stale config or broken state.
+- [Phase 04]: Stable badge URLs are derived from owner login, gist id, and agent-badge.json instead of revision-specific Gist API raw_url values.
+- [Phase 04]: Init marks publish state as pending only after target selection succeeds; remote JSON publishing remains a later phase.
 
 ### Pending Todos
 
@@ -90,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T13:59:35.186Z
-Stopped at: Phase 03 complete; ready to plan Phase 4
+Last session: 2026-03-30T16:02:29.732Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
