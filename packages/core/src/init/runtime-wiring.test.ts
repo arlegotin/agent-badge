@@ -16,6 +16,8 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import {
+  agentBadgeGitignoreEndMarker,
+  agentBadgeGitignoreStartMarker,
   agentBadgeHookEndMarker,
   agentBadgeHookStartMarker,
   applyRepoLocalRuntimeWiring
@@ -72,6 +74,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
   it("creates package.json wiring and a runnable first-run pre-push hook", async () => {
     const repo = await createGitRepoFixture();
     const packageJsonPath = join(repo.root, "package.json");
+    const gitignorePath = join(repo.root, ".gitignore");
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
@@ -88,12 +91,14 @@ describe("applyRepoLocalRuntimeWiring", () => {
           "package.json#devDependencies.agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
+          ".gitignore",
           ".git/hooks/pre-push"
         ])
       );
       expect(result.updated).toEqual([]);
       expect(result.warnings).toEqual([]);
       expect(existsSync(packageJsonPath)).toBe(true);
+      expect(existsSync(gitignorePath)).toBe(true);
       expect(existsSync(prePushHookPath)).toBe(true);
 
       const packageJson = JSON.parse(
@@ -109,9 +114,15 @@ describe("applyRepoLocalRuntimeWiring", () => {
       );
 
       const hookContent = await readFile(prePushHookPath, "utf8");
+      const gitignoreContent = await readFile(gitignorePath, "utf8");
       const hookStats = await stat(prePushHookPath);
 
       expect(hookContent.startsWith("#!/bin/sh\n")).toBe(true);
+      expect(gitignoreContent).toContain(agentBadgeGitignoreStartMarker);
+      expect(gitignoreContent).toContain(".agent-badge/state.json");
+      expect(gitignoreContent).toContain(".agent-badge/cache/");
+      expect(gitignoreContent).toContain(".agent-badge/logs/");
+      expect(gitignoreContent).toContain(agentBadgeGitignoreEndMarker);
       expect(hookContent).toContain(agentBadgeHookStartMarker);
       expect(hookContent).toContain(agentBadgeHookEndMarker);
       expect(hookContent).toContain("npm run --silent agent-badge:refresh || true");
@@ -147,10 +158,12 @@ describe("applyRepoLocalRuntimeWiring", () => {
           null,
           2
         ),
-        ".git/hooks/pre-push": "#!/bin/sh\n\necho custom-check\n"
+        ".git/hooks/pre-push": "#!/bin/sh\n\necho custom-check\n",
+        ".gitignore": "coverage/\n.agent-badge/cache/\n"
       }
     });
     const packageJsonPath = join(repo.root, "package.json");
+    const gitignorePath = join(repo.root, ".gitignore");
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
@@ -164,7 +177,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       });
 
       expect(firstRun.updated).toEqual(
-        expect.arrayContaining(["package.json", ".git/hooks/pre-push"])
+        expect.arrayContaining(["package.json", ".gitignore", ".git/hooks/pre-push"])
       );
 
       const secondRun = await applyRepoLocalRuntimeWiring({
@@ -182,6 +195,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
           "package.json",
+          ".gitignore",
           ".git/hooks/pre-push"
         ])
       );
@@ -192,6 +206,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       ) as Record<string, unknown>;
       const packageScripts = packageJson.scripts as Record<string, string>;
       const devDependencies = packageJson.devDependencies as Record<string, string>;
+      const gitignoreContent = await readFile(gitignorePath, "utf8");
       const hookContent = await readFile(prePushHookPath, "utf8");
       const hookStats = await stat(prePushHookPath);
 
@@ -204,10 +219,47 @@ describe("applyRepoLocalRuntimeWiring", () => {
       );
       expect(devDependencies.typescript).toBe("^5.0.0");
       expect(devDependencies["agent-badge"]).toBe("^1.2.3");
+      expect(gitignoreContent).toContain("coverage/");
+      expect(gitignoreContent.match(/^\.agent-badge\/cache\/$/gm)).toHaveLength(1);
+      expect(gitignoreContent).toContain(".agent-badge/state.json");
+      expect(gitignoreContent).toContain(".agent-badge/logs/");
+      expect(gitignoreContent.match(/# agent-badge:gitignore:start/gm)).toHaveLength(1);
+      expect(gitignoreContent.match(/# agent-badge:gitignore:end/gm)).toHaveLength(1);
       expect(hookContent).toContain("echo custom-check");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
       expect(hookStats.mode & 0o111).toBe(0o111);
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("reuses a manual gitignore when all runtime entries are already ignored", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        ".gitignore":
+          "coverage/\n.agent-badge/state.json\n.agent-badge/cache/\n.agent-badge/logs/\n"
+      }
+    });
+    const gitignorePath = join(repo.root, ".gitignore");
+
+    try {
+      const result = await applyRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm",
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: failSoftRefresh
+      });
+
+      expect(result.reused).toEqual(expect.arrayContaining([".gitignore"]));
+
+      const gitignoreContent = await readFile(gitignorePath, "utf8");
+
+      expect(gitignoreContent).not.toContain(agentBadgeGitignoreStartMarker);
+      expect(gitignoreContent).not.toContain(agentBadgeGitignoreEndMarker);
+      expect(gitignoreContent.match(/^\.agent-badge\/state\.json$/gm)).toHaveLength(1);
+      expect(gitignoreContent.match(/^\.agent-badge\/cache\/$/gm)).toHaveLength(1);
+      expect(gitignoreContent.match(/^\.agent-badge\/logs\/$/gm)).toHaveLength(1);
     } finally {
       await repo.cleanup();
     }

@@ -30,9 +30,17 @@ type JsonObject = Record<string, unknown>;
 
 export const agentBadgeHookStartMarker = "# agent-badge:start";
 export const agentBadgeHookEndMarker = "# agent-badge:end";
+export const agentBadgeGitignoreStartMarker = "# agent-badge:gitignore:start";
+export const agentBadgeGitignoreEndMarker = "# agent-badge:gitignore:end";
 
 const packageJsonPathLabel = "package.json";
+const gitignorePathLabel = ".gitignore";
 const prePushHookPathLabel = ".git/hooks/pre-push";
+const managedGitignoreEntries = [
+  ".agent-badge/state.json",
+  ".agent-badge/cache/",
+  ".agent-badge/logs/"
+] as const;
 
 function isRecord(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -183,6 +191,65 @@ function buildHookContent(
   return `${baseContent}\n\n${managedBlock}\n`;
 }
 
+function stripManagedGitignoreBlock(existingContent: string): {
+  baseContent: string;
+  hadManagedBlock: boolean;
+} {
+  const normalizedContent = existingContent.replace(/\r\n/g, "\n");
+  const managedBlockPattern = new RegExp(
+    `${escapeForRegExp(agentBadgeGitignoreStartMarker)}[\\s\\S]*?${escapeForRegExp(agentBadgeGitignoreEndMarker)}\\n?`,
+    "g"
+  );
+  const hadManagedBlock =
+    normalizedContent.includes(agentBadgeGitignoreStartMarker) &&
+    normalizedContent.includes(agentBadgeGitignoreEndMarker);
+  const baseContent = hadManagedBlock
+    ? normalizedContent.replace(managedBlockPattern, "").replace(/\n{3,}/g, "\n\n")
+    : normalizedContent;
+
+  return {
+    baseContent: baseContent.trimEnd(),
+    hadManagedBlock
+  };
+}
+
+function buildManagedGitignoreBlock(baseContent: string): string | undefined {
+  const ignoredEntries = new Set(
+    baseContent
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+  );
+  const missingEntries = managedGitignoreEntries.filter(
+    (entry) => !ignoredEntries.has(entry)
+  );
+
+  if (missingEntries.length === 0) {
+    return undefined;
+  }
+
+  return [
+    agentBadgeGitignoreStartMarker,
+    ...missingEntries,
+    agentBadgeGitignoreEndMarker
+  ].join("\n");
+}
+
+function buildGitignoreContent(
+  baseContent: string,
+  managedBlock?: string
+): string {
+  if (managedBlock === undefined) {
+    return baseContent.length > 0 ? `${baseContent}\n` : "";
+  }
+
+  if (baseContent.length === 0) {
+    return `${managedBlock}\n`;
+  }
+
+  return `${baseContent}\n\n${managedBlock}\n`;
+}
+
 async function ensureExecutable(targetPath: string): Promise<boolean> {
   const fileStat = await stat(targetPath);
 
@@ -204,6 +271,7 @@ export async function applyRepoLocalRuntimeWiring(
     warnings: []
   };
   const packageJsonPath = join(options.cwd, packageJsonPathLabel);
+  const gitignorePath = join(options.cwd, gitignorePathLabel);
   const gitDir = join(options.cwd, ".git");
   const hooksDir = join(gitDir, "hooks");
   const prePushHookPath = join(hooksDir, "pre-push");
@@ -263,6 +331,29 @@ export async function applyRepoLocalRuntimeWiring(
     }
   } else {
     result.reused.push(packageJsonPathLabel);
+  }
+
+  const existingGitignoreContent = existsSync(gitignorePath)
+    ? await readFile(gitignorePath, "utf8")
+    : undefined;
+  const strippedGitignore = stripManagedGitignoreBlock(
+    existingGitignoreContent ?? ""
+  );
+  const nextGitignoreContent = buildGitignoreContent(
+    strippedGitignore.baseContent,
+    buildManagedGitignoreBlock(strippedGitignore.baseContent)
+  );
+
+  if (existingGitignoreContent === undefined) {
+    await writeFile(gitignorePath, nextGitignoreContent, "utf8");
+    result.created.push(gitignorePathLabel);
+  } else if (
+    nextGitignoreContent !== existingGitignoreContent.replace(/\r\n/g, "\n")
+  ) {
+    await writeFile(gitignorePath, nextGitignoreContent, "utf8");
+    result.updated.push(gitignorePathLabel);
+  } else {
+    result.reused.push(gitignorePathLabel);
   }
 
   await mkdir(hooksDir, { recursive: true });

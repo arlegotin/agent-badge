@@ -156,6 +156,7 @@ describe("runInitCommand", () => {
     const output = createOutputCapture();
     const secondOutput = createOutputCapture();
     const packageJsonPath = join(repo.root, "package.json");
+    const gitignorePath = join(repo.root, ".gitignore");
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
     const deferredGistClient = {
       getGist: async () => {
@@ -197,17 +198,20 @@ describe("runInitCommand", () => {
           "package.json#devDependencies.agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
+          ".gitignore",
           ".git/hooks/pre-push"
         ])
       );
       expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
       expect(existsSync(packageJsonPath)).toBe(true);
+      expect(existsSync(gitignorePath)).toBe(true);
       expect(existsSync(prePushHookPath)).toBe(true);
 
       const packageJson = await readJsonObject(packageJsonPath);
       const publishFiles = await readPublishFiles(repo.root);
       const packageScripts = packageJson.scripts as Record<string, string>;
       const devDependencies = packageJson.devDependencies as Record<string, string>;
+      const gitignoreContent = await readFile(gitignorePath, "utf8");
       const hookContent = await readFile(prePushHookPath, "utf8");
       const readmeContent = await readReadmeContent(repo.root);
 
@@ -230,6 +234,9 @@ describe("runInitCommand", () => {
         lastPublishedHash: null,
         lastPublishedAt: null
       });
+      expect(gitignoreContent).toContain(".agent-badge/state.json");
+      expect(gitignoreContent).toContain(".agent-badge/cache/");
+      expect(gitignoreContent).toContain(".agent-badge/logs/");
       expect(readmeContent).toBe("# Fixture Repo\n");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
@@ -252,6 +259,7 @@ describe("runInitCommand", () => {
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
           "package.json",
+          ".gitignore",
           ".git/hooks/pre-push"
         ])
       );
@@ -678,6 +686,7 @@ describe("runInitCommand", () => {
       expect(result.runtimeWiring.created).toEqual(
         expect.arrayContaining([
           "package.json#devDependencies.agent-badge",
+          ".gitignore",
           ".git/hooks/pre-push"
         ])
       );

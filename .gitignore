@@ -3,5 +3,10 @@ dist/
 coverage/
 .agent-badge/cache/
 .agent-badge/logs/
+
+# agent-badge:gitignore:start
+.agent-badge/state.json
+# agent-badge:gitignore:end
+
 .env
 *.tsbuildinfo
