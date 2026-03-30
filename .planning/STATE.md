@@ -8,7 +8,7 @@ current_plan: 3
 status: verifying
 stopped_at: Completed 01-03-PLAN.md
 last_updated: "2026-03-30T06:43:22.394Z"
-last_activity: 2026-03-30 -- 01-03 complete; phase ready for verification
+last_activity: 2026-03-30 -- verification found gaps in Phase 01
 progress:
   total_phases: 7
   completed_phases: 0
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 Phase: 01 (workspace-and-init-foundation) — EXECUTING
 Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-03-30 -- 01-03 complete; phase ready for verification
+Status: Verification found gaps — phase incomplete
+Last activity: 2026-03-30 -- verification found gaps in Phase 01
 
 Progress: [██████████] 100%
 
@@ -77,6 +77,7 @@ None yet.
 
 ### Blockers/Concerns
 
+- Phase 01 verification found two execution gaps: non-git init does not bootstrap `git init`, and init still does not wire repo-local runtime scripts/hooks.
 - Exact Codex local artifact details need fixture-backed validation during Phase 2.
 - Claude local backfill behavior needs implementation-time validation beyond the documented status-line schema.
 - npm package-name availability for `agent-badge` must be checked at publish time.
