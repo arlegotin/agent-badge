@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 
+import { defaultAgentBadgeConfig, defaultAgentBadgeState } from "@agent-badge/core";
 import { runInitCommand } from "./init.js";
 
 const execFileAsync = promisify(execFile);
@@ -97,6 +98,16 @@ async function readJsonObject(
   return JSON.parse(await readFile(targetPath, "utf8")) as Record<string, unknown>;
 }
 
+async function readPublishFiles(repoRoot: string): Promise<{
+  config: Record<string, unknown>;
+  state: Record<string, unknown>;
+}> {
+  return {
+    config: await readJsonObject(join(repoRoot, ".agent-badge/config.json")),
+    state: await readJsonObject(join(repoRoot, ".agent-badge/state.json"))
+  };
+}
+
 async function getExpectedRuntimeDependencySpecifier(): Promise<string> {
   const runtimePackageJson = await readJsonObject(
     new URL("../../package.json", import.meta.url)
@@ -126,8 +137,8 @@ describe("runInitCommand", () => {
     });
     const output = createOutputCapture();
     const secondOutput = createOutputCapture();
-    const packageJsonPath = join(repo.root, "package.json");
-    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
+      const packageJsonPath = join(repo.root, "package.json");
+      const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
       const expectedRuntimeDependencySpecifier =
@@ -164,6 +175,7 @@ describe("runInitCommand", () => {
       expect(existsSync(prePushHookPath)).toBe(true);
 
       const packageJson = await readJsonObject(packageJsonPath);
+      const publishFiles = await readPublishFiles(repo.root);
       const packageScripts = packageJson.scripts as Record<string, string>;
       const devDependencies = packageJson.devDependencies as Record<string, string>;
       const hookContent = await readFile(prePushHookPath, "utf8");
@@ -176,6 +188,16 @@ describe("runInitCommand", () => {
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --fail-soft"
       );
+      expect(publishFiles.config.publish).toEqual({
+        provider: "github-gist",
+        gistId: null,
+        badgeUrl: null
+      });
+      expect(publishFiles.state.publish).toEqual({
+        status: "deferred",
+        gistId: null,
+        lastPublishedHash: null
+      });
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
 
@@ -208,9 +230,207 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("agent-badge init scaffold");
       expect(output.read()).toContain("agent-badge init runtime wiring");
       expect(output.read()).toContain("GitHub auth: env:GITHUB_TOKEN");
+      expect(output.read()).toContain("- Publish target: deferred");
       expect(secondOutput.read()).toContain("agent-badge init runtime wiring");
+      expect(secondOutput.read()).toContain("- Publish target: deferred");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("connects an explicit gist id when --gist-id is supplied", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const output = createOutputCapture();
+
+    try {
+      const getGist = async () => ({
+        id: "gist_connected",
+        ownerLogin: "octocat",
+        public: true,
+        files: ["agent-badge.json"]
+      });
+      const createPublicGist = async () => {
+        throw new Error("create should not run");
+      };
+
+      await runInitCommand({
+        cwd: repo.root,
+        gistId: "gist_connected",
+        stdout: output.writer,
+        gistClient: {
+          getGist,
+          createPublicGist,
+          updateGistFile: async () => {
+            throw new Error("update should not run");
+          }
+        }
+      });
+
+      const publishFiles = await readPublishFiles(repo.root);
+
+      expect(publishFiles.config.publish).toEqual({
+        provider: "github-gist",
+        gistId: "gist_connected",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      });
+      expect(publishFiles.state.publish).toEqual({
+        status: "pending",
+        gistId: "gist_connected",
+        lastPublishedHash: null
+      });
+      expect(output.read()).toContain("- Publish target: connected existing gist");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("creates a public gist automatically when auth is available", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const output = createOutputCapture();
+    let createCalls = 0;
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        env: {
+          GH_TOKEN: "test-token"
+        },
+        stdout: output.writer,
+        gistClient: {
+          getGist: async () => ({
+            id: "unused",
+            ownerLogin: "octocat",
+            public: true,
+            files: ["agent-badge.json"]
+          }),
+          createPublicGist: async () => {
+            createCalls += 1;
+
+            return {
+              id: "gist_created",
+              ownerLogin: "octocat",
+              public: true,
+              files: ["agent-badge.json"]
+            };
+          },
+          updateGistFile: async () => {
+            throw new Error("update should not run");
+          }
+        }
+      });
+
+      const publishFiles = await readPublishFiles(repo.root);
+
+      expect(createCalls).toBe(1);
+      expect(publishFiles.config.publish).toEqual({
+        provider: "github-gist",
+        gistId: "gist_created",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_created%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      });
+      expect(publishFiles.state.publish).toEqual({
+        status: "pending",
+        gistId: "gist_created",
+        lastPublishedHash: null
+      });
+      expect(output.read()).toContain("- Publish target: created public gist");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("reuses an already configured gist on deferred-mode reruns without creating another gist", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}",
+        ".agent-badge/config.json": `${JSON.stringify(
+          {
+            ...defaultAgentBadgeConfig,
+            publish: {
+              provider: "github-gist",
+              gistId: "gist_existing",
+              badgeUrl:
+                "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+            }
+          },
+          null,
+          2
+        )}\n`,
+        ".agent-badge/state.json": `${JSON.stringify(
+          {
+            ...defaultAgentBadgeState,
+            init: {
+              initialized: true,
+              scaffoldVersion: 1,
+              lastInitializedAt: "2026-03-30T00:00:00.000Z"
+            },
+            publish: {
+              status: "deferred",
+              gistId: "gist_existing",
+              lastPublishedHash: null
+            }
+          },
+          null,
+          2
+        )}\n`
+      }
+    });
+    const output = createOutputCapture();
+    let createCalls = 0;
+    let getCalls = 0;
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        stdout: output.writer,
+        gistClient: {
+          getGist: async () => {
+            getCalls += 1;
+
+            return {
+              id: "gist_existing",
+              ownerLogin: "octocat",
+              public: true,
+              files: ["agent-badge.json"]
+            };
+          },
+          createPublicGist: async () => {
+            createCalls += 1;
+            throw new Error("create should not run");
+          },
+          updateGistFile: async () => {
+            throw new Error("update should not run");
+          }
+        }
+      });
+
+      const publishFiles = await readPublishFiles(repo.root);
+
+      expect(getCalls).toBe(1);
+      expect(createCalls).toBe(0);
+      expect(publishFiles.config.publish).toEqual({
+        provider: "github-gist",
+        gistId: "gist_existing",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=3600"
+      });
+      expect(publishFiles.state.publish).toEqual({
+        status: "pending",
+        gistId: "gist_existing",
+        lastPublishedHash: null
+      });
+      expect(output.read()).toContain("- Publish target: reused existing gist");
+    } finally {
+      await repo.cleanup();
     }
   });
 

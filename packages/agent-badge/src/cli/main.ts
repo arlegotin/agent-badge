@@ -17,8 +17,11 @@ export function buildProgram(): Command {
   program
     .command("init")
     .description("Initialize agent-badge in the current repository.")
-    .action(async () => {
-      await runInitCommand();
+    .option("--gist-id <id>", "Connect an existing public GitHub Gist id.")
+    .action(async (options: { gistId?: string }) => {
+      await runInitCommand({
+        gistId: options.gistId
+      });
     });
 
   program

@@ -1,15 +1,25 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 import {
+  applyPublishTargetResult,
   applyAgentBadgeScaffold,
   applyRepoLocalRuntimeWiring,
+  createGitHubGistClient,
   initializeGitRepository,
+  ensurePublishTarget,
+  parseAgentBadgeConfig,
+  parseAgentBadgeState,
   runInitPreflight,
   type AgentBadgeScaffoldResult,
+  type AgentBadgeConfig,
   type DetectGitHubAuthOptions,
   type DetectProviderAvailabilityOptions,
+  type GitHubGistClient,
   type InitPreflightResult,
-  type RepoLocalRuntimeWiringResult
+  type PublishTargetResult,
+  type RepoLocalRuntimeWiringResult,
+  type AgentBadgeState
 } from "@agent-badge/core";
 
 interface OutputWriter {
@@ -25,6 +35,8 @@ export interface RunInitCommandOptions
     DetectGitHubAuthOptions {
   readonly cwd?: string;
   readonly allowGitInit?: boolean;
+  readonly gistId?: string;
+  readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
 }
 
@@ -36,6 +48,9 @@ export interface InitCommandResult {
 
 const publishableSemverPattern =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+const githubTokenEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
+const CONFIG_PATH = ".agent-badge/config.json";
+const STATE_PATH = ".agent-badge/state.json";
 
 function getBlockedMessage(preflight: InitPreflightResult): string {
   return (
@@ -121,6 +136,75 @@ function writeRuntimeWiringSummary(
       )
     );
   }
+}
+
+function summarizePublishTarget(target: PublishTargetResult): string {
+  switch (target.status) {
+    case "created":
+      return "created public gist";
+    case "connected":
+      return "connected existing gist";
+    case "reused":
+      return "reused existing gist";
+    case "deferred":
+      return "deferred";
+  }
+}
+
+function writePublishTargetSummary(
+  stdout: OutputWriter,
+  target: PublishTargetResult
+): void {
+  writeLines(stdout, [`- Publish target: ${summarizePublishTarget(target)}`]);
+
+  if (target.status !== "deferred") {
+    return;
+  }
+
+  writeLines(stdout, [
+    "- Next step: rerun `agent-badge init --gist-id <id>` to connect an existing public gist, or set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create one automatically."
+  ]);
+}
+
+async function readAgentBadgeJson(targetPath: string): Promise<unknown> {
+  return JSON.parse(await readFile(targetPath, "utf8")) as unknown;
+}
+
+async function loadPersistedConfig(cwd: string): Promise<AgentBadgeConfig> {
+  return parseAgentBadgeConfig(await readAgentBadgeJson(join(cwd, CONFIG_PATH)));
+}
+
+async function loadPersistedState(cwd: string): Promise<AgentBadgeState> {
+  return parseAgentBadgeState(await readAgentBadgeJson(join(cwd, STATE_PATH)));
+}
+
+async function writePersistedState(
+  cwd: string,
+  config: AgentBadgeConfig,
+  state: AgentBadgeState
+): Promise<void> {
+  await writeFile(
+    join(cwd, CONFIG_PATH),
+    `${JSON.stringify(config, null, 2)}\n`,
+    "utf8"
+  );
+  await writeFile(
+    join(cwd, STATE_PATH),
+    `${JSON.stringify(state, null, 2)}\n`,
+    "utf8"
+  );
+}
+
+function resolveGitHubAuthToken(env: NodeJS.ProcessEnv | undefined): string | undefined {
+  for (const envVar of githubTokenEnvVars) {
+    const value = env?.[envVar];
+
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 async function readRuntimePackageManifest(): Promise<RuntimePackageManifest> {
@@ -237,6 +321,32 @@ export async function runInitCommand(
   });
 
   writeRuntimeWiringSummary(stdout, runtimeWiring);
+
+  const config = await loadPersistedConfig(preflight.cwd);
+  const state = await loadPersistedState(preflight.cwd);
+  const publishTarget = await ensurePublishTarget({
+    config,
+    state,
+    githubAuth: preflight.githubAuth,
+    gistId: options.gistId,
+    client:
+      options.gistClient ??
+      createGitHubGistClient({
+        authToken: resolveGitHubAuthToken(options.env)
+      })
+  });
+  const nextPublishState = applyPublishTargetResult({
+    config,
+    state,
+    target: publishTarget
+  });
+
+  await writePersistedState(
+    preflight.cwd,
+    nextPublishState.config,
+    nextPublishState.state
+  );
+  writePublishTargetSummary(stdout, publishTarget);
 
   return {
     preflight,
