@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-03-30T20:45:00.586Z"
-last_activity: 2026-03-30
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-31T09:03:15.631Z"
+last_activity: 2026-03-31
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 20
-  completed_plans: 18
+  completed_phases: 6
+  total_plans: 23
+  completed_plans: 21
   percent: 94
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-30)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 06 — doctor-uninstall-and-safety-hardening
+**Current focus:** Phase 07 — release-readiness
 
 ## Current Position
 
-Phase: 06 (doctor-uninstall-and-safety-hardening) — EXECUTING
+Phase: 07 (release-readiness) — EXECUTING
 Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-03-30
+Last activity: 2026-03-31
 
 Progress: [█████████░] 16/17 plans (94%)
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 16/17 plans (94%)
 | Phase 05 P01 | 13 min | 2 tasks | 13 files |
 | Phase 05 P02 | 18 min | 3 tasks | 12 files |
 | Phase 05 P03 | 13min | 2 tasks | 11 files |
+| Phase 07-release-readiness P01 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,8 @@ Recent decisions affecting current work:
 - [Quick 260330-uxa]: Mutable `.agent-badge/state.json` is local runtime state, not a tracked repo artifact; init/runtime wiring must ensure it is gitignored alongside cache/logs so refresh and pre-push stay invisible in normal git workflows.
 - [Quick 260330-v47]: The stable Shields badge URL should use a short cache window (`300` seconds) so visible badge changes do not feel stale after a publish, while still avoiding overly aggressive refetching.
 - [Phase 06-doctor-uninstall-and-safety-hardening]: Keep runDoctorChecks read-only by default and isolate write checks behind --probe-write.
+- [Phase 07-release-readiness]: Release-readiness proof is a dedicated matrix test file rather than implicit coverage spread across tests.
+- [Phase 07-release-readiness]: CI runs a separate scenario-matrix job so REL-01 remains an explicit release gate.
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-30T18:53:34.706Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-03-31T09:03:15.628Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

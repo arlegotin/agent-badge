@@ -54,8 +54,8 @@
 
 ### Release Readiness
 
-- [ ] **REL-01**: Maintainer can verify the supported scenario matrix: fresh repo, existing repo, one or both providers, no README, no origin, no auth, and idempotent re-init.
-- [ ] **REL-02**: Repository CI can validate package build, tests, and docs without depending on access to live provider directories.
+- [x] **REL-01**: Maintainer can verify the supported scenario matrix: fresh repo, existing repo, one or both providers, no README, no origin, no auth, and idempotent re-init.
+- [x] **REL-02**: Repository CI can validate package build, tests, and docs without depending on access to live provider directories.
 - [ ] **REL-03**: Public docs ship a quickstart, attribution model, privacy model, troubleshooting guide, and manual Gist connection guide.
 
 ## v2 Requirements
@@ -114,8 +114,8 @@
 | SAFE-02 | Phase 6 | Pending |
 | SAFE-03 | Phase 6 | Complete |
 | SAFE-04 | Phase 6 | Pending |
-| REL-01 | Phase 7 | Pending |
-| REL-02 | Phase 7 | Pending |
+| REL-01 | Phase 7 | Complete |
+| REL-02 | Phase 7 | Complete |
 | REL-03 | Phase 7 | Pending |
 
 **Coverage:**
