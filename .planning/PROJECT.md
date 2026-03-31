@@ -31,12 +31,13 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Future Codex and Claude usage can be refreshed incrementally from local machine data without full historical rescans or a second primary ledger. Validated in Phase 5.
 - [x] Refresh is fast and failure-soft by default so normal `git push` workflows stay unblocked. Validated in Phase 5.
 - [x] Developers can inspect attribution, publishing, and hook health through clear `status`, `doctor`, `config`, and `uninstall` flows. Validated across Phases 5-7, with release hardening continuing in v1.1.
+- [x] Maintainers can run `npm run build`, `npm test`, `npm run docs:check`, and clean-checkout package smoke verification successfully from current source on a supported Node toolchain. Validated in Phase 8.
 
 ### Active
 
-- [ ] Maintainers can run `npm run build`, `npm test`, `npm run docs:check`, and package smoke verification successfully from current source on a supported Node toolchain.
 - [ ] Published workspace packages use deliberate release versions, correct internal dependency references, and ship only runtime artifacts needed for install and execution.
-- [ ] Release checks cover current state-schema compatibility, Claude incremental refresh correctness, and environment-specific verification constraints such as isolated npm cache usage.
+- [ ] Release packaging uses deliberate workspace versions, correct internal dependency references, and clean tarball contents instead of placeholder metadata.
+- [ ] The end-to-end release checklist covers constrained-environment publish steps such as isolated npm cache usage, disk-space workarounds, and package-name verification.
 
 ### Out of Scope
 
@@ -49,7 +50,7 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 Phases 1 through 7 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, incremental refresh flows, operator commands, and release-oriented docs/tests.
 
-As of 2026-03-31, the remaining gap is not missing product surface area but ship confidence. The feature set exists, yet the source-of-truth release gates are still red: the TypeScript build fails on the Octokit client integration, the test suite has doctor-fixture/schema drift and a Claude incremental-scan failure, published package metadata still uses placeholder `0.0.0` versions, and the packaging path still needs a clean final proof under the repo's npm-cache and disk-space constraints.
+As of 2026-03-31 after Phase 8, the source-of-truth release gates are green again: the Octokit build seam is compile-safe, doctor and Claude incremental tests match the live schema/runtime behavior, and one clean-checkout verifier now proves build, test, pack, and packed-install smoke flows from a fresh artifact state. The remaining work is narrower and packaging-focused: replace placeholder workspace package metadata, tighten tarball contents, and document the constrained-environment release checklist for the final publish path.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -79,7 +80,9 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Persist attribution overrides by stable `provider:providerSessionId` keys | Reuses decisions safely without storing raw cwd or transcript evidence | Implemented in Phase 3 |
 | Keep init preflight privacy-safe by reporting normalized provider home labels instead of absolute paths | Prevents local path leakage while still showing actionable provider availability | Implemented in Phase 1 |
 | Keep git inspection read-only and perform bootstrap through a separate helper | Preserves non-mutating preflight semantics while still supporting non-git init when allowed | Implemented in Phase 1 |
-| Treat v1.1 as release hardening rather than net-new feature expansion | The current gap is production confidence, not missing core capability | Pending in Milestone v1.1 |
+| Treat v1.1 as release hardening rather than net-new feature expansion | The current gap is production confidence, not missing core capability | Active across Phases 8-10 |
+| Use one repo-owned clean-checkout verifier for release-critical validation | Prevents CI/release drift and makes stale artifact failures reproducible locally | Implemented in Phase 8 |
+| Clean rebuild verification must clear `*.tsbuildinfo` as well as `dist/` | TypeScript project references can otherwise skip re-emitting deleted runtime artifacts | Implemented in Phase 8 |
 
 ## Evolution
 
@@ -99,4 +102,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after starting Milestone v1.1*
+*Last updated: 2026-03-31 after completing Phase 8*
