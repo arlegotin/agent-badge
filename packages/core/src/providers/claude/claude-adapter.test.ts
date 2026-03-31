@@ -104,6 +104,9 @@ describe("scanClaudeSessionsIncremental", () => {
   it("returns only sessions whose project files changed after the cursor watermark", async () => {
     await withClaudeFixture(async (fixture) => {
       const cursor = await buildClaudeIncrementalCursorFromSource(fixture.homeRoot);
+      const parsedCursor = JSON.parse(cursor) as {
+        watermarkMs: number | null;
+      };
       const sessionPath = join(
         fixture.homeRoot,
         ".claude",
@@ -111,17 +114,18 @@ describe("scanClaudeSessionsIncremental", () => {
         "project-with-dedupe",
         "session-main.jsonl"
       );
+      const changedAtMs = Math.max(
+        Date.now(),
+        (parsedCursor.watermarkMs ?? 0) + 1_000
+      );
+      const changedAt = new Date(changedAtMs);
 
       await appendFile(
         sessionPath,
         '\n{"type":"assistant","sessionId":"session-main","timestamp":"2026-03-06T09:04:00Z","cwd":"/repo/main","gitBranch":"main","gitOriginUrl":"https://github.com/openai/agent-badge.git","message":{"role":"assistant","id":"assistant-3","model":"claude-3-7-sonnet","usage":{"input_tokens":2,"output_tokens":3,"cache_creation_input_tokens":0,"cache_read_input_tokens":4}}}\n',
         "utf8"
       );
-      await utimes(
-        sessionPath,
-        new Date("2026-03-31T00:00:00Z"),
-        new Date("2026-03-31T00:00:00Z")
-      );
+      await utimes(sessionPath, changedAt, changedAt);
 
       const result = await scanClaudeSessionsIncremental({
         homeRoot: fixture.homeRoot,
