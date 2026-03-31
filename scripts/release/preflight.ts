@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -82,6 +82,7 @@ export interface ReleasePreflightReport {
 interface PackageManifestFile {
   readonly name?: unknown;
   readonly version?: unknown;
+  readonly private?: unknown;
   readonly publishConfig?: unknown;
 }
 
@@ -91,6 +92,7 @@ interface RootPackageManifestFile {
 
 interface ChangesetConfigFile {
   readonly access?: unknown;
+  readonly ignore?: unknown;
 }
 
 export interface ReleasePreflightCheckResult {
@@ -474,6 +476,11 @@ export function evaluateReleaseInputs(input: {
   const issues = [...(input.extraIssues ?? [])];
   const versions = [...new Set(input.manifests.map((manifest) => manifest.version))];
   const scriptMap = isRecord(input.rootPackage.scripts) ? input.rootPackage.scripts : {};
+  const ignoredPackages = Array.isArray(input.changesetConfig.ignore)
+    ? input.changesetConfig.ignore.filter(
+        (value): value is string => typeof value === "string" && value.trim().length > 0
+      )
+    : [];
   const releaseScript = typeof scriptMap.release === "string" ? scriptMap.release : null;
   const preflightScript =
     typeof scriptMap["release:preflight"] === "string" ? scriptMap["release:preflight"] : null;
@@ -508,6 +515,12 @@ export function evaluateReleaseInputs(input: {
   if (preflightScript !== "tsx scripts/release/preflight.ts") {
     issues.push(
       `${rootPackageManifestPath} must keep \`release:preflight\` mapped to the repo-owned TypeScript entrypoint.`
+    );
+  }
+
+  if (!ignoredPackages.includes("@agent-badge/testkit")) {
+    issues.push(
+      `${changesetConfigPath} must ignore \`@agent-badge/testkit\` so helper workspaces cannot leak into production publish.`
     );
   }
 
@@ -650,6 +663,43 @@ export async function runReleasePreflight(
     manifests = await loadPublishablePackageInventory(repoRoot);
   } catch (error) {
     releaseInputIssues.push(error instanceof Error ? error.message : String(error));
+  }
+
+  try {
+    const packageDirEntries = await readdir(resolve(repoRoot, "packages"), {
+      withFileTypes: true
+    });
+
+    for (const entry of packageDirEntries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const manifestPath = `packages/${entry.name}/package.json`;
+      const manifest = await readJsonFile<PackageManifestFile>(manifestPath, repoRoot);
+      const packageName =
+        typeof manifest.name === "string" && manifest.name.trim().length > 0
+          ? manifest.name
+          : null;
+
+      if (packageName === null || expectedPublishablePackageNames.includes(packageName as never)) {
+        continue;
+      }
+
+      const isPrivate = manifest.private === true;
+
+      if (!isPrivate) {
+        releaseInputIssues.push(
+          `${manifestPath} must set \`private: true\` because ${packageName} is not part of the production publish inventory.`
+        );
+      }
+    }
+  } catch (error) {
+    releaseInputIssues.push(
+      error instanceof Error
+        ? `Failed to inspect workspace publishability: ${error.message}`
+        : `Failed to inspect workspace publishability: ${String(error)}`
+    );
   }
 
   const packageResults = await Promise.all(

@@ -205,13 +205,53 @@ describe("release preflight", () => {
       coreManifest: {
         publishConfig: { access: "restricted" }
       }
-    });
-    const overall = preflight.determineOverallStatus([{ status: "safe" }, releaseInputs]);
+  });
+  const overall = preflight.determineOverallStatus([{ status: "safe" }, releaseInputs]);
 
     expect(releaseInputs).toMatchObject({
       id: "release-inputs",
       status: "blocked"
     });
     expect(overall).toBe("blocked");
+  });
+
+  it("blocks when helper workspaces can leak into production publish", () => {
+    const releaseInputs = preflight.evaluateReleaseInputs({
+      manifests: [
+        {
+          manifestPath: "packages/core/package.json",
+          name: "@agent-badge/core",
+          version: "1.1.0"
+        },
+        {
+          manifestPath: "packages/agent-badge/package.json",
+          name: "agent-badge",
+          version: "1.1.0"
+        },
+        {
+          manifestPath: "packages/create-agent-badge/package.json",
+          name: "create-agent-badge",
+          version: "1.1.0"
+        }
+      ],
+      changesetConfig: { access: "public", ignore: [] },
+      rootPackage: {
+        scripts: {
+          release: "changeset publish",
+          "release:preflight": "tsx scripts/release/preflight.ts"
+        }
+      },
+      coreManifest: {
+        publishConfig: { access: "public" }
+      }
+    });
+
+    expect(releaseInputs).toMatchObject({
+      id: "release-inputs",
+      status: "blocked"
+    });
+    expect(releaseInputs.details).toContain(
+      ".changeset/config.json must ignore `@agent-badge/testkit` so helper workspaces cannot leak into production publish."
+    );
   });
 });
