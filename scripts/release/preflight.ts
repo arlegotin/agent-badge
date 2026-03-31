@@ -1,0 +1,428 @@
+import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+
+const publishableManifestPaths = [
+  "packages/core/package.json",
+  "packages/agent-badge/package.json",
+  "packages/create-agent-badge/package.json"
+] as const;
+
+const expectedPublishablePackageNames = [
+  "@agent-badge/core",
+  "agent-badge",
+  "create-agent-badge"
+] as const;
+
+export type ReleasePreflightStatus = "safe" | "warn" | "blocked";
+export type RegistryLookupKind = "package" | "missing" | "error";
+
+export interface PublishablePackageManifest {
+  readonly manifestPath: string;
+  readonly name: string;
+  readonly version: string;
+}
+
+export interface RegistryPackageMetadata {
+  readonly name: string | null;
+  readonly version: string | null;
+  readonly latestTag: string | null;
+  readonly raw: unknown;
+}
+
+export interface RegistryLookupResult {
+  readonly kind: RegistryLookupKind;
+  readonly command: readonly string[];
+  readonly message: string;
+  readonly metadata: RegistryPackageMetadata | null;
+}
+
+export interface PackageRegistryState {
+  readonly kind: RegistryLookupKind;
+  readonly observedName: string | null;
+  readonly observedVersion: string | null;
+  readonly latestTag: string | null;
+  readonly message: string;
+}
+
+export interface PackagePreflightResult {
+  readonly manifestPath: string;
+  readonly packageName: string;
+  readonly intendedVersion: string;
+  readonly status: ReleasePreflightStatus;
+  readonly summary: string;
+  readonly registry: PackageRegistryState;
+}
+
+export interface ReleasePreflightReport {
+  readonly generatedAt: string;
+  readonly overallStatus: ReleasePreflightStatus;
+  readonly packages: readonly PackagePreflightResult[];
+}
+
+interface PackageManifestFile {
+  readonly name?: unknown;
+  readonly version?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function firstNonEmptyString(...values: Array<unknown>): string | null {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function describeVisibleRegistryState(metadata: RegistryPackageMetadata): string {
+  const details = [
+    metadata.name ? `name=${metadata.name}` : null,
+    metadata.version ? `version=${metadata.version}` : null,
+    metadata.latestTag ? `dist-tags.latest=${metadata.latestTag}` : null
+  ].filter((value): value is string => value !== null);
+
+  return details.length > 0 ? details.join(", ") : "no visible registry metadata";
+}
+
+function extractRegistryMetadata(raw: unknown): RegistryPackageMetadata {
+  const entry =
+    Array.isArray(raw) && raw.length > 0 && isRecord(raw[0])
+      ? raw[0]
+      : isRecord(raw)
+        ? raw
+        : {};
+
+  const flattenedLatest = isRecord(entry) ? entry["dist-tags.latest"] : undefined;
+  const distTags = isRecord(entry) && isRecord(entry["dist-tags"]) ? entry["dist-tags"] : null;
+
+  return {
+    name: firstNonEmptyString(isRecord(entry) ? entry.name : null),
+    version: firstNonEmptyString(isRecord(entry) ? entry.version : null),
+    latestTag: firstNonEmptyString(flattenedLatest, distTags?.latest),
+    raw
+  };
+}
+
+export function parseRegistryViewJson(stdout: string): RegistryPackageMetadata {
+  const trimmed = stdout.trim();
+
+  if (trimmed.length === 0) {
+    return extractRegistryMetadata({});
+  }
+
+  return extractRegistryMetadata(JSON.parse(trimmed));
+}
+
+export function isMissingRegistryPackageError(error: unknown): boolean {
+  const text = isRecord(error)
+    ? `${String(error.stdout ?? "")}\n${String(error.stderr ?? "")}\n${String(error.message ?? "")}`
+    : String(error);
+
+  const normalized = text.toLowerCase();
+
+  return (
+    normalized.includes("e404") ||
+    normalized.includes("404 not found") ||
+    normalized.includes("not in this registry") ||
+    normalized.includes("is not in this registry")
+  );
+}
+
+export async function loadPublishablePackageInventory(
+  repoRoot = resolve(scriptDir, "..", "..")
+): Promise<readonly PublishablePackageManifest[]> {
+  const manifests = await Promise.all(
+    publishableManifestPaths.map(async (manifestPath) => {
+      const absolutePath = resolve(repoRoot, manifestPath);
+      const parsed = JSON.parse(
+        await readFile(absolutePath, "utf8")
+      ) as PackageManifestFile;
+
+      if (typeof parsed.name !== "string" || parsed.name.trim().length === 0) {
+        throw new Error(`Manifest ${manifestPath} is missing a valid package name.`);
+      }
+
+      if (typeof parsed.version !== "string" || parsed.version.trim().length === 0) {
+        throw new Error(`Manifest ${manifestPath} is missing a valid package version.`);
+      }
+
+      return {
+        manifestPath,
+        name: parsed.name,
+        version: parsed.version
+      };
+    })
+  );
+
+  const actualNames = manifests
+    .map((manifest) => manifest.name)
+    .sort((left, right) => left.localeCompare(right));
+  const expectedNames = [...expectedPublishablePackageNames].sort((left, right) =>
+    left.localeCompare(right)
+  );
+
+  if (actualNames.join("\n") !== expectedNames.join("\n")) {
+    throw new Error(
+      `Publishable package inventory drifted. Expected ${expectedNames.join(", ")} but found ${actualNames.join(", ")}.`
+    );
+  }
+
+  return manifests;
+}
+
+export async function fetchRegistryPackageState(
+  packageName: string,
+  repoRoot = resolve(scriptDir, "..", "..")
+): Promise<RegistryLookupResult> {
+  const command = [
+    "view",
+    packageName,
+    "name",
+    "version",
+    "dist-tags.latest",
+    "--json"
+  ] as const;
+
+  try {
+    const { stdout } = await execFileAsync("npm", [...command], {
+      cwd: repoRoot,
+      maxBuffer: 1024 * 1024
+    });
+
+    const metadata = parseRegistryViewJson(stdout);
+
+    return {
+      kind: "package",
+      command,
+      message:
+        metadata.name !== null || metadata.version !== null || metadata.latestTag !== null
+          ? `Observed ${describeVisibleRegistryState(metadata)}.`
+          : "Registry returned empty metadata for this package lookup.",
+      metadata
+    };
+  } catch (error) {
+    if (isMissingRegistryPackageError(error)) {
+      return {
+        kind: "missing",
+        command,
+        message: "Package is not currently present in the npm registry.",
+        metadata: null
+      };
+    }
+
+    return {
+      kind: "error",
+      command,
+      message: isRecord(error) ? String(error.stderr ?? error.message ?? "npm view failed.") : String(error),
+      metadata: null
+    };
+  }
+}
+
+export function classifyRegistryResult(
+  manifest: PublishablePackageManifest,
+  lookup: RegistryLookupResult
+): PackagePreflightResult {
+  if (lookup.kind === "missing") {
+    return {
+      manifestPath: manifest.manifestPath,
+      packageName: manifest.name,
+      intendedVersion: manifest.version,
+      status: "safe",
+      summary: "Package name is available for a first publish.",
+      registry: {
+        kind: "missing",
+        observedName: null,
+        observedVersion: null,
+        latestTag: null,
+        message: lookup.message
+      }
+    };
+  }
+
+  if (lookup.kind === "error") {
+    return {
+      manifestPath: manifest.manifestPath,
+      packageName: manifest.name,
+      intendedVersion: manifest.version,
+      status: "warn",
+      summary: "Registry state could not be confirmed from npm view output.",
+      registry: {
+        kind: "error",
+        observedName: null,
+        observedVersion: null,
+        latestTag: null,
+        message: lookup.message
+      }
+    };
+  }
+
+  const metadata = lookup.metadata ?? extractRegistryMetadata({});
+
+  if (metadata.name !== null && metadata.name !== manifest.name) {
+    return {
+      manifestPath: manifest.manifestPath,
+      packageName: manifest.name,
+      intendedVersion: manifest.version,
+      status: "blocked",
+      summary: `Registry lookup resolved to ${metadata.name}, not ${manifest.name}.`,
+      registry: {
+        kind: "package",
+        observedName: metadata.name,
+        observedVersion: metadata.version,
+        latestTag: metadata.latestTag,
+        message: lookup.message
+      }
+    };
+  }
+
+  if (metadata.version === manifest.version || metadata.latestTag === manifest.version) {
+    return {
+      manifestPath: manifest.manifestPath,
+      packageName: manifest.name,
+      intendedVersion: manifest.version,
+      status: "blocked",
+      summary: `Intended version ${manifest.version} is already visible in the registry.`,
+      registry: {
+        kind: "package",
+        observedName: metadata.name,
+        observedVersion: metadata.version,
+        latestTag: metadata.latestTag,
+        message: lookup.message
+      }
+    };
+  }
+
+  if (metadata.name === null || (metadata.version === null && metadata.latestTag === null)) {
+    return {
+      manifestPath: manifest.manifestPath,
+      packageName: manifest.name,
+      intendedVersion: manifest.version,
+      status: "warn",
+      summary: "Registry returned partial metadata that needs manual review.",
+      registry: {
+        kind: "package",
+        observedName: metadata.name,
+        observedVersion: metadata.version,
+        latestTag: metadata.latestTag,
+        message: lookup.message
+      }
+    };
+  }
+
+  return {
+    manifestPath: manifest.manifestPath,
+    packageName: manifest.name,
+    intendedVersion: manifest.version,
+    status: "warn",
+    summary:
+      "Package already exists in the registry at a different visible version; confirm ownership and publish intent.",
+    registry: {
+      kind: "package",
+      observedName: metadata.name,
+      observedVersion: metadata.version,
+      latestTag: metadata.latestTag,
+      message: lookup.message
+    }
+  };
+}
+
+export function determineOverallStatus(
+  results: readonly Pick<PackagePreflightResult, "status">[]
+): ReleasePreflightStatus {
+  if (results.some((result) => result.status === "blocked")) {
+    return "blocked";
+  }
+
+  if (results.some((result) => result.status === "warn")) {
+    return "warn";
+  }
+
+  return "safe";
+}
+
+function formatRegistryObservation(result: PackagePreflightResult): string {
+  if (result.registry.kind === "missing") {
+    return "missing";
+  }
+
+  const details = [
+    result.registry.observedName ? `name=${result.registry.observedName}` : null,
+    result.registry.observedVersion ? `version=${result.registry.observedVersion}` : null,
+    result.registry.latestTag ? `dist-tags.latest=${result.registry.latestTag}` : null
+  ].filter((value): value is string => value !== null);
+
+  return details.length > 0 ? details.join(", ") : result.registry.message;
+}
+
+export function formatHumanReport(report: ReleasePreflightReport): string {
+  const lines = ["Release preflight", `Generated: ${report.generatedAt}`];
+
+  for (const result of report.packages) {
+    lines.push("");
+    lines.push(`${result.packageName}`);
+    lines.push(`  manifest: ${result.manifestPath}`);
+    lines.push(`  intended: ${result.intendedVersion}`);
+    lines.push(`  registry: ${formatRegistryObservation(result)}`);
+    lines.push(`  decision: ${result.status}`);
+    lines.push(`  detail: ${result.summary}`);
+  }
+
+  lines.push("");
+  lines.push(`OVERALL: ${report.overallStatus}`);
+
+  return lines.join("\n");
+}
+
+export async function runReleasePreflight(
+  repoRoot = resolve(scriptDir, "..", "..")
+): Promise<ReleasePreflightReport> {
+  const manifests = await loadPublishablePackageInventory(repoRoot);
+  const results = await Promise.all(
+    manifests.map(async (manifest) =>
+      classifyRegistryResult(manifest, await fetchRegistryPackageState(manifest.name, repoRoot))
+    )
+  );
+
+  return {
+    generatedAt: new Date().toISOString(),
+    overallStatus: determineOverallStatus(results),
+    packages: results
+  };
+}
+
+async function main(): Promise<void> {
+  const jsonMode = process.argv.includes("--json");
+  const report = await runReleasePreflight();
+
+  if (jsonMode) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(formatHumanReport(report));
+  }
+
+  if (report.overallStatus === "blocked") {
+    process.exitCode = 1;
+  }
+}
+
+const executedPath = process.argv[1] ? resolve(process.argv[1]) : null;
+const modulePath = fileURLToPath(import.meta.url);
+
+if (executedPath === modulePath) {
+  main().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`release preflight failed: ${message}`);
+    process.exitCode = 1;
+  });
+}
