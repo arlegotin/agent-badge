@@ -24,6 +24,7 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 
 ## Documentation
 
+- [Release Checklist](docs/RELEASE.md)
 - [Quickstart](docs/QUICKSTART.md)
 - [Attribution Model](docs/ATTRIBUTION.md)
 - [Privacy Model](docs/PRIVACY.md)

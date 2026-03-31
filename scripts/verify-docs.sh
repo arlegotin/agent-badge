@@ -5,6 +5,7 @@ ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "${ROOT_DIR}"
 
 required_files=(
+  "docs/RELEASE.md"
   "docs/QUICKSTART.md"
   "docs/ATTRIBUTION.md"
   "docs/PRIVACY.md"
@@ -19,6 +20,13 @@ for file in "${required_files[@]}"; do
   fi
 done
 
+rg -n "docs/RELEASE.md" README.md
+rg -n "npm run verify:clean-checkout" docs/RELEASE.md
+rg -n "npm view agent-badge" docs/RELEASE.md
+rg -n "npm view create-agent-badge" docs/RELEASE.md
+rg -n "npm view @agent-badge/core" docs/RELEASE.md
+rg -n "npm_config_cache" docs/RELEASE.md
+rg -n "/tmp" docs/RELEASE.md
 rg -n "npm init agent-badge@latest" docs/QUICKSTART.md
 rg -n "exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override" docs/ATTRIBUTION.md
 rg -n "Aggregate-only publishing" docs/PRIVACY.md
