@@ -65,7 +65,5 @@ jobs:
         run: npm ci
       - name: Verify docs
         run: npm run docs:check
-      - name: Verify pack manifests
-        run: npm run pack:check
-      - name: Run packed install smoke check
-        run: npm run smoke:pack
+      - name: Verify clean checkout release path
+        run: npm run verify:clean-checkout

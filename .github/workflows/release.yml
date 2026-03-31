@@ -14,6 +14,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      HOME: ${{ runner.temp }}/agent-badge-home
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -27,20 +29,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare isolated HOME
+        run: mkdir -p "$HOME"
+
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm test -- --run
-
-      - name: Pack check
-        run: npm run pack:check
-
-      - name: Tarball smoke check
-        run: npm run smoke:pack
+      - name: Verify clean checkout release path
+        run: npm run verify:clean-checkout
 
       - name: Version or publish
         uses: changesets/action@v1
