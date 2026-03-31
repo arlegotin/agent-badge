@@ -749,6 +749,11 @@ describe("runInitCommand", () => {
       const result = await runInitCommand({
         cwd: repo.root,
         allowGitInit: true,
+        env: {
+          GH_TOKEN: "",
+          GITHUB_TOKEN: "",
+          GITHUB_PAT: ""
+        },
         stdout: output.writer
       });
 
