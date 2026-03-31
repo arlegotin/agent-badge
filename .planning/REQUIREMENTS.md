@@ -1,72 +1,34 @@
 # Requirements: agent-badge
 
-**Defined:** 2026-03-29
+**Defined:** 2026-03-31
 **Core Value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Bootstrap
+This milestone hardens the existing v1 feature set so it can be shipped confidently from current source.
 
-- [x] **BOOT-01**: Developer can initialize an existing repository through `npm init agent-badge@latest` without requiring a global install.
-- [x] **BOOT-02**: Developer can initialize a non-git directory by letting the tool create git or by receiving a precise blocking message with the next action.
-- [x] **BOOT-03**: Init installs or wires a repo-local runtime so package scripts and git hooks can invoke `agent-badge` after normal dependency install.
-- [x] **BOOT-04**: Init creates `.agent-badge/config.json`, `.agent-badge/state.json`, `.agent-badge/cache/`, and `.agent-badge/logs/`.
-- [x] **BOOT-05**: Init inserts one stable badge URL into the repository README or prints a pasteable snippet when no README exists.
+### Release Quality
 
-### Attribution
+- [ ] **REL-04**: Maintainer can run `npm run build` successfully from committed source on a supported Node version without TypeScript errors.
+- [ ] **REL-05**: Maintainer can run `npm test` successfully from committed source, including doctor coverage and Claude incremental refresh coverage.
+- [ ] **REL-06**: Maintainer can verify release-critical checks against the current config/state schemas and current source behavior without fixture drift or stale build artifacts.
 
-- [ ] **ATTR-01**: Tool derives a canonical repo fingerprint from git root, normalized origin URL, repo owner/name when available, and local aliases.
-- [x] **ATTR-02**: First run performs a full historical backfill across enabled providers before the first badge publish.
-- [x] **ATTR-03**: Session attribution applies evidence in priority order: exact repo root, exact remote, normalized cwd, transcript correlation, then persisted override.
-- [x] **ATTR-04**: Ambiguous sessions are excluded from totals until the developer explicitly approves or rejects them.
-- [x] **ATTR-05**: Attribution overrides are persisted and reused on later scans.
+### Packaging
 
-### Scanning
+- [ ] **PACK-01**: Maintainer can publish `@agent-badge/core`, `agent-badge`, and `create-agent-badge` with deliberate non-placeholder versions and correct internal dependency references.
+- [ ] **PACK-02**: Maintainer can produce package tarballs that exclude test artifacts and include only the runtime files required for imports and CLI execution.
+- [ ] **PACK-03**: Maintainer can install the locally packed tarballs in a clean temporary project and invoke both exported CLIs successfully.
 
-- [ ] **SCAN-01**: Tool detects which provider directories exist and enables only those providers by default.
-- [ ] **SCAN-02**: Tool can scan Codex local session data under `~/.codex` and compute deduped per-session token totals for the repo.
-- [ ] **SCAN-03**: Tool can scan Claude local data under `~/.claude` and map session metadata into the same normalized session model.
-- [x] **SCAN-04**: `refresh` performs incremental scanning using persisted checkpoints instead of a full historical rescan.
-- [x] **SCAN-05**: `scan` reports included totals, ambiguous sessions, and excluded sessions in a human-readable attribution report.
+### Release Operations
 
-### Publishing
-
-- [x] **PUBL-01**: Init can create a public Gist automatically when GitHub auth is available.
-- [x] **PUBL-02**: If automatic Gist creation fails, developer can retry, connect an existing Gist, or continue in explicit unpublished mode.
-- [x] **PUBL-03**: `publish` writes aggregate-only Shields endpoint JSON with `schemaVersion`, `label`, `message`, `color`, and cache behavior fields.
-- [x] **PUBL-04**: The README badge URL stays stable after init; later updates modify only the remote JSON.
-- [x] **PUBL-05**: Publish skips remote updates when the visible badge value has not changed.
-
-### Operations
-
-- [x] **OPER-01**: Default `pre-push` integration runs a fast failure-soft refresh and respects normal git bypass behavior.
-- [x] **OPER-02**: `refresh` can recover local badge state end to end without manual file edits.
-- [x] **OPER-03**: `status` shows current totals, enabled providers, publish state, and last scan/publish checkpoints.
-- [x] **OPER-04**: `config` lets the developer change enabled providers, badge mode, label, privacy, and refresh behavior after init.
-- [ ] **OPER-05**: `uninstall` removes local integration cleanly without deleting published badge data unless the developer explicitly requests it.
-
-### Safety
-
-- [ ] **SAFE-01**: Published data never contains raw transcripts, prompt text, filenames, or local absolute paths.
-- [ ] **SAFE-02**: Logs contain scan/publish summaries only and rotate under `.agent-badge/logs/`.
-- [x] **SAFE-03**: `doctor` verifies git root, provider paths, scan access, Gist auth/write, Shields endpoint, README badge, and hook installation, then prints actionable fixes.
-- [ ] **SAFE-04**: Re-running `init` does not duplicate README badges, hooks, or Gists and does not overwrite user settings silently.
-
-### Release Readiness
-
-- [x] **REL-01**: Maintainer can verify the supported scenario matrix: fresh repo, existing repo, one or both providers, no README, no origin, no auth, and idempotent re-init.
-- [x] **REL-02**: Repository CI can validate package build, tests, and docs without depending on access to live provider directories.
-- [x] **REL-03**: Public docs ship a quickstart, attribution model, privacy model, troubleshooting guide, and manual Gist connection guide.
+- [ ] **OPER-06**: Maintainer can follow one documented release checklist that covers isolated npm cache usage, workspace disk constraints, and npm package-name verification before publish.
 
 ## v2 Requirements
 
-### Live Freshness
+### Product Expansion
 
 - **LIVE-01**: Tool can optionally use Codex hooks for faster local freshness after the core scanner is stable.
 - **LIVE-02**: Tool can optionally ingest Claude live session metrics for more immediate refreshes.
-
-### Collaboration and History
-
 - **TEAM-01**: Multiple maintainers can share a badge publishing target safely.
 - **HIST-01**: Tool can render richer history views such as charts or timeline summaries.
 - **BACK-01**: Tool can publish badge data to backends other than public Gists.
@@ -75,54 +37,27 @@
 
 | Feature | Reason |
 |---------|--------|
-| Hosted backend for v1 collection | Conflicts with the local-first, serverless product definition |
-| Uploading raw transcripts or prompts | Violates the privacy model and trust story |
-| GitHub Actions-based collection from local agent directories | CI cannot reliably access the required local data sources |
-| Strict push-blocking refresh by default | Creates developer friction and will encourage bypasses |
-| Shared team dashboards in v1 | Valuable later, but not required for a credible first release |
+| Net-new provider integrations or major attribution-model expansion | This milestone is about shipping the existing v1 surface reliably, not widening scope. |
+| Hosted backend collection or team dashboards | Conflicts with the current local-first, serverless ship target and adds operational risk. |
+| UI/reporting expansions beyond the existing badge and operator CLI flows | Release confidence is a higher priority than richer presentation. |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BOOT-01 | Phase 1 | Complete |
-| BOOT-02 | Phase 1 | Complete |
-| BOOT-03 | Phase 1 | Complete |
-| BOOT-04 | Phase 1 | Complete |
-| ATTR-01 | Phase 2 | Pending |
-| SCAN-01 | Phase 2 | Pending |
-| SCAN-02 | Phase 2 | Pending |
-| SCAN-03 | Phase 2 | Pending |
-| ATTR-02 | Phase 3 | Complete |
-| ATTR-03 | Phase 3 | Complete |
-| ATTR-04 | Phase 3 | Complete |
-| ATTR-05 | Phase 3 | Complete |
-| SCAN-05 | Phase 3 | Complete |
-| BOOT-05 | Phase 4 | Complete |
-| PUBL-01 | Phase 4 | Complete |
-| PUBL-02 | Phase 4 | Complete |
-| PUBL-03 | Phase 4 | Complete |
-| PUBL-04 | Phase 4 | Complete |
-| SCAN-04 | Phase 5 | Complete |
-| PUBL-05 | Phase 5 | Complete |
-| OPER-01 | Phase 5 | Complete |
-| OPER-02 | Phase 5 | Complete |
-| OPER-03 | Phase 5 | Complete |
-| OPER-04 | Phase 5 | Complete |
-| OPER-05 | Phase 6 | Pending |
-| SAFE-01 | Phase 6 | Pending |
-| SAFE-02 | Phase 6 | Pending |
-| SAFE-03 | Phase 6 | Complete |
-| SAFE-04 | Phase 6 | Pending |
-| REL-01 | Phase 7 | Complete |
-| REL-02 | Phase 7 | Complete |
-| REL-03 | Phase 7 | Complete |
+| REL-04 | TBD | Pending |
+| REL-05 | TBD | Pending |
+| REL-06 | TBD | Pending |
+| PACK-01 | TBD | Pending |
+| PACK-02 | TBD | Pending |
+| PACK-03 | TBD | Pending |
+| OPER-06 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 32 total
-- Mapped to phases: 32
-- Unmapped: 0
+- v1.1 requirements: 7 total
+- Mapped to phases: 0
+- Unmapped: 7 ⚠️
 
 ---
-*Requirements defined: 2026-03-29*
-*Last updated: 2026-03-30 after completing Phase 05 Plan 02*
+*Requirements defined: 2026-03-31*
+*Last updated: 2026-03-31 after initial milestone v1.1 definition*
