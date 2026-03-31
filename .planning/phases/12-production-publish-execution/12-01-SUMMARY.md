@@ -99,7 +99,7 @@ Each task was committed atomically:
 
 ## Issues Encountered
 
-- None beyond auto-fixes.
+- Running the full verification command from the plan (`npm run release:evidence ...`) is blocked in this sandbox because `tsx` cannot create its IPC socket (`listen EPERM`), so that final command should be validated by the maintainer environment.
 
 ## User Setup Required
 
