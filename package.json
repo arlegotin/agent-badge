@@ -15,6 +15,7 @@
     "docs:check": "bash scripts/verify-docs.sh",
     "changeset": "changeset",
     "release": "changeset publish",
+    "release:preflight": "tsx scripts/release/preflight.ts",
     "dev:agent-badge": "tsx packages/agent-badge/src/cli/main.ts",
     "dev:create-agent-badge": "tsx packages/create-agent-badge/src/index.ts",
     "agent-badge:init": "agent-badge init",
