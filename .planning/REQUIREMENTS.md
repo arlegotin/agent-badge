@@ -15,13 +15,13 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 
 ### Packaging
 
-- [ ] **PACK-01**: Maintainer can publish `@agent-badge/core`, `agent-badge`, and `create-agent-badge` with deliberate non-placeholder versions and correct internal dependency references.
-- [ ] **PACK-02**: Maintainer can produce package tarballs that exclude test artifacts and include only the runtime files required for imports and CLI execution.
-- [ ] **PACK-03**: Maintainer can install the locally packed tarballs in a clean temporary project and invoke both exported CLIs successfully.
+- [x] **PACK-01**: Maintainer can publish `@agent-badge/core`, `agent-badge`, and `create-agent-badge` with deliberate non-placeholder versions and correct internal dependency references. Validated in Phase 9.
+- [x] **PACK-02**: Maintainer can produce package tarballs that exclude test artifacts and include only the runtime files required for imports and CLI execution. Validated in Phase 9.
+- [x] **PACK-03**: Maintainer can install the locally packed tarballs in a clean temporary project and invoke both exported CLIs successfully. Validated in Phase 10.
 
 ### Release Operations
 
-- [ ] **OPER-06**: Maintainer can follow one documented release checklist that covers isolated npm cache usage, workspace disk constraints, and npm package-name verification before publish.
+- [x] **OPER-06**: Maintainer can follow one documented release checklist that covers isolated npm cache usage, workspace disk constraints, and npm package-name verification before publish. Validated in Phase 10.
 
 ## v2 Requirements
 
@@ -48,10 +48,10 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 | REL-04 | Phase 8 | Validated |
 | REL-05 | Phase 8 | Validated |
 | REL-06 | Phase 8 | Validated |
-| PACK-01 | Phase 9 | Pending |
-| PACK-02 | Phase 9 | Pending |
-| PACK-03 | Phase 10 | Pending |
-| OPER-06 | Phase 10 | Pending |
+| PACK-01 | Phase 9 | Validated |
+| PACK-02 | Phase 9 | Validated |
+| PACK-03 | Phase 10 | Validated |
+| OPER-06 | Phase 10 | Validated |
 
 **Coverage:**
 - v1.1 requirements: 7 total
@@ -60,4 +60,4 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after completing Phase 8*
+*Last updated: 2026-03-31 after completing Phase 10*

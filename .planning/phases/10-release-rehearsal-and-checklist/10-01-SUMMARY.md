@@ -25,7 +25,7 @@ key-decisions:
 patterns-established:
   - "Release smoke scripts should print their scratch directories and exact artifact basenames before install so constrained-machine failures stay diagnosable."
 requirements-completed: [PACK-03]
-duration: 1 implementation commit
+duration: 2 task commits
 completed: 2026-03-31
 ---
 
@@ -41,7 +41,8 @@ completed: 2026-03-31
 
 ## Task Commits
 
-1. **Combined plan implementation** - `a165adb` (`feat`)
+1. **Task 1: Make `smoke:pack` safe as a standalone rehearsal by satisfying the build precondition before packing** - `ab00fbd` (`fix`)
+2. **Task 2: Resolve exact tarball identities and keep the packed-install proof diagnosable** - `a165adb` (`feat`)
 
 ## Verification
 
@@ -61,7 +62,7 @@ completed: 2026-03-31
 
 ## Deviations from Plan
 
-- The first Wave 1 handoff to a `gsd-executor` agent stalled after a partial edit and did not return completion signals, so the plan was finished inline from the same working tree following the same read-first and verification steps.
+- The first Wave 1 handoff to a `gsd-executor` agent completed Task 1 and committed `ab00fbd`, but then stalled before returning a completion signal or finishing the rest of the plan. The remaining work was completed inline from the same working tree following the same read-first and verification steps.
 
 ## Issues Encountered
 
@@ -75,7 +76,7 @@ completed: 2026-03-31
 ## Self-Check: PASSED
 
 - Found `.planning/phases/10-release-rehearsal-and-checklist/10-01-SUMMARY.md`
-- Verified commit `a165adb` exists in git history
+- Verified commits `ab00fbd` and `a165adb` exist in git history
 - Verified `scripts/smoke/verify-packed-install.sh` rebuilds from a cleaned tree and passes the packed-install proof
 
 ---

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phases 1 through 7 delivered the v1 product surface. Milestone v1.1 starts at Phase 8 and focuses only on ship readiness: recover green source-of-truth verification, convert the workspace packages into deliberate publishable artifacts, and rehearse the packed-install release flow under the repo's known npm-cache and disk-space constraints so current source can ship with no red gates.
+Phases 1 through 7 delivered the v1 product surface. Milestone v1.1 focused only on ship readiness: recovering green source-of-truth verification, converting the workspace packages into deliberate publishable artifacts, and rehearsing the packed-install release flow under the repo's known npm-cache and disk-space constraints. After Phase 10, the current source has those release gates and maintainer docs in place.
 
 ## Phases
 
@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 8: Verification Gate Recovery** - Restore green build, test, and schema-aware release verification from current source. Completed 2026-03-31.
 - [x] **Phase 9: Package Metadata and Tarball Integrity** - Make the publishable workspace packages deliberate, versioned, and minimal. Completed 2026-03-31.
-- [ ] **Phase 10: Release Rehearsal and Checklist** - Prove the packed-install flow and codify the constrained-environment release path.
+- [x] **Phase 10: Release Rehearsal and Checklist** - Prove the packed-install flow and codify the constrained-environment release path. Completed 2026-03-31.
 
 ## Phase Details
 
@@ -58,8 +58,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: Prove clean temporary-project install and CLI smoke flows from packed tarballs
-- [ ] 10-02: Finalize the constrained-environment release checklist and publish-time preflight
+- [x] 10-01: Prove clean temporary-project install and CLI smoke flows from packed tarballs
+- [x] 10-02: Finalize the constrained-environment release checklist and publish-time preflight
 
 ## Progress
 
@@ -67,4 +67,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 8. Verification Gate Recovery | 3/3 | Complete | 2026-03-31 |
 | 9. Package Metadata and Tarball Integrity | 2/2 | Complete | 2026-03-31 |
-| 10. Release Rehearsal and Checklist | 0/2 | Not started | - |
+| 10. Release Rehearsal and Checklist | 2/2 | Complete | 2026-03-31 |

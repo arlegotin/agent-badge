@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: production-hardening-and-ship-readiness
-status: ready_to_plan
-stopped_at: Completed Phase 09 package-metadata-and-tarball-integrity
-last_updated: "2026-03-31T11:31:36Z"
-last_activity: 2026-03-31
+status: milestone_complete
+stopped_at: Completed Phase 10 release-rehearsal-and-checklist
+last_updated: "2026-03-31T13:11:16Z"
+last_activity: 2026-03-31 -- Completed Phase 10 Release Rehearsal and Checklist
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 7
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 10 — Release Rehearsal and Checklist
+**Current focus:** Milestone v1.1 complete — current source is ready for release execution from the documented checklist
 
 ## Current Position
 
-Phase: 10
+Phase: —
 Plan: —
-Status: Ready to plan
-Last activity: 2026-03-31 — Completed Phase 09 Package Metadata and Tarball Integrity
+Status: Milestone complete
+Last activity: 2026-03-31 -- Completed Phase 10 Release Rehearsal and Checklist
 
-Progress: [███████░░░] 5/7 plans (Phase 10 ready to plan)
+Progress: [██████████] 7/7 plans (Milestone v1.1 complete)
 
 ## Performance Metrics
 
@@ -116,6 +116,8 @@ Recent decisions affecting current work:
 - [Phase 08-verification-gate-recovery]: CI and release should share one repo-owned `verify:clean-checkout` entrypoint instead of drifting copies of build/test/pack/smoke steps.
 - [Phase 09-package-metadata-and-tarball-integrity]: Publishable workspace manifests must use deliberate `1.1.0` versions while retaining npm workspace `file:` links in the lockfile for local development.
 - [Phase 09-package-metadata-and-tarball-integrity]: Tarball integrity is enforced by a repo-owned pack checker that allows only `dist/**` plus `package.json` and requires explicit runtime entrypoints before smoke-install validation runs.
+- [Phase 10-release-rehearsal-and-checklist]: The packed-install smoke rehearsal must rebuild before packing and resolve exact tarball identities before install so clean-tree verification stays trustworthy.
+- [Phase 10-release-rehearsal-and-checklist]: Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish.
 
 ### Pending Todos
 
@@ -125,7 +127,7 @@ None yet.
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
 - npm package-name availability for `agent-badge` must be checked at publish time.
-- Shared `gsd-tools` automation currently crashes on startup from `/Users/artemlegotin/.codex/get-shit-done/bin/lib/milestone.cjs` redeclaring `phaseArchiveDir`, so Phase 09 execution artifacts were updated manually in-repo.
+- Sandboxed `npm run verify:clean-checkout` can still stall in the fresh-project install step when the temp npm cache starts cold; the same repo-owned command passed outside the sandbox.
 
 ### Quick Tasks Completed
 
@@ -138,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T09:13:08.828Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-03-31T13:11:16Z
+Stopped at: Completed Phase 10 release-rehearsal-and-checklist
 Resume file: None
