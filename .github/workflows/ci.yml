@@ -47,3 +47,25 @@ jobs:
         run: npm ci
       - name: Run release-readiness scenario matrix
         run: npm test -- --run packages/agent-badge/src/commands/release-readiness-matrix.test.ts
+
+  release-readiness:
+    runs-on: ubuntu-latest
+    needs: validate
+    env:
+      HOME: ${{ runner.temp }}/agent-badge-home
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: npm
+      - name: Prepare isolated HOME
+        run: mkdir -p "$HOME"
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify docs
+        run: npm run docs:check
+      - name: Verify pack manifests
+        run: npm run pack:check
+      - name: Run packed install smoke check
+        run: npm run smoke:pack
