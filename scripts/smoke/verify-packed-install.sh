@@ -17,6 +17,7 @@ trap cleanup EXIT
 mkdir -p "${PACK_DIR}" "${INSTALL_DIR}" "${NPM_CACHE_DIR}"
 
 pushd "${REPO_ROOT}" >/dev/null
+npm run build
 npm_config_cache="${NPM_CACHE_DIR}" npm pack --workspace packages/core --pack-destination "${PACK_DIR}" >/dev/null
 npm_config_cache="${NPM_CACHE_DIR}" npm pack --workspace packages/agent-badge --pack-destination "${PACK_DIR}" >/dev/null
 npm_config_cache="${NPM_CACHE_DIR}" npm pack --workspace packages/create-agent-badge --pack-destination "${PACK_DIR}" >/dev/null
