@@ -6,6 +6,10 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRootFromScript = resolve(scriptDir, "..", "..");
+const changesetConfigPath = ".changeset/config.json";
+const rootPackageManifestPath = "package.json";
+const releaseWorkflowPath = ".github/workflows/release.yml";
 
 const publishableManifestPaths = [
   "packages/core/package.json",
@@ -18,9 +22,18 @@ const expectedPublishablePackageNames = [
   "agent-badge",
   "create-agent-badge"
 ] as const;
+const expectedWorkflowMarkers = [
+  "changesets/action@v1",
+  "publish: npm run release",
+  "NPM_TOKEN"
+] as const;
 
 export type ReleasePreflightStatus = "safe" | "warn" | "blocked";
 export type RegistryLookupKind = "package" | "missing" | "error";
+export type ReleasePreflightCheckId =
+  | "npm-auth"
+  | "release-inputs"
+  | "workflow-contract";
 
 export interface PublishablePackageManifest {
   readonly manifestPath: string;
@@ -63,11 +76,29 @@ export interface ReleasePreflightReport {
   readonly generatedAt: string;
   readonly overallStatus: ReleasePreflightStatus;
   readonly packages: readonly PackagePreflightResult[];
+  readonly checks: readonly ReleasePreflightCheckResult[];
 }
 
 interface PackageManifestFile {
   readonly name?: unknown;
   readonly version?: unknown;
+  readonly publishConfig?: unknown;
+}
+
+interface RootPackageManifestFile {
+  readonly scripts?: unknown;
+}
+
+interface ChangesetConfigFile {
+  readonly access?: unknown;
+}
+
+export interface ReleasePreflightCheckResult {
+  readonly id: ReleasePreflightCheckId;
+  readonly label: string;
+  readonly status: ReleasePreflightStatus;
+  readonly summary: string;
+  readonly details: readonly string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -82,6 +113,39 @@ function firstNonEmptyString(...values: Array<unknown>): string | null {
   }
 
   return null;
+}
+
+function formatCommandError(error: unknown): string {
+  if (!isRecord(error)) {
+    return String(error);
+  }
+
+  const text = [error.stderr, error.stdout, error.message]
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .find((value) => value.length > 0);
+
+  return text ?? "command failed";
+}
+
+async function readJsonFile<T>(
+  relativePath: string,
+  repoRoot = repoRootFromScript
+): Promise<T> {
+  const absolutePath = resolve(repoRoot, relativePath);
+
+  return JSON.parse(await readFile(absolutePath, "utf8")) as T;
+}
+
+async function runNpmCommand(
+  args: readonly string[],
+  repoRoot = repoRootFromScript
+): Promise<string> {
+  const { stdout, stderr } = await execFileAsync("npm", [...args], {
+    cwd: repoRoot,
+    maxBuffer: 1024 * 1024
+  });
+
+  return `${stdout}${stderr}`.trim();
 }
 
 function describeVisibleRegistryState(metadata: RegistryPackageMetadata): string {
@@ -139,7 +203,7 @@ export function isMissingRegistryPackageError(error: unknown): boolean {
 }
 
 export async function loadPublishablePackageInventory(
-  repoRoot = resolve(scriptDir, "..", "..")
+  repoRoot = repoRootFromScript
 ): Promise<readonly PublishablePackageManifest[]> {
   const manifests = await Promise.all(
     publishableManifestPaths.map(async (manifestPath) => {
@@ -182,7 +246,7 @@ export async function loadPublishablePackageInventory(
 
 export async function fetchRegistryPackageState(
   packageName: string,
-  repoRoot = resolve(scriptDir, "..", "..")
+  repoRoot = repoRootFromScript
 ): Promise<RegistryLookupResult> {
   const command = [
     "view",
@@ -338,7 +402,7 @@ export function classifyRegistryResult(
 }
 
 export function determineOverallStatus(
-  results: readonly Pick<PackagePreflightResult, "status">[]
+  results: readonly Pick<{ readonly status: ReleasePreflightStatus }, "status">[]
 ): ReleasePreflightStatus {
   if (results.some((result) => result.status === "blocked")) {
     return "blocked";
@@ -349,6 +413,184 @@ export function determineOverallStatus(
   }
 
   return "safe";
+}
+
+export async function runNpmAuthCheck(
+  repoRoot = repoRootFromScript
+): Promise<ReleasePreflightCheckResult> {
+  try {
+    await runNpmCommand(["ping"], repoRoot);
+  } catch (error) {
+    return {
+      id: "npm-auth",
+      label: "npm auth",
+      status: "blocked",
+      summary: "npm ping failed, so registry reachability could not be confirmed.",
+      details: [formatCommandError(error)]
+    };
+  }
+
+  try {
+    const identity = (await runNpmCommand(["whoami"], repoRoot)).trim();
+
+    if (identity.length === 0) {
+      return {
+        id: "npm-auth",
+        label: "npm auth",
+        status: "blocked",
+        summary: "npm whoami succeeded without returning an authenticated npm identity.",
+        details: ["Re-run `npm login` and retry the preflight."]
+      };
+    }
+
+    return {
+      id: "npm-auth",
+      label: "npm auth",
+      status: "safe",
+      summary: `npm ping and npm whoami succeeded for ${identity}.`,
+      details: [
+        "Registry connectivity is available from this maintainer environment.",
+        "Authenticated npm identity is readable before publish."
+      ]
+    };
+  } catch (error) {
+    return {
+      id: "npm-auth",
+      label: "npm auth",
+      status: "blocked",
+      summary: "npm whoami failed, so the maintainer identity is not ready for publish.",
+      details: [formatCommandError(error)]
+    };
+  }
+}
+
+export function evaluateReleaseInputs(input: {
+  readonly manifests: readonly PublishablePackageManifest[];
+  readonly changesetConfig: ChangesetConfigFile;
+  readonly rootPackage: RootPackageManifestFile;
+  readonly coreManifest: PackageManifestFile;
+  readonly extraIssues?: readonly string[];
+}): ReleasePreflightCheckResult {
+  const issues = [...(input.extraIssues ?? [])];
+  const versions = [...new Set(input.manifests.map((manifest) => manifest.version))];
+  const scriptMap = isRecord(input.rootPackage.scripts) ? input.rootPackage.scripts : {};
+  const releaseScript = typeof scriptMap.release === "string" ? scriptMap.release : null;
+  const preflightScript =
+    typeof scriptMap["release:preflight"] === "string" ? scriptMap["release:preflight"] : null;
+  const corePublishConfig = isRecord(input.coreManifest.publishConfig)
+    ? input.coreManifest.publishConfig
+    : {};
+  const coreAccess =
+    typeof corePublishConfig.access === "string" ? corePublishConfig.access : null;
+
+  if (input.changesetConfig.access !== "public") {
+    issues.push(
+      `${changesetConfigPath} must keep \`access: "public"\` for the intended publish path.`
+    );
+  }
+
+  if (versions.length !== 1) {
+    issues.push(
+      `Publishable workspace versions must stay aligned, but found ${versions.join(", ")}.`
+    );
+  }
+
+  if (coreAccess !== "public") {
+    issues.push("packages/core/package.json must keep `publishConfig.access` set to `public`.");
+  }
+
+  if (releaseScript !== "changeset publish") {
+    issues.push(
+      `${rootPackageManifestPath} must keep \`release\` mapped to \`changeset publish\`.`
+    );
+  }
+
+  if (preflightScript !== "tsx scripts/release/preflight.ts") {
+    issues.push(
+      `${rootPackageManifestPath} must keep \`release:preflight\` mapped to the repo-owned TypeScript entrypoint.`
+    );
+  }
+
+  if (issues.length > 0) {
+    return {
+      id: "release-inputs",
+      label: "release inputs",
+      status: "blocked",
+      summary: "Release inputs are inconsistent with the intended public publish path.",
+      details: issues
+    };
+  }
+
+  return {
+    id: "release-inputs",
+    label: "release inputs",
+    status: "safe",
+    summary: `Changesets access is public and all publishable workspaces agree on version ${versions[0]}.`,
+    details: [
+      `Publishable inventory: ${input.manifests.map((manifest) => manifest.name).join(", ")}`,
+      `Root release contract: ${releaseScript}`,
+      `Root preflight contract: ${preflightScript}`
+    ]
+  };
+}
+
+export function evaluateWorkflowContract(
+  workflowContent: string,
+  workflowFile = releaseWorkflowPath
+): ReleasePreflightCheckResult {
+  const missingMarkers = expectedWorkflowMarkers.filter(
+    (marker) => !workflowContent.includes(marker)
+  );
+
+  if (missingMarkers.length > 0) {
+    return {
+      id: "workflow-contract",
+      label: "workflow contract",
+      status: "blocked",
+      summary: `${workflowFile} drifted away from the expected production publish contract.`,
+      details: missingMarkers.map(
+        (marker) => `Missing required workflow marker: ${marker}`
+      )
+    };
+  }
+
+  return {
+    id: "workflow-contract",
+    label: "workflow contract",
+    status: "safe",
+    summary: `${workflowFile} still references the expected release workflow contract.`,
+    details: [
+      "Local preflight validates workflow markers only.",
+      "Before publish, confirm the repository-level GitHub Actions secret `NPM_TOKEN` still exists."
+    ]
+  };
+}
+
+async function loadReleaseInputCheck(
+  manifests: readonly PublishablePackageManifest[],
+  repoRoot = repoRootFromScript,
+  extraIssues: readonly string[] = []
+): Promise<ReleasePreflightCheckResult> {
+  const [changesetConfig, rootPackage, coreManifest] = await Promise.all([
+    readJsonFile<ChangesetConfigFile>(changesetConfigPath, repoRoot),
+    readJsonFile<RootPackageManifestFile>(rootPackageManifestPath, repoRoot),
+    readJsonFile<PackageManifestFile>("packages/core/package.json", repoRoot)
+  ]);
+
+  return evaluateReleaseInputs({
+    manifests,
+    changesetConfig,
+    rootPackage,
+    coreManifest,
+    extraIssues
+  });
+}
+
+async function loadWorkflowContractCheck(
+  repoRoot = repoRootFromScript
+): Promise<ReleasePreflightCheckResult> {
+  const workflowContent = await readFile(resolve(repoRoot, releaseWorkflowPath), "utf8");
+  return evaluateWorkflowContract(workflowContent, releaseWorkflowPath);
 }
 
 function formatRegistryObservation(result: PackagePreflightResult): string {
@@ -379,25 +621,53 @@ export function formatHumanReport(report: ReleasePreflightReport): string {
   }
 
   lines.push("");
+  lines.push("Checks");
+
+  for (const check of report.checks) {
+    lines.push("");
+    lines.push(`${check.id}`);
+    lines.push(`  decision: ${check.status}`);
+    lines.push(`  detail: ${check.summary}`);
+
+    for (const detail of check.details) {
+      lines.push(`  note: ${detail}`);
+    }
+  }
+
+  lines.push("");
   lines.push(`OVERALL: ${report.overallStatus}`);
 
   return lines.join("\n");
 }
 
 export async function runReleasePreflight(
-  repoRoot = resolve(scriptDir, "..", "..")
+  repoRoot = repoRootFromScript
 ): Promise<ReleasePreflightReport> {
-  const manifests = await loadPublishablePackageInventory(repoRoot);
-  const results = await Promise.all(
+  let manifests: readonly PublishablePackageManifest[] = [];
+  const releaseInputIssues: string[] = [];
+
+  try {
+    manifests = await loadPublishablePackageInventory(repoRoot);
+  } catch (error) {
+    releaseInputIssues.push(error instanceof Error ? error.message : String(error));
+  }
+
+  const packageResults = await Promise.all(
     manifests.map(async (manifest) =>
       classifyRegistryResult(manifest, await fetchRegistryPackageState(manifest.name, repoRoot))
     )
   );
+  const checks = await Promise.all([
+    runNpmAuthCheck(repoRoot),
+    loadReleaseInputCheck(manifests, repoRoot, releaseInputIssues),
+    loadWorkflowContractCheck(repoRoot)
+  ]);
 
   return {
     generatedAt: new Date().toISOString(),
-    overallStatus: determineOverallStatus(results),
-    packages: results
+    overallStatus: determineOverallStatus([...packageResults, ...checks]),
+    packages: packageResults,
+    checks
   };
 }
 

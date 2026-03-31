@@ -47,6 +47,32 @@ function mockMissingPackage(packageName: string): void {
   execFileAsyncMock.mockRejectedValueOnce(missingPackageError(packageName));
 }
 
+function mockNpmPing(): void {
+  execFileAsyncMock.mockResolvedValueOnce({
+    stdout: "pong",
+    stderr: ""
+  });
+}
+
+function mockNpmWhoami(identity = "agent-badge-publisher"): void {
+  execFileAsyncMock.mockResolvedValueOnce({
+    stdout: `${identity}\n`,
+    stderr: ""
+  });
+}
+
+function authError(command: string): Error & {
+  readonly stderr: string;
+  readonly stdout: string;
+} {
+  const error = new Error(`${command} requires authentication.`);
+
+  return Object.assign(error, {
+    stderr: `npm ERR! code ENEEDAUTH\nnpm ERR! need auth ${command}`,
+    stdout: ""
+  });
+}
+
 describe("release preflight", () => {
   beforeEach(() => {
     execFileAsyncMock.mockReset();
@@ -57,6 +83,8 @@ describe("release preflight", () => {
     mockMissingPackage("@agent-badge/core");
     mockMissingPackage("agent-badge");
     mockMissingPackage("create-agent-badge");
+    mockNpmPing();
+    mockNpmWhoami();
 
     const report = await preflight.runReleasePreflight(process.cwd());
 
@@ -78,6 +106,8 @@ describe("release preflight", () => {
       "dist-tags.latest": "1.1.0"
     });
     mockMissingPackage("create-agent-badge");
+    mockNpmPing();
+    mockNpmWhoami();
 
     const report = await preflight.runReleasePreflight(process.cwd());
     const blockedEntry = report.packages.find(
@@ -95,6 +125,8 @@ describe("release preflight", () => {
     });
     mockMissingPackage("agent-badge");
     mockMissingPackage("create-agent-badge");
+    mockNpmPing();
+    mockNpmWhoami();
 
     const report = await preflight.runReleasePreflight(process.cwd());
     const warnEntry = report.packages.find(
@@ -114,5 +146,72 @@ describe("release preflight", () => {
       "agent-badge",
       "create-agent-badge"
     ]);
+  });
+
+  it("blocks when the npm-auth check cannot confirm the maintainer identity", async () => {
+    mockMissingPackage("@agent-badge/core");
+    mockMissingPackage("agent-badge");
+    mockMissingPackage("create-agent-badge");
+    mockNpmPing();
+    execFileAsyncMock.mockRejectedValueOnce(authError("npm whoami"));
+
+    const report = await preflight.runReleasePreflight(process.cwd());
+    const authCheck = report.checks.find((entry: { id: string }) => entry.id === "npm-auth");
+
+    expect(report.overallStatus).toBe("blocked");
+    expect(authCheck).toMatchObject({
+      id: "npm-auth",
+      status: "blocked"
+    });
+  });
+
+  it("blocks when the workflow-contract check loses required release markers", () => {
+    const workflowContract = preflight.evaluateWorkflowContract("name: Release\n");
+    const overall = preflight.determineOverallStatus([{ status: "safe" }, workflowContract]);
+
+    expect(workflowContract).toMatchObject({
+      id: "workflow-contract",
+      status: "blocked"
+    });
+    expect(overall).toBe("blocked");
+  });
+
+  it("blocks when the release-inputs check finds an inconsistent publish configuration", () => {
+    const releaseInputs = preflight.evaluateReleaseInputs({
+      manifests: [
+        {
+          manifestPath: "packages/core/package.json",
+          name: "@agent-badge/core",
+          version: "1.1.0"
+        },
+        {
+          manifestPath: "packages/agent-badge/package.json",
+          name: "agent-badge",
+          version: "1.2.0"
+        },
+        {
+          manifestPath: "packages/create-agent-badge/package.json",
+          name: "create-agent-badge",
+          version: "1.1.0"
+        }
+      ],
+      changesetConfig: { access: "private" },
+      rootPackage: {
+        scripts: {
+          release: "changeset publish",
+          "release:preflight": "tsx scripts/release/preflight.ts"
+        }
+      },
+      coreManifest: {
+        publishConfig: { access: "restricted" }
+      }
+    });
+    const overall = preflight.determineOverallStatus([{ status: "safe" }, releaseInputs]);
+
+    expect(releaseInputs).toMatchObject({
+      id: "release-inputs",
+      status: "blocked"
+    });
+    expect(overall).toBe("blocked");
   });
 });
