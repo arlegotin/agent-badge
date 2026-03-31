@@ -10,7 +10,7 @@
     "test": "vitest",
     "typecheck": "tsc -b --pretty false packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json",
     "verify:clean-checkout": "bash scripts/verify-clean-checkout.sh",
-    "pack:check": "npm pack --workspace packages/core --dry-run --json && npm pack --workspace packages/agent-badge --dry-run --json && npm pack --workspace packages/create-agent-badge --dry-run --json",
+    "pack:check": "node scripts/check-packages.mjs",
     "smoke:pack": "bash scripts/smoke/verify-packed-install.sh",
     "docs:check": "bash scripts/verify-docs.sh",
     "changeset": "changeset",

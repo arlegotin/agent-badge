@@ -26,7 +26,9 @@ done < <(find "${REPO_ROOT}/packages" -type f -name '*.tsbuildinfo' -print0)
 
 npm run build
 npm test -- --run
+# Tarball integrity gate: only runtime artifacts may ship in the publishable packages.
 npm_config_cache="${NPM_CACHE_DIR}" npm run pack:check
+# Smoke-install gate: install the verified tarballs in a fresh project.
 npm_config_cache="${NPM_CACHE_DIR}" npm run smoke:pack
 
 popd >/dev/null
