@@ -9,9 +9,9 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 
 ### Release Quality
 
-- [ ] **REL-04**: Maintainer can run `npm run build` successfully from committed source on a supported Node version without TypeScript errors.
-- [ ] **REL-05**: Maintainer can run `npm test` successfully from committed source, including doctor coverage and Claude incremental refresh coverage.
-- [ ] **REL-06**: Maintainer can verify release-critical checks against the current config/state schemas and current source behavior without fixture drift or stale build artifacts.
+- [x] **REL-04**: Maintainer can run `npm run build` successfully from committed source on a supported Node version without TypeScript errors. Validated in Phase 8.
+- [x] **REL-05**: Maintainer can run `npm test` successfully from committed source, including doctor coverage and Claude incremental refresh coverage. Validated in Phase 8.
+- [x] **REL-06**: Maintainer can verify release-critical checks against the current config/state schemas and current source behavior without fixture drift or stale build artifacts. Validated in Phase 8.
 
 ### Packaging
 
@@ -45,9 +45,9 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-04 | Phase 8 | Pending |
-| REL-05 | Phase 8 | Pending |
-| REL-06 | Phase 8 | Pending |
+| REL-04 | Phase 8 | Validated |
+| REL-05 | Phase 8 | Validated |
+| REL-06 | Phase 8 | Validated |
 | PACK-01 | Phase 9 | Pending |
 | PACK-02 | Phase 9 | Pending |
 | PACK-03 | Phase 10 | Pending |
@@ -60,4 +60,4 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after roadmap creation for Milestone v1.1*
+*Last updated: 2026-03-31 after completing Phase 8*

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: production-hardening-and-ship-readiness
 status: ready_to_plan
-stopped_at: Roadmap created for milestone v1.1
-last_updated: "2026-03-31T10:06:02Z"
+stopped_at: Completed Phase 08 verification-gate-recovery
+last_updated: "2026-03-31T10:54:05Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 7
-  completed_plans: 0
-  percent: 0
+  completed_plans: 3
+  percent: 43
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Milestone v1.1 — Phase 8 Verification Gate Recovery
+**Current focus:** Phase 09 — Package Metadata and Tarball Integrity
 
 ## Current Position
 
-Phase: 8 of 10 overall (Verification Gate Recovery)
+Phase: 9
 Plan: —
 Status: Ready to plan
-Last activity: 2026-03-31 — Roadmap created for Milestone v1.1
+Last activity: 2026-03-31 — Completed Phase 08 Verification Gate Recovery
 
-Progress: [░░░░░░░░░░] 0/7 plans (Phase 8 ready to plan)
+Progress: [████░░░░░░] 3/7 plans (Phase 9 ready to plan)
 
 ## Performance Metrics
 
@@ -111,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 07-release-readiness]: CI runs a separate scenario-matrix job so REL-01 remains an explicit release gate.
 - [Phase 07-release-readiness]: Recovered existing valid task commits for 07-02 and preserved atomic history instead of rewriting completed work.
 - [Phase 07-release-readiness]: Release verification may require isolated npm cache on hosts with invalid ~/.npm ownership, while publish flow remains workflow-driven.
+- [Phase 08-verification-gate-recovery]: Dynamic third-party imports should be narrowed through runtime constructor validation instead of module-wide force casts.
+- [Phase 08-verification-gate-recovery]: Clean release verification must clear both `dist/` and `*.tsbuildinfo` so TypeScript project references re-emit runtime artifacts from scratch.
+- [Phase 08-verification-gate-recovery]: CI and release should share one repo-owned `verify:clean-checkout` entrypoint instead of drifting copies of build/test/pack/smoke steps.
 
 ### Pending Todos
 
@@ -118,8 +121,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- Current source release gates are red: `npm run build` fails on the Octokit typing boundary, and `npm test` fails in doctor fixture/schema compatibility plus Claude incremental refresh coverage.
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
+- Workspace packages still use placeholder `0.0.0` versions and need deliberate publish metadata before release.
 - npm package-name availability for `agent-badge` must be checked at publish time.
 
 ### Quick Tasks Completed

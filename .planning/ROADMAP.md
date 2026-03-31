@@ -12,7 +12,7 @@ Phases 1 through 7 delivered the v1 product surface. Milestone v1.1 starts at Ph
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 8: Verification Gate Recovery** - Restore green build, test, and schema-aware release verification from current source.
+- [x] **Phase 8: Verification Gate Recovery** - Restore green build, test, and schema-aware release verification from current source. Completed 2026-03-31.
 - [ ] **Phase 9: Package Metadata and Tarball Integrity** - Make the publishable workspace packages deliberate, versioned, and minimal.
 - [ ] **Phase 10: Release Rehearsal and Checklist** - Prove the packed-install flow and codify the constrained-environment release path.
 
@@ -29,9 +29,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Recover the TypeScript build gate and Octokit integration errors
-- [ ] 08-02: Repair doctor-test drift and Claude incremental refresh coverage
-- [ ] 08-03: Rebaseline clean-checkout verification for current schemas and artifact expectations
+- [x] 08-01: Recover the TypeScript build gate and Octokit integration errors
+- [x] 08-02: Repair doctor-test drift and Claude incremental refresh coverage
+- [x] 08-03: Rebaseline clean-checkout verification for current schemas and artifact expectations
 
 ### Phase 9: Package Metadata and Tarball Integrity
 **Goal**: The workspace packages are publishable as intentional npm artifacts rather than development placeholders.
@@ -65,6 +65,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Verification Gate Recovery | 0/3 | Not started | - |
+| 8. Verification Gate Recovery | 3/3 | Complete | 2026-03-31 |
 | 9. Package Metadata and Tarball Integrity | 0/2 | Not started | - |
 | 10. Release Rehearsal and Checklist | 0/2 | Not started | - |
