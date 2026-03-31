@@ -32,12 +32,12 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Refresh is fast and failure-soft by default so normal `git push` workflows stay unblocked. Validated in Phase 5.
 - [x] Developers can inspect attribution, publishing, and hook health through clear `status`, `doctor`, `config`, and `uninstall` flows. Validated across Phases 5-7, with release hardening continuing in v1.1.
 - [x] Maintainers can run `npm run build`, `npm test`, `npm run docs:check`, and clean-checkout package smoke verification successfully from current source on a supported Node toolchain. Validated in Phase 8.
+- [x] Published workspace packages use deliberate release versions, correct internal dependency references, and ship only runtime artifacts needed for install and execution. Validated in Phase 9.
+- [x] Maintainers can prove the packed-install release path from a cleaned tree and follow one enforced release checklist covering constrained-machine operation and live publish-time checks. Validated in Phase 10.
 
 ### Active
 
-- [ ] Published workspace packages use deliberate release versions, correct internal dependency references, and ship only runtime artifacts needed for install and execution.
-- [ ] Release packaging uses deliberate workspace versions, correct internal dependency references, and clean tarball contents instead of placeholder metadata.
-- [ ] The end-to-end release checklist covers constrained-environment publish steps such as isolated npm cache usage, disk-space workarounds, and package-name verification.
+- [ ] No active v1.1 release-hardening requirements remain. The milestone goals are implemented and verified from current source.
 
 ### Out of Scope
 
@@ -50,7 +50,7 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 Phases 1 through 7 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, incremental refresh flows, operator commands, and release-oriented docs/tests.
 
-As of 2026-03-31 after Phase 8, the source-of-truth release gates are green again: the Octokit build seam is compile-safe, doctor and Claude incremental tests match the live schema/runtime behavior, and one clean-checkout verifier now proves build, test, pack, and packed-install smoke flows from a fresh artifact state. The remaining work is narrower and packaging-focused: replace placeholder workspace package metadata, tighten tarball contents, and document the constrained-environment release checklist for the final publish path.
+As of 2026-03-31 after Phase 10, the v1.1 release-hardening milestone is complete from current source: build, tests, docs, pack integrity, and clean-checkout verification are green; publishable workspace versions and tarball contents are deliberate; the packed-install smoke rehearsal rebuilds from a cleaned tree and installs the exact artifacts; and maintainers now have one enforced release checklist for constrained-machine rehearsal and live publish-time registry checks.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -83,6 +83,8 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Treat v1.1 as release hardening rather than net-new feature expansion | The current gap is production confidence, not missing core capability | Active across Phases 8-10 |
 | Use one repo-owned clean-checkout verifier for release-critical validation | Prevents CI/release drift and makes stale artifact failures reproducible locally | Implemented in Phase 8 |
 | Clean rebuild verification must clear `*.tsbuildinfo` as well as `dist/` | TypeScript project references can otherwise skip re-emitting deleted runtime artifacts | Implemented in Phase 8 |
+| The packed-install smoke rehearsal must rebuild before packing and resolve exact tarball names before install | Clean-tree release proof must not depend on prior build state or overlapping tarball globs | Implemented in Phase 10 |
+| Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish | Constrained-machine release work and registry state are real operational constraints, not side notes | Implemented in Phase 10 |
 
 ## Evolution
 
@@ -102,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after completing Phase 8*
+*Last updated: 2026-03-31 after completing Phase 10*
