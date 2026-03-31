@@ -45,19 +45,19 @@ This milestone hardens the existing v1 feature set so it can be shipped confiden
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-04 | TBD | Pending |
-| REL-05 | TBD | Pending |
-| REL-06 | TBD | Pending |
-| PACK-01 | TBD | Pending |
-| PACK-02 | TBD | Pending |
-| PACK-03 | TBD | Pending |
-| OPER-06 | TBD | Pending |
+| REL-04 | Phase 8 | Pending |
+| REL-05 | Phase 8 | Pending |
+| REL-06 | Phase 8 | Pending |
+| PACK-01 | Phase 9 | Pending |
+| PACK-02 | Phase 9 | Pending |
+| PACK-03 | Phase 10 | Pending |
+| OPER-06 | Phase 10 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7 ⚠️
+- Mapped to phases: 7
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial milestone v1.1 definition*
+*Last updated: 2026-03-31 after roadmap creation for Milestone v1.1*
