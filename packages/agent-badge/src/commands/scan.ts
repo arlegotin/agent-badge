@@ -11,6 +11,8 @@ import {
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   runFullBackfillScan,
+  appendAgentBadgeLog,
+  buildLogEntry,
   type AgentBadgeState,
   type AppliedScanOverrideAction,
   type AttributeBackfillSessionsResult,
@@ -150,59 +152,98 @@ export async function runScanCommand(
   const cwd = resolve(options.cwd ?? process.cwd());
   const homeRoot = resolve(options.homeRoot ?? homedir());
   const stdout = options.stdout ?? process.stdout;
+  const startAtMs = Date.now();
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
 
-  const config = parseAgentBadgeConfig(await readJsonFile(configPath));
-  const previousState = parseAgentBadgeState(await readJsonFile(statePath));
-  const scan = await runFullBackfillScan({
-    cwd,
-    homeRoot,
-    config
-  });
-  const initialAttribution = attributeBackfillSessions({
-    repo: scan.repo,
-    sessions: scan.sessions,
-    overrides: previousState.overrides.ambiguousSessions
-  });
-  const requestedOverrides = applyRequestedOverrides(
-    previousState,
-    initialAttribution,
-    options
-  );
-  const attribution =
-    requestedOverrides.overrideActions.length === 0
-      ? initialAttribution
-      : attributeBackfillSessions({
-          repo: scan.repo,
-          sessions: scan.sessions,
-          overrides: requestedOverrides.nextState.overrides.ambiguousSessions
-        });
-  const report = formatScanReport(
-    buildReportInput(scan, attribution, requestedOverrides.overrideActions)
-  );
-  const nextState = applyCompletedScanState({
-    previousState,
-    scanResult: {
-      scannedProviders: scan.scannedProviders,
-      overrideActions: requestedOverrides.overrideActions
-    },
-    now: new Date().toISOString()
-  });
+  try {
+    const config = parseAgentBadgeConfig(await readJsonFile(configPath));
+    const previousState = parseAgentBadgeState(await readJsonFile(statePath));
+    const scan = await runFullBackfillScan({
+      cwd,
+      homeRoot,
+      config
+    });
+    const initialAttribution = attributeBackfillSessions({
+      repo: scan.repo,
+      sessions: scan.sessions,
+      overrides: previousState.overrides.ambiguousSessions
+    });
+    const requestedOverrides = applyRequestedOverrides(
+      previousState,
+      initialAttribution,
+      options
+    );
+    const attribution =
+      requestedOverrides.overrideActions.length === 0
+        ? initialAttribution
+        : attributeBackfillSessions({
+            repo: scan.repo,
+            sessions: scan.sessions,
+            overrides: requestedOverrides.nextState.overrides.ambiguousSessions
+          });
+    const report = formatScanReport(
+      buildReportInput(scan, attribution, requestedOverrides.overrideActions)
+    );
+    const nextState = applyCompletedScanState({
+      previousState,
+      scanResult: {
+        scannedProviders: scan.scannedProviders,
+        overrideActions: requestedOverrides.overrideActions
+      },
+      now: new Date().toISOString()
+    });
 
-  for (const warning of requestedOverrides.warnings) {
-    writeLine(stdout, warning);
+    for (const warning of requestedOverrides.warnings) {
+      writeLine(stdout, warning);
+    }
+
+    writeLine(stdout, report);
+    await writeStateFile(statePath, nextState);
+
+    await appendAgentBadgeLog({
+      cwd,
+      entry: buildLogEntry({
+        operation: "scan",
+        status: "success",
+        startAtMs,
+        counts: {
+          scannedSessions: scan.counts.scannedSessions,
+          attributedSessions: attribution.counts.included,
+          ambiguousSessions: attribution.counts.ambiguous,
+          publishedRecords: 0
+        }
+      })
+    }).catch(() => {
+      // Logging is best-effort and must not block command output.
+    });
+
+    return {
+      scan,
+      attribution,
+      state: nextState,
+      overrideActions: requestedOverrides.overrideActions,
+      warnings: requestedOverrides.warnings,
+      report
+    };
+  } catch (error) {
+    await appendAgentBadgeLog({
+      cwd,
+      entry: buildLogEntry({
+        operation: "scan",
+        status: "failure",
+        startAtMs,
+        counts: {
+          scannedSessions: 0,
+          attributedSessions: 0,
+          ambiguousSessions: 0,
+          publishedRecords: 0
+        }
+      })
+    }).catch(() => {
+      // Logging is best-effort and must not replace command failures.
+    });
+
+    throw error;
   }
-
-  writeLine(stdout, report);
-  await writeStateFile(statePath, nextState);
-
-  return {
-    scan,
-    attribution,
-    state: nextState,
-    overrideActions: requestedOverrides.overrideActions,
-    warnings: requestedOverrides.warnings,
-    report
-  };
 }

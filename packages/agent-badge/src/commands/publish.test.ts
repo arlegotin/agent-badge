@@ -5,11 +5,13 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  appendAgentBadgeLogMock,
   attributeBackfillSessionsMock,
   createGitHubGistClientMock,
   publishBadgeToGistMock,
   runFullBackfillScanMock
 } = vi.hoisted(() => ({
+  appendAgentBadgeLogMock: vi.fn(),
   attributeBackfillSessionsMock: vi.fn(),
   createGitHubGistClientMock: vi.fn(),
   publishBadgeToGistMock: vi.fn(),
@@ -23,6 +25,7 @@ vi.mock("@agent-badge/core", async () => {
 
   return {
     ...actual,
+    appendAgentBadgeLog: appendAgentBadgeLogMock,
     attributeBackfillSessions: attributeBackfillSessionsMock,
     createGitHubGistClient: createGitHubGistClientMock,
     publishBadgeToGist: publishBadgeToGistMock,
@@ -266,6 +269,8 @@ function createAttributionResult(
 }
 
 beforeEach(() => {
+  appendAgentBadgeLogMock.mockReset();
+  appendAgentBadgeLogMock.mockResolvedValue("log-path");
   attributeBackfillSessionsMock.mockReset();
   createGitHubGistClientMock.mockReset();
   publishBadgeToGistMock.mockReset();
@@ -341,6 +346,19 @@ describe("runPublishCommand", () => {
       expect(output.read().startsWith("agent-badge publish\n")).toBe(true);
       expect(output.read()).toContain("lastPublishedHash: hash_123");
       expect(result.state.publish.lastPublishedHash).toBe("hash_123");
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repoRoot,
+        entry: expect.objectContaining({
+          operation: "publish",
+          status: "success",
+          counts: {
+            scannedSessions: 1,
+            attributedSessions: 1,
+            ambiguousSessions: 0,
+            publishedRecords: 1
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }
@@ -363,6 +381,19 @@ describe("runPublishCommand", () => {
       expect(runFullBackfillScanMock).not.toHaveBeenCalled();
       expect(attributeBackfillSessionsMock).not.toHaveBeenCalled();
       expect(publishBadgeToGistMock).not.toHaveBeenCalled();
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repoRoot,
+        entry: expect.objectContaining({
+          operation: "publish",
+          status: "failure",
+          counts: {
+            scannedSessions: 0,
+            attributedSessions: 0,
+            ambiguousSessions: 0,
+            publishedRecords: 0
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }

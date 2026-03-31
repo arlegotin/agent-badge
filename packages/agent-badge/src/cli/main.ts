@@ -11,6 +11,7 @@ import { runPublishCommand } from "../commands/publish.js";
 import { runRefreshCommand } from "../commands/refresh.js";
 import { runScanCommand } from "../commands/scan.js";
 import { runStatusCommand } from "../commands/status.js";
+import { runUninstallCommand } from "../commands/uninstall.js";
 
 function collectOptionValue(value: string, previous: string[] = []): string[] {
   return [...previous, value];
@@ -117,6 +118,35 @@ export function buildProgram(): Command {
         probeWrite: options.probeWrite ?? false
       });
     });
+
+  program
+    .command("uninstall")
+    .description("Remove agent-badge runtime wiring and optionally purge local or remote state.")
+    .option("--purge-remote", "Delete the configured publish gist and clear local gist association.")
+    .option("--purge-config", "Delete .agent-badge/config.json.")
+    .option("--purge-state", "Delete .agent-badge/state.json.")
+    .option("--purge-logs", "Delete .agent-badge/logs.")
+    .option("--purge-cache", "Delete .agent-badge/cache.")
+    .option("--force", "Preserve progress by ignoring non-fatal artifact cleanup failures.")
+    .action(
+      async (options: {
+        purgeRemote?: boolean;
+        purgeConfig?: boolean;
+        purgeState?: boolean;
+        purgeLogs?: boolean;
+        purgeCache?: boolean;
+        force?: boolean;
+      }) => {
+        await runUninstallCommand({
+          purgeRemote: options.purgeRemote ?? false,
+          purgeConfig: options.purgeConfig ?? false,
+          purgeState: options.purgeState ?? false,
+          purgeLogs: options.purgeLogs ?? true,
+          purgeCaches: options.purgeCache ?? true,
+          force: options.force ?? false
+        });
+      }
+    );
 
   const configCommand = program
     .command("config")

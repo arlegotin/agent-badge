@@ -19,6 +19,7 @@ export interface GitHubGistClient {
   getGist(gistId: string): Promise<GitHubGist>;
   createPublicGist(input: CreatePublicGistInput): Promise<GitHubGist>;
   updateGistFile(input: UpdateGistFileInput): Promise<GitHubGist>;
+  deleteGist(input: { readonly gistId: string }): Promise<void>;
 }
 
 interface OctokitGistPayload {
@@ -48,6 +49,7 @@ interface GitHubGistsApi {
     readonly gist_id: string;
     readonly files: Record<string, { readonly content: string }>;
   }): Promise<{ readonly data: unknown }>;
+  remove(input: { readonly gist_id: string }): Promise<{ readonly data: unknown }>;
 }
 
 interface OctokitLike {
@@ -146,6 +148,13 @@ export function createGitHubGistClient(
       });
 
       return normalizeGist(response.data);
+    },
+    async deleteGist(input) {
+      const octokit = await getOctokit();
+
+      await octokit.rest.gists.remove({
+        gist_id: input.gistId
+      });
     }
   };
 }

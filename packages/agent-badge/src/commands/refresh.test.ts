@@ -5,10 +5,12 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  appendAgentBadgeLogMock,
   createGitHubGistClientMock,
   publishBadgeIfChangedMock,
   runIncrementalRefreshMock
 } = vi.hoisted(() => ({
+  appendAgentBadgeLogMock: vi.fn(),
   createGitHubGistClientMock: vi.fn(),
   publishBadgeIfChangedMock: vi.fn(),
   runIncrementalRefreshMock: vi.fn()
@@ -21,6 +23,7 @@ vi.mock("@agent-badge/core", async () => {
 
   return {
     ...actual,
+    appendAgentBadgeLog: appendAgentBadgeLogMock,
     createGitHubGistClient: createGitHubGistClientMock,
     publishBadgeIfChanged: publishBadgeIfChangedMock,
     runIncrementalRefresh: runIncrementalRefreshMock
@@ -125,6 +128,8 @@ async function readStateFile(statePath: string): Promise<AgentBadgeState> {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(originalSystemTime);
+  appendAgentBadgeLogMock.mockReset();
+  appendAgentBadgeLogMock.mockResolvedValue("log-path");
   createGitHubGistClientMock.mockReset();
   publishBadgeIfChangedMock.mockReset();
   runIncrementalRefreshMock.mockReset();
@@ -199,6 +204,19 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("- Scan mode: full");
       expect(output.read()).toContain("- Totals: 3 sessions, 210 tokens");
       expect(output.read()).toContain("- Publish: not configured");
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repoRoot,
+        entry: expect.objectContaining({
+          operation: "refresh",
+          status: "skipped",
+          counts: {
+            scannedSessions: 6,
+            attributedSessions: 3,
+            ambiguousSessions: 1,
+            publishedRecords: 0
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }
@@ -519,6 +537,19 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("Refresh status: failed-soft");
       expect(output.read()).toContain("GitHub authentication missing");
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repoRoot,
+        entry: expect.objectContaining({
+          operation: "refresh",
+          status: "failure",
+          counts: {
+            scannedSessions: 1,
+            attributedSessions: 1,
+            ambiguousSessions: 0,
+            publishedRecords: 0
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }
@@ -573,6 +604,19 @@ describe("runRefreshCommand", () => {
 
       expect(persistedState.refresh.lastPublishDecision).toBe("failed");
       expect(persistedState.publish.status).toBe("error");
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repoRoot,
+        entry: expect.objectContaining({
+          operation: "refresh",
+          status: "failure",
+          counts: {
+            scannedSessions: 1,
+            attributedSessions: 1,
+            ambiguousSessions: 0,
+            publishedRecords: 0
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }

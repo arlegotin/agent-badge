@@ -20,7 +20,8 @@ import {
   agentBadgeGitignoreStartMarker,
   agentBadgeHookEndMarker,
   agentBadgeHookStartMarker,
-  applyRepoLocalRuntimeWiring
+  applyRepoLocalRuntimeWiring,
+  removeRepoLocalRuntimeWiring
 } from "./runtime-wiring.js";
 
 const execFileAsync = promisify(execFile);
@@ -367,6 +368,106 @@ describe("applyRepoLocalRuntimeWiring", () => {
       } finally {
         await managedOnlyRepo.cleanup();
       }
+    } finally {
+      await repo.cleanup();
+    }
+  });
+});
+
+describe("removeRepoLocalRuntimeWiring", () => {
+  it("removes managed hook and gitignore blocks while preserving custom content", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        "package.json": JSON.stringify(
+          {
+            name: "fixture-repo",
+            private: true,
+            scripts: {
+              test: "vitest --run"
+            },
+            devDependencies: {
+              "agent-badge": "^1.2.3",
+              typescript: "^5.0.0"
+            }
+          },
+          null,
+          2
+        ),
+        ".git/hooks/pre-push":
+          "#!/bin/sh\n\necho custom-check\n\n# agent-badge:start\nnpm run --silent agent-badge:refresh || true\n# agent-badge:end\n",
+        ".gitignore":
+          "coverage/\n# agent-badge:gitignore:start\n.agent-badge/state.json\n.agent-badge/cache/\n.agent-badge/logs/\n# agent-badge:gitignore:end\nnotes/\n"
+      }
+    });
+
+    try {
+      const result = await removeRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm"
+      });
+      const packageJson = JSON.parse(
+        await readFile(join(repo.root, "package.json"), "utf8")
+      ) as {
+        scripts: Record<string, string>;
+        devDependencies: Record<string, string>;
+      };
+      const hookContent = await readFile(
+        join(repo.root, ".git/hooks/pre-push"),
+        "utf8"
+      );
+      const gitignoreContent = await readFile(join(repo.root, ".gitignore"), "utf8");
+
+      expect(result.updated).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.agent-badge",
+          "package.json",
+          ".gitignore",
+          ".git/hooks/pre-push"
+        ])
+      );
+      expect(packageJson.scripts.test).toBe("vitest --run");
+      expect(packageJson.scripts["agent-badge:init"]).toBeUndefined();
+      expect(packageJson.scripts["agent-badge:refresh"]).toBeUndefined();
+      expect(packageJson.devDependencies.typescript).toBe("^5.0.0");
+      expect(packageJson.devDependencies["agent-badge"]).toBeUndefined();
+      expect(hookContent).toContain("echo custom-check");
+      expect(hookContent).not.toContain("# agent-badge:start");
+      expect(hookContent).not.toContain("# agent-badge:end");
+      expect(gitignoreContent).toContain("coverage/");
+      expect(gitignoreContent).toContain("notes/");
+      expect(gitignoreContent).not.toContain("# agent-badge:gitignore:start");
+      expect(gitignoreContent).not.toContain("# agent-badge:gitignore:end");
+      expect(gitignoreContent).not.toContain(".agent-badge/state.json");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("is idempotent on a second remove run", async () => {
+    const repo = await createGitRepoFixture();
+
+    try {
+      await applyRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm",
+        runtimeDependencySpecifier: "^1.2.3",
+        refresh: failSoftRefresh
+      });
+
+      await removeRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm"
+      });
+      const secondRun = await removeRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm"
+      });
+
+      expect(secondRun.updated).toEqual([]);
+      expect(secondRun.reused).toEqual(
+        expect.arrayContaining(["package.json", ".gitignore", ".git/hooks/pre-push"])
+      );
+      expect(secondRun.warnings).toEqual([]);
     } finally {
       await repo.cleanup();
     }

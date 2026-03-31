@@ -194,8 +194,19 @@ describe("publishBadgeToGist", () => {
         }
       }
     });
+    const parsedPayload = JSON.parse(serializedPayload) as Record<string, unknown>;
+    expect(Object.keys(parsedPayload).sort()).toEqual([
+      "color",
+      "label",
+      "message",
+      "schemaVersion"
+    ]);
     expect(serializedPayload).not.toContain("included-1");
     expect(serializedPayload).not.toContain("/Users/example/project");
+    expect(serializedPayload).not.toContain("prompt");
+    expect(serializedPayload).not.toContain("transcript");
+    expect(serializedPayload).not.toContain("cwd");
+    expect(serializedPayload).not.toContain("path");
     expect(serializedPayload).not.toContain("reason");
     expect(nextState.publish).toEqual({
       status: "published",

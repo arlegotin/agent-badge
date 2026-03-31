@@ -38,6 +38,16 @@ export interface EnsurePublishTargetOptions {
   readonly client?: GitHubGistClient;
 }
 
+export interface DeletePublishTargetOptions {
+  readonly gistId: string;
+  readonly client?: GitHubGistClient;
+}
+
+export interface DeletePublishTargetResult {
+  readonly gistId: string;
+  readonly deleted: boolean;
+}
+
 function normalizeGistId(value: string | null | undefined): string | undefined {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
@@ -134,4 +144,35 @@ export async function ensurePublishTarget(
   } catch {
     return buildDeferredResult("gist-create-failed");
   }
+}
+
+export async function deletePublishTarget(
+  options: DeletePublishTargetOptions
+): Promise<DeletePublishTargetResult> {
+  const gistId = options.gistId.trim();
+
+  if (gistId.length === 0) {
+    return {
+      gistId,
+      deleted: false
+    };
+  }
+
+  const client = options.client ?? createGitHubGistClient();
+
+  try {
+    await client.deleteGist({
+      gistId
+    });
+  } catch {
+    return {
+      gistId,
+      deleted: false
+    };
+  }
+
+  return {
+    gistId,
+    deleted: true
+  };
 }

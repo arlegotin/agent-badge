@@ -33,3 +33,8 @@ export {
   type DoctorCommandResult,
   type RunDoctorCommandOptions
 } from "./doctor.js";
+export {
+  runUninstallCommand,
+  type RunUninstallCommandOptions,
+  type UninstallCommandResult
+} from "./uninstall.js";

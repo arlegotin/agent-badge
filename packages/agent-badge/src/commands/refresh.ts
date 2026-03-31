@@ -10,6 +10,8 @@ import {
   publishBadgeIfChanged,
   runIncrementalRefresh,
   writeRefreshCache,
+  appendAgentBadgeLog,
+  buildLogEntry,
   type AgentBadgeRefreshPublishDecision,
   type AgentBadgeState,
   type GitHubGistClient,
@@ -171,8 +173,45 @@ function printSoftFailure(stdout: OutputWriter, error: Error): void {
   writeLine(stdout, `- Error: ${error.message}`);
 }
 
+interface RefreshCommandLogInput {
+  readonly summary: RunIncrementalRefreshResult["summary"] | null;
+  readonly publishDecision: AgentBadgeRefreshPublishDecision;
+}
+
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
+}
+
+function buildRefreshLogCounts(input: RefreshCommandLogInput): {
+  readonly scannedSessions: number;
+  readonly attributedSessions: number;
+  readonly ambiguousSessions: number;
+  readonly publishedRecords: number;
+} {
+  const summary = input.summary;
+
+  return {
+    scannedSessions: summary
+      ? summary.includedSessions + summary.ambiguousSessions + summary.excludedSessions
+      : 0,
+    attributedSessions: summary ? summary.includedSessions : 0,
+    ambiguousSessions: summary ? summary.ambiguousSessions : 0,
+    publishedRecords: input.publishDecision === "published" ? 1 : 0
+  };
+}
+
+function buildRefreshLogStatus(
+  publishDecision: AgentBadgeRefreshPublishDecision
+): "success" | "failure" | "skipped" {
+  if (publishDecision === "failed") {
+    return "failure";
+  }
+
+  if (publishDecision === "not-configured" || publishDecision === "deferred") {
+    return "skipped";
+  }
+
+  return "success";
 }
 
 export async function runRefreshCommand(
@@ -182,6 +221,7 @@ export async function runRefreshCommand(
   const homeRoot = resolve(options.homeRoot ?? homedir());
   const stdout = options.stdout ?? process.stdout;
   const env = options.env ?? process.env;
+  const startAtMs = Date.now();
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
   let persistedState: AgentBadgeState | null = null;
@@ -276,6 +316,20 @@ export async function runRefreshCommand(
     };
 
     printRefreshSummary(stdout, result, options.hook);
+    await appendAgentBadgeLog({
+      cwd,
+      entry: buildLogEntry({
+        operation: "refresh",
+        status: buildRefreshLogStatus(publishDecision),
+        startAtMs,
+        counts: buildRefreshLogCounts({
+          summary: result.refresh.summary,
+          publishDecision
+        })
+      })
+    }).catch(() => {
+      // Logging is best-effort and must not block command output.
+    });
 
     return result;
   } catch (error) {
@@ -307,10 +361,38 @@ export async function runRefreshCommand(
     }
 
     if (!options.failSoft) {
+      await appendAgentBadgeLog({
+        cwd,
+        entry: buildLogEntry({
+          operation: "refresh",
+          status: "failure",
+          startAtMs,
+          counts: buildRefreshLogCounts({
+            summary: persistedState?.refresh.summary ?? null,
+            publishDecision: "failed"
+          })
+        })
+      }).catch(() => {
+        // Logging is best-effort and must not block command output.
+      });
       throw refreshError;
     }
 
     printSoftFailure(stdout, refreshError);
+    await appendAgentBadgeLog({
+      cwd,
+      entry: buildLogEntry({
+        operation: "refresh",
+        status: "failure",
+        startAtMs,
+        counts: buildRefreshLogCounts({
+          summary: persistedState?.refresh.summary ?? null,
+          publishDecision: "failed"
+        })
+      })
+    }).catch(() => {
+      // Logging is best-effort and must not block command output.
+    });
 
     return {
       status: "failed-soft",

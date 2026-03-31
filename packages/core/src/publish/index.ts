@@ -12,4 +12,5 @@ export type {
   PublishBadgeIfChangedResult,
   PublishBadgeToGistOptions
 } from "./publish-service.js";
+export { deletePublishTarget, type DeletePublishTargetResult } from "./publish-target.js";
 export * from "./publish-target.js";

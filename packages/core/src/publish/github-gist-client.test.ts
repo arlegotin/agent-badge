@@ -27,7 +27,8 @@ describe("createGitHubGistClient", () => {
           gists: {
             get,
             create: vi.fn(),
-            update: vi.fn()
+            update: vi.fn(),
+            remove: vi.fn()
           }
         }
       }
@@ -65,7 +66,8 @@ describe("createGitHubGistClient", () => {
           gists: {
             get: vi.fn(),
             create,
-            update: vi.fn()
+            update: vi.fn(),
+            remove: vi.fn()
           }
         }
       }
@@ -112,7 +114,8 @@ describe("createGitHubGistClient", () => {
           gists: {
             get: vi.fn(),
             create: vi.fn(),
-            update
+            update,
+            remove: vi.fn()
           }
         }
       }
@@ -134,6 +137,34 @@ describe("createGitHubGistClient", () => {
           content: '{"schemaVersion":1,"message":"updated"}'
         }
       }
+    });
+  });
+
+  it("deletes a gist through the transport seam", async () => {
+    const remove = vi.fn().mockResolvedValue({
+      data: {
+        id: null
+      }
+    });
+    const client = createGitHubGistClient({
+      octokit: {
+        rest: {
+          gists: {
+            get: vi.fn(),
+            create: vi.fn(),
+            update: vi.fn(),
+            remove
+          }
+        }
+      }
+    });
+
+    await client.deleteGist({
+      gistId: "gist_123"
+    });
+
+    expect(remove).toHaveBeenCalledWith({
+      gist_id: "gist_123"
     });
   });
 });

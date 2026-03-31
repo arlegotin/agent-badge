@@ -4,7 +4,8 @@ import { dirname, join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { runFullBackfillScanMock } = vi.hoisted(() => ({
+const { appendAgentBadgeLogMock, runFullBackfillScanMock } = vi.hoisted(() => ({
+  appendAgentBadgeLogMock: vi.fn(),
   runFullBackfillScanMock: vi.fn()
 }));
 
@@ -15,6 +16,7 @@ vi.mock("@agent-badge/core", async () => {
 
   return {
     ...actual,
+    appendAgentBadgeLog: appendAgentBadgeLogMock,
     runFullBackfillScan: runFullBackfillScanMock
   };
 });
@@ -310,6 +312,8 @@ async function readStateFile(statePath: string): Promise<AgentBadgeState> {
 }
 
 beforeEach(() => {
+  appendAgentBadgeLogMock.mockReset();
+  appendAgentBadgeLogMock.mockResolvedValue("log-path");
   runFullBackfillScanMock.mockReset();
 });
 
@@ -334,6 +338,19 @@ describe.sequential("runScanCommand", () => {
       });
 
       expect(output.read()).toContain("Included Totals");
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repo.root,
+        entry: expect.objectContaining({
+          operation: "scan",
+          status: "success",
+          counts: {
+            scannedSessions: 4,
+            attributedSessions: 1,
+            ambiguousSessions: 2,
+            publishedRecords: 0
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }
@@ -467,6 +484,19 @@ describe.sequential("runScanCommand", () => {
       ).rejects.toThrow("scan failed");
 
       expect(await readFile(fixture.statePath, "utf8")).toBe(before);
+      expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
+        cwd: fixture.repo.root,
+        entry: expect.objectContaining({
+          operation: "scan",
+          status: "failure",
+          counts: {
+            scannedSessions: 0,
+            attributedSessions: 0,
+            ambiguousSessions: 0,
+            publishedRecords: 0
+          }
+        })
+      });
     } finally {
       await fixture.cleanup();
     }

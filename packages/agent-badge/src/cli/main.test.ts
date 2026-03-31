@@ -59,12 +59,13 @@ describe("buildProgram", () => {
     expect(commandNames).toContain("doctor");
   });
 
-  it("registers the refresh, status, and config commands", () => {
+  it("registers the refresh, status, uninstall, and config commands", () => {
     const program = buildProgram();
     const commandNames = program.commands.map((command) => command.name());
 
     expect(commandNames).toContain("refresh");
     expect(commandNames).toContain("status");
+    expect(commandNames).toContain("uninstall");
     expect(commandNames).toContain("config");
   });
 
@@ -93,5 +94,21 @@ describe("buildProgram", () => {
 
     expect(optionFlags).toContain("--json");
     expect(optionFlags).toContain("--probe-write");
+  });
+
+  it("registers uninstall purge options", () => {
+    const uninstallCommand = findCommand("uninstall");
+    const optionFlags = uninstallCommand?.options.map((option) => option.flags);
+
+    expect(optionFlags).toEqual(
+      expect.arrayContaining([
+        "--purge-remote",
+        "--purge-config",
+        "--purge-state",
+        "--purge-logs",
+        "--purge-cache",
+        "--force"
+      ])
+    );
   });
 });

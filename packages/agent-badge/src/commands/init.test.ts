@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { defaultAgentBadgeConfig, defaultAgentBadgeState } from "@agent-badge/core";
 import { runInitCommand } from "./init.js";
+import { runUninstallCommand } from "./uninstall.js";
 
 const execFileAsync = promisify(execFile);
 const publishableSemverPattern =
@@ -628,6 +629,66 @@ describe("runInitCommand", () => {
         )
       ).toHaveLength(1);
       expect(secondOutput.read()).toContain("- Publish target: reused existing gist");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("stays idempotent across init -> uninstall -> init", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const gistClient = {
+      getGist: async () => createGistMetadata("gist_reentry"),
+      createPublicGist: async () => {
+        throw new Error("create should not run");
+      },
+      updateGistFile: async () => createGistMetadata("gist_reentry"),
+      deleteGist: async () => undefined
+    };
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_reentry",
+        gistClient
+      });
+
+      await runUninstallCommand({
+        cwd: repo.root,
+        gistClient
+      });
+      await runUninstallCommand({
+        cwd: repo.root,
+        gistClient
+      });
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_reentry",
+        gistClient
+      });
+
+      const readmeContent = await readReadmeContent(repo.root);
+      const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+      const packageJson = await readJsonObject(join(repo.root, "package.json"));
+      const scripts = packageJson.scripts as Record<string, string>;
+      const devDependencies = packageJson.devDependencies as Record<string, string>;
+
+      expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
+      expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
+      expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
+      expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
+      expect(scripts["agent-badge:init"]).toBe("agent-badge init");
+      expect(scripts["agent-badge:refresh"]).toBe(
+        "agent-badge refresh --hook pre-push --fail-soft"
+      );
+      expect(typeof devDependencies["agent-badge"]).toBe("string");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }

@@ -250,6 +250,52 @@ function buildGitignoreContent(
   return `${baseContent}\n\n${managedBlock}\n`;
 }
 
+function isPotentialRuntimeDependency(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    (value === "latest" ||
+      /^\^?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(
+        value
+      ))
+  );
+}
+
+function removeManagedStringValue(options: {
+  readonly container: JsonObject;
+  readonly key: string;
+  readonly label: string;
+  readonly result: RepoLocalRuntimeWiringResult;
+  readonly condition?: (value: unknown) => boolean;
+}): boolean {
+  const currentValue = options.container[options.key];
+
+  if (currentValue === undefined) {
+    options.result.reused.push(options.label);
+    return false;
+  }
+
+  if (options.condition && !options.condition(currentValue)) {
+    options.result.warnings.push(
+      `Preserved non-managed ${options.label} so runtime tooling did not remove it.`
+    );
+    options.result.reused.push(options.label);
+    return false;
+  }
+
+  delete options.container[options.key];
+  options.result.updated.push(options.label);
+
+  return true;
+}
+
+async function readOptionalTextFile(targetPath: string): Promise<string | null> {
+  try {
+    return await readFile(targetPath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
 async function ensureExecutable(targetPath: string): Promise<boolean> {
   const fileStat = await stat(targetPath);
 
@@ -385,6 +431,125 @@ export async function applyRepoLocalRuntimeWiring(
         createManagedHookBlock(options.packageManager, options.refresh)
       )
     : buildHookContent(strippedHook.baseContent);
+  const hookContentChanged =
+    nextHookContent !== existingHookContent.replace(/\r\n/g, "\n");
+  const hookModeChanged = await ensureExecutable(prePushHookPath);
+
+  if (hookContentChanged) {
+    await writeFile(prePushHookPath, nextHookContent, "utf8");
+  }
+
+  if (hookContentChanged || hookModeChanged) {
+    result.updated.push(prePushHookPathLabel);
+  } else {
+    result.reused.push(prePushHookPathLabel);
+  }
+
+  return result;
+}
+
+export async function removeRepoLocalRuntimeWiring(
+  options: Omit<
+    ApplyRepoLocalRuntimeWiringOptions,
+    "runtimeDependencySpecifier" | "refresh"
+  >
+): Promise<RepoLocalRuntimeWiringResult> {
+  const result: RepoLocalRuntimeWiringResult = {
+    created: [],
+    updated: [],
+    reused: [],
+    warnings: []
+  };
+
+  const packageJsonPath = join(options.cwd, packageJsonPathLabel);
+  const gitignorePath = join(options.cwd, gitignorePathLabel);
+  const gitDir = join(options.cwd, ".git");
+  const hooksDir = join(gitDir, "hooks");
+  const prePushHookPath = join(hooksDir, "pre-push");
+  const packageJson = await readPackageJson(packageJsonPath);
+  let packageJsonChanged = false;
+
+  if (packageJson !== undefined) {
+    const devDependencies = getOrCreateObject(packageJson, "devDependencies");
+    const scripts = getOrCreateObject(packageJson, "scripts");
+
+    packageJsonChanged =
+      removeManagedStringValue({
+        container: scripts,
+        key: agentBadgeInitScriptName,
+        label: `package.json#scripts.${agentBadgeInitScriptName}`,
+        result
+      }) || packageJsonChanged;
+    packageJsonChanged =
+      removeManagedStringValue({
+        container: scripts,
+        key: agentBadgeRefreshScriptName,
+        label: `package.json#scripts.${agentBadgeRefreshScriptName}`,
+        result
+      }) || packageJsonChanged;
+    packageJsonChanged =
+      removeManagedStringValue({
+        container: devDependencies,
+        key: "agent-badge",
+        label: "package.json#devDependencies.agent-badge",
+        result,
+        condition: isPotentialRuntimeDependency
+      }) || packageJsonChanged;
+
+    if (packageJsonChanged) {
+      await writeJsonFile(packageJsonPath, packageJson);
+      result.updated.push(packageJsonPathLabel);
+    } else {
+      result.reused.push(packageJsonPathLabel);
+    }
+  } else {
+    result.reused.push(packageJsonPathLabel);
+  }
+
+  const existingGitignoreContent = await readOptionalTextFile(gitignorePath);
+
+  if (existingGitignoreContent === null) {
+    result.reused.push(gitignorePathLabel);
+  } else {
+    const strippedGitignore = stripManagedGitignoreBlock(existingGitignoreContent);
+    const nextGitignoreContent = buildGitignoreContent(strippedGitignore.baseContent);
+
+    if (strippedGitignore.hadManagedBlock) {
+      if (nextGitignoreContent !== existingGitignoreContent.replace(/\r\n/g, "\n")) {
+        await writeFile(gitignorePath, nextGitignoreContent, "utf8");
+        result.updated.push(gitignorePathLabel);
+      } else {
+        result.reused.push(gitignorePathLabel);
+      }
+    } else {
+      result.reused.push(gitignorePathLabel);
+    }
+  }
+
+  if (!existsSync(gitDir)) {
+    result.warnings.push(
+      "No .git directory was found, so pre-push hook removal was skipped."
+    );
+    result.reused.push(prePushHookPathLabel);
+    return result;
+  }
+
+  await mkdir(hooksDir, { recursive: true });
+
+  const existingHookContent = await readOptionalTextFile(prePushHookPath);
+
+  if (existingHookContent === null) {
+    result.reused.push(prePushHookPathLabel);
+    return result;
+  }
+
+  const strippedHook = stripManagedHookBlock(existingHookContent);
+  if (!strippedHook.hadManagedBlock) {
+    result.reused.push(prePushHookPathLabel);
+    return result;
+  }
+
+  const nextHookContent = buildHookContent(strippedHook.baseContent);
   const hookContentChanged =
     nextHookContent !== existingHookContent.replace(/\r\n/g, "\n");
   const hookModeChanged = await ensureExecutable(prePushHookPath);
