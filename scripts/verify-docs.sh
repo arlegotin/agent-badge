@@ -22,7 +22,13 @@ done
 
 rg -n "docs/RELEASE.md" README.md
 rg -n "npm run verify:clean-checkout" docs/RELEASE.md
+rg -n "12-preflight.json" docs/RELEASE.md
+rg -n "12-PUBLISH-EVIDENCE.md" docs/RELEASE.md
+rg -n "npm run release:evidence" docs/RELEASE.md
 rg -n "npm run release:preflight" docs/RELEASE.md
+rg -n -- "workflow_dispatch" docs/RELEASE.md
+rg -n -- "--fallback-reason" docs/RELEASE.md
+rg -n -- ".github/workflows/release.yml" docs/RELEASE.md
 rg -n "npm whoami" docs/RELEASE.md
 rg -n "npm ping" docs/RELEASE.md
 rg -n "npm view agent-badge" docs/RELEASE.md
