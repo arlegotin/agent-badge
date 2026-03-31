@@ -13,7 +13,7 @@ Phases 1 through 7 delivered the v1 product surface. Milestone v1.1 starts at Ph
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 8: Verification Gate Recovery** - Restore green build, test, and schema-aware release verification from current source. Completed 2026-03-31.
-- [ ] **Phase 9: Package Metadata and Tarball Integrity** - Make the publishable workspace packages deliberate, versioned, and minimal.
+- [x] **Phase 9: Package Metadata and Tarball Integrity** - Make the publishable workspace packages deliberate, versioned, and minimal. Completed 2026-03-31.
 - [ ] **Phase 10: Release Rehearsal and Checklist** - Prove the packed-install flow and codify the constrained-environment release path.
 
 ## Phase Details
@@ -44,8 +44,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01: Set deliberate workspace versions and internal dependency references
-- [ ] 09-02: Tighten package file lists and validate tarball contents for all publishable packages
+- [x] 09-01: Set deliberate workspace versions and internal dependency references
+- [x] 09-02: Tighten package file lists and validate tarball contents for all publishable packages
 
 ### Phase 10: Release Rehearsal and Checklist
 **Goal**: The release path is proven end to end on a constrained developer machine and documented as one repeatable sequence.
@@ -66,5 +66,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 8. Verification Gate Recovery | 3/3 | Complete | 2026-03-31 |
-| 9. Package Metadata and Tarball Integrity | 0/2 | Not started | - |
+| 9. Package Metadata and Tarball Integrity | 2/2 | Complete | 2026-03-31 |
 | 10. Release Rehearsal and Checklist | 0/2 | Not started | - |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: production-hardening-and-ship-readiness
 status: ready_to_plan
-stopped_at: Completed Phase 08 verification-gate-recovery
-last_updated: "2026-03-31T10:54:05Z"
+stopped_at: Completed Phase 09 package-metadata-and-tarball-integrity
+last_updated: "2026-03-31T11:31:36Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 3
-  percent: 43
+  completed_plans: 5
+  percent: 71
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 09 — Package Metadata and Tarball Integrity
+**Current focus:** Phase 10 — Release Rehearsal and Checklist
 
 ## Current Position
 
-Phase: 9
+Phase: 10
 Plan: —
 Status: Ready to plan
-Last activity: 2026-03-31 — Completed Phase 08 Verification Gate Recovery
+Last activity: 2026-03-31 — Completed Phase 09 Package Metadata and Tarball Integrity
 
-Progress: [████░░░░░░] 3/7 plans (Phase 9 ready to plan)
+Progress: [███████░░░] 5/7 plans (Phase 10 ready to plan)
 
 ## Performance Metrics
 
@@ -114,6 +114,8 @@ Recent decisions affecting current work:
 - [Phase 08-verification-gate-recovery]: Dynamic third-party imports should be narrowed through runtime constructor validation instead of module-wide force casts.
 - [Phase 08-verification-gate-recovery]: Clean release verification must clear both `dist/` and `*.tsbuildinfo` so TypeScript project references re-emit runtime artifacts from scratch.
 - [Phase 08-verification-gate-recovery]: CI and release should share one repo-owned `verify:clean-checkout` entrypoint instead of drifting copies of build/test/pack/smoke steps.
+- [Phase 09-package-metadata-and-tarball-integrity]: Publishable workspace manifests must use deliberate `1.1.0` versions while retaining npm workspace `file:` links in the lockfile for local development.
+- [Phase 09-package-metadata-and-tarball-integrity]: Tarball integrity is enforced by a repo-owned pack checker that allows only `dist/**` plus `package.json` and requires explicit runtime entrypoints before smoke-install validation runs.
 
 ### Pending Todos
 
@@ -122,8 +124,8 @@ None yet.
 ### Blockers/Concerns
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
-- Workspace packages still use placeholder `0.0.0` versions and need deliberate publish metadata before release.
 - npm package-name availability for `agent-badge` must be checked at publish time.
+- Shared `gsd-tools` automation currently crashes on startup from `/Users/artemlegotin/.codex/get-shit-done/bin/lib/milestone.cjs` redeclaring `phaseArchiveDir`, so Phase 09 execution artifacts were updated manually in-repo.
 
 ### Quick Tasks Completed
 
