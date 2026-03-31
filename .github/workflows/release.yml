@@ -14,8 +14,6 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      HOME: ${{ runner.temp }}/agent-badge-home
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -30,7 +28,10 @@ jobs:
         run: npm ci
 
       - name: Prepare isolated HOME
-        run: mkdir -p "$HOME"
+        run: |
+          HOME_DIR="$RUNNER_TEMP/agent-badge-home"
+          mkdir -p "$HOME_DIR"
+          echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
 
       - name: Typecheck
         run: npm run typecheck
