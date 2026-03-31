@@ -1,312 +1,248 @@
 # Phase 8: Verification Gate Recovery - Research
 
-**Researched:** 2026-03-31  
-**Domain:** TypeScript workspace build recovery, fixture rebaseline, and release-critical verification hardening  
-**Confidence:** HIGH
+**Researched:** 2026-03-31
+**Domain:** TypeScript build recovery, schema/test drift repair, and clean-checkout verification rebasing
+**Confidence:** HIGH (repo facts from current source and local verification)
 
-## User Constraints
+<user_constraints>
+## User Constraints (from CONTEXT.md)
 
-- No Phase 8 CONTEXT.md exists, so there are no locked phase-specific decisions to preserve.
-- Scope is locked to REL-04, REL-05, and REL-06 from `.planning/REQUIREMENTS.md`.
-- Deferred v2 ideas in `.planning/REQUIREMENTS.md` are out of scope for this phase.
+### Locked Decisions
+No phase CONTEXT file exists (`.planning/phases/08-verification-gate-recovery/*-CONTEXT.md` not found).
 
+### Claude's Discretion
+Plan from roadmap requirements, current repo state, and observed verification failures.
+
+### Deferred Ideas (OUT OF SCOPE)
+Phase 8 is recovery only. Do not widen scope into package publishing metadata, tarball trimming, or new product behavior.
+</user_constraints>
+
+<phase_requirements>
 ## Phase Requirements
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| REL-04 | Maintainer can run `npm run build` successfully from committed source on a supported Node version without TypeScript errors. | Fix the Octokit gist client typing boundary in `packages/core/src/publish/github-gist-client.ts` and verify the build on the supported Node line, not on a prebuilt `dist/` tree. |
-| REL-05 | Maintainer can run `npm test` successfully from committed source, including doctor coverage and Claude incremental refresh coverage. | Rebaseline the stale doctor fixture to current state schema shape and make the Claude incremental test deterministic relative to current cursor/file mtimes. |
-| REL-06 | Maintainer can verify release-critical checks against the current config/state schemas and current source behavior without fixture drift or stale build artifacts affecting the result. | Add or tighten a clean-checkout verification path that does not reuse stale `dist/` outputs, stale fixture state, or a root-owned npm cache. |
+| REL-04 | `npm run build` succeeds from committed source on a supported Node version with no TypeScript errors | Current failure is isolated to `packages/core/src/publish/github-gist-client.ts` and the local Octokit adapter type contract |
+| REL-05 | `npm test` succeeds from committed source, including doctor coverage and Claude incremental refresh coverage | Current test failures split cleanly into doctor fixture/schema drift and one Claude incremental fixture/assertion drift |
+| REL-06 | Release-critical verification matches current schemas and runtime behavior from a clean checkout | Current release-readiness matrix passes, but clean-checkout verification still needs rebasing around current config/state schema and artifact expectations |
+</phase_requirements>
+
+## Project Constraints (from AGENTS.md)
+
+- Local-first and serverless behavior must remain intact.
+- Aggregate-only publishing remains mandatory; no raw transcript/path leakage in tests or fixtures.
+- `init` must stay idempotent and failure-soft behavior must remain true for pre-push refresh.
+- Phase 8 should restore confidence in current gates, not redesign product architecture.
 
 ## Summary
 
-The current failure set is narrow and actionable. `npm run build` is blocked by one TypeScript boundary in `packages/core/src/publish/github-gist-client.ts`, where the local `OctokitLike` seam no longer matches the installed Octokit gist API shape. `npm test -- --run` fails in exactly two areas: three doctor tests are constructing state with an old config-shaped fixture instead of current `AgentBadgeState`, and one Claude incremental test is using a fixed timestamp that is earlier than the copied fixture mtime on this machine, so the incremental scan correctly returns zero changed files.
+Phase 8 is a recovery phase, not a feature phase. The repo already has the release-readiness scaffolding from Phase 7: docs exist, CI/release workflows exist, and the scenario-matrix proof file passes. The blocking issue is that source-of-truth verification no longer matches current code and schema reality.
 
-Release-critical verification also has a stale-artifact problem. The repo already contains ignored `packages/*/dist/` trees, and the pack smoke output shows test artifacts are still present in emitted tarball contents. That means a plain pack/install check can be polluted by old `dist` output even when source has changed. Phase 8 should therefore recover the gates with a clean-checkout or explicit clean-build verification path, not just by rerunning the current workspace in place.
+Local verification from current source shows three concrete breakpoints:
 
-**Primary recommendation:** fix the Octokit gist adapter, rebase the stale doctor and Claude incremental tests to current schemas/timestamps, and make the release verification path clean `dist/` artifacts before pack/install checks.
+1. `npm run build` fails on `packages/core/src/publish/github-gist-client.ts` with `TS2352` because the dynamic `import("octokit")` cast does not match the actual Octokit type surface. The local adapter expects `rest.gists.remove`, but the imported type surface no longer overlaps cleanly with the hand-rolled `OctokitLike` shape.
+2. `npm test -- --run` fails in `packages/core/src/diagnostics/doctor.test.ts` because the fixture builds `.agent-badge/state.json` from parsed config shape instead of current state schema shape. The thrown `ZodError` shows missing `init`, `checkpoints`, `refresh.lastRefreshedAt`, `refresh.summary`, and `overrides`, plus stale/unrecognized keys like `providers`, `repo`, `badge`, `privacy`, and `refresh.prePush`.
+3. `npm test -- --run` fails in `packages/core/src/providers/claude/claude-adapter.test.ts` because the incremental fixture mutates a file path that the current Claude fixture set no longer treats as the changed project file. The test expects one changed session and receives zero.
 
-## Standard Stack
+**Primary recommendation:** keep the roadmap's three-plan split and treat each gate as a separate recovery lane:
 
-### Core
-| Library | Version | Purpose | Why Standard |
-|---------|---------|---------|--------------|
-| Node.js | 24.x LTS, support >=20.x | CLI runtime, filesystem, HTTP, child process integration | Matches the project support floor and the release matrix already used in CI. |
-| TypeScript | 5.x | Workspace build and shared domain types | The repo uses strict schema-heavy code; build-time typing is the main guardrail. |
-| npm workspaces | npm 10.x+ | Monorepo packaging and local linking | The repo ships `@agent-badge/core`, `agent-badge`, and `create-agent-badge` together. |
-| Vitest | 3.2.4 installed, 4.1.2 latest | Unit and integration test runner | The repo already uses fixture-heavy Vitest tests across packages. |
+- 08-01 restores TypeScript build truth around the Octokit boundary.
+- 08-02 repairs test fixture/schema drift and Claude incremental coverage.
+- 08-03 rebaselines clean-checkout verification so release-critical checks reflect current config/state schema and artifact behavior.
 
-### Supporting
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| `commander` | 14.0.3 latest | CLI routing and help text | Use for runtime command parsing in `packages/agent-badge`. |
-| `octokit` | 5.0.5 latest | GitHub Gist transport and GitHub REST access | Use for all gist operations instead of handwritten fetch wrappers. |
-| `zod` | 4.3.6 latest | Config/state/schema validation | Use at every boundary that reads persisted or external data. |
-| `tsx` | 4.21.0 latest | Run local TypeScript entrypoints during development | Use for local CLI execution and debug loops. |
-| `@changesets/cli` | 2.30.0 latest | Monorepo release/versioning workflow | Use for release orchestration, not custom publish scripts. |
-| `simple-git-hooks` | 2.13.1 latest | Lightweight hook installation helper | Only relevant if direct hook management becomes brittle again. |
+## Repo Reality
 
-### Alternatives Considered
-| Instead of | Could Use | Tradeoff |
-|------------|-----------|----------|
-| Octokit gist client | Handwritten `fetch` calls | More code, weaker typing, and more auth/pagination edge cases. |
-| Zod schemas | Manual JSON parsing | Easier to drift from persisted shape and harder to keep strict privacy boundaries. |
-| Temp-pack smoke only | Source-only tests | Misses stale build outputs and tarball content drift. |
-| In-place workspace verification | Clean temp checkout or `git clean -fdX` gate | Slightly slower, but it prevents stale `dist/` artifacts from hiding regressions. |
+- `package.json` defines the authoritative gates:
+  - `build`: `tsc -b packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json`
+  - `test`: `vitest`
+  - `typecheck`: same workspace project graph as build
+- The current build failure is isolated to:
+  - `packages/core/src/publish/github-gist-client.ts`
+- The current failing test files are isolated to:
+  - `packages/core/src/diagnostics/doctor.test.ts`
+  - `packages/core/src/providers/claude/claude-adapter.test.ts`
+- Existing healthy evidence worth preserving:
+  - `packages/agent-badge/src/commands/release-readiness-matrix.test.ts` passes
+  - publish/readme/runtime wiring tests largely pass
+  - config and state schema tests already exist and should be the source of truth for repair
 
-**Installation:**
-```bash
-npm install
-```
+## Recommended Delivery Shape
 
-**Version verification:** verified from the npm registry on 2026-03-31 with `npm view <pkg> version time.modified --json`.
-- `commander` `14.0.3` (`2026-02-21T07:16:08.008Z`)
-- `octokit` `5.0.5` (`2025-10-31T02:27:35.085Z`)
-- `zod` `4.3.6` (`2026-01-25T21:51:57.252Z`)
-- `vitest` `4.1.2` (`2026-03-26T14:36:51.783Z`)
-- `tsx` `4.21.0` (`2025-11-30T15:56:09.695Z`)
-- `@changesets/cli` `2.30.0` (`2026-03-03T09:55:56.250Z`)
-- `simple-git-hooks` `2.13.1` (`2025-07-31T21:02:21.896Z`)
-- `typescript` `6.0.2` (`2026-03-28T01:14:01.889Z`)
+Keep the roadmap's three plans and make the dependency chain explicit.
 
-## Architecture Patterns
+### 08-01: Recover the TypeScript build gate and Octokit integration errors
 
-### Recommended Project Structure
-```text
-packages/
-├── core/                 # schemas, scanners, attribution, publish helpers
-├── agent-badge/          # CLI command layer
-├── create-agent-badge/   # initializer entrypoint
-└── testkit/              # temp repo/home fixtures and provider seeds
-scripts/
-└── smoke/verify-packed-install.sh
-```
+Own the compiler failure first. No later verification matters if `npm run build` stays red.
 
-### Pattern 1: Core Schemas Own Persisted State
-**What:** `packages/core/src/state/state-schema.ts` is the canonical shape for `.agent-badge/state.json`, and `packages/core/src/config/config-schema.ts` is the canonical shape for `.agent-badge/config.json`.
-**When to use:** whenever tests or fixtures need to write persisted config/state.
-**Example:**
-```ts
-// Source: /Volumes/git/legotin/agent-badge/packages/core/src/state/state-schema.ts
-export const defaultAgentBadgeState = {
-  version: 1,
-  init: { initialized: false, scaffoldVersion: 1, lastInitializedAt: null },
-  checkpoints: {
-    codex: { cursor: null, lastScannedAt: null },
-    claude: { cursor: null, lastScannedAt: null }
-  },
-  publish: { status: "idle", gistId: null, lastPublishedHash: null, lastPublishedAt: null },
-  refresh: { lastRefreshedAt: null, lastScanMode: null, lastPublishDecision: null, summary: null },
-  overrides: { ambiguousSessions: {} }
-};
-```
+- Repair the dynamic Octokit import contract in `packages/core/src/publish/github-gist-client.ts`.
+- Prefer narrowing the locally required Gist API shape from actual runtime usage instead of forcing a broad cast over the whole imported module.
+- Keep test injection via `CreateGitHubGistClientOptions.octokit` intact so unit tests stay fast and deterministic.
+- Add or update targeted coverage in `packages/core/src/publish/github-gist-client.test.ts` only if needed to lock the corrected adapter contract.
 
-### Pattern 2: Fixture-First Verification
-**What:** tests create temp repo and temp home fixtures instead of reading the developer machine state.
-**When to use:** command tests, provider scanners, and release-readiness checks.
-**Example:**
-```ts
-// Source: /Volumes/git/legotin/agent-badge/packages/testkit/src/provider-fixtures.ts
-const homeRoot = await mkdtemp(join(tmpdir(), "agent-badge-home-"));
-await mkdir(join(homeRoot, ".codex"), { recursive: true });
-await mkdir(join(homeRoot, ".claude"), { recursive: true });
-```
+**Why first:** REL-04 is an absolute gate and blocks every clean-checkout proof.
 
-### Pattern 3: Incremental Refresh Uses Current Cursor Helpers
-**What:** provider-specific incremental cursors are derived from current source state, then compared against file mtimes or session watermarks.
-**When to use:** all refresh and release-readiness scans.
-**Example:**
-```ts
-// Source: /Volumes/git/legotin/agent-badge/packages/core/src/scan/incremental-refresh.ts
-if (options.forceFull || providers.length === 0) {
-  return runFullRefresh(options, providers);
-}
-```
+### 08-02: Repair doctor-test drift and Claude incremental refresh coverage
 
-### Anti-Patterns to Avoid
-- **Using config-shaped objects as state fixtures:** `parseAgentBadgeState` is strict and now rejects missing `init`, `checkpoints`, `refresh`, and `overrides`.
-- **Anchoring incremental tests to a fixed historical timestamp:** fixture copy times on the current machine can make the scan watermark newer than the hard-coded mtime.
-- **Verifying tarballs against stale `dist/` output:** `npm pack` will happily package whatever is already in `dist/` unless the build/verification path starts clean.
+Own fixture and schema drift second.
 
-## Don't Hand-Roll
+- Update `packages/core/src/diagnostics/doctor.test.ts` fixtures so `.agent-badge/state.json` is built from `defaultAgentBadgeState` or another current state-source-of-truth shape, not config-shaped data.
+- Ensure doctor fixtures represent current scaffolded config/state fields, including `init`, `checkpoints`, `refresh`, and `overrides`.
+- Reconcile the Claude incremental fixture mutation in `packages/core/src/providers/claude/claude-adapter.test.ts` with the current fixture layout under `packages/testkit/fixtures/claude/...`.
+- Verify the incremental cursor/watermark contract against `packages/core/src/providers/claude/claude-adapter.ts` rather than assuming old file paths or timestamps still trigger changed-session detection.
 
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| Gist API transport | Custom `fetch` wrappers | `createGitHubGistClient()` with Octokit | Keeps auth, payload shapes, and delete/update semantics in one seam. |
-| Persisted config/state parsing | Manual JSON shape checks in tests | `parseAgentBadgeConfig()` / `parseAgentBadgeState()` | Matches runtime validation exactly. |
-| Release smoke validation | Ad hoc tarball inspection | `scripts/smoke/verify-packed-install.sh` | Exercises real pack/install/import/bin behavior. |
-| Clean-checkout verification | Guessing whether `dist/` is stale | Fresh checkout or explicit clean step before build/test/pack | Prevents old build artifacts from hiding source regressions. |
+**Why second:** these failures are independent of packaging/release flows and are the remaining blockers for REL-05.
 
-**Key insight:** the remaining gate failures are not broad system design issues; they are boundary mismatches and stale verification inputs. The recovery path is to align the tests and adapters to the current runtime contracts, then verify from a genuinely clean source state.
+### 08-03: Rebaseline clean-checkout verification for current schemas and artifact expectations
 
-## Runtime State Inventory
+Own the release-critical verification layer last.
 
-> Phase 8 is a verification-gate recovery phase, not a rename/refactor/migration phase. Runtime state inventory is not required.
+- Audit current clean-checkout and release-critical commands/workflows against the recovered build/test gates.
+- Add or update one deterministic verification path that proves current source can be checked from a clean checkout without stale build output or stale fixtures.
+- Make the verification path explicitly schema-aware: it must assume current `.agent-badge/config.json` and `.agent-badge/state.json` shapes, not pre-Phase-5 or pre-Phase-6 layouts.
+- Reuse existing workflow/scripts where possible instead of inventing another parallel verification harness.
 
-## Common Pitfalls
+**Why third:** clean-checkout proof depends on the build and test gates being trustworthy again.
 
-### Pitfall 1: Stale `dist/` Artifacts Mask the Real Source State
-**What goes wrong:** `npm pack` or smoke installs pick up old emitted test files and outdated JS from previous builds.
-**Why it happens:** `tsc -b` does not clean existing output directories by itself.
-**How to avoid:** clean `packages/*/dist` before release-critical verification, or run the checks from a fresh checkout/worktree.
-**Warning signs:** tarball contents include `*.test.js` or `*.test.d.ts` even when source tsconfigs exclude test files.
+## Failure Analysis
 
-### Pitfall 2: Doctor Fixtures Drift from the State Schema
-**What goes wrong:** tests write config-shaped objects into `.agent-badge/state.json`.
-**Why it happens:** the state schema evolved to include `init`, `checkpoints`, `refresh`, and `overrides`.
-**How to avoid:** seed tests from `defaultAgentBadgeState` or `createDefaultAgentBadgeState()`.
-**Warning signs:** Zod errors mentioning missing `init`, `checkpoints`, or unrecognized config keys like `providers` and `privacy`.
+### Failure 1: Octokit typing boundary drift
 
-### Pitfall 3: Incremental Tests Depend on the Clock
-**What goes wrong:** a fixed mtime is older than the fixture copy time, so the incremental scan returns no changed sessions.
-**Why it happens:** `buildClaudeIncrementalCursorFromSource()` keys off file mtimes and sizes, not the JSON timestamps inside the transcript.
-**How to avoid:** derive a post-cursor mtime from the current fixture state or from `Date.now() + delta`.
-**Warning signs:** the test expects one changed session and receives zero.
+**Observed error**
 
-### Pitfall 4: Local npm Cache Permissions Break Pack Checks
-**What goes wrong:** `npm run pack:check` fails with root-owned cache errors on this machine.
-**Why it happens:** the global `~/.npm` cache is not writable by the current user.
-**How to avoid:** use an isolated temporary npm cache for pack verification, as the smoke script already does.
-**Warning signs:** `EPERM` or root-owned cache messages from npm before any pack output.
+- `packages/core/src/publish/github-gist-client.ts(101,25): error TS2352`
+- Compiler notes that the imported `octokit` module does not sufficiently overlap with the local `{ Octokit: new (...) => OctokitLike }` cast.
+- The mismatch specifically calls out `rest.gists.remove`.
 
-## Code Examples
+**Likely cause**
 
-Verified patterns from local source:
+- The repo hand-rolls a minimal `OctokitLike` contract and force-casts the imported module into it.
+- Current Octokit types expose a narrower or differently named Gist REST surface than the local interface expects.
 
-### Current State Baseline
-```ts
-// Source: /Volumes/git/legotin/agent-badge/packages/core/src/state/state-schema.ts
-parseAgentBadgeState(defaultAgentBadgeState);
-```
+**Planning implication**
 
-### Doctor Fixture Pattern
-```ts
-// Source: /Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/doctor.test.ts
-await writeJsonFile(repoRoot, ".agent-badge/state.json", defaultAgentBadgeState);
-```
+- Plan 08-01 should touch only the Gist client boundary and any tests needed to lock that contract.
+- Avoid mixing build recovery with publish-feature changes.
 
-### Deterministic Incremental Cursor Flow
-```ts
-// Source: /Volumes/git/legotin/agent-badge/packages/core/src/providers/claude/claude-adapter.ts
-const nextCursor = buildClaudeIncrementalCursorFromFiles(files);
-const previousCursor = parseClaudeIncrementalCursor(cursor);
-```
+### Failure 2: Doctor fixture/state schema drift
 
-### Clean Pack Smoke Script
-```bash
-# Source: /Volumes/git/legotin/agent-badge/scripts/smoke/verify-packed-install.sh
-NPM_CACHE_DIR="${WORK_DIR}/npm-cache"
-npm_config_cache="${NPM_CACHE_DIR}" npm pack --workspace packages/core --pack-destination "${PACK_DIR}"
-```
+**Observed error**
 
-## State of the Art
+- `packages/core/src/diagnostics/doctor.test.ts` constructs `.agent-badge/state.json` with:
+  - `parseAgentBadgeState({ ...parseAgentBadgeConfig(config), publish: ... })`
+- Current `agentBadgeStateSchema` requires:
+  - `init`
+  - `checkpoints`
+  - `publish`
+  - `refresh`
+  - `overrides`
+- The failing fixture instead carries config-shaped keys such as:
+  - `providers`
+  - `repo`
+  - `badge`
+  - `privacy`
+  - `refresh.prePush`
 
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
-| Config-shaped object in doctor test fixtures | `defaultAgentBadgeState` / strict state schema | Current state schema | Fixes Zod drift and matches runtime persistence exactly. |
-| Fixed historical mtime for Claude incremental tests | mtime derived from current fixture/cursor state | Current incremental adapter behavior | Makes the test deterministic across machines and dates. |
-| Pack/install against whatever is already in `dist/` | Clean checkout or explicit `dist` cleanup before pack smoke | Release-hardening requirement | Prevents stale test artifacts from masquerading as passing release checks. |
-| Broad manual publish validation | CI-backed docs, pack, and smoke gates | Phase 7/8 release hardening | Makes release verification reproducible. |
+**Likely cause**
 
-**Deprecated/outdated:**
-- Using `parseAgentBadgeState({...defaultAgentBadgeConfig...})` in tests is outdated and now invalid.
-- Treating `dist/` as disposable-but-implicit is outdated; release verification must prove it is clean.
+- The doctor fixture predates current state-schema evolution and was never rebased after Phase 5/6 scaffold changes.
 
-## Open Questions
+**Planning implication**
 
-1. **Should the clean-checkout gate be a dedicated script or a CI job pre-step?**
-   - What we know: stale `dist/` output is real, and `npm pack` can package it.
-   - What's unclear: whether the team wants a reusable script, a CI-only cleanup, or both.
-   - Recommendation: add a small reusable clean-verification script and call it from CI.
+- Plan 08-02 should treat fixture construction as the primary repair, then verify doctor behavior still matches the intended check IDs and statuses.
 
-2. **Should the gist client delete method name be updated to match the current Octokit API directly?**
-   - What we know: the current cast fails because `rest.gists.remove` is no longer in the installed type shape.
-   - What's unclear: whether the runtime path currently needs `delete`, a wrapper method, or a narrower type seam.
-   - Recommendation: align the adapter and its test doubles to the installed Octokit gist API before widening scope.
+### Failure 3: Claude incremental fixture drift
 
-3. **Should the Claude incremental test key off file mtimes or a helper-provided future timestamp?**
-   - What we know: the current fixed date can be older than the fixture copy time.
-   - What's unclear: whether the team wants a clock injection helper or a simple `Date.now()` delta in the test.
-   - Recommendation: keep the test deterministic by making the written mtime obviously newer than the cursor watermark.
+**Observed error**
 
-## Environment Availability
+- `packages/core/src/providers/claude/claude-adapter.test.ts` appends to:
+  - `.claude/projects/project-with-dedupe/session-main.jsonl`
+- The current fixture tree under `packages/testkit/fixtures/claude/projects/...` contains:
+  - `project-with-index/session-tertiary.jsonl`
+  - `project-with-index/sessions-index.json`
+  - `project-with-dedupe/session-main.jsonl`
+  - `project-no-index/session-secondary.jsonl`
+- The assertion expects `scanClaudeSessionsIncremental()` to return exactly one changed session and updated totals, but receives none.
 
-| Dependency | Required By | Available | Version | Fallback |
-|------------|-------------|-----------|---------|----------|
-| Node.js | Build/test/release verification | Yes | v22.14.0 | Use the CI matrix on 20.x, 22.x, and 24.x |
-| npm | Workspace build, pack, install smoke | Yes | 11.6.0 | Use isolated temp npm cache if the default cache is root-owned |
-| git | Clean checkout / worktree verification | Yes | 2.49.0 | Use a temp worktree or temp clone if needed |
-| Vitest | Test runner | Yes | 3.2.4 via `npx` | Use the workspace-installed runner from `npm test` |
-| npm registry access | Packed install smoke | Not conclusively verified in this local run | — | Run in CI or a machine with registry access if the temp install stalls |
+**Likely causes to test**
 
-**Missing dependencies with no fallback:**
-- None identified for source-level planning.
+- Watermark logic based on file `mtime` and `size` no longer aligns with how the fixture helper copies or timestamps files.
+- The changed file path or project grouping used by the fixture helper may differ from what the test assumes after copy/setup.
+- The cursor contract may be correct while the test's timestamp mutation no longer crosses the effective watermark boundary.
 
-**Missing dependencies with fallback:**
-- `npm run pack:check` is blocked by the local root-owned npm cache; use a temp cache or CI.
-- Packed-install smoke depends on temp install behavior that was not fully observed to completion in this environment; use CI if local registry access is constrained.
+**Planning implication**
+
+- Plan 08-02 should inspect the fixture helper plus `isClaudeFileChanged()` contract before changing core logic.
+- Prefer fixing stale test assumptions unless runtime evidence shows the adapter logic is actually wrong.
+
+## Concrete File Guidance
+
+Files most likely involved in Phase 8:
+
+- `packages/core/src/publish/github-gist-client.ts`
+- `packages/core/src/publish/github-gist-client.test.ts`
+- `packages/core/src/diagnostics/doctor.test.ts`
+- `packages/core/src/diagnostics/doctor.ts`
+- `packages/core/src/state/state-schema.ts`
+- `packages/core/src/init/default-state.ts`
+- `packages/core/src/providers/claude/claude-adapter.ts`
+- `packages/core/src/providers/claude/claude-adapter.test.ts`
+- `packages/testkit/src/claude-fixtures.ts`
+- `packages/testkit/fixtures/claude/**`
+- `.github/workflows/ci.yml`
+- `.github/workflows/release.yml`
+- `scripts/smoke/verify-packed-install.sh`
+
+## Anti-Patterns to Avoid
+
+- Do not "fix" the build by weakening type safety with broad `any` casts over the whole Octokit boundary.
+- Do not update tests to match stale or invalid state shapes; the source of truth is current scaffold/schema code.
+- Do not widen Phase 8 into package metadata/versioning work. That belongs to Phase 9.
+- Do not rely on existing `dist/` output or previously generated artifacts when proving clean-checkout verification.
 
 ## Validation Architecture
 
-### Test Framework
-| Property | Value |
-|----------|-------|
-| Framework | Vitest 3.2.4 |
-| Config file | `vitest.config.ts` |
-| Quick run command | `npm test -- --run` |
-| Full suite command | `npm run typecheck && npm run build && npm test -- --run` |
+Phase 8 should stay almost entirely automated. The phase is about restoring trust in machine-run verification, so the plans must close with exact commands and file-anchored assertions.
 
-### Phase Requirements → Test Map
-| Req ID | Behavior | Test Type | Automated Command | File Exists? |
-|--------|----------|-----------|-------------------|-------------|
-| REL-04 | Build from committed source with no TypeScript errors | build gate | `npm run build` | Yes |
-| REL-05 | Doctor coverage and Claude incremental refresh coverage pass | unit/integration | `npm test -- --run packages/core/src/diagnostics/doctor.test.ts packages/core/src/providers/claude/claude-adapter.test.ts` | Yes |
-| REL-06 | Release-critical checks run against current schemas and clean artifacts | release verification | `npm test -- --run packages/agent-badge/src/commands/release-readiness-matrix.test.ts && npm run docs:check && npm run pack:check && npm run smoke:pack` | Yes |
+### Required automated coverage
 
-### Sampling Rate
-- **Per task commit:** `npm test -- --run`
-- **Per wave merge:** `npm run typecheck && npm run build && npm test -- --run`
-- **Phase gate:** Clean-checkout build/test/pack verification green before `/gsd:verify-work`
+- Build gate:
+  - `npm run build` must exit 0 from committed source.
+  - `packages/core/src/publish/github-gist-client.ts` must preserve Gist get/create/update/delete behavior.
+- Doctor/schema drift:
+  - `npm test -- --run packages/core/src/diagnostics/doctor.test.ts` must exit 0.
+  - Doctor fixture files must serialize current state schema fields and no longer rely on config-shaped keys.
+- Claude incremental coverage:
+  - `npm test -- --run packages/core/src/providers/claude/claude-adapter.test.ts` must exit 0.
+  - The changed-session test must prove one session is returned when a tracked project file changes after the cursor watermark.
+- Clean-checkout verification:
+  - CI/release-critical commands should run from a clean tree using current config/state expectations.
+  - Verification should not depend on pre-existing build output.
 
-### Wave 0 Gaps
-- [ ] A clean-checkout verification step that explicitly clears stale `dist/` output or uses a fresh checkout/worktree before pack smoke.
-- [ ] `packages/core/src/diagnostics/doctor.test.ts` fixture rebaseline to current `AgentBadgeState`.
-- [ ] `packages/core/src/providers/claude/claude-adapter.test.ts` deterministic future-mtime update.
-- [ ] A documented workaround for `npm run pack:check` on machines with root-owned `~/.npm`.
+### Recommended commands
 
-## Sources
+- Quick targeted runs:
+  - `npm run build`
+  - `npm test -- --run packages/core/src/diagnostics/doctor.test.ts`
+  - `npm test -- --run packages/core/src/providers/claude/claude-adapter.test.ts`
+- Full suite:
+  - `npm test -- --run`
 
-### Primary (HIGH confidence)
-- `/Volumes/git/legotin/agent-badge/packages/core/src/publish/github-gist-client.ts`
-- `/Volumes/git/legotin/agent-badge/packages/core/src/state/state-schema.ts`
-- `/Volumes/git/legotin/agent-badge/packages/core/src/diagnostics/doctor.ts`
-- `/Volumes/git/legotin/agent-badge/packages/core/src/diagnostics/doctor.test.ts`
-- `/Volumes/git/legotin/agent-badge/packages/core/src/providers/claude/claude-adapter.ts`
-- `/Volumes/git/legotin/agent-badge/packages/core/src/providers/claude/claude-adapter.test.ts`
-- `/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/doctor.test.ts`
-- `/Volumes/git/legotin/agent-badge/scripts/smoke/verify-packed-install.sh`
-- `/Volumes/git/legotin/agent-badge/.planning/REQUIREMENTS.md`
-- `/Volumes/git/legotin/agent-badge/.planning/STATE.md`
+## Open Questions
 
-### Secondary (MEDIUM confidence)
-- `npm view commander version time.modified --json`
-- `npm view octokit version time.modified --json`
-- `npm view zod version time.modified --json`
-- `npm view vitest version time.modified --json`
-- `npm view tsx version time.modified --json`
-- `npm view @changesets/cli version time.modified --json`
-- `npm view simple-git-hooks version time.modified --json`
-- `npm view typescript version time.modified --json`
+1. Should the Octokit client boundary keep a handwritten `OctokitLike` interface or switch to a narrower local wrapper/factory that isolates runtime usage from upstream type churn?
+   - Recommendation: keep a narrow local wrapper if possible; do not leak raw Octokit types throughout the codebase.
 
-### Tertiary (LOW confidence)
-- None; the phase findings are grounded in current source and local command output.
+2. Is the Claude incremental failure a runtime bug or a stale test assumption?
+   - Recommendation: inspect fixture-copy timestamps first. The current evidence suggests a stale test/setup assumption is more likely than a production regression because only one targeted incremental test fails while the rest of the adapter coverage passes.
 
-## Metadata
+3. What exact command should serve as the release-critical clean-checkout proof?
+   - Recommendation: reuse existing CI/release scripts and make one documented, deterministic clean-checkout sequence instead of inventing another bespoke verifier.
 
-**Confidence breakdown:**
-- Standard stack: HIGH - verified against current npm registry versions and current repo manifests.
-- Architecture: HIGH - directly supported by current source structure and passing command-level tests.
-- Pitfalls: HIGH - derived from concrete failing commands and tarball output on this machine.
+## Environment Availability
 
-**Research date:** 2026-03-31  
-**Valid until:** 2026-04-30
+| Dependency | Required By | Available | Notes |
+|------------|------------|-----------|-------|
+| Node.js + npm | build/test/verification | ✓ | Local `npm run build` and `npm test -- --run` both execute |
+| Workspace deps | TypeScript/Vitest | ✓ | Dependencies are installed in current checkout |
+| GitHub network access | not required for Phase 8 planning | n/a | Gist interactions are already mocked in tests |
+
