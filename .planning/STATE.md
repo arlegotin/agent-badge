@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-31T09:03:15.631Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-31T09:13:08.830Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 94
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-30)
 ## Current Position
 
 Phase: 07 (release-readiness) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -65,6 +65,7 @@ Progress: [█████████░] 16/17 plans (94%)
 | Phase 05 P02 | 18 min | 3 tasks | 12 files |
 | Phase 05 P03 | 13min | 2 tasks | 11 files |
 | Phase 07-release-readiness P01 | 5min | 2 tasks | 2 files |
+| Phase 07-release-readiness P02 | 7min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ Recent decisions affecting current work:
 - [Phase 06-doctor-uninstall-and-safety-hardening]: Keep runDoctorChecks read-only by default and isolate write checks behind --probe-write.
 - [Phase 07-release-readiness]: Release-readiness proof is a dedicated matrix test file rather than implicit coverage spread across tests.
 - [Phase 07-release-readiness]: CI runs a separate scenario-matrix job so REL-01 remains an explicit release gate.
+- [Phase 07-release-readiness]: Recovered existing valid task commits for 07-02 and preserved atomic history instead of rewriting completed work.
+- [Phase 07-release-readiness]: Release verification may require isolated npm cache on hosts with invalid ~/.npm ownership, while publish flow remains workflow-driven.
 
 ### Pending Todos
 
@@ -128,6 +131,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T09:03:15.628Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-03-31T09:13:08.828Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

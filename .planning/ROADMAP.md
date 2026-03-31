@@ -142,7 +142,7 @@ Plans:
 
 Plans:
 - [x] 07-01: Build CI and automated scenario coverage for the supported matrix
-- [ ] 07-02: Add end-to-end packaging and smoke tests for runtime and initializer packages
+- [x] 07-02: Add end-to-end packaging and smoke tests for runtime and initializer packages
 - [ ] 07-03: Write the publish-time documentation and release runbook
 
 ## Progress
