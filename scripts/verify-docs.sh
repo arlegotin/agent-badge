@@ -22,9 +22,13 @@ done
 
 rg -n "docs/RELEASE.md" README.md
 rg -n "npm run verify:clean-checkout" docs/RELEASE.md
+rg -n "npm run release:preflight" docs/RELEASE.md
+rg -n "npm whoami" docs/RELEASE.md
+rg -n "npm ping" docs/RELEASE.md
 rg -n "npm view agent-badge" docs/RELEASE.md
 rg -n "npm view create-agent-badge" docs/RELEASE.md
 rg -n "npm view @agent-badge/core" docs/RELEASE.md
+rg -n "NPM_TOKEN" docs/RELEASE.md
 rg -n "npm_config_cache" docs/RELEASE.md
 rg -n "/tmp" docs/RELEASE.md
 rg -n "npm init agent-badge@latest" docs/QUICKSTART.md

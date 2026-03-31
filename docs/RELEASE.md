@@ -20,9 +20,12 @@ Run the maintained repo entrypoints in this order:
 npm run docs:check
 npm run typecheck
 npm run verify:clean-checkout
+npm run release:preflight
 ```
 
 `npm run verify:clean-checkout` is the canonical full release rehearsal. It rebuilds from a clean tree, runs tests, checks tarball contents, and runs the packed-install proof using temporary scratch space.
+
+`npm run release:preflight` is the required publish gate immediately before `npm run release`. It performs the live registry checks, runs `npm ping` and `npm whoami`, validates release-input coherence from the workspace manifests and `.changeset/config.json`, and confirms the checked-in GitHub Actions workflow still references the expected `changesets/action@v1` + `NPM_TOKEN` publish contract.
 
 If the packed-install step fails and you only need to rerun that proof after fixing it, use:
 
@@ -32,7 +35,19 @@ npm run smoke:pack
 
 ## 3. Publish-time registry preflight
 
-Run these immediately before publish. Registry state changes over time, so results observed on 2026-03-31 are not durable proof for a later release:
+Run the repo-owned preflight immediately before publish. Registry state changes over time, so results observed on 2026-03-31 are not durable proof for a later release:
+
+```bash
+npm run release:preflight
+```
+
+Capture a machine-readable record when needed:
+
+```bash
+npm run release:preflight -- --json
+```
+
+The command wraps the equivalent live registry reads for the three publishable packages:
 
 ```bash
 npm view agent-badge name version
@@ -40,11 +55,13 @@ npm view create-agent-badge name version
 npm view @agent-badge/core name version
 ```
 
-If any of those commands show an unexpected owner or version state, stop and resolve it before publishing.
+It also runs `npm ping` and `npm whoami` from the maintainer environment. If `npm run release:preflight` reports `OVERALL: blocked`, stop and resolve the reported blocker before publishing.
+
+The local preflight cannot prove that GitHub Actions secrets exist remotely. Before `npm run release`, confirm that the repository still has the `NPM_TOKEN` secret configured for the release workflow and that the workflow can access it.
 
 ## 4. Publish
 
-When the local gates are green and the live `npm view` checks look correct, publish through the existing workflow command:
+When the local gates are green and `npm run release:preflight` is safe or intentionally acknowledged as warn-only, publish through the existing workflow command:
 
 ```bash
 npm run release
