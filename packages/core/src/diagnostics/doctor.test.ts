@@ -9,7 +9,6 @@ import {
   AGENT_BADGE_GIST_FILE,
   buildStableBadgeUrl,
   defaultAgentBadgeConfig,
-  parseAgentBadgeConfig,
   parseAgentBadgeState,
   type RunDoctorChecksResult
 } from "@agent-badge/core";
@@ -61,9 +60,14 @@ async function createRepoFixture(options: {
   const homeRoot = await mkdtemp(join(tmpdir(), "agent-badge-doctor-home-"));
 
   await execFileAsync("git", ["init", "--quiet"], { cwd: repoRoot });
+  await execFileAsync(
+    "git",
+    ["remote", "add", "origin", "https://github.com/octocat/agent-badge.git"],
+    { cwd: repoRoot }
+  );
 
   if (options.withReadme ?? true) {
-    const readmeContent = options.withManagedReadme
+    const readmeContent = options.withManagedReadme ?? true
       ? `Repository\n${AGENT_BADGE_README_START_MARKER}\n![AI Usage](https://example.com/badge.svg)\n${AGENT_BADGE_README_END_MARKER}\n`
       : "Repository";
     await writeFile(join(repoRoot, "README.md"), readmeContent, "utf8");
@@ -93,22 +97,43 @@ async function createRepoFixture(options: {
       badgeUrl: options.withShieldsMarker === false ? null : badgeUrl
     }
   };
+  const state = parseAgentBadgeState({
+    version: 1,
+    init: {
+      initialized: true,
+      scaffoldVersion: 1,
+      lastInitializedAt: "2026-03-31T00:00:00.000Z"
+    },
+    checkpoints: {
+      codex: {
+        cursor: null,
+        lastScannedAt: null
+      },
+      claude: {
+        cursor: null,
+        lastScannedAt: null
+      }
+    },
+    publish: {
+      status: "deferred",
+      gistId,
+      lastPublishedHash: null,
+      lastPublishedAt: null
+    },
+    refresh: {
+      lastRefreshedAt: null,
+      lastScanMode: null,
+      lastPublishDecision: null,
+      summary: null
+    },
+    overrides: {
+      ambiguousSessions: {}
+    }
+  });
 
   await Promise.all([
     writeJsonFile(repoRoot, ".agent-badge/config.json", config),
-    writeJsonFile(
-      repoRoot,
-      ".agent-badge/state.json",
-      parseAgentBadgeState({
-        ...parseAgentBadgeConfig(config),
-        publish: {
-          status: "deferred",
-          gistId,
-          lastPublishedHash: null,
-          lastPublishedAt: null
-        }
-      })
-    )
+    writeJsonFile(repoRoot, ".agent-badge/state.json", state)
   ]);
 
   if (options.withCodexProvider ?? true) {
@@ -304,4 +329,3 @@ describe("runDoctorChecks", () => {
     }
   });
 });
-
