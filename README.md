@@ -21,3 +21,11 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 - Scans `~/.codex` and `~/.claude` locally instead of sending raw transcripts to a service.
 - Publishes only aggregate badge data, not prompts, transcripts, filenames, or local paths.
 - Keeps the badge URL stable after setup by publishing `agent-badge.json` to a public GitHub Gist.
+
+## Documentation
+
+- [Quickstart](docs/QUICKSTART.md)
+- [Attribution Model](docs/ATTRIBUTION.md)
+- [Privacy Model](docs/PRIVACY.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Manual Gist Connection](docs/MANUAL-GIST.md)
