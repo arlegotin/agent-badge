@@ -269,6 +269,11 @@ describe("release readiness scenario matrix", () => {
     {
       name: "no-auth",
       addOrigin: true,
+      env: {
+        GH_TOKEN: "",
+        GITHUB_TOKEN: "",
+        GITHUB_PAT: ""
+      },
       runCount: 1,
       expectedPublishStatus: "deferred",
       expectedReadmeStartMarkers: 0,

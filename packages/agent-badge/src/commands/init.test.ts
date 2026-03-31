@@ -716,6 +716,11 @@ describe("runInitCommand", () => {
       await runInitCommand({
         cwd: repo.root,
         homeRoot: providers.root,
+        env: {
+          GH_TOKEN: "",
+          GITHUB_TOKEN: "",
+          GITHUB_PAT: ""
+        },
         stdout: output.writer
       });
 

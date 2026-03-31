@@ -38,8 +38,10 @@ npm run smoke:pack
 Run preflight right before publish and persist a machine-readable artifact:
 
 ```bash
-npm run release:preflight -- --json > .planning/phases/12-production-publish-execution/12-preflight.json
+npm --silent run release:preflight -- --json > .planning/phases/12-production-publish-execution/12-preflight.json
 ```
+
+Use the silent npm form when redirecting to a file. Plain `npm run` prepends the script banner to stdout, which makes the saved artifact invalid JSON.
 
 If `12-preflight.json` reports `OVERALL: blocked`, stop and resolve the blocker before publishing.
 
