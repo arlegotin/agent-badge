@@ -13,6 +13,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
     "octokit": "^5.0.0",

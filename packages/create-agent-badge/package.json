@@ -17,7 +17,6 @@
     "dist"
   ],
   "dependencies": {
-    "@agent-badge/core": "file:../core",
-    "agent-badge": "file:../agent-badge"
+    "agent-badge": "^0.0.0"
   }
 }
