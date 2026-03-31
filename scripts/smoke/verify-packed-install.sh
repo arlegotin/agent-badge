@@ -51,8 +51,8 @@ npm_config_cache="${NPM_CACHE_DIR}" npm pack --workspace packages/agent-badge --
 npm_config_cache="${NPM_CACHE_DIR}" npm pack --workspace packages/create-agent-badge --pack-destination "${PACK_DIR}" >/dev/null
 popd >/dev/null
 
-CORE_TARBALL=$(resolve_tarball "@agent-badge/core" 'agent-badge-core-*.tgz')
-AGENT_BADGE_TARBALL=$(resolve_tarball "agent-badge" 'agent-badge-[0-9]*.tgz')
+CORE_TARBALL=$(resolve_tarball "@legotin/agent-badge-core" 'legotin-agent-badge-core-*.tgz')
+AGENT_BADGE_TARBALL=$(resolve_tarball "@legotin/agent-badge" 'legotin-agent-badge-[0-9]*.tgz')
 CREATE_AGENT_BADGE_TARBALL=$(resolve_tarball "create-agent-badge" 'create-agent-badge-*.tgz')
 
 pushd "${INSTALL_DIR}" >/dev/null
@@ -70,7 +70,7 @@ npm_config_cache="${NPM_CACHE_DIR}" npm install \
   "${AGENT_BADGE_TARBALL}" \
   "${CREATE_AGENT_BADGE_TARBALL}" >/dev/null
 
-node --input-type=module -e "import('agent-badge').then(() => console.log('agent-badge import ok')).catch((error) => { console.error(error); process.exit(1); });"
+node --input-type=module -e "import('@legotin/agent-badge').then(() => console.log('@legotin/agent-badge import ok')).catch((error) => { console.error(error); process.exit(1); });"
 node --input-type=module -e "import('create-agent-badge').then(() => console.log('create-agent-badge import ok')).catch((error) => { console.error(error); process.exit(1); });"
 
 ./node_modules/.bin/agent-badge --help >/dev/null

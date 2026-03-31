@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { parseAgentBadgeState, type AgentBadgeState } from "@agent-badge/core";
+import { parseAgentBadgeState, type AgentBadgeState } from "@legotin/agent-badge-core";
 
 interface OutputWriter {
   write(chunk: string): unknown;

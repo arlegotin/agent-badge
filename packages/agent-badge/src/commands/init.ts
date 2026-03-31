@@ -27,7 +27,7 @@ import {
   type PublishTargetResult,
   type RepoLocalRuntimeWiringResult,
   type AgentBadgeState
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 interface OutputWriter {
   write(chunk: string): unknown;

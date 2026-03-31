@@ -73,8 +73,8 @@ describe("capture publish evidence", () => {
     mockRegistryAndGitResponses({
       gitSha: "deadbeefcafebabe",
       registry: [
-        { packageName: "@agent-badge/core", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
-        { packageName: "agent-badge", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
+        { packageName: "@legotin/agent-badge-core", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
+        { packageName: "@legotin/agent-badge", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
         { packageName: "create-agent-badge", payload: { version: "1.0.0", "dist-tags": { latest: "1.0.0" } } }
       ]
     });
@@ -95,8 +95,8 @@ describe("capture publish evidence", () => {
     expect(evidence.publishPath).toBe("github-actions");
     expect(evidence.gitSha).toBe("deadbeefcafebabe");
     expect(evidence.packages.map((entry: { name: string }) => entry.name)).toEqual([
-      "@agent-badge/core",
-      "agent-badge",
+      "@legotin/agent-badge",
+      "@legotin/agent-badge-core",
       "create-agent-badge"
     ]);
     expect(evidence.workflowRunUrl).toBe("https://github.com/example/repo/actions/runs/1");
@@ -111,9 +111,9 @@ describe("capture publish evidence", () => {
     mockRegistryAndGitResponses({
       gitSha: "cafebabe",
       registry: [
-        { packageName: "@agent-badge/core", payload: { version: "1.1.0", "dist-tags.latest": "1.1.0" } },
-        { packageName: "agent-badge", payload: { version: "1.1.0", "dist-tags.latest": "1.1.0" } },
-        { packageName: "create-agent-badge", payload: { version: "1.1.0", "dist-tags": { latest: "1.1.0" } } }
+        { packageName: "@legotin/agent-badge-core", payload: { version: "1.1.1", "dist-tags.latest": "1.1.1" } },
+        { packageName: "@legotin/agent-badge", payload: { version: "1.1.1", "dist-tags.latest": "1.1.1" } },
+        { packageName: "create-agent-badge", payload: { version: "1.1.1", "dist-tags": { latest: "1.1.1" } } }
       ]
     });
 
@@ -154,8 +154,8 @@ describe("capture publish evidence", () => {
     mockRegistryAndGitResponses({
       gitSha: "beadfeed",
       registry: [
-        { packageName: "@agent-badge/core", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
-        { packageName: "agent-badge", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
+        { packageName: "@legotin/agent-badge-core", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
+        { packageName: "@legotin/agent-badge", payload: { version: "1.0.0", "dist-tags.latest": "1.0.0" } },
         { packageName: "create-agent-badge", payload: { version: "1.0.0", "dist-tags": { latest: "1.0.0" } } }
       ]
     });

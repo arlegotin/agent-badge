@@ -16,7 +16,7 @@ import {
   type AgentBadgeState,
   type GitHubGistClient,
   type RunIncrementalRefreshResult
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 interface OutputWriter {
   write(chunk: string): unknown;

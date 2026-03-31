@@ -16,9 +16,9 @@ const {
   runIncrementalRefreshMock: vi.fn()
 }));
 
-vi.mock("@agent-badge/core", async () => {
-  const actual = await vi.importActual<typeof import("@agent-badge/core")>(
-    "@agent-badge/core"
+vi.mock("@legotin/agent-badge-core", async () => {
+  const actual = await vi.importActual<typeof import("@legotin/agent-badge-core")>(
+    "@legotin/agent-badge-core"
   );
 
   return {
@@ -36,7 +36,7 @@ import {
   parseAgentBadgeState,
   readRefreshCache,
   type AgentBadgeState
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 import { runRefreshCommand } from "./refresh.js";
 

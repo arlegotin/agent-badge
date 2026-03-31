@@ -5,8 +5,8 @@ import {
   type RunDoctorChecksOptions,
   type RunDoctorChecksResult,
   runDoctorChecks
-} from "@agent-badge/core";
-import type { GitHubGistClient } from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
+import type { GitHubGistClient } from "@legotin/agent-badge-core";
 
 interface OutputWriter {
   write(chunk: string): unknown;

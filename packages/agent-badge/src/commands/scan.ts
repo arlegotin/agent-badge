@@ -17,7 +17,7 @@ import {
   type AppliedScanOverrideAction,
   type AttributeBackfillSessionsResult,
   type RunFullBackfillScanResult
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 interface OutputWriter {
   write(chunk: string): unknown;

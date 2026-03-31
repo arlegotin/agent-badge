@@ -89,7 +89,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(result.created).toEqual(
         expect.arrayContaining([
           "package.json",
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
           ".gitignore",
@@ -108,7 +108,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       const packageScripts = packageJson.scripts as Record<string, string>;
       const devDependencies = packageJson.devDependencies as Record<string, string>;
 
-      expect(devDependencies["agent-badge"]).toBe("latest");
+      expect(devDependencies["@legotin/agent-badge"]).toBe("latest");
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --fail-soft"
@@ -192,7 +192,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(secondRun.updated).toEqual([]);
       expect(secondRun.reused).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
           "package.json",
@@ -219,7 +219,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
         "agent-badge refresh --hook pre-push --fail-soft"
       );
       expect(devDependencies.typescript).toBe("^5.0.0");
-      expect(devDependencies["agent-badge"]).toBe("^1.2.3");
+      expect(devDependencies["@legotin/agent-badge"]).toBe("^1.2.3");
       expect(gitignoreContent).toContain("coverage/");
       expect(gitignoreContent.match(/^\.agent-badge\/cache\/$/gm)).toHaveLength(1);
       expect(gitignoreContent).toContain(".agent-badge/state.json");
@@ -330,7 +330,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(result.created).toEqual(
         expect.arrayContaining([
           "package.json",
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh"
         ])
@@ -386,7 +386,7 @@ describe("removeRepoLocalRuntimeWiring", () => {
               test: "vitest --run"
             },
             devDependencies: {
-              "agent-badge": "^1.2.3",
+              "@legotin/agent-badge": "^1.2.3",
               typescript: "^5.0.0"
             }
           },
@@ -419,7 +419,7 @@ describe("removeRepoLocalRuntimeWiring", () => {
 
       expect(result.updated).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           "package.json",
           ".gitignore",
           ".git/hooks/pre-push"
@@ -429,7 +429,7 @@ describe("removeRepoLocalRuntimeWiring", () => {
       expect(packageJson.scripts["agent-badge:init"]).toBeUndefined();
       expect(packageJson.scripts["agent-badge:refresh"]).toBeUndefined();
       expect(packageJson.devDependencies.typescript).toBe("^5.0.0");
-      expect(packageJson.devDependencies["agent-badge"]).toBeUndefined();
+      expect(packageJson.devDependencies["@legotin/agent-badge"]).toBeUndefined();
       expect(hookContent).toContain("echo custom-check");
       expect(hookContent).not.toContain("# agent-badge:start");
       expect(hookContent).not.toContain("# agent-badge:end");

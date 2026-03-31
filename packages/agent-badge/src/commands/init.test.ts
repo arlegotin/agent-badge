@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 
-import { defaultAgentBadgeConfig, defaultAgentBadgeState } from "@agent-badge/core";
+import { defaultAgentBadgeConfig, defaultAgentBadgeState } from "@legotin/agent-badge-core";
 import { runInitCommand } from "./init.js";
 import { runUninstallCommand } from "./uninstall.js";
 
@@ -196,7 +196,7 @@ describe("runInitCommand", () => {
       );
       expect(result.runtimeWiring.created).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
           ".gitignore",
@@ -216,12 +216,12 @@ describe("runInitCommand", () => {
       const hookContent = await readFile(prePushHookPath, "utf8");
       const readmeContent = await readReadmeContent(repo.root);
 
-      expect(devDependencies["agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
-      expect(expectedRuntimeDependencySpecifier).toBe("^1.1.0");
-      expect(devDependencies["agent-badge"]).toBe("^1.1.0");
+      expect(devDependencies["@legotin/agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
+      expect(expectedRuntimeDependencySpecifier).toBe("^1.1.1");
+      expect(devDependencies["@legotin/agent-badge"]).toBe("^1.1.1");
       expect(initializerPackageJson).toMatchObject({
         dependencies: {
-          "agent-badge": "^1.1.0"
+          "@legotin/agent-badge": "^1.1.1"
         }
       });
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
@@ -260,7 +260,7 @@ describe("runInitCommand", () => {
       expect(secondRun.runtimeWiring.updated).toEqual([]);
       expect(secondRun.runtimeWiring.reused).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           "package.json#scripts.agent-badge:init",
           "package.json#scripts.agent-badge:refresh",
           "package.json",
@@ -692,7 +692,7 @@ describe("runInitCommand", () => {
       expect(scripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --fail-soft"
       );
-      expect(typeof devDependencies["agent-badge"]).toBe("string");
+      expect(typeof devDependencies["@legotin/agent-badge"]).toBe("string");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
@@ -760,7 +760,7 @@ describe("runInitCommand", () => {
       expect(result.preflight.git.isRepo).toBe(true);
       expect(result.runtimeWiring.created).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.agent-badge",
+          "package.json#devDependencies.@legotin/agent-badge",
           ".gitignore",
           ".git/hooks/pre-push"
         ])

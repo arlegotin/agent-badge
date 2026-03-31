@@ -80,8 +80,8 @@ describe("release preflight", () => {
   });
 
   it("returns overall safe when all publishable packages are missing from the registry", async () => {
-    mockMissingPackage("@agent-badge/core");
-    mockMissingPackage("agent-badge");
+    mockMissingPackage("@legotin/agent-badge-core");
+    mockMissingPackage("@legotin/agent-badge");
     mockMissingPackage("create-agent-badge");
     mockNpmPing();
     mockNpmWhoami();
@@ -91,19 +91,19 @@ describe("release preflight", () => {
     expect(report.overallStatus).toBe("safe");
     expect(report.packages).toHaveLength(3);
     expect(report.packages.map((entry: { packageName: string; status: string }) => entry.packageName)).toEqual([
-      "@agent-badge/core",
-      "agent-badge",
+      "@legotin/agent-badge-core",
+      "@legotin/agent-badge",
       "create-agent-badge"
     ]);
     expect(report.packages.every((entry: { status: string }) => entry.status === "safe")).toBe(true);
   });
 
   it("returns overall blocked when a publish target already exposes the intended version", async () => {
-    mockMissingPackage("@agent-badge/core");
+    mockMissingPackage("@legotin/agent-badge-core");
     mockRegistryJson({
-      name: "agent-badge",
-      version: "1.1.0",
-      "dist-tags.latest": "1.1.0"
+      name: "@legotin/agent-badge",
+      version: "1.1.1",
+      "dist-tags.latest": "1.1.1"
     });
     mockMissingPackage("create-agent-badge");
     mockNpmPing();
@@ -111,26 +111,26 @@ describe("release preflight", () => {
 
     const report = await preflight.runReleasePreflight(process.cwd());
     const blockedEntry = report.packages.find(
-      (entry: { packageName: string }) => entry.packageName === "agent-badge"
+      (entry: { packageName: string }) => entry.packageName === "@legotin/agent-badge"
     );
 
     expect(report.overallStatus).toBe("blocked");
     expect(blockedEntry?.status).toBe("blocked");
-    expect(blockedEntry?.summary).toContain("1.1.0");
+    expect(blockedEntry?.summary).toContain("1.1.1");
   });
 
   it("returns overall warn when the registry metadata is partial or ambiguous", async () => {
     mockRegistryJson({
-      name: "@agent-badge/core"
+      name: "@legotin/agent-badge-core"
     });
-    mockMissingPackage("agent-badge");
+    mockMissingPackage("@legotin/agent-badge");
     mockMissingPackage("create-agent-badge");
     mockNpmPing();
     mockNpmWhoami();
 
     const report = await preflight.runReleasePreflight(process.cwd());
     const warnEntry = report.packages.find(
-      (entry: { packageName: string }) => entry.packageName === "@agent-badge/core"
+      (entry: { packageName: string }) => entry.packageName === "@legotin/agent-badge-core"
     );
 
     expect(report.overallStatus).toBe("warn");
@@ -142,15 +142,15 @@ describe("release preflight", () => {
     const inventory = await preflight.loadPublishablePackageInventory(process.cwd());
 
     expect(inventory.map((entry: { name: string }) => entry.name)).toEqual([
-      "@agent-badge/core",
-      "agent-badge",
+      "@legotin/agent-badge-core",
+      "@legotin/agent-badge",
       "create-agent-badge"
     ]);
   });
 
   it("blocks when the npm-auth check cannot confirm the maintainer identity", async () => {
-    mockMissingPackage("@agent-badge/core");
-    mockMissingPackage("agent-badge");
+    mockMissingPackage("@legotin/agent-badge-core");
+    mockMissingPackage("@legotin/agent-badge");
     mockMissingPackage("create-agent-badge");
     mockNpmPing();
     execFileAsyncMock.mockRejectedValueOnce(authError("npm whoami"));
@@ -181,18 +181,18 @@ describe("release preflight", () => {
       manifests: [
         {
           manifestPath: "packages/core/package.json",
-          name: "@agent-badge/core",
-          version: "1.1.0"
+          name: "@legotin/agent-badge-core",
+          version: "1.1.1"
         },
         {
           manifestPath: "packages/agent-badge/package.json",
-          name: "agent-badge",
-          version: "1.2.0"
+          name: "@legotin/agent-badge",
+          version: "1.2.1"
         },
         {
           manifestPath: "packages/create-agent-badge/package.json",
           name: "create-agent-badge",
-          version: "1.1.0"
+          version: "1.1.1"
         }
       ],
       changesetConfig: { access: "private" },
@@ -220,18 +220,18 @@ describe("release preflight", () => {
       manifests: [
         {
           manifestPath: "packages/core/package.json",
-          name: "@agent-badge/core",
-          version: "1.1.0"
+          name: "@legotin/agent-badge-core",
+          version: "1.1.1"
         },
         {
           manifestPath: "packages/agent-badge/package.json",
-          name: "agent-badge",
-          version: "1.1.0"
+          name: "@legotin/agent-badge",
+          version: "1.1.1"
         },
         {
           manifestPath: "packages/create-agent-badge/package.json",
           name: "create-agent-badge",
-          version: "1.1.0"
+          version: "1.1.1"
         }
       ],
       changesetConfig: { access: "public", ignore: [] },

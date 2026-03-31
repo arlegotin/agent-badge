@@ -18,8 +18,8 @@ const publishableManifestPaths = [
 ] as const;
 
 const expectedPublishablePackageNames = [
-  "@agent-badge/core",
-  "agent-badge",
+  "@legotin/agent-badge-core",
+  "@legotin/agent-badge",
   "create-agent-badge"
 ] as const;
 const expectedWorkflowMarkers = [

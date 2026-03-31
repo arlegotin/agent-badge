@@ -6,7 +6,7 @@ import {
   runInitCommand,
   type InitCommandResult,
   type RunInitCommandOptions
-} from "agent-badge";
+} from "@legotin/agent-badge";
 
 export interface RunCreateAgentBadgeOptions
   extends Omit<RunInitCommandOptions, "cwd"> {}

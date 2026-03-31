@@ -36,6 +36,7 @@ export const agentBadgeGitignoreEndMarker = "# agent-badge:gitignore:end";
 const packageJsonPathLabel = "package.json";
 const gitignorePathLabel = ".gitignore";
 const prePushHookPathLabel = ".git/hooks/pre-push";
+const runtimePackageName = "@legotin/agent-badge";
 const managedGitignoreEntries = [
   ".agent-badge/state.json",
   ".agent-badge/cache/",
@@ -342,9 +343,9 @@ export async function applyRepoLocalRuntimeWiring(
   packageJsonChanged =
     syncManagedStringValue({
       container: devDependencies,
-      key: "agent-badge",
+      key: runtimePackageName,
       desiredValue: options.runtimeDependencySpecifier,
-      label: "package.json#devDependencies.agent-badge",
+      label: `package.json#devDependencies.${runtimePackageName}`,
       overwriteExisting: false,
       result
     }) || packageJsonChanged;
@@ -490,8 +491,8 @@ export async function removeRepoLocalRuntimeWiring(
     packageJsonChanged =
       removeManagedStringValue({
         container: devDependencies,
-        key: "agent-badge",
-        label: "package.json#devDependencies.agent-badge",
+        key: runtimePackageName,
+        label: `package.json#devDependencies.${runtimePackageName}`,
         result,
         condition: isPotentialRuntimeDependency
       }) || packageJsonChanged;

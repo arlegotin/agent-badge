@@ -31,9 +31,9 @@ rg -n -- "--fallback-reason" docs/RELEASE.md
 rg -n -- ".github/workflows/release.yml" docs/RELEASE.md
 rg -n "npm whoami" docs/RELEASE.md
 rg -n "npm ping" docs/RELEASE.md
-rg -n "npm view agent-badge" docs/RELEASE.md
+rg -n "npm view @legotin/agent-badge" docs/RELEASE.md
 rg -n "npm view create-agent-badge" docs/RELEASE.md
-rg -n "npm view @agent-badge/core" docs/RELEASE.md
+rg -n "npm view @legotin/agent-badge-core" docs/RELEASE.md
 rg -n "NPM_TOKEN" docs/RELEASE.md
 rg -n "npm_config_cache" docs/RELEASE.md
 rg -n "/tmp" docs/RELEASE.md

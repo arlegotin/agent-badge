@@ -8,7 +8,7 @@ import {
   defaultAgentBadgeConfig,
   defaultAgentBadgeState,
   type AgentBadgeState
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 import { runStatusCommand } from "./status.js";
 

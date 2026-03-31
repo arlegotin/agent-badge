@@ -1,6 +1,6 @@
 # Release Checklist
 
-Use this checklist when preparing to publish `agent-badge`, `create-agent-badge`, and `@agent-badge/core`.
+Use this checklist when preparing to publish `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core`.
 
 ## 1. Prepare the environment
 
@@ -48,14 +48,14 @@ If `12-preflight.json` reports `OVERALL: blocked`, stop and resolve the blocker 
 This command wraps live registry checks for the three publishable packages:
 
 ```bash
-npm view agent-badge version dist-tags.latest --json
+npm view @legotin/agent-badge version dist-tags.latest --json
 npm view create-agent-badge version dist-tags.latest --json
-npm view @agent-badge/core version dist-tags.latest --json
+npm view @legotin/agent-badge-core version dist-tags.latest --json
 ```
 
 It also runs `npm ping` and `npm whoami` from the maintainer environment. If `npm run release:preflight` reports `OVERALL: blocked`, stop and resolve the reported blocker before publishing.
 
-The local preflight cannot prove GitHub Actions secret state remotely. Before publish, confirm the repository still has `NPM_TOKEN` configured for `.github/workflows/release.yml`.
+The local preflight cannot prove GitHub Actions secret state remotely. Before publish, confirm the repository still has `NPM_TOKEN` configured for `.github/workflows/release.yml`, and that the secret is actually publish-capable for npm. A token that only supports read auth or lacks 2FA bypass will still let `npm whoami` succeed locally while the real publish fails with `ENEEDAUTH` or `E403`.
 
 ## 4. Publish via workflow (primary operator path)
 
@@ -81,6 +81,12 @@ npm run release:evidence \
 ## 5. Fallback local publish path (recovery only)
 
 Use local `npm run release` only if the workflow path cannot be used.
+
+The local fallback requires real publish auth, not just maintainer read auth:
+
+- `npm login` + `npm whoami` only prove the machine can read npm metadata.
+- If the maintainer account enforces npm 2FA, the fallback publish must use a publish-capable token with bypass 2FA enabled, or another publish path that satisfies npm's 2FA policy.
+- When using `NPM_TOKEN` locally, route npm through a temporary user config so the token is the active publish credential for the command being run.
 
 After the fallback publish, persist evidence with a required fallback reason:
 

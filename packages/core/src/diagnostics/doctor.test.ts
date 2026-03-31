@@ -11,7 +11,7 @@ import {
   defaultAgentBadgeConfig,
   parseAgentBadgeState,
   type RunDoctorChecksResult
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 import {
   AGENT_BADGE_README_END_MARKER,
   AGENT_BADGE_README_START_MARKER

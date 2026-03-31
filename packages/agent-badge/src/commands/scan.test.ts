@@ -9,9 +9,9 @@ const { appendAgentBadgeLogMock, runFullBackfillScanMock } = vi.hoisted(() => ({
   runFullBackfillScanMock: vi.fn()
 }));
 
-vi.mock("@agent-badge/core", async () => {
-  const actual = await vi.importActual<typeof import("@agent-badge/core")>(
-    "@agent-badge/core"
+vi.mock("@legotin/agent-badge-core", async () => {
+  const actual = await vi.importActual<typeof import("@legotin/agent-badge-core")>(
+    "@legotin/agent-badge-core"
   );
 
   return {
@@ -30,7 +30,7 @@ import {
   type NormalizedSessionSummary,
   type RepoFingerprint,
   type RunFullBackfillScanResult
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 import { buildProgram } from "../cli/main.js";
 

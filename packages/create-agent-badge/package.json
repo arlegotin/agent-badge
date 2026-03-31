@@ -1,6 +1,6 @@
 {
   "name": "create-agent-badge",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "bin": {
     "create-agent-badge": "./dist/index.js"
@@ -17,6 +17,6 @@
     "dist"
   ],
   "dependencies": {
-    "agent-badge": "^1.1.0"
+    "@legotin/agent-badge": "^1.1.1"
   }
 }

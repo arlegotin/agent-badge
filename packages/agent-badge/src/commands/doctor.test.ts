@@ -16,7 +16,7 @@ import {
   defaultAgentBadgeState,
   type GitHubGistClient,
   type GitHubGist
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 import { runDoctorCommand } from "./doctor.js";
 
 const execFileAsync = promisify(execFile);

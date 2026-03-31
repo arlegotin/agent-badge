@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { parseAgentBadgeConfig, parseAgentBadgeState } from "@agent-badge/core";
+import { parseAgentBadgeConfig, parseAgentBadgeState } from "@legotin/agent-badge-core";
 
 import { runInitCommand } from "./init.js";
 import { runUninstallCommand } from "./uninstall.js";

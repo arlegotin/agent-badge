@@ -10,7 +10,7 @@ import {
   applyRepoLocalRuntimeWiring,
   defaultAgentBadgeConfig,
   parseAgentBadgeConfig
-} from "@agent-badge/core";
+} from "@legotin/agent-badge-core";
 
 import { runConfigCommand } from "./config.js";
 
