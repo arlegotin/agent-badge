@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-03-31T09:19:31.229Z"
+milestone: v1.1
+milestone_name: production-hardening-and-ship-readiness
+status: defining_requirements
+stopped_at: Started milestone v1.1
+last_updated: "2026-03-31T09:57:08Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 23
-  completed_plans: 23
-  percent: 94
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-30)
+See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 07 — release-readiness
+**Current focus:** Milestone v1.1 — production hardening and ship readiness
 
 ## Current Position
 
-Phase: 07 (release-readiness) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-03-31
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-31 — Milestone v1.1 started
 
-Progress: [█████████░] 16/17 plans (94%)
+Progress: [░░░░░░░░░░] 0/0 plans (roadmap pending)
 
 ## Performance Metrics
 
@@ -118,6 +118,7 @@ None yet.
 
 ### Blockers/Concerns
 
+- Current source release gates are red: `npm run build` fails on the Octokit typing boundary, and `npm test` fails in doctor fixture/schema compatibility plus Claude incremental refresh coverage.
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
 - npm package-name availability for `agent-badge` must be checked at publish time.
 

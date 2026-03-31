@@ -10,6 +10,16 @@ The product is for developers who want a low-friction, trustworthy way to show h
 
 Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
+## Current Milestone: v1.1 Production Hardening and Ship Readiness
+
+**Goal:** Turn the implemented v1 feature set into a release candidate that can be built, tested, packaged, and shipped from current source with no red gates.
+
+**Target features:**
+- Restore green source-of-truth verification for build, tests, and critical release checks.
+- Close release blockers in doctor/schema compatibility, Claude incremental refresh coverage, and Octokit typing/build integration.
+- Publish deliberate package metadata and clean tarballs for `@agent-badge/core`, `agent-badge`, and `create-agent-badge`.
+- Prove the packed-install and release flow under the repo's known npm-cache and disk-space constraints.
+
 ## Requirements
 
 ### Validated
@@ -18,12 +28,15 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Ambiguous historical sessions stay out of totals until explicitly included or excluded, and those override decisions are reused on later scans. Validated in Phase 3.
 - [x] One-command initialization configures an existing or new repo end to end, including local runtime install, repo fingerprinting, badge publishing, README setup, and refresh integration. Validated in Phase 4.
 - [x] The published badge stays stable in `README.md` while the underlying aggregate JSON is refreshed through public Gist updates. Validated in Phase 4.
+- [x] Future Codex and Claude usage can be refreshed incrementally from local machine data without full historical rescans or a second primary ledger. Validated in Phase 5.
+- [x] Refresh is fast and failure-soft by default so normal `git push` workflows stay unblocked. Validated in Phase 5.
+- [x] Developers can inspect attribution, publishing, and hook health through clear `status`, `doctor`, `config`, and `uninstall` flows. Validated across Phases 5-7, with release hardening continuing in v1.1.
 
 ### Active
 
-- [ ] Future Codex and Claude usage can be refreshed incrementally from local machine data without full historical rescans or a second primary ledger.
-- [ ] Refresh is fast and failure-soft by default so normal `git push` workflows stay unblocked.
-- [ ] Developers can inspect attribution, publishing, and hook health through clear `status`, `doctor`, `config`, and `uninstall` flows.
+- [ ] Maintainers can run `npm run build`, `npm test`, `npm run docs:check`, and package smoke verification successfully from current source on a supported Node toolchain.
+- [ ] Published workspace packages use deliberate release versions, correct internal dependency references, and ship only runtime artifacts needed for install and execution.
+- [ ] Release checks cover current state-schema compatibility, Claude incremental refresh correctness, and environment-specific verification constraints such as isolated npm cache usage.
 
 ### Out of Scope
 
@@ -34,7 +47,9 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 ## Context
 
-Phases 1 through 4 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, and the runtime `scan` plus `publish` commands. The remaining work is incremental refresh and the operator recovery and release flows on top of that foundation.
+Phases 1 through 7 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, incremental refresh flows, operator commands, and release-oriented docs/tests.
+
+As of 2026-03-31, the remaining gap is not missing product surface area but ship confidence. The feature set exists, yet the source-of-truth release gates are still red: the TypeScript build fails on the Octokit client integration, the test suite has doctor-fixture/schema drift and a Claude incremental-scan failure, published package metadata still uses placeholder `0.0.0` versions, and the packaging path still needs a clean final proof under the repo's npm-cache and disk-space constraints.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -64,6 +79,7 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Persist attribution overrides by stable `provider:providerSessionId` keys | Reuses decisions safely without storing raw cwd or transcript evidence | Implemented in Phase 3 |
 | Keep init preflight privacy-safe by reporting normalized provider home labels instead of absolute paths | Prevents local path leakage while still showing actionable provider availability | Implemented in Phase 1 |
 | Keep git inspection read-only and perform bootstrap through a separate helper | Preserves non-mutating preflight semantics while still supporting non-git init when allowed | Implemented in Phase 1 |
+| Treat v1.1 as release hardening rather than net-new feature expansion | The current gap is production confidence, not missing core capability | Pending in Milestone v1.1 |
 
 ## Evolution
 
@@ -83,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-30 after Phase 4*
+*Last updated: 2026-03-31 after starting Milestone v1.1*
