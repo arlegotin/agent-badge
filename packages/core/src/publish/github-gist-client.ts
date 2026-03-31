@@ -58,6 +58,24 @@ interface OctokitLike {
   };
 }
 
+interface OctokitConstructorOptions {
+  readonly auth?: string;
+}
+
+type OctokitTransportMethod<TInput> = (
+  input: TInput
+) => Promise<{ readonly data: unknown }>;
+
+interface LoadedOctokitLike {
+  readonly rest?: {
+    readonly gists?: Record<string, unknown>;
+  };
+}
+
+interface OctokitConstructor {
+  new (options?: OctokitConstructorOptions): LoadedOctokitLike;
+}
+
 export interface CreateGitHubGistClientOptions {
   readonly authToken?: string;
   readonly octokit?: OctokitLike;
@@ -65,6 +83,59 @@ export interface CreateGitHubGistClientOptions {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getOctokitConstructor(module: unknown): OctokitConstructor {
+  if (!isRecord(module) || typeof module.Octokit !== "function") {
+    throw new Error('The "octokit" module did not export an Octokit constructor.');
+  }
+
+  return module.Octokit as OctokitConstructor;
+}
+
+function requireTransportMethod<TInput>(
+  value: unknown,
+  methodName: string
+): OctokitTransportMethod<TInput> {
+  if (typeof value !== "function") {
+    throw new Error(`Octokit gist transport did not expose "${methodName}".`);
+  }
+
+  return value as OctokitTransportMethod<TInput>;
+}
+
+function adaptOctokit(octokit: LoadedOctokitLike): OctokitLike {
+  const gists = octokit.rest?.gists;
+
+  if (!isRecord(gists)) {
+    throw new Error("Octokit did not expose the REST gists API.");
+  }
+
+  const deleteMethod = "delete" in gists ? gists.delete : gists.remove;
+
+  return {
+    rest: {
+      gists: {
+        get: requireTransportMethod<{ readonly gist_id: string }>(
+          gists.get,
+          "get"
+        ),
+        create: requireTransportMethod<{
+          readonly description: string;
+          readonly public: true;
+          readonly files: Record<string, { readonly content: string }>;
+        }>(gists.create, "create"),
+        update: requireTransportMethod<{
+          readonly gist_id: string;
+          readonly files: Record<string, { readonly content: string }>;
+        }>(gists.update, "update"),
+        remove: requireTransportMethod<{ readonly gist_id: string }>(
+          deleteMethod,
+          "delete"
+        )
+      }
+    }
+  };
 }
 
 function normalizeGist(payload: unknown): GitHubGist {
@@ -98,13 +169,10 @@ function normalizeGist(payload: unknown): GitHubGist {
 async function loadOctokit(
   authToken?: string
 ): Promise<OctokitLike> {
-  const octokitModule = (await import("octokit")) as {
-    readonly Octokit: new (options?: { readonly auth?: string }) => OctokitLike;
-  };
+  const Octokit = getOctokitConstructor(await import("octokit"));
+  const octokit = new Octokit(authToken ? { auth: authToken } : undefined);
 
-  return new octokitModule.Octokit(
-    authToken ? { auth: authToken } : undefined
-  );
+  return adaptOctokit(octokit);
 }
 
 export function createGitHubGistClient(
