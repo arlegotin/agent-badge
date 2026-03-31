@@ -10,15 +10,14 @@ The product is for developers who want a low-friction, trustworthy way to show h
 
 Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
-## Current Milestone: v1.1 Production Hardening and Ship Readiness
+## Current Milestone: v1.2 Production Launch and Publish Proof
 
-**Goal:** Turn the implemented v1 feature set into a release candidate that can be built, tested, packaged, and shipped from current source with no red gates.
+**Goal:** Turn the current release candidate into an externally proven production release by validating live registry state, executing the real publish path, and verifying the published artifacts.
 
 **Target features:**
-- Restore green source-of-truth verification for build, tests, and critical release checks.
-- Close release blockers in doctor/schema compatibility, Claude incremental refresh coverage, and Octokit typing/build integration.
-- Publish deliberate package metadata and clean tarballs for `@agent-badge/core`, `agent-badge`, and `create-agent-badge`.
-- Prove the packed-install and release flow under the repo's known npm-cache and disk-space constraints.
+- Verify live npm registry/package-name state and release-environment readiness immediately before publish.
+- Execute the real production publish path and confirm the intended GitHub Actions release workflow succeeds from current source.
+- Verify the published packages from the npm registry, including CLI and initializer behavior, with a post-publish production checklist.
 
 ## Requirements
 
@@ -37,7 +36,10 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 ### Active
 
-- [ ] No active v1.1 release-hardening requirements remain. The milestone goals are implemented and verified from current source.
+- [ ] Maintainer can verify live npm registry availability and ownership for the planned package names immediately before publish.
+- [ ] Maintainer can execute the real publish path with release credentials and observe a successful production release workflow from current source.
+- [ ] Maintainer can install and validate the actual published packages from the npm registry, not just locally packed tarballs.
+- [ ] Maintainer can follow one production release checklist covering registry preflight, publish execution, workflow confirmation, and post-publish verification.
 
 ### Out of Scope
 
@@ -51,6 +53,8 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 Phases 1 through 7 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, incremental refresh flows, operator commands, and release-oriented docs/tests.
 
 As of 2026-03-31 after Phase 10, the v1.1 release-hardening milestone is complete from current source: build, tests, docs, pack integrity, and clean-checkout verification are green; publishable workspace versions and tarball contents are deliberate; the packed-install smoke rehearsal rebuilds from a cleaned tree and installs the exact artifacts; and maintainers now have one enforced release checklist for constrained-machine rehearsal and live publish-time registry checks.
+
+The next milestone, v1.2, is narrower and external-facing: prove that the release candidate can actually ship under real registry and credential conditions. That means validating live npm package-name state, executing the real publish path, confirming the release workflow in GitHub, and performing post-publish install verification against registry artifacts rather than local tarballs.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -104,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after completing Phase 10*
+*Last updated: 2026-03-31 after starting milestone v1.2*

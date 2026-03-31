@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: production-hardening-and-ship-readiness
-status: milestone_complete
-stopped_at: Completed Phase 10 release-rehearsal-and-checklist
+status: defining_requirements
+stopped_at: Completed milestone v1.1 production-hardening-and-ship-readiness
 last_updated: "2026-03-31T13:11:16Z"
-last_activity: 2026-03-31 -- Completed Phase 10 Release Rehearsal and Checklist
+last_activity: 2026-03-31 -- Milestone v1.2 started
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Milestone v1.1 complete — current source is ready for release execution from the documented checklist
+**Current focus:** Milestone v1.2 — define the production launch scope that turns the release candidate into a published, externally verified release
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone complete
-Last activity: 2026-03-31 -- Completed Phase 10 Release Rehearsal and Checklist
+Status: Defining requirements
+Last activity: 2026-03-31 -- Milestone v1.2 started
 
-Progress: [██████████] 7/7 plans (Milestone v1.1 complete)
+Progress: [░░░░░░░░░░] 0/0 plans (Milestone v1.2 not yet roadmapped)
 
 ## Performance Metrics
 
@@ -141,5 +141,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-31T13:11:16Z
-Stopped at: Completed Phase 10 release-rehearsal-and-checklist
+Stopped at: Started milestone v1.2 production-launch-and-publish-proof
 Resume file: None
