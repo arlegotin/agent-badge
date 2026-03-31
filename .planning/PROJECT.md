@@ -33,10 +33,10 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Maintainers can run `npm run build`, `npm test`, `npm run docs:check`, and clean-checkout package smoke verification successfully from current source on a supported Node toolchain. Validated in Phase 8.
 - [x] Published workspace packages use deliberate release versions, correct internal dependency references, and ship only runtime artifacts needed for install and execution. Validated in Phase 9.
 - [x] Maintainers can prove the packed-install release path from a cleaned tree and follow one enforced release checklist covering constrained-machine operation and live publish-time checks. Validated in Phase 10.
+- [x] Maintainers can run one repo-owned release preflight that checks live registry state, npm auth, release-input coherence, and workflow prerequisites before production publish. Validated in Phase 11.
 
 ### Active
 
-- [ ] Maintainer can verify live npm registry availability and ownership for the planned package names immediately before publish.
 - [ ] Maintainer can execute the real publish path with release credentials and observe a successful production release workflow from current source.
 - [ ] Maintainer can install and validate the actual published packages from the npm registry, not just locally packed tarballs.
 - [ ] Maintainer can follow one production release checklist covering registry preflight, publish execution, workflow confirmation, and post-publish verification.
@@ -55,6 +55,8 @@ Phases 1 through 7 established the monorepo, shared schemas, init preflight, ide
 As of 2026-03-31 after Phase 10, the v1.1 release-hardening milestone is complete from current source: build, tests, docs, pack integrity, and clean-checkout verification are green; publishable workspace versions and tarball contents are deliberate; the packed-install smoke rehearsal rebuilds from a cleaned tree and installs the exact artifacts; and maintainers now have one enforced release checklist for constrained-machine rehearsal and live publish-time registry checks.
 
 The next milestone, v1.2, is narrower and external-facing: prove that the release candidate can actually ship under real registry and credential conditions. That means validating live npm package-name state, executing the real publish path, confirming the release workflow in GitHub, and performing post-publish install verification against registry artifacts rather than local tarballs.
+
+As of 2026-03-31 after Phase 11, the repo-owned `npm run release:preflight` command now combines manifest-derived registry classification, `npm ping` / `npm whoami`, release-input coherence checks, and release-workflow marker validation, while `docs/RELEASE.md` and `scripts/verify-docs.sh` enforce that preflight before `npm run release`.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -89,6 +91,7 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Clean rebuild verification must clear `*.tsbuildinfo` as well as `dist/` | TypeScript project references can otherwise skip re-emitting deleted runtime artifacts | Implemented in Phase 8 |
 | The packed-install smoke rehearsal must rebuild before packing and resolve exact tarball names before install | Clean-tree release proof must not depend on prior build state or overlapping tarball globs | Implemented in Phase 10 |
 | Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish | Constrained-machine release work and registry state are real operational constraints, not side notes | Implemented in Phase 10 |
+| Production publish must be gated by one repo-owned `npm run release:preflight` command | Registry conflicts, missing npm auth, and workflow drift should block before the real publish path starts | Implemented in Phase 11 |
 
 ## Evolution
 
@@ -108,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after starting milestone v1.2*
+*Last updated: 2026-03-31 after completing Phase 11*
