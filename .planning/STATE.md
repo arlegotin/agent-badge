@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
 status: executing
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-03-31T14:05:13.015Z"
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-03-31T14:58:16.535Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 11 — registry-preflight-and-release-environment-validation
+**Current focus:** Phase 12 — production-publish-execution
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: Executing Phase 11
+Phase: 12 (production-publish-execution) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-03-31
 
 Progress: [░░░░░░░░░░] 0/6 plans (Milestone v1.2 ready to plan)
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0/6 plans (Milestone v1.2 ready to pl
 | Phase 07-release-readiness P01 | 5min | 2 tasks | 2 files |
 | Phase 07-release-readiness P02 | 7min | 2 tasks | 9 files |
 | Phase 07-release-readiness P03 | 2m 22s | 2 tasks | 9 files |
+| Phase 12-production-publish-execution P01 | 1 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase 09-package-metadata-and-tarball-integrity]: Tarball integrity is enforced by a repo-owned pack checker that allows only `dist/**` plus `package.json` and requires explicit runtime entrypoints before smoke-install validation runs.
 - [Phase 10-release-rehearsal-and-checklist]: The packed-install smoke rehearsal must rebuild before packing and resolve exact tarball identities before install so clean-tree verification stays trustworthy.
 - [Phase 10-release-rehearsal-and-checklist]: Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish.
+- [Phase 12-production-publish-execution]: Use .github/workflows/release.yml + workflow_dispatch as the canonical production publish path and keep local npm run release as explicit fallback.
+- [Phase 12-production-publish-execution]: Release evidence must be captured in both JSON and Markdown files with manifest inventory, git SHA, preflight input, and workflow metadata or fallback reason.
 
 ### Pending Todos
 
@@ -139,6 +142,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T14:01:01.240Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-03-31T14:58:16.532Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None

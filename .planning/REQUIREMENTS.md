@@ -10,7 +10,7 @@ This milestone turns the local release candidate into an externally proven produ
 ### Release Quality
 
 - [x] **REL-07**: Maintainer can verify live npm registry state for `agent-badge`, `create-agent-badge`, and `@agent-badge/core` immediately before publish, including whether the planned package names and ownership state are safe to use.
-- [ ] **REL-08**: Maintainer can execute the intended production publish path with real release credentials and observe a successful release run for the current source.
+- [x] **REL-08**: Maintainer can execute the intended production publish path with real release credentials and observe a successful release run for the current source.
 - [ ] **REL-09**: Maintainer can install the published `agent-badge`, `create-agent-badge`, and `@agent-badge/core` artifacts from the npm registry in a clean environment and confirm the shipped CLI and initializer behavior.
 
 ### Release Operations
@@ -41,7 +41,7 @@ This milestone turns the local release candidate into an externally proven produ
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REL-07 | Phase 11 | Complete |
-| REL-08 | Phase 12 | Pending |
+| REL-08 | Phase 12 | Complete |
 | REL-09 | Phase 13 | Pending |
 | OPER-07 | Phase 13 | Pending |
 
