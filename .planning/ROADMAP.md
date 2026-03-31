@@ -12,7 +12,7 @@ Phases 1 through 10 turned `agent-badge` into a release candidate with green loc
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 11: Registry Preflight and Release Environment Validation** - Prove that package-name state, release credentials, and workflow prerequisites are safe before production publish.
+- [x] **Phase 11: Registry Preflight and Release Environment Validation** - Prove that package-name state, release credentials, and workflow prerequisites are safe before production publish. (completed 2026-03-31)
 - [ ] **Phase 12: Production Publish Execution** - Execute the intended production publish path and capture real release evidence from current source.
 - [ ] **Phase 13: Post-Publish Registry Verification and Final Operations** - Verify the actual published artifacts from npm and finalize the production operator checklist.
 
@@ -29,8 +29,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 11-01: Add a repo-owned live registry preflight and decision record for publish readiness
-- [ ] 11-02: Validate release credentials, secrets, and GitHub Actions prerequisites before production publish
+- [x] 11-01: Add a repo-owned live registry preflight and decision record for publish readiness
+- [x] 11-02: Validate release credentials, secrets, and GitHub Actions prerequisites before production publish
 
 ### Phase 12: Production Publish Execution
 **Goal**: Publish the current source through the intended release path and record trustworthy release evidence.
@@ -64,6 +64,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 11. Registry Preflight and Release Environment Validation | 0/2 | Not started | - |
+| 11. Registry Preflight and Release Environment Validation | 2/2 | Complete    | 2026-03-31 |
 | 12. Production Publish Execution | 0/2 | Not started | - |
 | 13. Post-Publish Registry Verification and Final Operations | 0/2 | Not started | - |
