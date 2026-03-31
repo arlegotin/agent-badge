@@ -217,9 +217,13 @@ describe("runInitCommand", () => {
       const readmeContent = await readReadmeContent(repo.root);
 
       expect(devDependencies["agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
-      expect(devDependencies["agent-badge"]).not.toBe(
-        (initializerPackageJson.dependencies as Record<string, string>)["agent-badge"]
-      );
+      expect(expectedRuntimeDependencySpecifier).toBe("^1.1.0");
+      expect(devDependencies["agent-badge"]).toBe("^1.1.0");
+      expect(initializerPackageJson).toMatchObject({
+        dependencies: {
+          "agent-badge": "^1.1.0"
+        }
+      });
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --fail-soft"
