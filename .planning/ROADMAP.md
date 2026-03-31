@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phases 1 through 7 delivered the v1 product surface. Milestone v1.1 focused only on ship readiness: recovering green source-of-truth verification, converting the workspace packages into deliberate publishable artifacts, and rehearsing the packed-install release flow under the repo's known npm-cache and disk-space constraints. After Phase 10, the current source has those release gates and maintainer docs in place.
+Phases 1 through 10 turned `agent-badge` into a release candidate with green local verification, deliberate package metadata, exact packed-install rehearsal, and a constrained-environment release checklist. Milestone v1.2 focuses on the remaining external proof: validating live registry and credential state, executing the real production publish path, and confirming the shipped packages from the npm registry after release.
 
 ## Phases
 
@@ -12,59 +12,58 @@ Phases 1 through 7 delivered the v1 product surface. Milestone v1.1 focused only
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 8: Verification Gate Recovery** - Restore green build, test, and schema-aware release verification from current source. Completed 2026-03-31.
-- [x] **Phase 9: Package Metadata and Tarball Integrity** - Make the publishable workspace packages deliberate, versioned, and minimal. Completed 2026-03-31.
-- [x] **Phase 10: Release Rehearsal and Checklist** - Prove the packed-install flow and codify the constrained-environment release path. Completed 2026-03-31.
+- [ ] **Phase 11: Registry Preflight and Release Environment Validation** - Prove that package-name state, release credentials, and workflow prerequisites are safe before production publish.
+- [ ] **Phase 12: Production Publish Execution** - Execute the intended production publish path and capture real release evidence from current source.
+- [ ] **Phase 13: Post-Publish Registry Verification and Final Operations** - Verify the actual published artifacts from npm and finalize the production operator checklist.
 
 ## Phase Details
 
-### Phase 8: Verification Gate Recovery
-**Goal**: Maintainers can trust build, test, and release-critical verification results from current source again.
-**Depends on**: Phase 7
-**Requirements**: [REL-04, REL-05, REL-06]
+### Phase 11: Registry Preflight and Release Environment Validation
+**Goal**: Fail fast on real production publish blockers before attempting the first public release.
+**Depends on**: Phase 10
+**Requirements**: [REL-07]
 **Success Criteria** (what must be TRUE):
-  1. Maintainer can run `npm run build` from committed source on a supported Node version and get a successful workspace build with no TypeScript errors.
-  2. Maintainer can run `npm test` from committed source and get passing doctor coverage plus Claude incremental refresh coverage.
-  3. Release-critical verification passes against the current config/state schemas and current runtime behavior from a clean checkout without stale fixtures or stale build artifacts affecting the result.
-**Plans**: 3 plans
-
-Plans:
-- [x] 08-01: Recover the TypeScript build gate and Octokit integration errors
-- [x] 08-02: Repair doctor-test drift and Claude incremental refresh coverage
-- [x] 08-03: Rebaseline clean-checkout verification for current schemas and artifact expectations
-
-### Phase 9: Package Metadata and Tarball Integrity
-**Goal**: The workspace packages are publishable as intentional npm artifacts rather than development placeholders.
-**Depends on**: Phase 8
-**Requirements**: [PACK-01, PACK-02]
-**Success Criteria** (what must be TRUE):
-  1. Maintainer can inspect `@agent-badge/core`, `agent-badge`, and `create-agent-badge` package manifests and see deliberate non-placeholder versions with correct internal dependency references.
-  2. Maintainer can run the packaging flow for all three workspace packages successfully from current source.
-  3. The produced tarballs include only the runtime/build/CLI files needed for install and execution and exclude tests, fixtures, and other non-runtime artifacts.
+  1. Maintainer can run a repo-owned preflight flow that checks live npm registry state for `agent-badge`, `create-agent-badge`, and `@agent-badge/core` and clearly reports safe versus blocked outcomes.
+  2. Maintainer can verify the intended release environment has the required npm and GitHub credentials, workflow prerequisites, and changeset/release inputs before starting the real publish.
+  3. Any package-name conflict, auth gap, or release-environment blocker is surfaced before Phase 12 begins.
 **Plans**: 2 plans
 
 Plans:
-- [x] 09-01: Set deliberate workspace versions and internal dependency references
-- [x] 09-02: Tighten package file lists and validate tarball contents for all publishable packages
+- [ ] 11-01: Add a repo-owned live registry preflight and decision record for publish readiness
+- [ ] 11-02: Validate release credentials, secrets, and GitHub Actions prerequisites before production publish
 
-### Phase 10: Release Rehearsal and Checklist
-**Goal**: The release path is proven end to end on a constrained developer machine and documented as one repeatable sequence.
-**Depends on**: Phase 9
-**Requirements**: [PACK-03, OPER-06]
+### Phase 12: Production Publish Execution
+**Goal**: Publish the current source through the intended release path and record trustworthy release evidence.
+**Depends on**: Phase 11
+**Requirements**: [REL-08]
 **Success Criteria** (what must be TRUE):
-  1. Maintainer can install the locally packed tarballs into a clean temporary project and invoke both exported CLIs successfully.
-  2. Maintainer can follow one documented checklist to reproduce the packed-install proof even when isolated npm cache usage or temporary working space is required.
-  3. The same checklist includes npm package-name verification and the final pre-publish checks in one place.
+  1. Maintainer can execute the real production publish path with release credentials and successfully ship the current source.
+  2. The intended GitHub Actions release workflow, or the explicitly chosen release path, completes successfully and leaves recorded evidence of the publish outcome.
+  3. Published versions, package list, and release outputs match the deliberate artifacts prepared in earlier milestones, with no undocumented manual recovery steps.
 **Plans**: 2 plans
 
 Plans:
-- [x] 10-01: Prove clean temporary-project install and CLI smoke flows from packed tarballs
-- [x] 10-02: Finalize the constrained-environment release checklist and publish-time preflight
+- [ ] 12-01: Align the production publish path and release-evidence capture with the real operator workflow
+- [ ] 12-02: Execute and document the first production publish from current source
+
+### Phase 13: Post-Publish Registry Verification and Final Operations
+**Goal**: Prove that the actual published packages work from the npm registry and that maintainers have a complete production runbook.
+**Depends on**: Phase 12
+**Requirements**: [REL-09, OPER-07]
+**Success Criteria** (what must be TRUE):
+  1. Maintainer can install the published `agent-badge`, `create-agent-badge`, and `@agent-badge/core` artifacts from the npm registry in a fresh environment and verify the shipped CLI and initializer behavior.
+  2. The production release checklist includes registry preflight, publish execution, GitHub Actions confirmation, and post-publish smoke verification in one maintained place.
+  3. The repo contains recorded evidence that the real published artifacts, not only local tarballs, satisfy the production smoke expectations.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 13-01: Verify published registry artifacts in a fresh install environment
+- [ ] 13-02: Finalize the production release checklist and operator evidence trail
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 8. Verification Gate Recovery | 3/3 | Complete | 2026-03-31 |
-| 9. Package Metadata and Tarball Integrity | 2/2 | Complete | 2026-03-31 |
-| 10. Release Rehearsal and Checklist | 2/2 | Complete | 2026-03-31 |
+| 11. Registry Preflight and Release Environment Validation | 0/2 | Not started | - |
+| 12. Production Publish Execution | 0/2 | Not started | - |
+| 13. Post-Publish Registry Verification and Final Operations | 0/2 | Not started | - |
