@@ -7,7 +7,7 @@ REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/agent-badge-pack-smoke.XXXXXX")
 PACK_DIR="${WORK_DIR}/packs"
 INSTALL_DIR="${WORK_DIR}/install"
-NPM_CACHE_DIR="${WORK_DIR}/npm-cache"
+NPM_CACHE_DIR="${npm_config_cache:-${WORK_DIR}/npm-cache}"
 
 cleanup() {
   rm -rf "${WORK_DIR}"
