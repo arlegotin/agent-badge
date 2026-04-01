@@ -312,7 +312,9 @@ describe("runPublishCommand", () => {
         ...defaultAgentBadgeState.publish,
         status: "published",
         gistId: "gist_publish",
-        lastPublishedHash: "hash_123"
+        lastPublishedHash: "hash_123",
+        publisherId: "publisher-local",
+        mode: "shared"
       }
     });
 
@@ -346,9 +348,16 @@ describe("runPublishCommand", () => {
         client: gistClient
       });
       expect(persistedState.publish.lastPublishedHash).toBe("hash_123");
+      expect(persistedState.publish.publisherId).toBe("publisher-local");
+      expect(persistedState.publish.mode).toBe("shared");
       expect(output.read().startsWith("agent-badge publish\n")).toBe(true);
+      expect(output.read()).toContain("Publish mode: shared");
       expect(output.read()).toContain("lastPublishedHash: hash_123");
+      expect(output.read()).not.toContain("codex-session-1");
+      expect(output.read()).not.toContain(fixture.repoRoot);
       expect(result.state.publish.lastPublishedHash).toBe("hash_123");
+      expect(result.state.publish.publisherId).toBe("publisher-local");
+      expect(result.state.publish.mode).toBe("shared");
       expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
         cwd: fixture.repoRoot,
         entry: expect.objectContaining({
