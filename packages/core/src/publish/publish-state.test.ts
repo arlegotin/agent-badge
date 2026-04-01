@@ -67,10 +67,13 @@ describe("applyPublishTargetResult", () => {
       state: {
         ...defaultAgentBadgeState,
         publish: {
+          ...defaultAgentBadgeState.publish,
           status: "pending",
           gistId: "gist_123",
           lastPublishedHash: "hash_123",
-          lastPublishedAt: null
+          lastPublishedAt: null,
+          publisherId: null,
+          mode: "legacy"
         }
       }
     });
@@ -109,10 +112,13 @@ describe("applyPublishTargetResult", () => {
       state: {
         ...defaultAgentBadgeState,
         publish: {
+          ...defaultAgentBadgeState.publish,
           status: "deferred",
           gistId: null,
           lastPublishedHash: "hash_123",
-          lastPublishedAt: null
+          lastPublishedAt: null,
+          publisherId: null,
+          mode: "legacy"
         }
       }
     });
