@@ -11,6 +11,12 @@ describe("agentBadgeStateSchema", () => {
 
   it("keeps ambiguity overrides empty until the user makes an explicit choice", () => {
     expect(defaultAgentBadgeState.overrides.ambiguousSessions).toEqual({});
+    expect(
+      (defaultAgentBadgeState.publish as Record<string, unknown>).publisherId
+    ).toBeNull();
+    expect((defaultAgentBadgeState.publish as Record<string, unknown>).mode).toBe(
+      "legacy"
+    );
     expect(defaultAgentBadgeState.publish.lastPublishedHash).toBeNull();
     expect(defaultAgentBadgeState.publish.lastPublishedAt).toBeNull();
     expect(defaultAgentBadgeState.refresh.summary).toBeNull();
@@ -24,14 +30,18 @@ describe("agentBadgeStateSchema", () => {
           status: "deferred",
           gistId: "gist_123",
           lastPublishedHash: "hash_123",
-          lastPublishedAt: "2026-03-30T12:00:00Z"
+          lastPublishedAt: "2026-03-30T12:00:00Z",
+          publisherId: "publisher_123",
+          mode: "shared"
         }
       }).publish
     ).toEqual({
       status: "deferred",
       gistId: "gist_123",
       lastPublishedHash: "hash_123",
-      lastPublishedAt: "2026-03-30T12:00:00Z"
+      lastPublishedAt: "2026-03-30T12:00:00Z",
+      publisherId: "publisher_123",
+      mode: "shared"
     });
   });
 
@@ -108,7 +118,23 @@ describe("agentBadgeStateSchema", () => {
         ...defaultAgentBadgeState,
         publish: {
           ...defaultAgentBadgeState.publish,
+          publisherId: "publisher_123",
+          mode: "shared",
           localPath: "/Users/example/.codex/session.jsonl"
+        }
+      })
+    ).toThrow();
+  });
+
+  it("rejects invalid extra publish fields while keeping publisherId and mode explicit", () => {
+    expect(() =>
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          publisherId: "publisher_123",
+          mode: "shared",
+          machineName: "workstation-01"
         }
       })
     ).toThrow();

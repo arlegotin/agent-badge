@@ -207,6 +207,8 @@ describe("applyAgentBadgeScaffold", () => {
           {
             version: 1,
             publish: {
+              publisherId: "publisher-existing",
+              mode: "shared",
               lastPublishedHash: "abc123",
               lastPublishedAt: "2026-03-30T01:00:00.000Z"
             },
@@ -255,6 +257,10 @@ describe("applyAgentBadgeScaffold", () => {
       });
       expect(state.publish.lastPublishedHash).toBe("abc123");
       expect(state.publish.lastPublishedAt).toBe("2026-03-30T01:00:00.000Z");
+      expect((state.publish as Record<string, unknown>).publisherId).toBe(
+        "publisher-existing"
+      );
+      expect((state.publish as Record<string, unknown>).mode).toBe("shared");
       expect(state.refresh).toEqual({
         lastRefreshedAt: "2026-03-30T02:00:00.000Z",
         lastScanMode: "incremental",
@@ -268,6 +274,81 @@ describe("applyAgentBadgeScaffold", () => {
         }
       });
       expect(state.init.initialized).toBe(true);
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("does not rotate an existing publisherId on init reruns", async () => {
+    const repo = await createRepoFixture();
+    const providers = await createProviderHome();
+    const scaffoldRoot = join(repo.root, ".agent-badge");
+
+    try {
+      await mkdir(scaffoldRoot, { recursive: true });
+      await writeFile(
+        join(scaffoldRoot, "state.json"),
+        JSON.stringify(
+          {
+            version: 1,
+            init: {
+              initialized: true,
+              scaffoldVersion: 1,
+              lastInitializedAt: initializedAt
+            },
+            checkpoints: {
+              codex: {
+                cursor: null,
+                lastScannedAt: null
+              },
+              claude: {
+                cursor: null,
+                lastScannedAt: null
+              }
+            },
+            publish: {
+              status: "published",
+              gistId: "gist_123",
+              lastPublishedHash: "hash_123",
+              lastPublishedAt: "2026-03-30T01:00:00.000Z",
+              publisherId: "publisher-existing",
+              mode: "shared"
+            },
+            refresh: {
+              lastRefreshedAt: null,
+              lastScanMode: null,
+              lastPublishDecision: null,
+              summary: null
+            },
+            overrides: {
+              ambiguousSessions: {}
+            }
+          },
+          null,
+          2
+        ),
+        "utf8"
+      );
+
+      const preflight = await runInitPreflight({
+        cwd: repo.root,
+        homeRoot: providers.root
+      });
+
+      await applyAgentBadgeScaffold({
+        cwd: repo.root,
+        preflight,
+        now: () => new Date("2026-04-01T00:00:00.000Z")
+      });
+
+      const state = parseAgentBadgeState(
+        await readJson(join(repo.root, ".agent-badge/state.json"))
+      );
+
+      expect((state.publish as Record<string, unknown>).publisherId).toBe(
+        "publisher-existing"
+      );
+      expect((state.publish as Record<string, unknown>).mode).toBe("shared");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
