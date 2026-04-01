@@ -47,6 +47,8 @@ jobs:
           echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
       - name: Install dependencies
         run: npm ci
+      - name: Build
+        run: npm run build
       - name: Run release-readiness scenario matrix
         run: npm test -- --run packages/agent-badge/src/commands/release-readiness-matrix.test.ts
 
