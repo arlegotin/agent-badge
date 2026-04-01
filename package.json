@@ -12,6 +12,7 @@
     "verify:clean-checkout": "bash scripts/verify-clean-checkout.sh",
     "pack:check": "node scripts/check-packages.mjs",
     "smoke:pack": "bash scripts/smoke/verify-packed-install.sh",
+    "smoke:registry": "bash scripts/smoke/verify-registry-install.sh",
     "docs:check": "bash scripts/verify-docs.sh",
     "changeset": "changeset",
     "release": "changeset publish",
