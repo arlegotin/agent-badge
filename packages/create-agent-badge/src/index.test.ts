@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -51,11 +52,11 @@ describe("create-agent-badge entrypoint", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     process.argv = [
       process.execPath,
-      new URL("./index.ts", import.meta.url).pathname
+      fileURLToPath(new URL("./index.ts", import.meta.url))
     ];
     process.exitCode = undefined;
 
-    await import(`./index.ts?direct-execution=${Date.now()}`);
+    await import("./index.ts?direct-execution");
     await Promise.resolve();
     await Promise.resolve();
 
