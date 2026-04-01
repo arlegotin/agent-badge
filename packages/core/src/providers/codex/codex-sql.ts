@@ -26,8 +26,8 @@ export interface CodexSpawnEdgeRow {
 
 interface RawCodexThreadRow {
   readonly id: string;
-  readonly created_at: string | null;
-  readonly updated_at: string | null;
+  readonly created_at: string | number | null;
+  readonly updated_at: string | number | null;
   readonly source: string | null;
   readonly model_provider: string | null;
   readonly cwd: string | null;
@@ -46,6 +46,80 @@ interface RawCodexSpawnEdgeRow {
   readonly child_thread_id: string;
 }
 
+function normalizeCodexTimestamp(
+  value: string | number | null
+): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : /^\d+(?:\.\d+)?$/.test(value.trim())
+        ? Number(value.trim())
+        : null;
+
+  if (numericValue !== null && Number.isFinite(numericValue)) {
+    const milliseconds =
+      numericValue >= 1_000_000_000_000 ? numericValue : numericValue * 1000;
+
+    return new Date(milliseconds).toISOString();
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    if (trimmed.length === 0) {
+      return null;
+    }
+
+    const parsedMilliseconds = Date.parse(trimmed);
+
+    if (Number.isFinite(parsedMilliseconds)) {
+      return new Date(parsedMilliseconds).toISOString();
+    }
+
+    return trimmed;
+  }
+
+  return null;
+}
+
+function codexTimestampToUnixSeconds(
+  value: string | null
+): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    const numericValue = Number(trimmed);
+
+    if (!Number.isFinite(numericValue)) {
+      return null;
+    }
+
+    return Math.floor(
+      numericValue >= 1_000_000_000_000 ? numericValue / 1000 : numericValue
+    );
+  }
+
+  const parsedMilliseconds = Date.parse(trimmed);
+
+  if (!Number.isFinite(parsedMilliseconds)) {
+    return null;
+  }
+
+  return Math.floor(parsedMilliseconds / 1000);
+}
+
 function readRows<T>(dbPath: string, sql: string, params: readonly unknown[] = []): T[] {
   const database = new Database(dbPath, { readonly: true });
 
@@ -59,8 +133,8 @@ function readRows<T>(dbPath: string, sql: string, params: readonly unknown[] = [
 function mapCodexThreadRow(row: RawCodexThreadRow): CodexThreadRow {
   return {
     id: row.id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: normalizeCodexTimestamp(row.created_at),
+    updatedAt: normalizeCodexTimestamp(row.updated_at),
     source: row.source,
     modelProvider: row.model_provider,
     cwd: row.cwd,
@@ -127,8 +201,30 @@ export async function loadCodexThreadRowsSince(
   watermark: string | null,
   sessionIdsAtWatermark: readonly string[]
 ): Promise<CodexThreadRow[]> {
-  const threadWatermarkSql = "COALESCE(updated_at, created_at, '')";
-  const effectiveWatermark = watermark ?? "";
+  const threadWatermarkSql = `
+    COALESCE(
+      CASE
+        WHEN updated_at IS NULL THEN NULL
+        WHEN typeof(updated_at) IN ('integer', 'real') THEN
+          CASE
+            WHEN updated_at >= 1000000000000 THEN CAST(updated_at / 1000 AS INTEGER)
+            ELSE CAST(updated_at AS INTEGER)
+          END
+        ELSE CAST(strftime('%s', updated_at) AS INTEGER)
+      END,
+      CASE
+        WHEN created_at IS NULL THEN NULL
+        WHEN typeof(created_at) IN ('integer', 'real') THEN
+          CASE
+            WHEN created_at >= 1000000000000 THEN CAST(created_at / 1000 AS INTEGER)
+            ELSE CAST(created_at AS INTEGER)
+          END
+        ELSE CAST(strftime('%s', created_at) AS INTEGER)
+      END,
+      -1
+    )
+  `;
+  const effectiveWatermark = codexTimestampToUnixSeconds(watermark) ?? -1;
   const params: unknown[] = [effectiveWatermark];
   let sql = `
       SELECT id, created_at, updated_at, source, model_provider, cwd, tokens_used,

@@ -127,6 +127,55 @@ async function withNullTimestampCodexHome<T>(
   }
 }
 
+async function withIntegerTimestampCodexHome<T>(
+  callback: (homeRoot: string, dbPath: string) => Promise<T>
+): Promise<T> {
+  const homeRoot = await mkdtemp(join(tmpdir(), "agent-badge-codex-int-"));
+  const codexRoot = join(homeRoot, ".codex");
+  const dbPath = join(codexRoot, "state_9.sqlite");
+  const sqliteModule = (await import(sqliteModuleName)) as {
+    default: new (path: string) => {
+      exec(statement: string): void;
+      prepare(statement: string): { run(...params: unknown[]): void };
+      close(): void;
+    };
+  };
+
+  await mkdir(codexRoot, { recursive: true });
+
+  const database = new sqliteModule.default(dbPath);
+
+  try {
+    database.exec(`
+      CREATE TABLE threads (
+        id TEXT PRIMARY KEY,
+        created_at INTEGER,
+        updated_at INTEGER,
+        source TEXT,
+        model_provider TEXT,
+        cwd TEXT,
+        tokens_used INTEGER,
+        git_sha TEXT,
+        git_branch TEXT,
+        git_origin_url TEXT,
+        cli_version TEXT,
+        agent_nickname TEXT,
+        agent_role TEXT,
+        model TEXT
+      );
+      CREATE TABLE thread_spawn_edges (
+        parent_thread_id TEXT NOT NULL,
+        child_thread_id TEXT NOT NULL
+      );
+    `);
+
+    return await callback(homeRoot, dbPath);
+  } finally {
+    database.close();
+    await rm(homeRoot, { recursive: true, force: true });
+  }
+}
+
 describe("scanCodexSessions", () => {
   it("dedupes by threads.id", async () => {
     await withCodexFixture(async (fixture) => {
@@ -211,6 +260,77 @@ describe("scanCodexSessions", () => {
           providerSessionId: "thread-history-only",
           tokenUsage: expect.objectContaining({
             total: 0
+          })
+        })
+      ]);
+    });
+  });
+
+  it("reads integer sqlite timestamps without falling back to history.jsonl", async () => {
+    await withIntegerTimestampCodexHome(async (homeRoot, dbPath) => {
+      const sqliteModule = (await import(sqliteModuleName)) as {
+        default: new (path: string) => {
+          prepare(statement: string): { run(...params: unknown[]): void };
+          close(): void;
+        };
+      };
+      const database = new sqliteModule.default(dbPath);
+
+      try {
+        database
+          .prepare(
+            `
+              INSERT INTO threads (
+                id,
+                created_at,
+                updated_at,
+                source,
+                model_provider,
+                cwd,
+                tokens_used,
+                git_sha,
+                git_branch,
+                git_origin_url,
+                cli_version,
+                agent_nickname,
+                agent_role,
+                model
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(
+            "thread-int",
+            1775037600,
+            1775041200,
+            "chat",
+            "openai",
+            "/Volumes/git/legotin/agent-badge",
+            123456,
+            null,
+            "main",
+            "https://github.com/arlegotin/agent-badge.git",
+            "1.0.0",
+            null,
+            null,
+            "gpt-5"
+          );
+      } finally {
+        database.close();
+      }
+
+      const sessions = await scanCodexSessions({ homeRoot });
+
+      expect(sessions).toEqual([
+        expect.objectContaining({
+          providerSessionId: "thread-int",
+          updatedAt: "2026-04-01T11:00:00.000Z",
+          cwd: "/Volumes/git/legotin/agent-badge",
+          observedRemoteUrlNormalized: "https://github.com/arlegotin/agent-badge",
+          tokenUsage: expect.objectContaining({
+            total: 123456
+          }),
+          metadata: expect.objectContaining({
+            sourceKind: "chat"
           })
         })
       ]);
@@ -370,12 +490,129 @@ describe("scanCodexSessionsIncremental", () => {
       expect(result.sessions).toHaveLength(1);
       expect(result.sessions[0]).toMatchObject({
         providerSessionId: "thread-child",
-        updatedAt: "2026-03-07T12:00:00Z",
+        updatedAt: "2026-03-07T12:00:00.000Z",
         tokenUsage: {
           total: 999
         }
       });
       expect(result.cursor).toContain("codex-thread-watermark-v1");
+    });
+  });
+
+  it("keeps integer-timestamp sqlite sessions incremental", async () => {
+    await withIntegerTimestampCodexHome(async (homeRoot, dbPath) => {
+      const sqliteModule = (await import(sqliteModuleName)) as {
+        default: new (path: string) => {
+          prepare(statement: string): { run(...params: unknown[]): void };
+          close(): void;
+        };
+      };
+      const database = new sqliteModule.default(dbPath);
+
+      try {
+        database
+          .prepare(
+            `
+              INSERT INTO threads (
+                id,
+                created_at,
+                updated_at,
+                source,
+                model_provider,
+                cwd,
+                tokens_used,
+                git_sha,
+                git_branch,
+                git_origin_url,
+                cli_version,
+                agent_nickname,
+                agent_role,
+                model
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(
+            "thread-int-1",
+            1775037600,
+            1775041200,
+            "chat",
+            "openai",
+            "/Volumes/git/legotin/agent-badge",
+            100,
+            null,
+            "main",
+            "https://github.com/arlegotin/agent-badge.git",
+            "1.0.0",
+            null,
+            null,
+            "gpt-5"
+          );
+      } finally {
+        database.close();
+      }
+
+      const cursor = buildCodexIncrementalCursor(
+        await scanCodexSessions({ homeRoot })
+      );
+
+      const updateDatabase = new sqliteModule.default(dbPath);
+
+      try {
+        updateDatabase
+          .prepare(
+            `
+              INSERT INTO threads (
+                id,
+                created_at,
+                updated_at,
+                source,
+                model_provider,
+                cwd,
+                tokens_used,
+                git_sha,
+                git_branch,
+                git_origin_url,
+                cli_version,
+                agent_nickname,
+                agent_role,
+                model
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `
+          )
+          .run(
+            "thread-int-2",
+            1775041800,
+            1775042400,
+            "chat",
+            "openai",
+            "/Volumes/git/legotin/agent-badge",
+            250,
+            null,
+            "main",
+            "https://github.com/arlegotin/agent-badge.git",
+            "1.0.0",
+            null,
+            null,
+            "gpt-5"
+          );
+      } finally {
+        updateDatabase.close();
+      }
+
+      const result = await scanCodexSessionsIncremental({
+        homeRoot,
+        cursor
+      });
+
+      expect(result.mode).toBe("incremental");
+      expect(result.sessions).toHaveLength(1);
+      expect(result.sessions[0]).toMatchObject({
+        providerSessionId: "thread-int-2",
+        updatedAt: "2026-04-01T11:20:00.000Z",
+        tokenUsage: {
+          total: 250
+        }
+      });
     });
   });
 });
