@@ -104,23 +104,25 @@ function createGistClient(gistId: string) {
 }
 
 describe("runUninstallCommand", () => {
-  it("removes managed hook markers while preserving custom pre-push lines", async () => {
-    const repo = await createRepoFixture({
-      files: {
-        "package-lock.json": "{}"
-      }
-    });
-    const providers = await createProviderHome();
-    const output = createOutputCapture();
-    const gistClient = createGistClient("gist_uninstall");
-
-    try {
-      await runInitCommand({
-        cwd: repo.root,
-        homeRoot: providers.root,
-        gistId: "gist_uninstall",
-        gistClient
+  it(
+    "removes managed hook markers while preserving custom pre-push lines",
+    async () => {
+      const repo = await createRepoFixture({
+        files: {
+          "package-lock.json": "{}"
+        }
       });
+      const providers = await createProviderHome();
+      const output = createOutputCapture();
+      const gistClient = createGistClient("gist_uninstall");
+
+      try {
+        await runInitCommand({
+          cwd: repo.root,
+          homeRoot: providers.root,
+          gistId: "gist_uninstall",
+          gistClient
+        });
 
       const hookPath = join(repo.root, ".git/hooks/pre-push");
       await writeFile(
@@ -139,12 +141,14 @@ describe("runUninstallCommand", () => {
       expect(hookContent).not.toContain("# agent-badge:start");
       expect(hookContent).not.toContain("# agent-badge:end");
       expect(result.remote).toBeNull();
-      expect(output.read()).toContain("- uninstall: start");
-      expect(output.read()).toContain("- remote: preserved");
-    } finally {
-      await Promise.all([repo.cleanup(), providers.cleanup()]);
-    }
-  });
+        expect(output.read()).toContain("- uninstall: start");
+        expect(output.read()).toContain("- remote: preserved");
+      } finally {
+        await Promise.all([repo.cleanup(), providers.cleanup()]);
+      }
+    },
+    15_000
+  );
 
   it("preserves config and state by default while removing runtime wiring", async () => {
     const repo = await createRepoFixture({

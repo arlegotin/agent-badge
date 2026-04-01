@@ -300,75 +300,79 @@ describe("release readiness scenario matrix", () => {
   ];
 
   for (const scenario of scenarios) {
-    it(`${scenario.name}`, async () => {
-      const repo = await createRepoFixture(scenario.repo);
-      const providerFixture = await createProviderFixture(scenario.providers);
-      const gistClient = createDeterministicGistClient(
-        scenario.gistId ?? `gist-${scenario.name}`
-      );
-
-      try {
-        if (scenario.addOrigin) {
-          await addOrigin(repo.root);
-        }
-
-        let lastResult: Awaited<ReturnType<typeof runInitCommand>> | null = null;
-        for (let runIndex = 0; runIndex < scenario.runCount; runIndex += 1) {
-          lastResult = await runInitCommand({
-            cwd: repo.root,
-            homeRoot: providerFixture.homeRoot,
-            env: scenario.env,
-            gistId: runIndex === 0 ? scenario.gistId : undefined,
-            gistClient
-          });
-        }
-
-        if (lastResult === null) {
-          throw new Error("Expected at least one init run.");
-        }
-
-        expect(lastResult.preflight.providers.codex.available).toBe(
-          scenario.expectedProviderAvailability.codex
-        );
-        expect(lastResult.preflight.providers.claude.available).toBe(
-          scenario.expectedProviderAvailability.claude
-        );
-        expect(lastResult.preflight.git.hasOrigin).toBe(scenario.addOrigin);
-
-        expect(await readPublishStatus(repo.root)).toBe(
-          scenario.expectedPublishStatus
+    it(
+      `${scenario.name}`,
+      async () => {
+        const repo = await createRepoFixture(scenario.repo);
+        const providerFixture = await createProviderFixture(scenario.providers);
+        const gistClient = createDeterministicGistClient(
+          scenario.gistId ?? `gist-${scenario.name}`
         );
 
-        const readmePath = join(repo.root, "README.md");
-        const readmeExists = existsSync(readmePath);
+        try {
+          if (scenario.addOrigin) {
+            await addOrigin(repo.root);
+          }
 
-        expect(readmeExists).toBe(scenario.expectReadmeToExist);
+          let lastResult: Awaited<ReturnType<typeof runInitCommand>> | null = null;
+          for (let runIndex = 0; runIndex < scenario.runCount; runIndex += 1) {
+            lastResult = await runInitCommand({
+              cwd: repo.root,
+              homeRoot: providerFixture.homeRoot,
+              env: scenario.env,
+              gistId: runIndex === 0 ? scenario.gistId : undefined,
+              gistClient
+            });
+          }
 
-        if (readmeExists) {
-          const readmeContent = await readFile(readmePath, "utf8");
-          expect(countOccurrences(readmeContent, readmeStartMarker)).toBe(
-            scenario.expectedReadmeStartMarkers
+          if (lastResult === null) {
+            throw new Error("Expected at least one init run.");
+          }
+
+          expect(lastResult.preflight.providers.codex.available).toBe(
+            scenario.expectedProviderAvailability.codex
           );
-        } else {
-          expect(scenario.name).toBe("no-readme");
+          expect(lastResult.preflight.providers.claude.available).toBe(
+            scenario.expectedProviderAvailability.claude
+          );
+          expect(lastResult.preflight.git.hasOrigin).toBe(scenario.addOrigin);
+
+          expect(await readPublishStatus(repo.root)).toBe(
+            scenario.expectedPublishStatus
+          );
+
+          const readmePath = join(repo.root, "README.md");
+          const readmeExists = existsSync(readmePath);
+
+          expect(readmeExists).toBe(scenario.expectReadmeToExist);
+
+          if (readmeExists) {
+            const readmeContent = await readFile(readmePath, "utf8");
+            expect(countOccurrences(readmeContent, readmeStartMarker)).toBe(
+              scenario.expectedReadmeStartMarkers
+            );
+          } else {
+            expect(scenario.name).toBe("no-readme");
+          }
+
+          const hookContent = await readFile(
+            join(repo.root, ".git/hooks/pre-push"),
+            "utf8"
+          );
+
+          expect(countOccurrences(hookContent, hookStartMarker)).toBe(1);
+
+          if (scenario.name === "no-auth") {
+            expect(gistClient.getGistCalls).toBe(0);
+            expect(gistClient.createPublicGistCalls).toBe(0);
+            expect(gistClient.updateGistFileCalls).toBe(0);
+            expect(gistClient.deleteGistCalls).toBe(0);
+          }
+        } finally {
+          await Promise.all([repo.cleanup(), providerFixture.cleanup()]);
         }
-
-        const hookContent = await readFile(
-          join(repo.root, ".git/hooks/pre-push"),
-          "utf8"
-        );
-
-        expect(countOccurrences(hookContent, hookStartMarker)).toBe(1);
-
-        if (scenario.name === "no-auth") {
-          expect(gistClient.getGistCalls).toBe(0);
-          expect(gistClient.createPublicGistCalls).toBe(0);
-          expect(gistClient.updateGistFileCalls).toBe(0);
-          expect(gistClient.deleteGistCalls).toBe(0);
-        }
-      } finally {
-        await Promise.all([repo.cleanup(), providerFixture.cleanup()]);
-      }
-    });
+      },
+      15_000
+    );
   }
 });

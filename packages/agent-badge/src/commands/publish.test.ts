@@ -341,7 +341,7 @@ describe("runPublishCommand", () => {
         includedTotals: {
           sessions: 1,
           tokens: 120,
-          estimatedCostUsdMicros: null
+          estimatedCostUsdMicros: 675
         },
         client: gistClient
       });

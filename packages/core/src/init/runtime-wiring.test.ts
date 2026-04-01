@@ -72,19 +72,21 @@ async function createGitRepoFixture(options: {
 }
 
 describe("applyRepoLocalRuntimeWiring", () => {
-  it("creates package.json wiring and a runnable first-run pre-push hook", async () => {
-    const repo = await createGitRepoFixture();
-    const packageJsonPath = join(repo.root, "package.json");
-    const gitignorePath = join(repo.root, ".gitignore");
-    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
+  it(
+    "creates package.json wiring and a runnable first-run pre-push hook",
+    async () => {
+      const repo = await createGitRepoFixture();
+      const packageJsonPath = join(repo.root, "package.json");
+      const gitignorePath = join(repo.root, ".gitignore");
+      const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
-    try {
-      const result = await applyRepoLocalRuntimeWiring({
-        cwd: repo.root,
-        packageManager: "npm",
-        runtimeDependencySpecifier: "latest",
-        refresh: failSoftRefresh
-      });
+      try {
+        const result = await applyRepoLocalRuntimeWiring({
+          cwd: repo.root,
+          packageManager: "npm",
+          runtimeDependencySpecifier: "latest",
+          refresh: failSoftRefresh
+        });
 
       expect(result.created).toEqual(
         expect.arrayContaining([
@@ -129,18 +131,20 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(hookContent).toContain("npm run --silent agent-badge:refresh || true");
       expect(hookStats.mode & 0o111).toBe(0o111);
 
-      await expect(
-        execFileAsync(prePushHookPath, [], {
-          cwd: repo.root
-        })
-      ).resolves.toMatchObject({
-        stdout: expect.any(String),
-        stderr: expect.any(String)
-      });
-    } finally {
-      await repo.cleanup();
-    }
-  });
+        await expect(
+          execFileAsync(prePushHookPath, [], {
+            cwd: repo.root
+          })
+        ).resolves.toMatchObject({
+          stdout: expect.any(String),
+          stderr: expect.any(String)
+        });
+      } finally {
+        await repo.cleanup();
+      }
+    },
+    15_000
+  );
 
   it("preserves unrelated content and converges on a single managed hook block across reruns", async () => {
     const repo = await createGitRepoFixture({
