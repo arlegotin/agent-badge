@@ -3,41 +3,50 @@ const rawIntegerFormatter = new Intl.NumberFormat("en-US", {
   useGrouping: false
 });
 
-const compactIntegerFormatter = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  compactDisplay: "short",
-  maximumFractionDigits: 1
-});
-
-const compactUsdFormatter = new Intl.NumberFormat("en-US", {
+const rawUsdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  notation: "compact",
-  compactDisplay: "short",
-  maximumFractionDigits: 1
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
 });
 
-function normalizeCompactSuffix(value: string): string {
-  return value.replace(/\.0(?=[A-Za-z])/g, "").replace(/K\b/g, "k");
+const compactUnits = [
+  { threshold: 1_000_000_000, suffix: "B" },
+  { threshold: 1_000_000, suffix: "M" },
+  { threshold: 1_000, suffix: "K" }
+] as const;
+
+function formatCompactCore(value: number): string {
+  const abs = Math.abs(value);
+
+  for (const unit of compactUnits) {
+    if (abs < unit.threshold) {
+      continue;
+    }
+
+    const scaled = abs / unit.threshold;
+    const maximumFractionDigits = abs >= 100_000_000 ? 0 : 1;
+    const rendered = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits,
+      useGrouping: false
+    }).format(scaled);
+
+    return `${value < 0 ? "-" : ""}${rendered}${unit.suffix}`;
+  }
+
+  return `${value < 0 ? "-" : ""}${rawIntegerFormatter.format(abs)}`;
 }
 
 export function formatCompactInteger(value: number): string {
-  if (Math.abs(value) < 1_000) {
-    return rawIntegerFormatter.format(value);
-  }
-
-  return normalizeCompactSuffix(compactIntegerFormatter.format(value));
+  return formatCompactCore(value);
 }
 
 export function formatCompactUsd(value: number): string {
   if (Math.abs(value) < 1_000) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(value);
+    return rawUsdFormatter.format(value);
   }
 
-  return normalizeCompactSuffix(compactUsdFormatter.format(value));
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${formatCompactCore(Math.abs(value))}`;
 }

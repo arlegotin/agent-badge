@@ -42,7 +42,7 @@ describe("buildEndpointBadgePayload", () => {
     ).toEqual({
       schemaVersion: 1,
       label: "Token Usage",
-      message: "17.6k tokens",
+      message: "17.6K tokens",
       color: "brightgreen"
     });
   });
@@ -99,7 +99,45 @@ describe("buildEndpointBadgePayload", () => {
     ).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "$1.4k",
+      message: "$1.4K",
+      color: "brightgreen"
+    });
+  });
+
+  it("rounds very large compact token values to whole units", () => {
+    expect(
+      buildEndpointBadgePayload({
+        label: "AI Usage",
+        mode: "tokens",
+        includedTotals: {
+          sessions: 3,
+          tokens: 456_300_000,
+          estimatedCostUsdMicros: null
+        }
+      })
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "456M tokens",
+      color: "brightgreen"
+    });
+  });
+
+  it("rounds very large compact cost values to whole units", () => {
+    expect(
+      buildEndpointBadgePayload({
+        label: "AI Usage",
+        mode: "cost",
+        includedTotals: {
+          sessions: 3,
+          tokens: 120,
+          estimatedCostUsdMicros: 456_300_000_000_000
+        }
+      })
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "$456M",
       color: "brightgreen"
     });
   });

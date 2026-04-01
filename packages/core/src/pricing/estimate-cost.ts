@@ -825,8 +825,9 @@ export async function estimateIncludedCostUsdMicros(
 
 export function formatEstimatedCostUsd(micros: number): string {
   const usd = micros / 1_000_000;
+  const abs = Math.abs(usd);
 
-  if (Math.abs(usd) < 1_000) {
+  if (abs < 1_000) {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
@@ -835,14 +836,31 @@ export function formatEstimatedCostUsd(micros: number): string {
     }).format(usd);
   }
 
+  const compactUnits = [
+    { threshold: 1_000_000_000, suffix: "B" },
+    { threshold: 1_000_000, suffix: "M" },
+    { threshold: 1_000, suffix: "K" }
+  ] as const;
+
+  for (const unit of compactUnits) {
+    if (abs < unit.threshold) {
+      continue;
+    }
+
+    const scaled = abs / unit.threshold;
+    const rendered = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: abs >= 100_000_000 ? 0 : 1,
+      useGrouping: false
+    }).format(scaled);
+
+    return `${usd < 0 ? "-" : ""}$${rendered}${unit.suffix}`;
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    notation: "compact",
-    compactDisplay: "short",
-    maximumFractionDigits: 1
-  })
-    .format(usd)
-    .replace(/\.0(?=[A-Za-z])/g, "")
-    .replace(/K\b/g, "k");
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(usd);
 }
