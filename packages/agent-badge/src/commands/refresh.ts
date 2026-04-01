@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import {
   applyCompletedScanState,
   createGitHubGistClient,
+  formatEstimatedCostUsd,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeIfChanged,
@@ -119,9 +120,9 @@ function formatTotals(summary: RunIncrementalRefreshResult["summary"]): string {
   const estimatedCost =
     summary.includedEstimatedCostUsdMicros === null
       ? ""
-      : `, ~$${(
-          summary.includedEstimatedCostUsdMicros / 1_000_000
-        ).toFixed(2)} estimated`;
+      : `, ~${formatEstimatedCostUsd(
+          summary.includedEstimatedCostUsdMicros
+        )} estimated`;
 
   return `${summary.includedSessions} sessions, ${summary.includedTokens} tokens${estimatedCost}`;
 }

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { parseNormalizedSessionSummary } from "../providers/session-summary.js";
 import {
   estimateIncludedCostUsdMicros,
+  formatEstimatedCostUsd,
   type PricingCatalog
 } from "./estimate-cost.js";
 
@@ -41,6 +42,12 @@ function createPricingCatalog(): PricingCatalog {
 }
 
 describe("estimateIncludedCostUsdMicros", () => {
+  it("formats estimated USD with compact badge-friendly suffixes", () => {
+    expect(formatEstimatedCostUsd(12_340_000)).toBe("$12.34");
+    expect(formatEstimatedCostUsd(1_400_000_000)).toBe("$1.4k");
+    expect(formatEstimatedCostUsd(34_700_000_000_000)).toBe("$34.7M");
+  });
+
   it("estimates Anthropic session cost from explicit usage buckets", async () => {
     const session = parseNormalizedSessionSummary({
       provider: "claude",

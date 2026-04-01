@@ -278,7 +278,7 @@ describe("runDoctorChecks", () => {
       globalThis.fetch = async (input: RequestInfo | URL) => {
         if (String(input).includes("agent-badge.json")) {
           return new Response(
-            '{"schemaVersion":1,"label":"AI Usage","message":"1 sessions","color":"brightgreen"}',
+            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"brightgreen"}',
             { status: 200 }
           );
         }

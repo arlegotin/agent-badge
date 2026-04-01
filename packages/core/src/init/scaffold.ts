@@ -34,7 +34,7 @@ export interface AgentBadgeScaffoldResult {
 
 const scaffoldVersion = 1;
 const invalidJsonMarker = Symbol("invalid-json");
-const badgeModes: AgentBadgeBadgeMode[] = ["sessions", "tokens", "cost"];
+const badgeModes: AgentBadgeBadgeMode[] = ["tokens", "cost"];
 const refreshModes: AgentBadgeRefreshMode[] = ["fail-soft", "strict"];
 const privacyOutputs: AgentBadgePrivacyOutput[] = ["standard", "minimal"];
 const publishStatuses: AgentBadgePublishStatus[] = [

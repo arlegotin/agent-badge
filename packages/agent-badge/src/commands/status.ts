@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import { parseAgentBadgeState, type AgentBadgeState } from "@legotin/agent-badge-core";
+import {
+  formatEstimatedCostUsd,
+  parseAgentBadgeState,
+  type AgentBadgeState
+} from "@legotin/agent-badge-core";
 
 interface OutputWriter {
   write(chunk: string): unknown;
@@ -144,9 +148,9 @@ function formatTotalsLine(state: AgentBadgeState): string {
   const estimatedCost =
     state.refresh.summary.includedEstimatedCostUsdMicros === null
       ? ""
-      : `, ~$${(
-          state.refresh.summary.includedEstimatedCostUsdMicros / 1_000_000
-        ).toFixed(2)} estimated`;
+      : `, ~${formatEstimatedCostUsd(
+          state.refresh.summary.includedEstimatedCostUsdMicros
+        )} estimated`;
 
   return `${state.refresh.summary.includedSessions} sessions, ${state.refresh.summary.includedTokens} tokens${estimatedCost}`;
 }

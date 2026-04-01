@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest";
 import { buildEndpointBadgePayload } from "./badge-payload.js";
 
 describe("buildEndpointBadgePayload", () => {
-  it("builds a sessions badge payload with the exact Shields fields", () => {
+  it("builds a token badge payload with the exact Shields fields", () => {
     const payload = buildEndpointBadgePayload({
       label: "AI Usage",
-      mode: "sessions",
+      mode: "tokens",
       includedTotals: {
         sessions: 3,
         tokens: 120,
@@ -17,7 +17,7 @@ describe("buildEndpointBadgePayload", () => {
     expect(payload).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "3 sessions",
+      message: "120 tokens",
       color: "brightgreen"
     });
     expect(Object.keys(payload)).toEqual([
@@ -28,21 +28,21 @@ describe("buildEndpointBadgePayload", () => {
     ]);
   });
 
-  it("builds a token badge payload", () => {
+  it("formats compact token badge payloads", () => {
     expect(
       buildEndpointBadgePayload({
         label: "Token Usage",
         mode: "tokens",
         includedTotals: {
           sessions: 3,
-          tokens: 120,
+          tokens: 17_600,
           estimatedCostUsdMicros: null
         }
       })
     ).toEqual({
       schemaVersion: 1,
       label: "Token Usage",
-      message: "120 tokens",
+      message: "17.6k tokens",
       color: "brightgreen"
     });
   });
@@ -51,17 +51,17 @@ describe("buildEndpointBadgePayload", () => {
     expect(
       buildEndpointBadgePayload({
         label: "AI Usage",
-        mode: "sessions",
+        mode: "tokens",
         includedTotals: {
           sessions: 0,
-          tokens: 42,
+          tokens: 0,
           estimatedCostUsdMicros: null
         }
       })
     ).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "0 sessions",
+      message: "0 tokens",
       color: "lightgrey"
     });
   });
@@ -80,7 +80,26 @@ describe("buildEndpointBadgePayload", () => {
     ).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "$12.34 est",
+      message: "$12.34",
+      color: "brightgreen"
+    });
+  });
+
+  it("formats compact estimated cost badge payloads", () => {
+    expect(
+      buildEndpointBadgePayload({
+        label: "AI Usage",
+        mode: "cost",
+        includedTotals: {
+          sessions: 3,
+          tokens: 120,
+          estimatedCostUsdMicros: 1_400_000_000
+        }
+      })
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "$1.4k",
       color: "brightgreen"
     });
   });

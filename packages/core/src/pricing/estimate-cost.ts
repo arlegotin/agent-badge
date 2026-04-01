@@ -826,13 +826,23 @@ export async function estimateIncludedCostUsdMicros(
 export function formatEstimatedCostUsd(micros: number): string {
   const usd = micros / 1_000_000;
 
-  if (usd >= 1_000_000) {
-    return `$${(usd / 1_000_000).toFixed(1)}m`;
+  if (Math.abs(usd) < 1_000) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(usd);
   }
 
-  if (usd >= 1_000) {
-    return `$${(usd / 1_000).toFixed(1)}k`;
-  }
-
-  return `$${usd.toFixed(2)}`;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    compactDisplay: "short",
+    maximumFractionDigits: 1
+  })
+    .format(usd)
+    .replace(/\.0(?=[A-Za-z])/g, "")
+    .replace(/K\b/g, "k");
 }

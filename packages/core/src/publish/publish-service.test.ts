@@ -92,7 +92,7 @@ describe("publishBadgeToGist", () => {
     const nextState = await publishBadgeToGist({
       config: createPublishConfig({
         label: "AI Usage",
-        mode: "sessions"
+        mode: "tokens"
       }),
       state: defaultAgentBadgeState,
       includedTotals: {
@@ -110,7 +110,7 @@ describe("publishBadgeToGist", () => {
     const serializedPayload = `{
   "schemaVersion": 1,
   "label": "AI Usage",
-  "message": "1 sessions",
+  "message": "42 tokens",
   "color": "brightgreen"
 }
 `;
@@ -174,7 +174,7 @@ describe("publishBadgeIfChanged", () => {
     const serializedPayload = `{
   "schemaVersion": 1,
   "label": "AI Usage",
-  "message": "1 sessions",
+  "message": "42 tokens",
   "color": "brightgreen"
 }
 `;
@@ -186,7 +186,7 @@ describe("publishBadgeIfChanged", () => {
     const result = await publishBadgeIfChanged({
       config: createPublishConfig({
         label: "AI Usage",
-        mode: "sessions"
+        mode: "tokens"
       }),
       state: {
         ...defaultAgentBadgeState,
@@ -230,7 +230,7 @@ describe("publishBadgeIfChanged", () => {
     const previousPayload = `{
   "schemaVersion": 1,
   "label": "AI Usage",
-  "message": "1 sessions",
+  "message": "42 tokens",
   "color": "brightgreen"
 }
 `;
@@ -244,7 +244,7 @@ describe("publishBadgeIfChanged", () => {
     const result = await publishBadgeIfChanged({
       config: createPublishConfig({
         label: "Agent Usage",
-        mode: "sessions"
+        mode: "tokens"
       }),
       state: {
         ...defaultAgentBadgeState,
@@ -278,7 +278,7 @@ describe("publishBadgeIfChanged", () => {
           content: `{
   "schemaVersion": 1,
   "label": "Agent Usage",
-  "message": "1 sessions",
+  "message": "42 tokens",
   "color": "brightgreen"
 }
 `

@@ -107,7 +107,7 @@ function parseBooleanValue(key: string, value: string): boolean {
 }
 
 function parseBadgeModeValue(value: string): AgentBadgeBadgeMode {
-  if (value === "sessions" || value === "tokens" || value === "cost") {
+  if (value === "tokens" || value === "cost") {
     return value;
   }
 

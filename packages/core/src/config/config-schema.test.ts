@@ -15,6 +15,7 @@ describe("agentBadgeConfigSchema", () => {
   it("ships privacy-safe defaults", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
     expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
+    expect(defaultAgentBadgeConfig.badge.mode).toBe("tokens");
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
     expect(defaultAgentBadgeConfig.publish.badgeUrl).toBeNull();
     expect(defaultAgentBadgeConfig.repo.aliases).toEqual({
@@ -69,6 +70,18 @@ describe("agentBadgeConfigSchema", () => {
         }
       }
     });
+  });
+
+  it("migrates legacy sessions badge mode to tokens", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        badge: {
+          ...defaultAgentBadgeConfig.badge,
+          mode: "sessions"
+        }
+      }).badge.mode
+    ).toBe("tokens");
   });
 
   it("rejects path-like repo aliases", () => {

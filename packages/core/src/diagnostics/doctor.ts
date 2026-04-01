@@ -293,7 +293,7 @@ function defaultEndpointPayload(): string {
   return `${JSON.stringify(
     buildEndpointBadgePayload({
       label: "AI Usage",
-      mode: "sessions",
+      mode: "tokens",
       includedTotals: {
         sessions: 0,
         tokens: 0,
