@@ -11,6 +11,7 @@ import {
 } from "../config/config-schema.js";
 import {
   parseAgentBadgeState,
+  type AgentBadgePublishMode,
   type AgentBadgePublishStatus,
   type AgentBadgeRefreshPublishDecision,
   type AgentBadgeRefreshScanMode,
@@ -44,6 +45,7 @@ const publishStatuses: AgentBadgePublishStatus[] = [
   "published",
   "error"
 ];
+const publishModes: AgentBadgePublishMode[] = ["legacy", "shared"];
 const refreshScanModes: AgentBadgeRefreshScanMode[] = ["full", "incremental"];
 const refreshPublishDecisions: AgentBadgeRefreshPublishDecision[] = [
   "published",
@@ -318,7 +320,10 @@ function reconcileState(
         defaults.publish.lastPublishedHash,
       lastPublishedAt:
         readNullableString(publish.lastPublishedAt) ??
-        defaults.publish.lastPublishedAt
+        defaults.publish.lastPublishedAt,
+      publisherId:
+        readNullableString(publish.publisherId) ?? defaults.publish.publisherId,
+      mode: readEnumValue(publish.mode, publishModes) ?? defaults.publish.mode
     },
     refresh: {
       lastRefreshedAt:

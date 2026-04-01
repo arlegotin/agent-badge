@@ -15,6 +15,7 @@ const publishStatusSchema = z.enum([
   "published",
   "error"
 ]);
+const publishModeSchema = z.enum(["legacy", "shared"]);
 const refreshScanModeSchema = z.enum(["full", "incremental"]);
 const refreshPublishDecisionSchema = z.enum([
   "published",
@@ -61,7 +62,9 @@ export const agentBadgeStateSchema = z
         status: publishStatusSchema,
         gistId: z.string().min(1).nullable(),
         lastPublishedHash: z.string().min(1).nullable(),
-        lastPublishedAt: isoDateTimeSchema.nullable()
+        lastPublishedAt: isoDateTimeSchema.nullable(),
+        publisherId: z.string().min(1).nullable(),
+        mode: publishModeSchema
       })
       .strict(),
     refresh: z
@@ -82,6 +85,7 @@ export const agentBadgeStateSchema = z
 
 export type AgentBadgeState = z.infer<typeof agentBadgeStateSchema>;
 export type AgentBadgePublishStatus = z.infer<typeof publishStatusSchema>;
+export type AgentBadgePublishMode = z.infer<typeof publishModeSchema>;
 export type AgentBadgeRefreshScanMode = z.infer<typeof refreshScanModeSchema>;
 export type AgentBadgeRefreshPublishDecision = z.infer<
   typeof refreshPublishDecisionSchema
@@ -112,7 +116,9 @@ export const defaultAgentBadgeState: AgentBadgeState = {
     status: "idle",
     gistId: null,
     lastPublishedHash: null,
-    lastPublishedAt: null
+    lastPublishedAt: null,
+    publisherId: null,
+    mode: "legacy"
   },
   refresh: {
     lastRefreshedAt: null,
