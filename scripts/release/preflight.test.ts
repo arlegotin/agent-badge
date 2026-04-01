@@ -23,6 +23,10 @@ vi.mock("node:util", async () => {
 });
 
 const preflight = await import("./preflight.ts");
+const currentInventory = await preflight.loadPublishablePackageInventory(process.cwd());
+const currentRuntimeVersion = currentInventory.find(
+  (entry: { name: string }) => entry.name === "@legotin/agent-badge"
+)!.version;
 
 function missingPackageError(packageName: string): Error & {
   readonly stderr: string;
@@ -102,8 +106,8 @@ describe("release preflight", () => {
     mockMissingPackage("@legotin/agent-badge-core");
     mockRegistryJson({
       name: "@legotin/agent-badge",
-      version: "1.1.1",
-      "dist-tags.latest": "1.1.1"
+      version: currentRuntimeVersion,
+      "dist-tags.latest": currentRuntimeVersion
     });
     mockMissingPackage("create-agent-badge");
     mockNpmPing();
@@ -116,7 +120,7 @@ describe("release preflight", () => {
 
     expect(report.overallStatus).toBe("blocked");
     expect(blockedEntry?.status).toBe("blocked");
-    expect(blockedEntry?.summary).toContain("1.1.1");
+    expect(blockedEntry?.summary).toContain(currentRuntimeVersion);
   });
 
   it("returns overall warn when the registry metadata is partial or ambiguous", async () => {

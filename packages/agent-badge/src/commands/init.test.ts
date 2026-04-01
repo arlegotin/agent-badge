@@ -217,11 +217,9 @@ describe("runInitCommand", () => {
       const readmeContent = await readReadmeContent(repo.root);
 
       expect(devDependencies["@legotin/agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
-      expect(expectedRuntimeDependencySpecifier).toBe("^1.1.1");
-      expect(devDependencies["@legotin/agent-badge"]).toBe("^1.1.1");
       expect(initializerPackageJson).toMatchObject({
         dependencies: {
-          "@legotin/agent-badge": "^1.1.1"
+          "@legotin/agent-badge": expectedRuntimeDependencySpecifier
         }
       });
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
