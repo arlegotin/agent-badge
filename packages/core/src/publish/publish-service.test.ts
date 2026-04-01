@@ -12,6 +12,11 @@ import {
   AGENT_BADGE_TOKENS_GIST_FILE
 } from "./badge-url.js";
 import {
+  AGENT_BADGE_OVERRIDES_GIST_FILE,
+  buildContributorGistFileName,
+  buildSharedOverrideDigest
+} from "./shared-model.js";
+import {
   publishBadgeIfChanged,
   publishBadgeToGist
 } from "./publish-service.js";
@@ -68,6 +73,61 @@ function createPublishConfig(overrides?: Partial<typeof defaultAgentBadgeConfig.
       gistId: "gist_123"
     }
   };
+}
+
+function createContributorRecord(options: {
+  readonly publisherId: string;
+  readonly updatedAt?: string;
+  readonly sessions: number;
+  readonly tokens: number;
+  readonly estimatedCostUsdMicros: number | null;
+}) {
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      publisherId: options.publisherId,
+      updatedAt: options.updatedAt ?? "2026-03-30T11:00:00.000Z",
+      totals: {
+        sessions: options.sessions,
+        tokens: options.tokens,
+        estimatedCostUsdMicros: options.estimatedCostUsdMicros
+      }
+    },
+    null,
+    2
+  );
+}
+
+function createOverridesRecord(overrides: Record<string, unknown> = {}) {
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      overrides
+    },
+    null,
+    2
+  );
+}
+
+function createGistFileMap(
+  files: Record<
+    string,
+    {
+      readonly content: string;
+      readonly truncated?: boolean;
+    }
+  >
+) {
+  return Object.fromEntries(
+    Object.entries(files).map(([filename, file]) => [
+      filename,
+      {
+        filename,
+        content: file.content,
+        truncated: file.truncated ?? false
+      }
+    ])
+  );
 }
 
 beforeEach(() => {
@@ -245,6 +305,296 @@ describe("publishBadgeToGist", () => {
     ).rejects.toThrow(
       "Cannot publish badge JSON without a configured gist id."
     );
+  });
+
+  it("derives shared totals from two remote contributor files", async () => {
+    const publisherId = "publisher-local";
+    const contributorFile = buildContributorGistFileName(publisherId);
+    const otherContributorFile = buildContributorGistFileName("publisher-remote");
+    const overridesFile = AGENT_BADGE_OVERRIDES_GIST_FILE;
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [contributorFile]: {
+            content: createContributorRecord({
+              publisherId,
+              sessions: 1,
+              tokens: 10,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [otherContributorFile]: {
+            content: createContributorRecord({
+              publisherId: "publisher-remote",
+              sessions: 2,
+              tokens: 20,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [overridesFile]: {
+            content: createOverridesRecord()
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [contributorFile]: {
+            content: createContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              sessions: 3,
+              tokens: 30,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [otherContributorFile]: {
+            content: createContributorRecord({
+              publisherId: "publisher-remote",
+              sessions: 2,
+              tokens: 20,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [overridesFile]: {
+            content: createOverridesRecord()
+          }
+        })
+      });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    await publishBadgeToGist({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123",
+          publisherId
+        }
+      } as typeof defaultAgentBadgeState,
+      includedTotals: {
+        sessions: 3,
+        tokens: 30,
+        estimatedCostUsdMicros: null
+      },
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      }
+    });
+
+    expect(updateGistFile).toHaveBeenLastCalledWith({
+      gistId: "gist_123",
+      files: {
+        "agent-badge.json": {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "50 tokens",
+  "color": "blue"
+}
+`
+        }
+      }
+    });
+  });
+
+  it("replaces the local publisher contribution without deleting another publisher file", async () => {
+    const publisherId = "publisher-local";
+    const localContributorFile = buildContributorGistFileName(publisherId);
+    const otherContributorFile = buildContributorGistFileName("publisher-remote");
+    const sharedOverrideKey = buildSharedOverrideDigest("codex:session-1");
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [localContributorFile]: {
+            content: createContributorRecord({
+              publisherId,
+              sessions: 1,
+              tokens: 10,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [otherContributorFile]: {
+            content: createContributorRecord({
+              publisherId: "publisher-remote",
+              sessions: 2,
+              tokens: 20,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [localContributorFile]: {
+            content: createContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              sessions: 3,
+              tokens: 30,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [otherContributorFile]: {
+            content: createContributorRecord({
+              publisherId: "publisher-remote",
+              sessions: 2,
+              tokens: 20,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord({
+              [sharedOverrideKey]: {
+                decision: "include",
+                updatedAt: "2026-03-30T12:00:00.000Z",
+                updatedByPublisherId: publisherId
+              }
+            })
+          }
+        })
+      });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    await publishBadgeToGist({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123",
+          publisherId
+        },
+        overrides: {
+          ambiguousSessions: {
+            "codex:session-1": "include"
+          }
+        }
+      } as typeof defaultAgentBadgeState,
+      includedTotals: {
+        sessions: 3,
+        tokens: 30,
+        estimatedCostUsdMicros: null
+      },
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      }
+    });
+
+    expect(updateGistFile).toHaveBeenCalledWith({
+      gistId: "gist_123",
+      files: {
+        [localContributorFile]: {
+          content: `{
+  "schemaVersion": 1,
+  "publisherId": "publisher-local",
+  "updatedAt": "2026-03-30T12:00:00.000Z",
+  "totals": {
+    "sessions": 3,
+    "tokens": 30,
+    "estimatedCostUsdMicros": null
+  }
+}
+`
+        }
+      }
+    });
+    expect(updateGistFile).not.toHaveBeenCalledWith({
+      gistId: "gist_123",
+      files: expect.objectContaining({
+        [otherContributorFile]: expect.anything()
+      })
+    });
+  });
+
+  it("rejects truncated shared contributor or overrides files", async () => {
+    const getGist = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: createGistFileMap({
+        [buildContributorGistFileName("publisher-remote")]: {
+          content: createContributorRecord({
+            publisherId: "publisher-remote",
+            sessions: 2,
+            tokens: 20,
+            estimatedCostUsdMicros: null
+          }),
+          truncated: true
+        },
+        [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+          content: createOverridesRecord(),
+          truncated: true
+        }
+      })
+    });
+    const updateGistFile = vi.fn();
+
+    await expect(
+      publishBadgeToGist({
+        config: createPublishConfig({
+          label: "AI Usage",
+          mode: "tokens"
+        }),
+        state: {
+          ...defaultAgentBadgeState,
+          publish: {
+            ...defaultAgentBadgeState.publish,
+            gistId: "gist_123",
+            publisherId: "publisher-local"
+          }
+        } as typeof defaultAgentBadgeState,
+        includedTotals: {
+          sessions: 3,
+          tokens: 30,
+          estimatedCostUsdMicros: null
+        },
+        client: {
+          getGist,
+          createPublicGist: vi.fn(),
+          updateGistFile
+        }
+      })
+    ).rejects.toThrow("Shared gist files cannot be loaded from truncated content.");
+
+    expect(updateGistFile).not.toHaveBeenCalled();
   });
 });
 

@@ -33,10 +33,14 @@ describe("createGitHubGistClient", () => {
         },
         files: {
           "agent-badge.json": {
-            filename: "agent-badge.json"
+            filename: "agent-badge.json",
+            content: '{"schemaVersion":1}',
+            truncated: false
           },
           "README.md": {
-            filename: "README.md"
+            filename: "README.md",
+            content: "# Badge",
+            truncated: true
           }
         }
       }
@@ -47,7 +51,18 @@ describe("createGitHubGistClient", () => {
       id: "gist_123",
       ownerLogin: "octocat",
       public: true,
-      files: ["agent-badge.json", "README.md"]
+      files: {
+        "agent-badge.json": {
+          filename: "agent-badge.json",
+          content: '{"schemaVersion":1}',
+          truncated: false
+        },
+        "README.md": {
+          filename: "README.md",
+          content: "# Badge",
+          truncated: true
+        }
+      }
     });
     expect(get).toHaveBeenCalledWith({
       gist_id: "gist_123"
@@ -64,7 +79,9 @@ describe("createGitHubGistClient", () => {
         },
         files: {
           "agent-badge.json": {
-            filename: "agent-badge.json"
+            filename: "agent-badge.json",
+            content: '{"schemaVersion":1}',
+            truncated: false
           }
         }
       }
@@ -84,7 +101,13 @@ describe("createGitHubGistClient", () => {
       id: "gist_123",
       ownerLogin: "octocat",
       public: true,
-      files: ["agent-badge.json"]
+      files: {
+        "agent-badge.json": {
+          filename: "agent-badge.json",
+          content: '{"schemaVersion":1}',
+          truncated: false
+        }
+      }
     });
 
     expect(create).toHaveBeenCalledWith({
@@ -108,7 +131,9 @@ describe("createGitHubGistClient", () => {
         },
         files: {
           "agent-badge.json": {
-            filename: "agent-badge.json"
+            filename: "agent-badge.json",
+            content: '{"schemaVersion":1,"message":"updated"}',
+            truncated: false
           }
         }
       }
@@ -128,7 +153,13 @@ describe("createGitHubGistClient", () => {
       id: "gist_123",
       ownerLogin: "octocat",
       public: true,
-      files: ["agent-badge.json"]
+      files: {
+        "agent-badge.json": {
+          filename: "agent-badge.json",
+          content: '{"schemaVersion":1,"message":"updated"}',
+          truncated: false
+        }
+      }
     });
 
     expect(update).toHaveBeenCalledWith({
