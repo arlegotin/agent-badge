@@ -13,6 +13,30 @@ required_files=(
   "docs/MANUAL-GIST.md"
 )
 
+require_fixed() {
+  local pattern="$1"
+  local file="$2"
+
+  if command -v rg >/dev/null 2>&1; then
+    rg -n -F -- "${pattern}" "${file}"
+    return
+  fi
+
+  grep -nF -- "${pattern}" "${file}"
+}
+
+require_ere() {
+  local pattern="$1"
+  local file="$2"
+
+  if command -v rg >/dev/null 2>&1; then
+    rg -n -- "${pattern}" "${file}"
+    return
+  fi
+
+  grep -nE -- "${pattern}" "${file}"
+}
+
 for file in "${required_files[@]}"; do
   if [[ ! -f "${file}" ]]; then
     echo "Missing required documentation file: ${file}" >&2
@@ -20,29 +44,29 @@ for file in "${required_files[@]}"; do
   fi
 done
 
-rg -n "docs/RELEASE.md" README.md
-rg -n "npm run verify:clean-checkout" docs/RELEASE.md
-rg -n "12-preflight.json" docs/RELEASE.md
-rg -n "12-PUBLISH-EVIDENCE.md" docs/RELEASE.md
-rg -n "npm run release:evidence" docs/RELEASE.md
-rg -n "npm run release:preflight" docs/RELEASE.md
-rg -n "13-REGISTRY-SMOKE.json" docs/RELEASE.md
-rg -n "13-REGISTRY-SMOKE.md" docs/RELEASE.md
-rg -n -- "verify-registry-install.sh --version 1.1.2 --check-initializer --write-evidence" docs/RELEASE.md
-rg -n '"status": "passed"' docs/RELEASE.md
-rg -n -- "workflow_dispatch" docs/RELEASE.md
-rg -n -- ".github/workflows/release.yml" docs/RELEASE.md
-rg -n "trusted publishing|trusted-publisher|trusted publisher" docs/RELEASE.md
-rg -n "npm whoami" docs/RELEASE.md
-rg -n "npm ping" docs/RELEASE.md
-rg -n "npm view @legotin/agent-badge" docs/RELEASE.md
-rg -n "npm view create-agent-badge" docs/RELEASE.md
-rg -n "npm view @legotin/agent-badge-core" docs/RELEASE.md
-rg -n "npm_config_cache" docs/RELEASE.md
-rg -n "/tmp" docs/RELEASE.md
-rg -n "npm init agent-badge@latest" docs/QUICKSTART.md
-rg -n "exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override" docs/ATTRIBUTION.md
-rg -n "Aggregate-only publishing" docs/PRIVACY.md
-rg -n "agent-badge init --gist-id <id>" docs/MANUAL-GIST.md
+require_fixed "docs/RELEASE.md" README.md
+require_fixed "npm run verify:clean-checkout" docs/RELEASE.md
+require_fixed "12-preflight.json" docs/RELEASE.md
+require_fixed "12-PUBLISH-EVIDENCE.md" docs/RELEASE.md
+require_fixed "npm run release:evidence" docs/RELEASE.md
+require_fixed "npm run release:preflight" docs/RELEASE.md
+require_fixed "13-REGISTRY-SMOKE.json" docs/RELEASE.md
+require_fixed "13-REGISTRY-SMOKE.md" docs/RELEASE.md
+require_fixed "verify-registry-install.sh --version 1.1.2 --check-initializer --write-evidence" docs/RELEASE.md
+require_fixed '"status": "passed"' docs/RELEASE.md
+require_fixed "workflow_dispatch" docs/RELEASE.md
+require_fixed ".github/workflows/release.yml" docs/RELEASE.md
+require_ere "trusted publishing|trusted-publisher|trusted publisher" docs/RELEASE.md
+require_fixed "npm whoami" docs/RELEASE.md
+require_fixed "npm ping" docs/RELEASE.md
+require_fixed "npm view @legotin/agent-badge" docs/RELEASE.md
+require_fixed "npm view create-agent-badge" docs/RELEASE.md
+require_fixed "npm view @legotin/agent-badge-core" docs/RELEASE.md
+require_fixed "npm_config_cache" docs/RELEASE.md
+require_fixed "/tmp" docs/RELEASE.md
+require_fixed "npm init agent-badge@latest" docs/QUICKSTART.md
+require_fixed "exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override" docs/ATTRIBUTION.md
+require_fixed "Aggregate-only publishing" docs/PRIVACY.md
+require_fixed "agent-badge init --gist-id <id>" docs/MANUAL-GIST.md
 
 echo "Documentation verification passed."
