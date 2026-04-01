@@ -20,11 +20,13 @@ export interface EndpointBadgePayload {
   readonly schemaVersion: 1;
   readonly label: string;
   readonly message: string;
-  readonly color: "brightgreen" | "lightgrey";
+  readonly color: "blue" | "lightgrey";
 }
 
 const COST_MODE_ERROR =
   'Badge mode "cost" needs an estimatedCostUsdMicros total.';
+const COMBINED_MODE_ERROR =
+  'Badge mode "combined" needs an estimatedCostUsdMicros total.';
 
 function formatBadgeEstimatedCost(micros: number): string {
   return formatCompactUsd(micros / 1_000_000);
@@ -34,6 +36,19 @@ function resolveBadgeValue(
   mode: AgentBadgeBadgeMode,
   includedTotals: IncludedTotals
 ): { readonly total: number; readonly message: string } {
+  if (mode === "combined") {
+    if (includedTotals.estimatedCostUsdMicros === null) {
+      throw new Error(COMBINED_MODE_ERROR);
+    }
+
+    return {
+      total: includedTotals.tokens,
+      message: `${formatCompactInteger(includedTotals.tokens)} tokens | ${formatBadgeEstimatedCost(
+        includedTotals.estimatedCostUsdMicros
+      )}`
+    };
+  }
+
   if (mode === "tokens") {
     return {
       total: includedTotals.tokens,
@@ -62,6 +77,6 @@ export function buildEndpointBadgePayload({
     schemaVersion: 1,
     label,
     message,
-    color: total > 0 ? "brightgreen" : "lightgrey"
+    color: total > 0 ? "blue" : "lightgrey"
   };
 }

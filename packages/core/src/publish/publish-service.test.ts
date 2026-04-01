@@ -111,7 +111,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "brightgreen"
+  "color": "blue"
 }
 `;
 
@@ -175,7 +175,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "brightgreen"
+  "color": "blue"
 }
 `;
     const existingHash = createHash("sha256")
@@ -231,7 +231,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "brightgreen"
+  "color": "blue"
 }
 `;
     const updateGistFile = vi.fn().mockResolvedValue({
@@ -279,7 +279,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "Agent Usage",
   "message": "42 tokens",
-  "color": "brightgreen"
+  "color": "blue"
 }
 `
         }

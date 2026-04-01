@@ -122,7 +122,9 @@ async function mergeAttributedSessionsIntoCache(
   attributedSessions: readonly AttributedSession[],
   options: Pick<RunIncrementalRefreshOptions, "cwd" | "homeRoot" | "config">
 ): Promise<RefreshCache> {
-  const shouldEstimateCost = options.config.badge?.mode === "cost";
+  const shouldEstimateCost =
+    options.config.badge?.mode === "combined" ||
+    options.config.badge?.mode === "cost";
   const includedSessions = attributedSessions
     .filter((attributedSession) => attributedSession.status === "included")
     .map((attributedSession) => attributedSession.session);
@@ -297,7 +299,8 @@ export async function runIncrementalRefresh(
   }
 
   if (
-    options.config.badge?.mode === "cost" &&
+    (options.config.badge?.mode === "combined" ||
+      options.config.badge?.mode === "cost") &&
     Object.values(cache.entries).some(
       (entry) =>
         entry.status === "included" &&

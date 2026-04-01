@@ -293,11 +293,11 @@ function defaultEndpointPayload(): string {
   return `${JSON.stringify(
     buildEndpointBadgePayload({
       label: "AI Usage",
-      mode: "tokens",
+      mode: "combined",
       includedTotals: {
         sessions: 0,
         tokens: 0,
-        estimatedCostUsdMicros: null
+        estimatedCostUsdMicros: 0
       }
     }),
     null,

@@ -473,7 +473,9 @@ export async function runInitCommand(
       includedTotals: await collectIncludedTotals(scan, attribution, {
         cwd: preflight.cwd,
         homeRoot,
-        includeEstimatedCost: nextPublishState.config.badge.mode === "cost"
+        includeEstimatedCost:
+          nextPublishState.config.badge.mode === "combined" ||
+          nextPublishState.config.badge.mode === "cost"
       }),
       client: gistClient
     });

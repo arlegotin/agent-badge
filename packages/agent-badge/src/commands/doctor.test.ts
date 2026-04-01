@@ -158,7 +158,7 @@ describe("runDoctorCommand", () => {
       globalThis.fetch = async (input: RequestInfo | URL) => {
         if (String(input).includes(AGENT_BADGE_GIST_FILE)) {
           return new Response(
-            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"brightgreen"}',
+            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"blue"}',
             { status: 200 }
           );
         }

@@ -24,12 +24,13 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 
 ## Badge Variants And Views
 
-The badge at the top of this README is the live badge for this repo. The previews below show each supported badge mode as it renders in practice, plus the exact command used to switch to it after init.
+The badge at the top of this README is the live badge for this repo. By default it shows both total attributed tokens and estimated USD in one badge message, which is the closest Shields-compatible rendering to `AI Usage | 42.3M tokens | $57.5`. The previews below show each supported badge mode as it renders in practice, plus the exact command used to switch to it after init.
 
 | Mode | Preview | Command | Notes |
 | --- | --- | --- | --- |
-| `tokens` | ![AI Usage tokens example](https://img.shields.io/badge/AI%20Usage-474M%20tokens-brightgreen) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo with compact badge-friendly formatting. |
-| `cost` | ![AI Usage cost example](https://img.shields.io/badge/AI%20Usage-%24221.44-brightgreen) | `agent-badge config set badge.mode cost` | Shows an API-equivalent USD estimate derived from local token telemetry and current official provider pricing. |
+| `combined` | ![AI Usage combined example](https://img.shields.io/badge/AI%20Usage-42.3M%20tokens%20%7C%20%2457.5-blue) | `agent-badge config set badge.mode combined` | Default mode. Shows total attributed tokens and estimated USD together in one Shields message segment. |
+| `tokens` | ![AI Usage tokens example](https://img.shields.io/badge/AI%20Usage-474M%20tokens-blue) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo with compact badge-friendly formatting. |
+| `cost` | ![AI Usage cost example](https://img.shields.io/badge/AI%20Usage-%24221.44-blue) | `agent-badge config set badge.mode cost` | Shows an API-equivalent USD estimate derived from local token telemetry and current official provider pricing. |
 
 `cost` is intentionally labeled as an estimate. It uses the local usage buckets available from Claude and Codex, combines them with current official OpenAI and Anthropic API pricing when pricing fetch succeeds, and falls back to bundled official rates when it cannot refresh pricing live. That number is useful for directional tracking, but it can differ from your actual bill, plan discounts, or non-API product pricing.
 

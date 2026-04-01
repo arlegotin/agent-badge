@@ -3,22 +3,22 @@ import { describe, expect, it } from "vitest";
 import { buildEndpointBadgePayload } from "./badge-payload.js";
 
 describe("buildEndpointBadgePayload", () => {
-  it("builds a token badge payload with the exact Shields fields", () => {
+  it("builds a combined badge payload with the exact Shields fields", () => {
     const payload = buildEndpointBadgePayload({
       label: "AI Usage",
-      mode: "tokens",
+      mode: "combined",
       includedTotals: {
         sessions: 3,
         tokens: 120,
-        estimatedCostUsdMicros: null
+        estimatedCostUsdMicros: 12_340_000
       }
     });
 
     expect(payload).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "120 tokens",
-      color: "brightgreen"
+      message: "120 tokens | $12.34",
+      color: "blue"
     });
     expect(Object.keys(payload)).toEqual([
       "schemaVersion",
@@ -43,7 +43,7 @@ describe("buildEndpointBadgePayload", () => {
       schemaVersion: 1,
       label: "Token Usage",
       message: "17.6K tokens",
-      color: "brightgreen"
+      color: "blue"
     });
   });
 
@@ -51,17 +51,17 @@ describe("buildEndpointBadgePayload", () => {
     expect(
       buildEndpointBadgePayload({
         label: "AI Usage",
-        mode: "tokens",
+        mode: "combined",
         includedTotals: {
           sessions: 0,
           tokens: 0,
-          estimatedCostUsdMicros: null
+          estimatedCostUsdMicros: 0
         }
       })
     ).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "0 tokens",
+      message: "0 tokens | $0",
       color: "lightgrey"
     });
   });
@@ -81,7 +81,7 @@ describe("buildEndpointBadgePayload", () => {
       schemaVersion: 1,
       label: "AI Usage",
       message: "$12.34",
-      color: "brightgreen"
+      color: "blue"
     });
   });
 
@@ -100,7 +100,7 @@ describe("buildEndpointBadgePayload", () => {
       schemaVersion: 1,
       label: "AI Usage",
       message: "$1.4K",
-      color: "brightgreen"
+      color: "blue"
     });
   });
 
@@ -119,7 +119,7 @@ describe("buildEndpointBadgePayload", () => {
       schemaVersion: 1,
       label: "AI Usage",
       message: "456M tokens",
-      color: "brightgreen"
+      color: "blue"
     });
   });
 
@@ -138,7 +138,26 @@ describe("buildEndpointBadgePayload", () => {
       schemaVersion: 1,
       label: "AI Usage",
       message: "$456M",
-      color: "brightgreen"
+      color: "blue"
+    });
+  });
+
+  it("formats compact combined badge payloads", () => {
+    expect(
+      buildEndpointBadgePayload({
+        label: "AI Usage",
+        mode: "combined",
+        includedTotals: {
+          sessions: 3,
+          tokens: 42_300_000,
+          estimatedCostUsdMicros: 57_500_000
+        }
+      })
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "42.3M tokens | $57.5",
+      color: "blue"
     });
   });
 });

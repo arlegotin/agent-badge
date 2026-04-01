@@ -115,7 +115,7 @@ describe("applyAgentBadgeScaffold", () => {
 
       expect(config.providers.codex.enabled).toBe(true);
       expect(config.providers.claude.enabled).toBe(false);
-      expect(config.badge.mode).toBe("tokens");
+      expect(config.badge.mode).toBe("combined");
       expect(state.init.initialized).toBe(true);
       expect(state.init.lastInitializedAt).toBe(initializedAt);
     } finally {

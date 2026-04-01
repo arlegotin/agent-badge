@@ -8,7 +8,7 @@ const providerConfigSchema = z
 
 const badgeModeSchema = z.preprocess(
   (input) => (input === "sessions" ? "tokens" : input),
-  z.enum(["tokens", "cost"])
+  z.enum(["combined", "tokens", "cost"])
 );
 const publishProviderSchema = z.enum(["github-gist"]);
 const refreshModeSchema = z.enum(["fail-soft", "strict"]);
@@ -88,7 +88,7 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
   },
   badge: {
     label: "AI Usage",
-    mode: "tokens"
+    mode: "combined"
   },
   publish: {
     provider: "github-gist",

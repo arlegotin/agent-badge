@@ -118,7 +118,8 @@ export async function runPublishCommand(
     const includedTotals = await collectIncludedTotals(scan, attribution, {
       cwd,
       homeRoot,
-      includeEstimatedCost: config.badge.mode === "cost"
+      includeEstimatedCost:
+        config.badge.mode === "combined" || config.badge.mode === "cost"
     });
     const nextState = await publishBadgeToGist({
       config,

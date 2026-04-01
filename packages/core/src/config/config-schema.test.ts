@@ -15,7 +15,7 @@ describe("agentBadgeConfigSchema", () => {
   it("ships privacy-safe defaults", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
     expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
-    expect(defaultAgentBadgeConfig.badge.mode).toBe("tokens");
+    expect(defaultAgentBadgeConfig.badge.mode).toBe("combined");
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
     expect(defaultAgentBadgeConfig.publish.badgeUrl).toBeNull();
     expect(defaultAgentBadgeConfig.repo.aliases).toEqual({
