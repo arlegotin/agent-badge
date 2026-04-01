@@ -29,7 +29,8 @@ created: 2026-04-01
 
 - **After Task 13-01-01:** Run `bash -n scripts/smoke/verify-registry-install.sh` as the fast syntax gate; reserve live registry smoke for the wave gate.
 - **After Task 13-01-02:** Run `npm test -- --run packages/create-agent-badge/src/index.test.ts`.
-- **After Task 13-02-02:** Run `npm run docs:check`.
+- **After Task 13-02-02:** Run the final-state smoke/evidence assertion from the task verify.
+- **After Task 13-02-03:** Run `npm run docs:check`.
 - **After Wave 1 and before `$gsd-verify-work`:** Run `bash scripts/smoke/verify-registry-install.sh --version 1.1.1 --check-initializer --write-evidence --phase-dir .planning/phases/13-post-publish-registry-verification-and-final-operations`; if that run reports `"status": "blocked"`, execute the repair-release branch and then rerun the same smoke against `1.1.2`.
 - **Max feedback latency:** 45 seconds for inner-loop checks; live registry smoke is an explicit wave/phase gate
 
@@ -42,7 +43,8 @@ created: 2026-04-01
 | 13-01-01 | 01 | 1 | REL-09 | shell-syntax | `bash -n scripts/smoke/verify-registry-install.sh` | ❌ W0 | ⬜ pending |
 | 13-01-02 | 01 | 1 | REL-09 | unit | `npm test -- --run packages/create-agent-badge/src/index.test.ts` | ❌ W0 | ⬜ pending |
 | 13-02-01 | 02 | 2 | REL-09 | wave-gate smoke | `bash scripts/smoke/verify-registry-install.sh --version 1.1.1 --check-initializer --write-evidence --phase-dir .planning/phases/13-post-publish-registry-verification-and-final-operations` | ❌ W0 | ⬜ pending |
-| 13-02-02 | 02 | 2 | OPER-07 | docs/assertion | `npm run docs:check` | ✅ | ⬜ pending |
+| 13-02-02 | 02 | 2 | REL-09 | final-state assertion | `node --input-type=module -e "import fs from 'node:fs'; const report=JSON.parse(fs.readFileSync('.planning/phases/13-post-publish-registry-verification-and-final-operations/13-REGISTRY-SMOKE.json','utf8')); if(report.status!=='passed') throw new Error('final smoke must be passed'); if(!['1.1.1','1.1.2'].includes(report.version)) throw new Error('unexpected final version');"` | ✅ | ⬜ pending |
+| 13-02-03 | 02 | 2 | OPER-07 | docs/assertion | `npm run docs:check` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
