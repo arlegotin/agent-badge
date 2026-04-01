@@ -8,6 +8,7 @@ required_files=(
   "docs/RELEASE.md"
   "docs/QUICKSTART.md"
   "docs/ATTRIBUTION.md"
+  "docs/HOW-IT-WORKS.md"
   "docs/PRIVACY.md"
   "docs/TROUBLESHOOTING.md"
   "docs/MANUAL-GIST.md"
@@ -66,7 +67,14 @@ require_fixed "npm_config_cache" docs/RELEASE.md
 require_fixed "/tmp" docs/RELEASE.md
 require_fixed "npm init agent-badge@latest" docs/QUICKSTART.md
 require_fixed "exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override" docs/ATTRIBUTION.md
+require_fixed "agent-badge-contrib-<publisher>.json" docs/HOW-IT-WORKS.md
+require_fixed "agent-badge-overrides.json" docs/HOW-IT-WORKS.md
+require_fixed "opaque publisher ids" docs/HOW-IT-WORKS.md
+require_fixed "opaque digest" docs/HOW-IT-WORKS.md
 require_fixed "Aggregate-only publishing" docs/PRIVACY.md
+require_fixed "agent-badge-overrides.json" docs/PRIVACY.md
+require_fixed "provider:providerSessionId" docs/PRIVACY.md
+require_fixed "opaque digest" docs/PRIVACY.md
 require_fixed "agent-badge init --gist-id <id>" docs/MANUAL-GIST.md
 
 echo "Documentation verification passed."

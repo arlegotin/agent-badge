@@ -2,7 +2,7 @@
 
 ## Aggregate-only publishing
 
-`agent-badge` publishes badge-ready aggregate totals only. The public gist payload is limited to summary values and badge metadata.
+`agent-badge` keeps the badge endpoint payload aggregate-only even when shared publishing is enabled. The public gist may contain derived badge payloads, deterministic contributor files such as `agent-badge-contrib-<publisher>.json`, and the shared overrides file `agent-badge-overrides.json`, but those shared-state files still never publish prompt text, transcript text, filenames, or local paths.
 
 ## Forbidden Outbound Data
 
@@ -11,13 +11,14 @@ The following data must never leave the local machine:
 - prompt text
 - raw transcript content
 - filename
-- local absolute path
+- local paths
+- raw `provider:providerSessionId` values
 
 ## Local-First Boundary
 
 - Provider scanning runs against local `~/.codex` and `~/.claude` directories.
 - Attribution and override decisions are persisted locally in `.agent-badge/`.
-- Remote publishing writes only aggregate endpoint JSON for Shields.
+- Remote publishing writes aggregate endpoint JSON for Shields plus shared-state files that use opaque digest keys instead of raw provider session ids.
 
 ## Local Artifacts
 

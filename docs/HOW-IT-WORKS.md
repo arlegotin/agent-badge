@@ -9,7 +9,7 @@ Commands below are shown as `agent-badge ...` for readability. In an npm-initial
 1. `agent-badge init` scaffolds local state, wires the repo-local runtime, and connects a public gist when GitHub auth is available.
 2. `agent-badge scan` or `agent-badge refresh` reads local provider data from `~/.codex` and `~/.claude`.
 3. The attribution engine decides which sessions belong to the current repo and excludes ambiguous work by default.
-4. `agent-badge` writes local state under `.agent-badge/` and publishes only aggregate badge JSON to a gist you control.
+4. `agent-badge` writes local state under `.agent-badge/` and publishes stable badge payloads plus deterministic shared-state files to a gist you control.
 5. Shields renders that JSON through a stable endpoint URL that can live in your README forever.
 
 ## What Gets Scanned
@@ -33,10 +33,12 @@ Read the exact evidence order and override behavior in [Attribution Model](ATTRI
 
 ## What Gets Published
 
-The public gist contains badge-ready aggregate JSON only.
+The public gist contains stable badge endpoint payloads and deterministic shared-state files:
 
 - stable endpoint payload for the main badge
 - preview payloads for `combined`, `tokens`, and `cost` badge modes when cost totals are available
+- `agent-badge-contrib-<publisher>.json` contributor files with aggregate totals, opaque publisher ids, and freshness metadata
+- `agent-badge-overrides.json` with shared include or exclude decisions keyed by opaque digest values instead of raw `provider:providerSessionId`
 - no prompt text
 - no raw transcript
 - no filenames
@@ -57,3 +59,7 @@ agent-badge refresh --hook pre-push --fail-soft
 ```
 
 That refresh path prefers incremental updates and falls back to a full scan when cached cursors are missing or unusable. If publish is not configured yet, refresh still updates local state and reports that publish is deferred or not configured.
+
+## How Shared Publishing Stays Deterministic
+
+Each publisher updates exactly one contributor file, refreshes the shared overrides file, then rereads the gist to derive the badge payloads from the full remote contributor set. That means the public badge remains aggregate-first even though the shared model keeps per-publisher contribution slots under deterministic filenames.
