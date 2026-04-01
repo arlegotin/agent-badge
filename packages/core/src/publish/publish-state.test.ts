@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { defaultAgentBadgeConfig } from "../config/config-schema.js";
 import { defaultAgentBadgeState } from "../state/state-schema.js";
-import { AGENT_BADGE_GIST_FILE, buildStableBadgeUrl } from "./badge-url.js";
+import {
+  AGENT_BADGE_COST_GIST_FILE,
+  AGENT_BADGE_GIST_FILE,
+  buildStableBadgeUrl
+} from "./badge-url.js";
 import { applyPublishTargetResult } from "./publish-state.js";
 import { ensurePublishTarget } from "./publish-target.js";
 
@@ -15,6 +19,18 @@ describe("buildStableBadgeUrl", () => {
       })
     ).toBe(
       "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+    );
+  });
+
+  it("derives the Shields endpoint for alternate deterministic gist files", () => {
+    expect(
+      buildStableBadgeUrl({
+        ownerLogin: "octocat",
+        gistId: "gist_123",
+        fileName: AGENT_BADGE_COST_GIST_FILE
+      })
+    ).toBe(
+      "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300"
     );
   });
 });

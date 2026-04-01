@@ -5,7 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defaultAgentBadgeConfig } from "../config/config-schema.js";
 import { parseNormalizedSessionSummary } from "../providers/session-summary.js";
 import { defaultAgentBadgeState } from "../state/state-schema.js";
-import { AGENT_BADGE_GIST_FILE } from "./badge-url.js";
+import {
+  AGENT_BADGE_COMBINED_GIST_FILE,
+  AGENT_BADGE_COST_GIST_FILE,
+  AGENT_BADGE_GIST_FILE,
+  AGENT_BADGE_TOKENS_GIST_FILE
+} from "./badge-url.js";
 import {
   publishBadgeIfChanged,
   publishBadgeToGist
@@ -144,6 +149,80 @@ describe("publishBadgeToGist", () => {
         .update(serializedPayload)
         .digest("hex"),
       lastPublishedAt: "2026-03-30T12:00:00.000Z"
+    });
+  });
+
+  it("publishes live preview payloads for every badge mode when cost totals are available", async () => {
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: [
+        AGENT_BADGE_GIST_FILE,
+        AGENT_BADGE_COMBINED_GIST_FILE,
+        AGENT_BADGE_TOKENS_GIST_FILE,
+        AGENT_BADGE_COST_GIST_FILE
+      ]
+    });
+
+    await publishBadgeToGist({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "combined"
+      }),
+      state: defaultAgentBadgeState,
+      includedTotals: {
+        sessions: 1,
+        tokens: 42,
+        estimatedCostUsdMicros: 57_500_000
+      },
+      client: {
+        getGist: vi.fn(),
+        createPublicGist: vi.fn(),
+        updateGistFile
+      }
+    });
+
+    expect(updateGistFile).toHaveBeenCalledWith({
+      gistId: "gist_123",
+      files: {
+        [AGENT_BADGE_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "42 tokens | $57.5",
+  "color": "blue"
+}
+`
+        },
+        [AGENT_BADGE_COMBINED_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "42 tokens | $57.5",
+  "color": "blue"
+}
+`
+        },
+        [AGENT_BADGE_TOKENS_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "42 tokens",
+  "color": "blue"
+}
+`
+        },
+        [AGENT_BADGE_COST_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "$57.5",
+  "color": "blue"
+}
+`
+        }
+      }
     });
   });
 

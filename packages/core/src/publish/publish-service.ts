@@ -9,7 +9,12 @@ import {
   estimateIncludedCostUsdMicros,
   resolvePricingCatalog
 } from "../pricing/estimate-cost.js";
-import { AGENT_BADGE_GIST_FILE } from "./badge-url.js";
+import {
+  AGENT_BADGE_COMBINED_GIST_FILE,
+  AGENT_BADGE_COST_GIST_FILE,
+  AGENT_BADGE_GIST_FILE,
+  AGENT_BADGE_TOKENS_GIST_FILE
+} from "./badge-url.js";
 import {
   buildEndpointBadgePayload,
   type IncludedTotals
@@ -91,16 +96,60 @@ export async function collectIncludedTotals(
   };
 }
 
-function buildSerializedBadgePayload(
-  options: Pick<PublishBadgeIfChangedOptions, "config" | "includedTotals">
-): string {
+function buildSerializedBadgePayload(options: {
+  readonly label: string;
+  readonly mode: AgentBadgeConfig["badge"]["mode"];
+  readonly includedTotals: IncludedTotals;
+}): string {
   const payload = buildEndpointBadgePayload({
-    label: options.config.badge.label,
-    mode: options.config.badge.mode,
+    label: options.label,
+    mode: options.mode,
     includedTotals: options.includedTotals
   });
 
   return `${JSON.stringify(payload, null, 2)}\n`;
+}
+
+function buildSerializedBadgeFiles(
+  options: Pick<PublishBadgeIfChangedOptions, "config" | "includedTotals">
+): Record<string, { readonly content: string }> {
+  const files: Record<string, { readonly content: string }> = {
+    [AGENT_BADGE_GIST_FILE]: {
+      content: buildSerializedBadgePayload({
+        label: options.config.badge.label,
+        mode: options.config.badge.mode,
+        includedTotals: options.includedTotals
+      })
+    }
+  };
+
+  if (options.includedTotals.estimatedCostUsdMicros === null) {
+    return files;
+  }
+
+  files[AGENT_BADGE_COMBINED_GIST_FILE] = {
+    content: buildSerializedBadgePayload({
+      label: options.config.badge.label,
+      mode: "combined",
+      includedTotals: options.includedTotals
+    })
+  };
+  files[AGENT_BADGE_TOKENS_GIST_FILE] = {
+    content: buildSerializedBadgePayload({
+      label: options.config.badge.label,
+      mode: "tokens",
+      includedTotals: options.includedTotals
+    })
+  };
+  files[AGENT_BADGE_COST_GIST_FILE] = {
+    content: buildSerializedBadgePayload({
+      label: options.config.badge.label,
+      mode: "cost",
+      includedTotals: options.includedTotals
+    })
+  };
+
+  return files;
 }
 
 function buildPayloadHash(serializedPayload: string): string {
@@ -119,10 +168,11 @@ export async function publishBadgeIfChanged({
     throw new Error("Cannot publish badge JSON without a configured gist id.");
   }
 
-  const serializedPayload = buildSerializedBadgePayload({
+  const serializedFiles = buildSerializedBadgeFiles({
     config,
     includedTotals
   });
+  const serializedPayload = serializedFiles[AGENT_BADGE_GIST_FILE].content;
   const nextHash = buildPayloadHash(serializedPayload);
 
   if (skipIfUnchanged && nextHash === state.publish.lastPublishedHash) {
@@ -143,11 +193,7 @@ export async function publishBadgeIfChanged({
   // Publish always overwrites the deterministic agent-badge.json file in place.
   await client.updateGistFile({
     gistId: config.publish.gistId,
-    files: {
-      [AGENT_BADGE_GIST_FILE]: {
-        content: serializedPayload
-      }
-    }
+    files: serializedFiles
   });
 
   return {
