@@ -103,7 +103,7 @@ describe("runConfigCommand", () => {
       expect(output.read()).toContain("agent-badge config");
       expect(output.read()).toContain("- providers.codex.enabled=true");
       expect(output.read()).toContain("- providers.claude.enabled=true");
-      expect(output.read()).toContain("- badge.label=AI Usage");
+      expect(output.read()).toContain("- badge.label=Vibe budget");
       expect(output.read()).toContain("- badge.mode=combined");
       expect(output.read()).toContain("- refresh.prePush.enabled=true");
       expect(output.read()).toContain("- refresh.prePush.mode=fail-soft");

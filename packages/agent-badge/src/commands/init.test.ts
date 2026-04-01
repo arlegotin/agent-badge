@@ -332,7 +332,7 @@ describe("runInitCommand", () => {
       expect(readmeContent).toContain("<!-- agent-badge:start -->");
       expect(readmeContent).toContain("<!-- agent-badge:end -->");
       expect(readmeContent).toContain(
-        "![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
+        "![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -581,7 +581,7 @@ describe("runInitCommand", () => {
 
       expect(existsSync(join(repo.root, "README.md"))).toBe(false);
       expect(output.read()).toContain(
-        "- Badge snippet: ![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
+        "- Badge snippet: ![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -627,7 +627,7 @@ describe("runInitCommand", () => {
       expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
       expect(
         readmeContent.match(
-          /!\[AI Usage\]\(https:\/\/img\.shields\.io\/endpoint\?url=https%3A%2F%2Fgist\.githubusercontent\.com%2Foctocat%2Fgist_idempotent%2Fraw%2Fagent-badge\.json&cacheSeconds=300\)/g
+          /!\[Vibe budget\]\(https:\/\/img\.shields\.io\/endpoint\?url=https%3A%2F%2Fgist\.githubusercontent\.com%2Foctocat%2Fgist_idempotent%2Fraw%2Fagent-badge\.json&cacheSeconds=300\)/g
         )
       ).toHaveLength(1);
       expect(secondOutput.read()).toContain("- Publish target: reused existing gist");

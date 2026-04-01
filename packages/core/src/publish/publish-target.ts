@@ -10,7 +10,7 @@ import {
 
 const AGENT_BADGE_GIST_DESCRIPTION = "agent-badge publish target";
 const PENDING_BADGE_JSON =
-  '{"schemaVersion":1,"label":"AI Usage","message":"pending","color":"lightgrey"}';
+  '{"schemaVersion":1,"label":"Vibe budget","message":"pending","color":"lightgrey"}';
 
 export type PublishTargetStatus =
   | "created"

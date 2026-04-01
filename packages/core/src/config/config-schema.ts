@@ -87,7 +87,7 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
     }
   },
   badge: {
-    label: "AI Usage",
+    label: "Vibe budget",
     mode: "combined"
   },
   publish: {

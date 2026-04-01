@@ -292,7 +292,7 @@ function normalizeBadgeUrl(badgeUrl: string): string | null {
 function defaultEndpointPayload(): string {
   return `${JSON.stringify(
     buildEndpointBadgePayload({
-      label: "AI Usage",
+      label: "Vibe budget",
       mode: "combined",
       includedTotals: {
         sessions: 0,
