@@ -61,6 +61,10 @@ The local preflight cannot prove GitHub Actions trusted-publisher state remotely
 
 Use `.github/workflows/release.yml` as the production publish path. Trigger it using `workflow_dispatch` in the repository’s GitHub Actions tab after the preflight file is green:
 
+- The release workflow is Changesets-driven. npm package versions do not change on arbitrary commits to `main`.
+- A publish only happens when a checked-in `.changeset/*.md` release note exists and the resulting release commit reaches `main`.
+- If publishable workspace files change without a changeset, GitHub Actions now fails with a release-discipline error instead of silently no-oping.
+
 - Start the workflow run for the production publish.
 - Record the run URL and run ID from the completed workflow page.
 - Do not switch to a local publish path. If the workflow cannot publish, fix the trusted-publisher or workflow configuration first.

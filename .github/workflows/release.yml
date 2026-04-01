@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -38,6 +40,12 @@ jobs:
 
       - name: Verify clean checkout release path
         run: npm run verify:clean-checkout
+
+      - name: Require a changeset for publishable workspace changes (push)
+        if: github.event_name == 'push'
+        run: >-
+          npm run release:changeset-check -- --base "${{ github.event.before }}"
+          --head "${{ github.sha }}"
 
       - name: Version or publish
         uses: changesets/action@v1
