@@ -24,18 +24,13 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 
 ## Badge Variants And Views
 
-`agent-badge` supports multiple presentation modes for the same underlying repo attribution:
+The badge at the top of this README is the live badge for this repo. The previews below show each badge mode as it renders in practice, plus the exact command used to switch to it after init.
 
-- `badge.mode=sessions` shows how many attributed sessions the repo has accumulated.
-- `badge.mode=tokens` shows the total attributed token usage for the repo.
-- `badge.mode=cost` is reserved in config, but not shipped yet because scan results do not currently include cost totals.
-
-Switch modes after init with:
-
-```bash
-agent-badge config set badge.mode sessions
-agent-badge config set badge.mode tokens
-```
+| Mode | Preview | Command | Notes |
+| --- | --- | --- | --- |
+| `sessions` | ![AI Usage sessions example](https://img.shields.io/badge/AI%20Usage-128%20sessions-brightgreen) | `agent-badge config set badge.mode sessions` | Shows how many attributed sessions the repo has accumulated. |
+| `tokens` | ![AI Usage tokens example](https://img.shields.io/badge/AI%20Usage-459530021%20tokens-brightgreen) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo. |
+| `cost` | ![AI Usage cost unavailable](https://img.shields.io/badge/AI%20Usage-cost%20unsupported-lightgrey) | `agent-badge config set badge.mode cost` | Reserved in config, but not shipped yet because scan results do not currently include cost totals. |
 
 The CLI also exposes a few different ways to inspect the same data:
 
