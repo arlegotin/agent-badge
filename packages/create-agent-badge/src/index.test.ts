@@ -56,7 +56,12 @@ describe("create-agent-badge entrypoint", () => {
     ];
     process.exitCode = undefined;
 
-    await import("./index.ts?direct-execution");
+    const directExecutionModule = new URL(
+      "./index.ts?direct-execution",
+      import.meta.url
+    ).href;
+
+    await import(directExecutionModule);
     await Promise.resolve();
     await Promise.resolve();
 
