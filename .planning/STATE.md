@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
-status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-04-01T10:26:24.197Z"
+status: completed
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-04-01T12:46:53Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 13 — post-publish-registry-verification-and-final-operations
+**Current focus:** Milestone v1.2 complete
 
 ## Current Position
 
-Phase: 13 (post-publish-registry-verification-and-final-operations) — EXECUTING
+Phase: 13 (post-publish-registry-verification-and-final-operations) — COMPLETE
 Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-04-01 -- Completed 13-01 and advanced to Plan 2
+Status: Completed
+Last activity: 2026-04-01 -- Completed 13-02 and closed milestone v1.2
 
-Progress: [████████░░] 5/6 plans (13-02 remaining in milestone v1.2)
+Progress: [██████████] 6/6 plans complete in milestone v1.2
 
 ## Performance Metrics
 
@@ -119,10 +119,12 @@ Recent decisions affecting current work:
 - [Phase 09-package-metadata-and-tarball-integrity]: Tarball integrity is enforced by a repo-owned pack checker that allows only `dist/**` plus `package.json` and requires explicit runtime entrypoints before smoke-install validation runs.
 - [Phase 10-release-rehearsal-and-checklist]: The packed-install smoke rehearsal must rebuild before packing and resolve exact tarball identities before install so clean-tree verification stays trustworthy.
 - [Phase 10-release-rehearsal-and-checklist]: Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish.
-- [Phase 12-production-publish-execution]: Use .github/workflows/release.yml + workflow_dispatch as the canonical production publish path and keep local npm run release as explicit fallback.
+- [Phase 12-production-publish-execution]: Use `.github/workflows/release.yml` + `workflow_dispatch` as the canonical production publish path and record workflow-backed publish evidence for the shipped release.
 - [Phase 12-production-publish-execution]: Release evidence must be captured in both JSON and Markdown files with manifest inventory, git SHA, preflight input, and workflow metadata or fallback reason.
 - [Phase 13]: Keep registry smoke evidence limited to package coordinates and passed-or-blocked outcomes so local temp paths never leave the machine.
 - [Phase 13]: Match create-agent-badge direct execution to the runtime CLI's realpath-based guard so symlinked npm bin paths cannot silently no-op.
+- [Phase 13]: Production release operations now rely on npm trusted publishing via GitHub Actions OIDC rather than a long-lived `NPM_TOKEN`.
+- [Phase 13]: The maintained release checklist must include the exact-version post-publish registry smoke before a release can be considered closed.
 
 ### Pending Todos
 
@@ -130,9 +132,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on the temporary `/tmp/agent-badge-deps` workaround.
-- npm package-name availability for `agent-badge` must be checked at publish time.
-- Sandboxed `npm run verify:clean-checkout` can still stall in the fresh-project install step when the temp npm cache starts cold; the same repo-owned command passed outside the sandbox.
+- `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
+- Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
 
 ### Quick Tasks Completed
 
@@ -145,6 +146,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T10:26:24.194Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-04-01T12:46:53Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None

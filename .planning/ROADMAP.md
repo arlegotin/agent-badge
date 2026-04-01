@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 11: Registry Preflight and Release Environment Validation** - Prove that package-name state, release credentials, and workflow prerequisites are safe before production publish. (completed 2026-03-31)
 - [x] **Phase 12: Production Publish Execution** - Execute the intended production publish path and capture real release evidence from current source. (completed 2026-04-01)
-- [ ] **Phase 13: Post-Publish Registry Verification and Final Operations** - Verify the actual published artifacts from npm and finalize the production operator checklist.
+- [x] **Phase 13: Post-Publish Registry Verification and Final Operations** - Verify the actual published artifacts from npm and finalize the production operator checklist. (completed 2026-04-01)
 
 ## Phase Details
 
@@ -43,8 +43,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: Align the production publish path and release-evidence capture with the real operator workflow
-- [ ] 12-02: Execute and document the first production publish from current source
+- [x] 12-01: Align the production publish path and release-evidence capture with the real operator workflow
+- [x] 12-02: Execute and document the first production publish from current source
 
 ### Phase 13: Post-Publish Registry Verification and Final Operations
 **Goal**: Prove that the actual published packages work from the npm registry and that maintainers have a complete production runbook.
@@ -58,12 +58,12 @@ Plans:
 
 Plans:
 - [x] 13-01: Verify published registry artifacts in a fresh install environment
-- [ ] 13-02: Finalize the production release checklist and operator evidence trail
+- [x] 13-02: Finalize the production release checklist and operator evidence trail
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Registry Preflight and Release Environment Validation | 2/2 | Complete    | 2026-03-31 |
-| 12. Production Publish Execution | 1/2 | Complete    | 2026-04-01 |
-| 13. Post-Publish Registry Verification and Final Operations | 1/2 | In progress | - |
+| 12. Production Publish Execution | 2/2 | Complete    | 2026-04-01 |
+| 13. Post-Publish Registry Verification and Final Operations | 2/2 | Complete    | 2026-04-01 |

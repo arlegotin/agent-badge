@@ -1,47 +1,47 @@
 {
-  "generatedAt": "2026-03-31T17:56:04.574Z",
-  "overallStatus": "warn",
+  "generatedAt": "2026-04-01T12:39:38.623Z",
+  "overallStatus": "blocked",
   "packages": [
     {
       "manifestPath": "packages/core/package.json",
       "packageName": "@legotin/agent-badge-core",
-      "intendedVersion": "1.1.1",
-      "status": "safe",
-      "summary": "Package name is available for a first publish.",
+      "intendedVersion": "1.1.2",
+      "status": "blocked",
+      "summary": "Intended version 1.1.2 is already visible in the registry.",
       "registry": {
-        "kind": "missing",
-        "observedName": null,
-        "observedVersion": null,
-        "latestTag": null,
-        "message": "Package is not currently present in the npm registry."
+        "kind": "package",
+        "observedName": "@legotin/agent-badge-core",
+        "observedVersion": "1.1.2",
+        "latestTag": "1.1.2",
+        "message": "Observed name=@legotin/agent-badge-core, version=1.1.2, dist-tags.latest=1.1.2."
       }
     },
     {
       "manifestPath": "packages/agent-badge/package.json",
       "packageName": "@legotin/agent-badge",
-      "intendedVersion": "1.1.1",
-      "status": "safe",
-      "summary": "Package name is available for a first publish.",
+      "intendedVersion": "1.1.2",
+      "status": "blocked",
+      "summary": "Intended version 1.1.2 is already visible in the registry.",
       "registry": {
-        "kind": "missing",
-        "observedName": null,
-        "observedVersion": null,
-        "latestTag": null,
-        "message": "Package is not currently present in the npm registry."
+        "kind": "package",
+        "observedName": "@legotin/agent-badge",
+        "observedVersion": "1.1.2",
+        "latestTag": "1.1.2",
+        "message": "Observed name=@legotin/agent-badge, version=1.1.2, dist-tags.latest=1.1.2."
       }
     },
     {
       "manifestPath": "packages/create-agent-badge/package.json",
       "packageName": "create-agent-badge",
-      "intendedVersion": "1.1.1",
-      "status": "warn",
-      "summary": "Package already exists in the registry at a different visible version; confirm ownership and publish intent.",
+      "intendedVersion": "1.1.2",
+      "status": "blocked",
+      "summary": "Intended version 1.1.2 is already visible in the registry.",
       "registry": {
         "kind": "package",
         "observedName": "create-agent-badge",
-        "observedVersion": "1.1.0",
-        "latestTag": "1.1.0",
-        "message": "Observed name=create-agent-badge, version=1.1.0, dist-tags.latest=1.1.0."
+        "observedVersion": "1.1.2",
+        "latestTag": "1.1.2",
+        "message": "Observed name=create-agent-badge, version=1.1.2, dist-tags.latest=1.1.2."
       }
     }
   ],
@@ -49,18 +49,17 @@
     {
       "id": "npm-auth",
       "label": "npm auth",
-      "status": "safe",
-      "summary": "npm ping and npm whoami succeeded for legotin.",
+      "status": "blocked",
+      "summary": "npm whoami failed, so the maintainer identity is not ready for publish.",
       "details": [
-        "Registry connectivity is available from this maintainer environment.",
-        "Authenticated npm identity is readable before publish."
+        "Command failed: npm whoami"
       ]
     },
     {
       "id": "release-inputs",
       "label": "release inputs",
       "status": "safe",
-      "summary": "Changesets access is public and all publishable workspaces agree on version 1.1.1.",
+      "summary": "Changesets access is public and all publishable workspaces agree on version 1.1.2.",
       "details": [
         "Publishable inventory: @legotin/agent-badge-core, @legotin/agent-badge, create-agent-badge",
         "Root release contract: changeset publish",
@@ -71,10 +70,10 @@
       "id": "workflow-contract",
       "label": "workflow contract",
       "status": "safe",
-      "summary": ".github/workflows/release.yml still references the expected release workflow contract.",
+      "summary": ".github/workflows/release.yml still references the expected trusted-publishing release workflow contract.",
       "details": [
         "Local preflight validates workflow markers only.",
-        "Before publish, confirm the repository-level GitHub Actions secret `NPM_TOKEN` still exists."
+        "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token."
       ]
     }
   ]

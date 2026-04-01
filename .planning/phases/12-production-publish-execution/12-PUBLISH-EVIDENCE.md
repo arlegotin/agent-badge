@@ -1,10 +1,10 @@
-Publish path: local-cli
-Published commit: faf971258f3fdd262361091964c87fb1fc0f1403
+Publish path: github-actions
+Published commit: dd5bd1f6269a2b61e42f7f4fb8ad31d0974d83f4
 Preflight file: .planning/phases/12-production-publish-execution/12-preflight.json
-Workflow run: n/a
-Fallback reason: GitHub Actions release workflow remained unusable because the repository-side publish credential was missing at runtime; local fallback publish was executed from the green preflighted commit with a working npm publish token.
-Published at: 2026-03-31T17:56:34Z
+Workflow run: https://github.com/arlegotin/agent-badge/actions/runs/23848745561
+Fallback reason: n/a
+Published at: 2026-04-01T12:33:40Z
 Registry results:
-@legotin/agent-badge: command=[npm dist-tag ls @legotin/agent-badge]; version=1.1.1, dist-tags.latest=1.1.1
-@legotin/agent-badge-core: command=[npm dist-tag ls @legotin/agent-badge-core]; version=1.1.1, dist-tags.latest=1.1.1
-create-agent-badge: command=[npm view create-agent-badge version dist-tags.latest --json]; version=1.1.1, dist-tags.latest=1.1.1
+@legotin/agent-badge: command=[view @legotin/agent-badge version dist-tags.latest --json]; version=1.1.2, dist-tags.latest=1.1.2
+@legotin/agent-badge-core: command=[view @legotin/agent-badge-core version dist-tags.latest --json]; version=1.1.2, dist-tags.latest=1.1.2
+create-agent-badge: command=[view create-agent-badge version dist-tags.latest --json]; version=1.1.2, dist-tags.latest=1.1.2

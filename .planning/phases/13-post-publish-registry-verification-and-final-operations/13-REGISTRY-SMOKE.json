@@ -1,16 +1,16 @@
 {
-  "status": "blocked",
-  "version": "1.1.1",
+  "status": "passed",
+  "version": "1.1.2",
   "packages": [
-    "@legotin/agent-badge@1.1.1",
-    "@legotin/agent-badge-core@1.1.1",
-    "create-agent-badge@1.1.1"
+    "@legotin/agent-badge@1.1.2",
+    "@legotin/agent-badge-core@1.1.2",
+    "create-agent-badge@1.1.2"
   ],
   "runtime": {
     "status": "passed"
   },
   "initializer": {
-    "status": "blocked"
+    "status": "passed"
   },
-  "blockingIssue": "initializer missing .agent-badge/config.json after npm init agent-badge@1.1.1"
+  "blockingIssue": null
 }
