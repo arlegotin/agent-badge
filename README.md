@@ -22,6 +22,29 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 - Publishes only aggregate badge data, not prompts, transcripts, filenames, or local paths.
 - Keeps the badge URL stable after setup by publishing `agent-badge.json` to a public GitHub Gist.
 
+## Badge Variants And Views
+
+`agent-badge` supports multiple presentation modes for the same underlying repo attribution:
+
+- `badge.mode=sessions` shows how many attributed sessions the repo has accumulated.
+- `badge.mode=tokens` shows the total attributed token usage for the repo.
+- `badge.mode=cost` is reserved in config, but not shipped yet because scan results do not currently include cost totals.
+
+Switch modes after init with:
+
+```bash
+agent-badge config set badge.mode sessions
+agent-badge config set badge.mode tokens
+```
+
+The CLI also exposes a few different ways to inspect the same data:
+
+- `agent-badge status` shows the persisted badge, provider, and publish state.
+- `agent-badge scan` shows a full attribution report, including included, ambiguous, and excluded sessions.
+- `agent-badge refresh` updates persisted totals and publishes the badge when the payload changed.
+- `agent-badge doctor` checks local setup, scan readiness, and publish wiring.
+- `agent-badge config` shows the current badge, refresh, privacy, and provider settings.
+
 ## Documentation
 
 - [Release Checklist](docs/RELEASE.md)
