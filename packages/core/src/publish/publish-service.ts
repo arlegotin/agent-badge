@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type { AttributeBackfillSessionsResult } from "../attribution/attribution-types.js";
 import type { AgentBadgeConfig } from "../config/config-schema.js";
@@ -20,6 +20,20 @@ import {
   type IncludedTotals
 } from "./badge-payload.js";
 import type { GitHubGistClient } from "./github-gist-client.js";
+import {
+  AGENT_BADGE_OVERRIDES_GIST_FILE,
+  buildContributorGistFileName,
+  buildSharedOverrideDigest,
+  isContributorGistFileName,
+  parseSharedContributorRecord,
+  parseSharedOverridesRecord,
+  type SharedContributorRecord,
+  type SharedOverridesRecord
+} from "./shared-model.js";
+import {
+  deriveSharedIncludedTotals,
+  mergeSharedOverrides
+} from "./shared-merge.js";
 
 export interface PublishBadgeToGistOptions {
   readonly config: Pick<AgentBadgeConfig, "badge" | "publish">;
@@ -40,6 +54,11 @@ export interface PublishBadgeIfChangedOptions {
 export interface PublishBadgeIfChangedResult {
   readonly state: AgentBadgeState;
   readonly decision: "published" | "skipped";
+}
+
+interface SharedPublishStateSnapshot {
+  readonly publisherId?: string | null;
+  readonly mode?: "legacy" | "shared";
 }
 
 function buildSessionKey(
@@ -156,6 +175,130 @@ function buildPayloadHash(serializedPayload: string): string {
   return createHash("sha256").update(serializedPayload).digest("hex");
 }
 
+function resolveSharedPublishSnapshot(
+  state: AgentBadgeState
+): SharedPublishStateSnapshot {
+  return state.publish as AgentBadgeState["publish"] & SharedPublishStateSnapshot;
+}
+
+function resolvePublisherId(state: AgentBadgeState): string {
+  const publishState = resolveSharedPublishSnapshot(state);
+
+  return typeof publishState.publisherId === "string" &&
+    publishState.publisherId.length > 0
+    ? publishState.publisherId
+    : randomUUID();
+}
+
+function serializeJsonFile(value: unknown): string {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function loadRemoteSharedRecords(
+  gist: Awaited<ReturnType<GitHubGistClient["getGist"]>>
+): {
+  readonly contributors: SharedContributorRecord[];
+  readonly overrides: SharedOverridesRecord;
+} {
+  const contributors: SharedContributorRecord[] = [];
+  let overrides: SharedOverridesRecord = {
+    schemaVersion: 1,
+    overrides: {}
+  };
+
+  for (const file of Object.values(gist.files)) {
+    if (file.truncated || file.content === null) {
+      if (
+        isContributorGistFileName(file.filename) ||
+        file.filename === AGENT_BADGE_OVERRIDES_GIST_FILE
+      ) {
+        throw new Error(
+          "Shared gist files cannot be loaded from truncated content."
+        );
+      }
+
+      continue;
+    }
+
+    if (isContributorGistFileName(file.filename)) {
+      contributors.push(parseSharedContributorRecord(JSON.parse(file.content)));
+      continue;
+    }
+
+    if (file.filename === AGENT_BADGE_OVERRIDES_GIST_FILE) {
+      overrides = parseSharedOverridesRecord(JSON.parse(file.content));
+    }
+  }
+
+  return {
+    contributors,
+    overrides
+  };
+}
+
+function buildLocalContributorRecord(options: {
+  readonly publisherId: string;
+  readonly includedTotals: IncludedTotals;
+  readonly now: string;
+}): SharedContributorRecord {
+  return {
+    schemaVersion: 1,
+    publisherId: options.publisherId,
+    updatedAt: options.now,
+    totals: {
+      sessions: options.includedTotals.sessions,
+      tokens: options.includedTotals.tokens,
+      estimatedCostUsdMicros: options.includedTotals.estimatedCostUsdMicros
+    }
+  };
+}
+
+function buildLocalOverridesRecord(options: {
+  readonly publisherId: string;
+  readonly state: AgentBadgeState;
+  readonly now: string;
+}): SharedOverridesRecord {
+  return {
+    schemaVersion: 1,
+    overrides: Object.fromEntries(
+      Object.entries(options.state.overrides.ambiguousSessions).map(
+        ([sessionKey, decision]) => [
+          buildSharedOverrideDigest(sessionKey),
+          {
+            decision,
+            updatedAt: options.now,
+            updatedByPublisherId: options.publisherId
+          }
+        ]
+      )
+    )
+  };
+}
+
+function buildNextPublishedState(options: {
+  readonly state: AgentBadgeState;
+  readonly gistId: string;
+  readonly hash: string;
+  readonly now?: string;
+  readonly publisherId: string;
+}): AgentBadgeState {
+  const nextPublish = {
+    ...options.state.publish,
+    status: "published",
+    gistId: options.gistId,
+    lastPublishedHash: options.hash,
+    lastPublishedAt:
+      options.now === undefined ? options.state.publish.lastPublishedAt : options.now,
+    publisherId: options.publisherId,
+    mode: "shared"
+  } as AgentBadgeState["publish"];
+
+  return {
+    ...options.state,
+    publish: nextPublish
+  };
+}
+
 export async function publishBadgeIfChanged({
   config,
   state,
@@ -168,9 +311,50 @@ export async function publishBadgeIfChanged({
     throw new Error("Cannot publish badge JSON without a configured gist id.");
   }
 
+  const publisherId = resolvePublisherId(state);
+  const existingGist = await client.getGist(config.publish.gistId);
+  const remoteSharedState = loadRemoteSharedRecords(existingGist);
+  const localContributorFileName = buildContributorGistFileName(publisherId);
+  const contributorRecord = buildLocalContributorRecord({
+    publisherId,
+    includedTotals,
+    now
+  });
+  const mergedOverrides = mergeSharedOverrides(
+    remoteSharedState.overrides,
+    buildLocalOverridesRecord({
+      publisherId,
+      state,
+      now
+    })
+  );
+
+  await client.updateGistFile({
+    gistId: config.publish.gistId,
+    files: {
+      [localContributorFileName]: {
+        content: serializeJsonFile(contributorRecord)
+      }
+    }
+  });
+
+  await client.updateGistFile({
+    gistId: config.publish.gistId,
+    files: {
+      [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+        content: serializeJsonFile(mergedOverrides)
+      }
+    }
+  });
+
+  const authoritativeGist = await client.getGist(config.publish.gistId);
+  const authoritativeSharedState = loadRemoteSharedRecords(authoritativeGist);
+  const authoritativeTotals = deriveSharedIncludedTotals(
+    authoritativeSharedState.contributors
+  );
   const serializedFiles = buildSerializedBadgeFiles({
     config,
-    includedTotals
+    includedTotals: authoritativeTotals
   });
   const serializedPayload = serializedFiles[AGENT_BADGE_GIST_FILE].content;
   const nextHash = buildPayloadHash(serializedPayload);
@@ -178,19 +362,15 @@ export async function publishBadgeIfChanged({
   if (skipIfUnchanged && nextHash === state.publish.lastPublishedHash) {
     return {
       decision: "skipped",
-      state: {
-        ...state,
-        publish: {
-          ...state.publish,
-          status: "published",
-          gistId: config.publish.gistId,
-          lastPublishedHash: nextHash
-        }
-      }
+      state: buildNextPublishedState({
+        state,
+        gistId: config.publish.gistId,
+        hash: nextHash,
+        publisherId
+      })
     };
   }
 
-  // Publish always overwrites the deterministic agent-badge.json file in place.
   await client.updateGistFile({
     gistId: config.publish.gistId,
     files: serializedFiles
@@ -198,16 +378,13 @@ export async function publishBadgeIfChanged({
 
   return {
     decision: "published",
-    state: {
-      ...state,
-      publish: {
-        ...state.publish,
-        status: "published",
-        gistId: config.publish.gistId,
-        lastPublishedHash: nextHash,
-        lastPublishedAt: now
-      }
-    }
+    state: buildNextPublishedState({
+      state,
+      gistId: config.publish.gistId,
+      hash: nextHash,
+      now,
+      publisherId
+    })
   };
 }
 

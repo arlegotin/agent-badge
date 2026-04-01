@@ -147,11 +147,39 @@ describe("publishBadgeToGist", () => {
       cwd: "/Users/example/project",
       tokenTotal: 42
     });
+    const publisherId = "publisher-local";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({})
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [buildContributorGistFileName(publisherId)]: {
+            content: createContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              sessions: 1,
+              tokens: includedSession.tokenUsage.total,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      });
     const updateGistFile = vi.fn().mockResolvedValue({
       id: "gist_123",
       ownerLogin: "octocat",
       public: true,
-      files: [AGENT_BADGE_GIST_FILE]
+      files: {}
     });
 
     const nextState = await publishBadgeToGist({
@@ -159,14 +187,20 @@ describe("publishBadgeToGist", () => {
         label: "AI Usage",
         mode: "tokens"
       }),
-      state: defaultAgentBadgeState,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          publisherId
+        }
+      } as typeof defaultAgentBadgeState,
       includedTotals: {
         sessions: 1,
         tokens: includedSession.tokenUsage.total,
         estimatedCostUsdMicros: null
       },
       client: {
-        getGist: vi.fn(),
+        getGist,
         createPublicGist: vi.fn(),
         updateGistFile
       }
@@ -180,7 +214,7 @@ describe("publishBadgeToGist", () => {
 }
 `;
 
-    expect(updateGistFile).toHaveBeenCalledWith({
+    expect(updateGistFile).toHaveBeenLastCalledWith({
       gistId: "gist_123",
       files: {
         "agent-badge.json": {
@@ -208,21 +242,46 @@ describe("publishBadgeToGist", () => {
       lastPublishedHash: createHash("sha256")
         .update(serializedPayload)
         .digest("hex"),
-      lastPublishedAt: "2026-03-30T12:00:00.000Z"
+      lastPublishedAt: "2026-03-30T12:00:00.000Z",
+      publisherId,
+      mode: "shared"
     });
   });
 
   it("publishes live preview payloads for every badge mode when cost totals are available", async () => {
+    const publisherId = "publisher-local";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({})
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [buildContributorGistFileName(publisherId)]: {
+            content: createContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              sessions: 1,
+              tokens: 42,
+              estimatedCostUsdMicros: 57_500_000
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      });
     const updateGistFile = vi.fn().mockResolvedValue({
       id: "gist_123",
       ownerLogin: "octocat",
       public: true,
-      files: [
-        AGENT_BADGE_GIST_FILE,
-        AGENT_BADGE_COMBINED_GIST_FILE,
-        AGENT_BADGE_TOKENS_GIST_FILE,
-        AGENT_BADGE_COST_GIST_FILE
-      ]
+      files: {}
     });
 
     await publishBadgeToGist({
@@ -230,20 +289,26 @@ describe("publishBadgeToGist", () => {
         label: "AI Usage",
         mode: "combined"
       }),
-      state: defaultAgentBadgeState,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          publisherId
+        }
+      } as typeof defaultAgentBadgeState,
       includedTotals: {
         sessions: 1,
         tokens: 42,
         estimatedCostUsdMicros: 57_500_000
       },
       client: {
-        getGist: vi.fn(),
+        getGist,
         createPublicGist: vi.fn(),
         updateGistFile
       }
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
+    expect(updateGistFile).toHaveBeenLastCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {
@@ -610,6 +675,34 @@ describe("publishBadgeIfChanged", () => {
     const existingHash = createHash("sha256")
       .update(serializedPayload)
       .digest("hex");
+    const publisherId = "publisher-local";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({})
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [buildContributorGistFileName(publisherId)]: {
+            content: createContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:05:00Z",
+              sessions: 1,
+              tokens: 42,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      });
     const updateGistFile = vi.fn();
 
     const result = await publishBadgeIfChanged({
@@ -623,16 +716,17 @@ describe("publishBadgeIfChanged", () => {
           status: "published",
           gistId: "gist_123",
           lastPublishedHash: existingHash,
-          lastPublishedAt: "2026-03-30T10:00:00Z"
+          lastPublishedAt: "2026-03-30T10:00:00Z",
+          publisherId
         }
-      },
+      } as typeof defaultAgentBadgeState,
       includedTotals: {
         sessions: 1,
         tokens: 42,
         estimatedCostUsdMicros: null
       },
       client: {
-        getGist: vi.fn(),
+        getGist,
         createPublicGist: vi.fn(),
         updateGistFile
       },
@@ -640,7 +734,7 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: true
     });
 
-    expect(updateGistFile).not.toHaveBeenCalled();
+    expect(updateGistFile).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       decision: "skipped",
       state: {
@@ -649,7 +743,9 @@ describe("publishBadgeIfChanged", () => {
           status: "published",
           gistId: "gist_123",
           lastPublishedHash: existingHash,
-          lastPublishedAt: "2026-03-30T10:00:00Z"
+          lastPublishedAt: "2026-03-30T10:00:00Z",
+          publisherId,
+          mode: "shared"
         }
       }
     });
@@ -663,11 +759,39 @@ describe("publishBadgeIfChanged", () => {
   "color": "blue"
 }
 `;
+    const publisherId = "publisher-local";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({})
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [buildContributorGistFileName(publisherId)]: {
+            content: createContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:05:00Z",
+              sessions: 1,
+              tokens: 42,
+              estimatedCostUsdMicros: null
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      });
     const updateGistFile = vi.fn().mockResolvedValue({
       id: "gist_123",
       ownerLogin: "octocat",
       public: true,
-      files: [AGENT_BADGE_GIST_FILE]
+      files: {}
     });
 
     const result = await publishBadgeIfChanged({
@@ -683,16 +807,17 @@ describe("publishBadgeIfChanged", () => {
           lastPublishedHash: createHash("sha256")
             .update(previousPayload)
             .digest("hex"),
-          lastPublishedAt: "2026-03-30T10:00:00Z"
+          lastPublishedAt: "2026-03-30T10:00:00Z",
+          publisherId
         }
-      },
+      } as typeof defaultAgentBadgeState,
       includedTotals: {
         sessions: 1,
         tokens: 42,
         estimatedCostUsdMicros: null
       },
       client: {
-        getGist: vi.fn(),
+        getGist,
         createPublicGist: vi.fn(),
         updateGistFile
       },
@@ -700,7 +825,7 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: true
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
+    expect(updateGistFile).toHaveBeenLastCalledWith({
       gistId: "gist_123",
       files: {
         "agent-badge.json": {
@@ -716,5 +841,9 @@ describe("publishBadgeIfChanged", () => {
     });
     expect(result.decision).toBe("published");
     expect(result.state.publish.lastPublishedAt).toBe("2026-03-30T12:05:00Z");
+    expect(result.state.publish).toMatchObject({
+      publisherId,
+      mode: "shared"
+    });
   });
 });

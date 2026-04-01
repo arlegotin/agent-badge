@@ -1,8 +1,14 @@
+export interface GitHubGistFile {
+  readonly filename: string;
+  readonly content: string | null;
+  readonly truncated: boolean;
+}
+
 export interface GitHubGist {
   readonly id: string;
   readonly ownerLogin: string | null;
   readonly public: boolean;
-  readonly files: string[];
+  readonly files: Record<string, GitHubGistFile>;
 }
 
 export interface CreatePublicGistInput {
@@ -33,6 +39,8 @@ interface OctokitGistPayload {
         string,
         {
           readonly filename?: string | null;
+          readonly content?: string | null;
+          readonly truncated?: boolean | null;
         } | null
       >
     | null;
@@ -150,10 +158,23 @@ function normalizeGist(payload: unknown): GitHubGist {
   }
 
   const files = isRecord(gistPayload.files)
-    ? Object.values(gistPayload.files).flatMap((entry) =>
-        entry && typeof entry.filename === "string" ? [entry.filename] : []
+    ? Object.values(gistPayload.files).reduce<Record<string, GitHubGistFile>>(
+        (accumulator, entry) => {
+          if (!entry || typeof entry.filename !== "string") {
+            return accumulator;
+          }
+
+          accumulator[entry.filename] = {
+            filename: entry.filename,
+            content: typeof entry.content === "string" ? entry.content : null,
+            truncated: entry.truncated === true
+          };
+
+          return accumulator;
+        },
+        {}
       )
-    : [];
+    : {};
 
   return {
     id: gistPayload.id,
