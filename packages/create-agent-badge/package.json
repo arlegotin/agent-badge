@@ -2,6 +2,10 @@
   "name": "create-agent-badge",
   "version": "1.1.2",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arlegotin/agent-badge"
+  },
   "bin": {
     "create-agent-badge": "./dist/index.js"
   },
