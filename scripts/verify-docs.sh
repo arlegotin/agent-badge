@@ -26,15 +26,18 @@ rg -n "12-preflight.json" docs/RELEASE.md
 rg -n "12-PUBLISH-EVIDENCE.md" docs/RELEASE.md
 rg -n "npm run release:evidence" docs/RELEASE.md
 rg -n "npm run release:preflight" docs/RELEASE.md
+rg -n "13-REGISTRY-SMOKE.json" docs/RELEASE.md
+rg -n "13-REGISTRY-SMOKE.md" docs/RELEASE.md
+rg -n -- "verify-registry-install.sh --version 1.1.2 --check-initializer --write-evidence" docs/RELEASE.md
+rg -n '"status": "passed"' docs/RELEASE.md
 rg -n -- "workflow_dispatch" docs/RELEASE.md
-rg -n -- "--fallback-reason" docs/RELEASE.md
 rg -n -- ".github/workflows/release.yml" docs/RELEASE.md
+rg -n "trusted publishing|trusted-publisher|trusted publisher" docs/RELEASE.md
 rg -n "npm whoami" docs/RELEASE.md
 rg -n "npm ping" docs/RELEASE.md
 rg -n "npm view @legotin/agent-badge" docs/RELEASE.md
 rg -n "npm view create-agent-badge" docs/RELEASE.md
 rg -n "npm view @legotin/agent-badge-core" docs/RELEASE.md
-rg -n "NPM_TOKEN" docs/RELEASE.md
 rg -n "npm_config_cache" docs/RELEASE.md
 rg -n "/tmp" docs/RELEASE.md
 rg -n "npm init agent-badge@latest" docs/QUICKSTART.md

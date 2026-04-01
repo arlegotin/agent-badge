@@ -25,7 +25,7 @@ npm run release:preflight
 
 `npm run verify:clean-checkout` is the canonical full release rehearsal. It rebuilds from a clean tree, runs tests, checks tarball contents, and runs the packed-install proof using temporary scratch space.
 
-`npm run release:preflight` is the required publish gate immediately before `npm run release`. It performs the live registry checks, runs `npm ping` and `npm whoami`, validates release-input coherence from the workspace manifests and `.changeset/config.json`, and confirms the checked-in GitHub Actions workflow still references the expected `changesets/action@v1` + `NPM_TOKEN` publish contract.
+`npm run release:preflight` is the required publish gate immediately before the production workflow run. It performs the live registry checks, runs `npm ping` and `npm whoami`, validates release-input coherence from the workspace manifests and `.changeset/config.json`, and confirms the checked-in GitHub Actions workflow still references the expected trusted-publishing contract.
 
 If the packed-install step fails and you only need to rerun that proof after fixing it, use:
 
@@ -55,7 +55,7 @@ npm view @legotin/agent-badge-core version dist-tags.latest --json
 
 It also runs `npm ping` and `npm whoami` from the maintainer environment. If `npm run release:preflight` reports `OVERALL: blocked`, stop and resolve the reported blocker before publishing.
 
-The local preflight cannot prove GitHub Actions secret state remotely. Before publish, confirm the repository still has `NPM_TOKEN` configured for `.github/workflows/release.yml`, and that the secret is actually publish-capable for npm. A token that only supports read auth or lacks 2FA bypass will still let `npm whoami` succeed locally while the real publish fails with `ENEEDAUTH` or `E403`.
+The local preflight cannot prove GitHub Actions trusted-publisher state remotely. Before publish, confirm each npm package trusts the `arlegotin/agent-badge` repository with workflow file `release.yml`, and keep `.github/workflows/release.yml` on the OIDC path (`permissions.id-token: write`). `npm whoami` is still useful for local operator sanity checks, but it is not the production publish credential.
 
 ## 4. Publish via workflow (primary operator path)
 
@@ -63,6 +63,7 @@ Use `.github/workflows/release.yml` as the production publish path. Trigger it u
 
 - Start the workflow run for the production publish.
 - Record the run URL and run ID from the completed workflow page.
+- Do not switch to a local publish path. If the workflow cannot publish, fix the trusted-publisher or workflow configuration first.
 - If successful, write release evidence with publish-path metadata:
 
 ```bash
@@ -78,26 +79,20 @@ npm run release:evidence \
 
 `12-PUBLISH-EVIDENCE.md` and `12-PUBLISH-EVIDENCE.json` are the required evidence artifacts for this path.
 
-## 5. Fallback local publish path (recovery only)
+## 5. Post-publish registry smoke
 
-Use local `npm run release` only if the workflow path cannot be used.
-
-The local fallback requires real publish auth, not just maintainer read auth:
-
-- `npm login` + `npm whoami` only prove the machine can read npm metadata.
-- If the maintainer account enforces npm 2FA, the fallback publish must use a publish-capable token with bypass 2FA enabled, or another publish path that satisfies npm's 2FA policy.
-- When using `NPM_TOKEN` locally, route npm through a temporary user config so the token is the active publish credential for the command being run.
-
-After the fallback publish, persist evidence with a required fallback reason:
+After Phase 12 publish evidence is captured, prove the live registry artifacts still work from a clean temp directory:
 
 ```bash
-npm run release:evidence \
-  -- --phase-dir .planning/phases/12-production-publish-execution \
-  --publish-path local-cli \
-  --preflight-json .planning/phases/12-production-publish-execution/12-preflight.json \
-  --fallback-reason "<why workflow path could not be used>" \
-  --published-at <ISO8601>
+bash scripts/smoke/verify-registry-install.sh --version 1.1.2 --check-initializer --write-evidence --phase-dir .planning/phases/13-post-publish-registry-verification-and-final-operations
 ```
+
+This writes:
+
+- `.planning/phases/13-post-publish-registry-verification-and-final-operations/13-REGISTRY-SMOKE.json`
+- `.planning/phases/13-post-publish-registry-verification-and-final-operations/13-REGISTRY-SMOKE.md`
+
+Phase 13 is only complete when `13-REGISTRY-SMOKE.json` reports `"status": "passed"`. If the smoke is blocked, publish the repair release through `.github/workflows/release.yml`, refresh the Phase 12 publish evidence, and rerun the same smoke against the repaired published version.
 
 ## 6. Troubleshooting notes
 

@@ -23,9 +23,10 @@ const expectedPublishablePackageNames = [
   "create-agent-badge"
 ] as const;
 const expectedWorkflowMarkers = [
+  "workflow_dispatch",
+  "id-token: write",
   "changesets/action@v1",
-  "publish: npm run release",
-  "NPM_TOKEN"
+  "publish: npm run release"
 ] as const;
 
 export type ReleasePreflightStatus = "safe" | "warn" | "blocked";
@@ -571,10 +572,10 @@ export function evaluateWorkflowContract(
     id: "workflow-contract",
     label: "workflow contract",
     status: "safe",
-    summary: `${workflowFile} still references the expected release workflow contract.`,
+    summary: `${workflowFile} still references the expected trusted-publishing release workflow contract.`,
     details: [
       "Local preflight validates workflow markers only.",
-      "Before publish, confirm the repository-level GitHub Actions secret `NPM_TOKEN` still exists."
+      "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token."
     ]
   };
 }
