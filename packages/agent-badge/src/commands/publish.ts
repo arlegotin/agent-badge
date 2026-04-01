@@ -136,6 +136,7 @@ export async function runPublishCommand(
     writeLine(stdout, "agent-badge publish");
     writeLine(stdout, `- Badge URL: ${config.publish.badgeUrl}`);
     writeLine(stdout, `- Publish status: ${nextState.publish.status}`);
+    writeLine(stdout, `- Publish mode: ${nextState.publish.mode}`);
     writeLine(stdout, `- lastPublishedHash: ${nextState.publish.lastPublishedHash}`);
     await appendAgentBadgeLog({
       cwd,
