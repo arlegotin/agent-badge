@@ -1,14 +1,47 @@
 <!-- agent-badge:start -->
-![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300)
+![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300)
 <!-- agent-badge:end -->
 
 # agent-badge
 
-`agent-badge` is a local-first, serverless CLI for publishing a stable GitHub README badge that shows historical and ongoing AI-agent usage for a repository. It scans local Codex and Claude data on the developer machine, attributes usage to the current repo, publishes aggregate-only badge JSON to a public Gist, and renders the badge through a fixed Shields URL.
+A local-first README badge for repos that ship with AI.
+
+Some people want transparency.<br>
+Some people just want to flex how hard they ship with agents.
+
+`agent-badge` works for both:
+
+```bash
+npm init agent-badge@latest
+```
+
+
+## How it works
+
+1. `agent-badge` scans local provider data under `~/.codex` and `~/.claude`.
+2. It attributes sessions conservatively to the current repo so ambiguous work does not inflate the number.
+3. It publishes aggregate-only badge JSON to a public GitHub gist you own.
+4. Shields renders that JSON through a stable badge URL that stays the same after setup.
+
+No prompts. No transcripts. No filenames. No local paths.  
+Just the badge.
+
+
+## What gets published
+
+`agent-badge` publishes only aggregate badge JSON.
+
+It does **NOT** publish:
+
+- prompts
+- transcripts
+- filenames
+- local paths
+
+That makes it useful for public accountability without turning your local workflow into telemetry bait.
+
 
 ## Install
-
-To add `agent-badge` to a repository:
 
 ```bash
 npm init agent-badge@latest
@@ -16,37 +49,72 @@ npm init agent-badge@latest
 
 That initializer sets up the local runtime, creates `.agent-badge/` state, configures a failure-soft `pre-push` refresh hook, and inserts or prints the badge snippet.
 
-## How It Works
+If GitHub auth is already available through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that one command also creates or reuses a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
-- Scans `~/.codex` and `~/.claude` locally instead of sending raw transcripts to a service.
-- Publishes only aggregate badge data, not prompts, transcripts, filenames, or local paths.
-- Keeps the badge URL stable after setup by publishing `agent-badge.json` to a public GitHub Gist.
+What init sets up:
 
-## Badge Variants And Views
+- installs `@legotin/agent-badge` as a repo-local dev dependency
+- creates `.agent-badge/config.json` and `.agent-badge/state.json`
+- adds managed `agent-badge:init` and `agent-badge:refresh` package scripts
+- wires a failure-soft `.git/hooks/pre-push` refresh hook
+- updates `.gitignore` for local state, cache, and logs
+- inserts the badge into `README.md` when publish is configured, or prints the snippet when no README exists
 
-The badge at the top of this README is the live badge for this repo. By default it shows both total attributed tokens and estimated USD in one badge message, which is the closest Shields-compatible rendering to `AI Usage | 42.3M tokens | $57.5`. The previews below are live too and sync to this repo's current published totals.
+Read more:
+
+- [Quickstart](docs/QUICKSTART.md)
+- [How It Works](docs/HOW-IT-WORKS.md)
+- [Attribution Model](docs/ATTRIBUTION.md)
+- [Privacy Model](docs/PRIVACY.md)
+
+
+## Badge Modes
+
+The badge at the top of this README is live. By default it shows the closest Shields-compatible version of "Vibe budget | tokens | estimated cost".
 
 | Mode | Preview | Command | Notes |
 | --- | --- | --- | --- |
-| `combined` | ![AI Usage combined example](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300) | `agent-badge config set badge.mode combined` | Default mode. Shows total attributed tokens and estimated USD together in one Shields message segment. |
-| `tokens` | ![AI Usage tokens example](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo with compact badge-friendly formatting. |
-| `cost` | ![AI Usage cost example](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300) | `agent-badge config set badge.mode cost` | Shows an API-equivalent USD estimate derived from local token telemetry and current official provider pricing. |
+| `combined` | ![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300) | `agent-badge config set badge.mode combined` | Default mode. Shows total attributed tokens and estimated USD together in one Shields message segment. |
+| `tokens` | ![Tokens burned](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo with compact badge-friendly formatting. |
+| `cost` | ![AI receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300) | `agent-badge config set badge.mode cost` | Shows an API-equivalent USD estimate derived from local token telemetry and current official provider pricing. |
 
-`cost` is intentionally labeled as an estimate. It uses the local usage buckets available from Claude and Codex, combines them with current official OpenAI and Anthropic API pricing when pricing fetch succeeds, and falls back to bundled official rates when it cannot refresh pricing live. That number is useful for directional tracking, but it can differ from your actual bill, plan discounts, or non-API product pricing.
+`cost` is an estimate. It uses the local usage buckets available from Claude and Codex, combines them with current official OpenAI and Anthropic API pricing when pricing fetch succeeds, and falls back to bundled official rates when it cannot refresh pricing live. That number is useful for directional tracking, but it can differ from your actual bill, plan discounts, or non-API product pricing.
 
-The CLI also exposes a few different ways to inspect the same data:
+## Configuration
 
-- `agent-badge status` shows the persisted badge, provider, and publish state.
-- `agent-badge scan` shows a full attribution report, including included, ambiguous, and excluded sessions.
-- `agent-badge refresh` updates persisted totals and publishes the badge when the payload changed.
-- `agent-badge doctor` checks local setup, scan readiness, and publish wiring.
-- `agent-badge config` shows the current badge, refresh, privacy, and provider settings.
+The CLI exposes a small configuration surface on purpose. The product is not trying to become a dashboard.
+
+| Goal | Command |
+| --- | --- |
+| Show tokens and estimated cost | `agent-badge config set badge.mode combined` |
+| Show tokens only | `agent-badge config set badge.mode tokens` |
+| Show estimated cost only | `agent-badge config set badge.mode cost` |
+| Set label to `AI Receipt` | `agent-badge config set badge.label "AI Receipt"` |
+| Ignore Codex data | `agent-badge config set providers.codex.enabled false` |
+| Ignore Claude data | `agent-badge config set providers.claude.enabled false` |
+| Disable auto-refresh on push | `agent-badge config set refresh.prePush.enabled false` |
+| Make the hook strict instead of failure-soft | `agent-badge config set refresh.prePush.mode strict` |
+| Hide extra publish details from CLI output | `agent-badge config set privacy.output minimal` |
+
+`privacy.aggregateOnly` is intentionally fixed to `true`. `agent-badge` does not have a mode that publishes raw prompts, transcripts, filenames, or local paths.
+
+Read the full supported config surface in [Configuration](docs/CONFIGURATION.md).
+
+
+## Contributing
+
+Issues, ideas, and sharper badge modes are welcome.
+
+If you think AI-assisted work should be visible, measurable, and privacy-conscious, you’re in the right repo.
+
 
 ## Documentation
 
-- [Release Checklist](docs/RELEASE.md)
 - [Quickstart](docs/QUICKSTART.md)
+- [How It Works](docs/HOW-IT-WORKS.md)
+- [Configuration](docs/CONFIGURATION.md)
 - [Attribution Model](docs/ATTRIBUTION.md)
 - [Privacy Model](docs/PRIVACY.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Manual Gist Connection](docs/MANUAL-GIST.md)
+- [Release Checklist](docs/RELEASE.md)

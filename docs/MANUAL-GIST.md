@@ -2,6 +2,8 @@
 
 Use this flow when automatic gist creation is unavailable or you want to reuse an existing public gist.
 
+Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
+
 ## Reconnect with an Existing Gist
 
 1. Create or choose a public gist in your GitHub account.
@@ -17,6 +19,8 @@ agent-badge init --gist-id <id>
 ```bash
 agent-badge status
 ```
+
+If the repo already has local `agent-badge` state, rerunning init is safe. The command is designed to reuse existing scaffold and reconnect publish state instead of duplicating badge markers or hook blocks.
 
 ## Expected Badge URL Format
 
