@@ -661,6 +661,57 @@ describe("publishBadgeToGist", () => {
 
     expect(updateGistFile).not.toHaveBeenCalled();
   });
+
+  it("rejects a shared overrides file that contains a raw provider session key", async () => {
+    const getGist = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: createGistFileMap({
+        [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+          content: createOverridesRecord({
+            "codex:session-1": {
+              decision: "include",
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              updatedByPublisherId: "publisher-remote"
+            }
+          })
+        }
+      })
+    });
+    const updateGistFile = vi.fn();
+
+    await expect(
+      publishBadgeToGist({
+        config: createPublishConfig({
+          label: "AI Usage",
+          mode: "tokens"
+        }),
+        state: {
+          ...defaultAgentBadgeState,
+          publish: {
+            ...defaultAgentBadgeState.publish,
+            gistId: "gist_123",
+            publisherId: "publisher-local"
+          }
+        } as typeof defaultAgentBadgeState,
+        includedTotals: {
+          sessions: 1,
+          tokens: 42,
+          estimatedCostUsdMicros: null
+        },
+        client: {
+          getGist,
+          createPublicGist: vi.fn(),
+          updateGistFile
+        }
+      })
+    ).rejects.toThrow(
+      "Shared overrides file contained a raw or invalid session key."
+    );
+
+    expect(updateGistFile).not.toHaveBeenCalled();
+  });
 });
 
 describe("publishBadgeIfChanged", () => {

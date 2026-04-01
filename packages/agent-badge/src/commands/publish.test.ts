@@ -354,6 +354,8 @@ describe("runPublishCommand", () => {
       expect(output.read()).toContain("Publish mode: shared");
       expect(output.read()).toContain("lastPublishedHash: hash_123");
       expect(output.read()).not.toContain("codex-session-1");
+      expect(output.read()).not.toContain("transcriptProjectKey");
+      expect(output.read()).not.toContain("prompt");
       expect(output.read()).not.toContain(fixture.repoRoot);
       expect(result.state.publish.lastPublishedHash).toBe("hash_123");
       expect(result.state.publish.publisherId).toBe("publisher-local");

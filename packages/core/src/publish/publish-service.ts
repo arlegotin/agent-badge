@@ -61,6 +61,8 @@ interface SharedPublishStateSnapshot {
   readonly mode?: "legacy" | "shared";
 }
 
+const sharedOverrideDigestPattern = /^sha256:[a-f0-9]{64}$/;
+
 function buildSessionKey(
   session: { readonly provider: string; readonly providerSessionId: string }
 ): string {
@@ -194,6 +196,16 @@ function serializeJsonFile(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
+function assertOpaqueSharedOverrideKeys(overrides: SharedOverridesRecord): void {
+  for (const key of Object.keys(overrides.overrides)) {
+    if (!sharedOverrideDigestPattern.test(key)) {
+      throw new Error(
+        "Shared overrides file contained a raw or invalid session key."
+      );
+    }
+  }
+}
+
 function loadRemoteSharedRecords(
   gist: Awaited<ReturnType<GitHubGistClient["getGist"]>>
 ): {
@@ -227,6 +239,7 @@ function loadRemoteSharedRecords(
 
     if (file.filename === AGENT_BADGE_OVERRIDES_GIST_FILE) {
       overrides = parseSharedOverridesRecord(JSON.parse(file.content));
+      assertOpaqueSharedOverrideKeys(overrides);
     }
   }
 
