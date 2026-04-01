@@ -57,7 +57,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: Verify published registry artifacts in a fresh install environment
+- [x] 13-01: Verify published registry artifacts in a fresh install environment
 - [ ] 13-02: Finalize the production release checklist and operator evidence trail
 
 ## Progress
@@ -66,4 +66,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 11. Registry Preflight and Release Environment Validation | 2/2 | Complete    | 2026-03-31 |
 | 12. Production Publish Execution | 1/2 | Complete    | 2026-04-01 |
-| 13. Post-Publish Registry Verification and Final Operations | 0/2 | Not started | - |
+| 13. Post-Publish Registry Verification and Final Operations | 1/2 | In progress | - |

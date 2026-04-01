@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: milestone
-status: planning
-stopped_at: Phase 12 complete
-last_updated: "2026-04-01T09:10:16.602Z"
-last_activity: 2026-04-01 -- Phase 12 completed
+status: executing
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-04-01T10:26:24.197Z"
+last_activity: 2026-04-01
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 ## Current Position
 
-Phase: 13 (post-publish-registry-verification-and-final-operations) — NOT STARTED
-Plan: Not started
-Status: Phase 12 complete; Phase 13 ready for discussion
-Last activity: 2026-04-01 -- Phase 12 completed
+Phase: 13 (post-publish-registry-verification-and-final-operations) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-01 -- Completed 13-01 and advanced to Plan 2
 
-Progress: [░░░░░░░░░░] 0/6 plans (Milestone v1.2 ready to plan)
+Progress: [████████░░] 5/6 plans (13-02 remaining in milestone v1.2)
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0/6 plans (Milestone v1.2 ready to pl
 | Phase 07-release-readiness P02 | 7min | 2 tasks | 9 files |
 | Phase 07-release-readiness P03 | 2m 22s | 2 tasks | 9 files |
 | Phase 12-production-publish-execution P01 | 1 | 2 tasks | 6 files |
+| Phase 13 P01 | 5m 31s | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 10-release-rehearsal-and-checklist]: Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish.
 - [Phase 12-production-publish-execution]: Use .github/workflows/release.yml + workflow_dispatch as the canonical production publish path and keep local npm run release as explicit fallback.
 - [Phase 12-production-publish-execution]: Release evidence must be captured in both JSON and Markdown files with manifest inventory, git SHA, preflight input, and workflow metadata or fallback reason.
+- [Phase 13]: Keep registry smoke evidence limited to package coordinates and passed-or-blocked outcomes so local temp paths never leave the machine.
+- [Phase 13]: Match create-agent-badge direct execution to the runtime CLI's realpath-based guard so symlinked npm bin paths cannot silently no-op.
 
 ### Pending Todos
 
@@ -142,6 +145,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-31T14:58:16.532Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-04-01T10:26:24.194Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
