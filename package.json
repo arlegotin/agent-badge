@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json",
+    "build": "tsc -b packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json && chmod +x packages/agent-badge/dist/cli/main.js packages/create-agent-badge/dist/index.js",
     "test": "vitest",
     "typecheck": "tsc -b --pretty false packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json",
     "verify:clean-checkout": "bash scripts/verify-clean-checkout.sh",
