@@ -1,6 +1,6 @@
 {
   "name": "@legotin/agent-badge",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "bin": {
     "agent-badge": "./dist/cli/main.js"
@@ -17,7 +17,7 @@
     "dist"
   ],
   "dependencies": {
-    "@legotin/agent-badge-core": "^1.1.1",
+    "@legotin/agent-badge-core": "^1.1.2",
     "commander": "^14.0.0"
   }
 }
