@@ -343,6 +343,10 @@ function reconcileState(
                 readPositiveInteger(refreshSummary.includedTokens) ??
                 defaults.refresh.summary?.includedTokens ??
                 0,
+              includedEstimatedCostUsdMicros:
+                readPositiveInteger(
+                  refreshSummary.includedEstimatedCostUsdMicros
+                ) ?? defaults.refresh.summary?.includedEstimatedCostUsdMicros ?? null,
               ambiguousSessions:
                 readPositiveInteger(refreshSummary.ambiguousSessions) ??
                 defaults.refresh.summary?.ambiguousSessions ??

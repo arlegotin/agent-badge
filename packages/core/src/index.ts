@@ -4,6 +4,7 @@ export * from "./init/index.js";
 export * from "./diagnostics/index.js";
 export * from "./logging/index.js";
 export * from "./publish/index.js";
+export * from "./pricing/index.js";
 export * from "./providers/index.js";
 export * from "./repo/index.js";
 export * from "./runtime/index.js";

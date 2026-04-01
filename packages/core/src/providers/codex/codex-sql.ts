@@ -6,6 +6,7 @@ export interface CodexThreadRow {
   readonly id: string;
   readonly createdAt: string | null;
   readonly updatedAt: string | null;
+  readonly rolloutPath: string | null;
   readonly source: string | null;
   readonly modelProvider: string | null;
   readonly cwd: string | null;
@@ -28,6 +29,7 @@ interface RawCodexThreadRow {
   readonly id: string;
   readonly created_at: string | number | null;
   readonly updated_at: string | number | null;
+  readonly rollout_path: string | null;
   readonly source: string | null;
   readonly model_provider: string | null;
   readonly cwd: string | null;
@@ -44,6 +46,16 @@ interface RawCodexThreadRow {
 interface RawCodexSpawnEdgeRow {
   readonly parent_thread_id: string;
   readonly child_thread_id: string;
+}
+
+export interface CodexThreadRolloutRow {
+  readonly id: string;
+  readonly rolloutPath: string | null;
+}
+
+interface RawCodexThreadRolloutRow {
+  readonly id: string;
+  readonly rollout_path: string | null;
 }
 
 function normalizeCodexTimestamp(
@@ -135,6 +147,7 @@ function mapCodexThreadRow(row: RawCodexThreadRow): CodexThreadRow {
     id: row.id,
     createdAt: normalizeCodexTimestamp(row.created_at),
     updatedAt: normalizeCodexTimestamp(row.updated_at),
+    rolloutPath: row.rollout_path,
     source: row.source,
     modelProvider: row.model_provider,
     cwd: row.cwd,
@@ -186,7 +199,7 @@ export async function loadCodexThreadRows(
     dbPath,
     `
       SELECT id, created_at, updated_at, source, model_provider, cwd, tokens_used,
-        git_sha, git_branch, git_origin_url, cli_version, agent_nickname,
+        rollout_path, git_sha, git_branch, git_origin_url, cli_version, agent_nickname,
         agent_role, model
       FROM threads
       ORDER BY created_at ASC
@@ -228,7 +241,7 @@ export async function loadCodexThreadRowsSince(
   const params: unknown[] = [effectiveWatermark];
   let sql = `
       SELECT id, created_at, updated_at, source, model_provider, cwd, tokens_used,
-        git_sha, git_branch, git_origin_url, cli_version, agent_nickname,
+        rollout_path, git_sha, git_branch, git_origin_url, cli_version, agent_nickname,
         agent_role, model
       FROM threads
       WHERE ${threadWatermarkSql} > ?
@@ -271,5 +284,30 @@ export async function loadCodexSpawnEdges(
   return rows.map((row) => ({
     parentThreadId: row.parent_thread_id,
     childThreadId: row.child_thread_id
+  }));
+}
+
+export async function loadCodexThreadRolloutRowsByIds(
+  dbPath: string,
+  threadIds: readonly string[]
+): Promise<CodexThreadRolloutRow[]> {
+  if (threadIds.length === 0) {
+    return [];
+  }
+
+  const placeholders = threadIds.map(() => "?").join(", ");
+  const rows = readRows<RawCodexThreadRolloutRow>(
+    dbPath,
+    `
+      SELECT id, rollout_path
+      FROM threads
+      WHERE id IN (${placeholders})
+    `,
+    threadIds
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    rolloutPath: row.rollout_path
   }));
 }

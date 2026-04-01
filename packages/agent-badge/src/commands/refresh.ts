@@ -116,7 +116,14 @@ function getConfiguredProviders(
 }
 
 function formatTotals(summary: RunIncrementalRefreshResult["summary"]): string {
-  return `${summary.includedSessions} sessions, ${summary.includedTokens} tokens`;
+  const estimatedCost =
+    summary.includedEstimatedCostUsdMicros === null
+      ? ""
+      : `, ~$${(
+          summary.includedEstimatedCostUsdMicros / 1_000_000
+        ).toFixed(2)} estimated`;
+
+  return `${summary.includedSessions} sessions, ${summary.includedTokens} tokens${estimatedCost}`;
 }
 
 function formatPublishLine(
@@ -286,7 +293,8 @@ export async function runRefreshCommand(
         state: persistedState,
         includedTotals: {
           sessions: refresh.summary.includedSessions,
-          tokens: refresh.summary.includedTokens
+          tokens: refresh.summary.includedTokens,
+          estimatedCostUsdMicros: refresh.summary.includedEstimatedCostUsdMicros
         },
         client:
           options.gistClient ??

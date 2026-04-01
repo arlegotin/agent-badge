@@ -46,6 +46,7 @@ describe("agentBadgeStateSchema", () => {
           summary: {
             includedSessions: 4,
             includedTokens: 2400,
+            includedEstimatedCostUsdMicros: null,
             ambiguousSessions: 1,
             excludedSessions: 2
           }
@@ -58,6 +59,7 @@ describe("agentBadgeStateSchema", () => {
       summary: {
         includedSessions: 4,
         includedTokens: 2400,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 1,
         excludedSessions: 2
       }
@@ -123,6 +125,7 @@ describe("agentBadgeStateSchema", () => {
           summary: {
             includedSessions: 1,
             includedTokens: 42,
+            includedEstimatedCostUsdMicros: null,
             ambiguousSessions: 0,
             excludedSessions: 0,
             evidence: []

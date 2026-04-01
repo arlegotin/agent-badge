@@ -15,6 +15,10 @@ import {
   parseNormalizedSessionSummary,
   type NormalizedSessionSummary
 } from "../providers/session-summary.js";
+import {
+  estimateSessionCostsUsdMicrosByKey,
+  resolvePricingCatalog
+} from "../pricing/estimate-cost.js";
 import { resolveRepoFingerprint } from "../repo/repo-fingerprint.js";
 import type {
   AgentBadgeRefreshSummary,
@@ -40,7 +44,7 @@ interface ProviderIncrementalResult {
 export interface RunIncrementalRefreshOptions {
   readonly cwd: string;
   readonly homeRoot: string;
-  readonly config: Pick<AgentBadgeConfig, "providers" | "repo">;
+  readonly config: Pick<AgentBadgeConfig, "providers" | "repo" | "badge">;
   readonly state: AgentBadgeState;
   readonly forceFull: boolean;
 }
@@ -85,10 +89,19 @@ function filterCacheByEnabledProviders(
 }
 
 function summarizeRefreshCache(cache: RefreshCache): AgentBadgeRefreshSummary {
-  return Object.values(cache.entries).reduce<AgentBadgeRefreshSummary>(
+  const entries = Object.values(cache.entries);
+  const hasEstimatedCost = entries.some(
+    (entry) => entry.includedEstimatedCostUsdMicros !== null
+  );
+
+  return entries.reduce<AgentBadgeRefreshSummary>(
     (summary, entry) => ({
       includedSessions: summary.includedSessions + entry.includedSessions,
       includedTokens: summary.includedTokens + entry.includedTokens,
+      includedEstimatedCostUsdMicros: hasEstimatedCost
+        ? (summary.includedEstimatedCostUsdMicros ?? 0) +
+          (entry.includedEstimatedCostUsdMicros ?? 0)
+        : null,
       ambiguousSessions:
         summary.ambiguousSessions + (entry.status === "ambiguous" ? 1 : 0),
       excludedSessions:
@@ -97,16 +110,41 @@ function summarizeRefreshCache(cache: RefreshCache): AgentBadgeRefreshSummary {
     {
       includedSessions: 0,
       includedTokens: 0,
+      includedEstimatedCostUsdMicros: hasEstimatedCost ? 0 : null,
       ambiguousSessions: 0,
       excludedSessions: 0
     }
   );
 }
 
-function mergeAttributedSessionsIntoCache(
+async function mergeAttributedSessionsIntoCache(
   cache: RefreshCache,
-  attributedSessions: readonly AttributedSession[]
-): RefreshCache {
+  attributedSessions: readonly AttributedSession[],
+  options: Pick<RunIncrementalRefreshOptions, "cwd" | "homeRoot" | "config">
+): Promise<RefreshCache> {
+  const shouldEstimateCost = options.config.badge?.mode === "cost";
+  const includedSessions = attributedSessions
+    .filter((attributedSession) => attributedSession.status === "included")
+    .map((attributedSession) => attributedSession.session);
+  const includedCostBySessionKey = shouldEstimateCost
+    ? new Map<string, number>()
+    : new Map<string, number>();
+
+  if (shouldEstimateCost && includedSessions.length > 0) {
+    const pricingCatalog = await resolvePricingCatalog({ cwd: options.cwd });
+    const estimatedCostBySessionKey = await estimateSessionCostsUsdMicrosByKey({
+      sessions: includedSessions,
+      homeRoot: options.homeRoot,
+      pricingCatalog
+    });
+
+    for (const [sessionKey, estimatedCostUsdMicros] of Object.entries(
+      estimatedCostBySessionKey
+    )) {
+      includedCostBySessionKey.set(sessionKey, estimatedCostUsdMicros);
+    }
+  }
+
   return {
     ...cache,
     entries: attributedSessions.reduce(
@@ -114,7 +152,10 @@ function mergeAttributedSessionsIntoCache(
         entries[`${attributedSession.session.provider}:${attributedSession.session.providerSessionId}`] =
           buildRefreshCacheEntry({
             session: attributedSession.session,
-            status: attributedSession.status
+            status: attributedSession.status,
+            includedEstimatedCostUsdMicros: includedCostBySessionKey.get(
+              `${attributedSession.session.provider}:${attributedSession.session.providerSessionId}`
+            ) ?? null
           });
 
         return entries;
@@ -179,9 +220,10 @@ async function runFullRefresh(
     sessions: fullScan.sessions,
     overrides: options.state.overrides.ambiguousSessions
   });
-  const cache = mergeAttributedSessionsIntoCache(
+  const cache = await mergeAttributedSessionsIntoCache(
     defaultRefreshCache,
-    attribution.sessions
+    attribution.sessions,
+    options
   );
 
   return {
@@ -255,6 +297,17 @@ export async function runIncrementalRefresh(
   }
 
   if (
+    options.config.badge?.mode === "cost" &&
+    Object.values(cache.entries).some(
+      (entry) =>
+        entry.status === "included" &&
+        entry.includedEstimatedCostUsdMicros === null
+    )
+  ) {
+    return runFullRefresh(options, providers);
+  }
+
+  if (
     providers.some((provider) => options.state.checkpoints[provider].cursor === null)
   ) {
     return runFullRefresh(options, providers);
@@ -280,7 +333,11 @@ export async function runIncrementalRefresh(
     sessions: changedSessions,
     overrides: options.state.overrides.ambiguousSessions
   });
-  const nextCache = mergeAttributedSessionsIntoCache(cache, attribution.sessions);
+  const nextCache = await mergeAttributedSessionsIntoCache(
+    cache,
+    attribution.sessions,
+    options
+  );
 
   return {
     scanMode: "incremental",

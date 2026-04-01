@@ -260,6 +260,7 @@ describe("runIncrementalRefresh", () => {
       expect(result.summary).toEqual({
         includedSessions: 1,
         includedTokens: 42,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 0
       });
@@ -267,7 +268,8 @@ describe("runIncrementalRefresh", () => {
         expect.objectContaining({
           status: "included",
           includedSessions: 1,
-          includedTokens: 42
+          includedTokens: 42,
+          includedEstimatedCostUsdMicros: null
         })
       );
       expect(result.providerCursors.codex).toContain("codex-thread-watermark-v1");
@@ -337,11 +339,13 @@ describe("runIncrementalRefresh", () => {
                   total: 21
                 }
               },
-              status: "included"
+              status: "included",
+              includedEstimatedCostUsdMicros: null
             }),
             [buildRefreshCacheKey(ambiguousClaudeSession)]: buildRefreshCacheEntry({
               session: ambiguousClaudeSession,
-              status: "ambiguous"
+              status: "ambiguous",
+              includedEstimatedCostUsdMicros: null
             })
           }
         }
@@ -379,6 +383,7 @@ describe("runIncrementalRefresh", () => {
       expect(result.summary).toEqual({
         includedSessions: 1,
         includedTokens: 84,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 1,
         excludedSessions: 0
       });
@@ -386,14 +391,16 @@ describe("runIncrementalRefresh", () => {
         expect.objectContaining({
           status: "included",
           includedSessions: 1,
-          includedTokens: 84
+          includedTokens: 84,
+          includedEstimatedCostUsdMicros: null
         })
       );
       expect(result.cache.entries["claude:claude-1"]).toEqual(
         expect.objectContaining({
           status: "ambiguous",
           includedSessions: 0,
-          includedTokens: 0
+          includedTokens: 0,
+          includedEstimatedCostUsdMicros: null
         })
       );
     });
@@ -466,7 +473,8 @@ describe("runIncrementalRefresh", () => {
           entries: {
             [buildRefreshCacheKey(incrementalSession)]: buildRefreshCacheEntry({
               session: incrementalSession,
-              status: "included"
+              status: "included",
+              includedEstimatedCostUsdMicros: null
             })
           }
         }
@@ -504,6 +512,7 @@ describe("runIncrementalRefresh", () => {
       expect(result.summary).toEqual({
         includedSessions: 0,
         includedTokens: 0,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 1
       });
@@ -511,7 +520,8 @@ describe("runIncrementalRefresh", () => {
         expect.objectContaining({
           status: "excluded",
           includedSessions: 0,
-          includedTokens: 0
+          includedTokens: 0,
+          includedEstimatedCostUsdMicros: null
         })
       );
     });

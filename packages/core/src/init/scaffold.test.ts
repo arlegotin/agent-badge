@@ -261,6 +261,7 @@ describe("applyAgentBadgeScaffold", () => {
         summary: {
           includedSessions: 2,
           includedTokens: 120,
+          includedEstimatedCostUsdMicros: null,
           ambiguousSessions: 1,
           excludedSessions: 0
         }

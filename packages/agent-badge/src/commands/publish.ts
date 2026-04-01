@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 
 import {
   attributeBackfillSessions,
+  collectIncludedTotals,
   createGitHubGistClient,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
@@ -114,11 +115,15 @@ export async function runPublishCommand(
       sessions: scan.sessions,
       overrides: previousState.overrides.ambiguousSessions
     });
+    const includedTotals = await collectIncludedTotals(scan, attribution, {
+      cwd,
+      homeRoot,
+      includeEstimatedCost: config.badge.mode === "cost"
+    });
     const nextState = await publishBadgeToGist({
       config,
       state: previousState,
-      scan,
-      attribution,
+      includedTotals,
       client:
         options.gistClient ??
         createGitHubGistClient({

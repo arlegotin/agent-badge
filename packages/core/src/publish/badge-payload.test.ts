@@ -9,7 +9,8 @@ describe("buildEndpointBadgePayload", () => {
       mode: "sessions",
       includedTotals: {
         sessions: 3,
-        tokens: 120
+        tokens: 120,
+        estimatedCostUsdMicros: null
       }
     });
 
@@ -34,7 +35,8 @@ describe("buildEndpointBadgePayload", () => {
         mode: "tokens",
         includedTotals: {
           sessions: 3,
-          tokens: 120
+          tokens: 120,
+          estimatedCostUsdMicros: null
         }
       })
     ).toEqual({
@@ -52,7 +54,8 @@ describe("buildEndpointBadgePayload", () => {
         mode: "sessions",
         includedTotals: {
           sessions: 0,
-          tokens: 42
+          tokens: 42,
+          estimatedCostUsdMicros: null
         }
       })
     ).toEqual({
@@ -63,19 +66,22 @@ describe("buildEndpointBadgePayload", () => {
     });
   });
 
-  it("fails explicitly for the unsupported cost badge mode", () => {
-    expect(() =>
+  it("builds an estimated cost badge payload", () => {
+    expect(
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "cost",
         includedTotals: {
           sessions: 3,
-          tokens: 120
+          tokens: 120,
+          estimatedCostUsdMicros: 12_340_000
         }
       })
-    ).toThrow(
-      'Badge mode "cost" is not yet supported because scan results do not include cost totals.'
-    );
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "$12.34 est",
+      color: "brightgreen"
+    });
   });
 });
-

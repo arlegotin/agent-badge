@@ -15,7 +15,14 @@ const refreshCacheEntrySchema = z
     updatedAt: z.string().min(1).nullable(),
     status: z.enum(["included", "ambiguous", "excluded"]),
     includedSessions: z.number().int().nonnegative(),
-    includedTokens: z.number().int().nonnegative()
+    includedTokens: z.number().int().nonnegative(),
+    includedEstimatedCostUsdMicros: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable()
+      .optional()
+      .default(null)
   })
   .strict();
 
@@ -44,6 +51,7 @@ export interface BuildRefreshCacheEntryOptions {
     "provider" | "providerSessionId" | "updatedAt" | "tokenUsage"
   >;
   readonly status: AttributionStatus;
+  readonly includedEstimatedCostUsdMicros: number | null;
 }
 
 export const defaultRefreshCache: RefreshCache = {
@@ -61,7 +69,8 @@ export function buildRefreshCacheKey(
 
 export function buildRefreshCacheEntry({
   session,
-  status
+  status,
+  includedEstimatedCostUsdMicros
 }: BuildRefreshCacheEntryOptions): RefreshCacheEntry {
   return {
     provider: session.provider,
@@ -69,7 +78,9 @@ export function buildRefreshCacheEntry({
     updatedAt: session.updatedAt,
     status,
     includedSessions: status === "included" ? 1 : 0,
-    includedTokens: status === "included" ? session.tokenUsage.total : 0
+    includedTokens: status === "included" ? session.tokenUsage.total : 0,
+    includedEstimatedCostUsdMicros:
+      status === "included" ? includedEstimatedCostUsdMicros : null
   };
 }
 

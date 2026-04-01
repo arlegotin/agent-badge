@@ -27,6 +27,13 @@ const refreshSummarySchema = z
   .object({
     includedSessions: z.number().int().nonnegative(),
     includedTokens: z.number().int().nonnegative(),
+    includedEstimatedCostUsdMicros: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable()
+      .optional()
+      .default(null),
     ambiguousSessions: z.number().int().nonnegative(),
     excludedSessions: z.number().int().nonnegative()
   })

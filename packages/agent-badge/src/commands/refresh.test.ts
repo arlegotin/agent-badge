@@ -148,6 +148,7 @@ describe("runRefreshCommand", () => {
       summary: {
         includedSessions: 3,
         includedTokens: 210,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 1,
         excludedSessions: 2
       },
@@ -164,7 +165,8 @@ describe("runRefreshCommand", () => {
             updatedAt: "2026-03-30T18:45:00.000Z",
             status: "included" as const,
             includedSessions: 1,
-            includedTokens: 210
+            includedTokens: 210,
+            includedEstimatedCostUsdMicros: null
           }
         }
       }
@@ -246,6 +248,7 @@ describe("runRefreshCommand", () => {
       summary: {
         includedSessions: 4,
         includedTokens: 480,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 1
       },
@@ -309,7 +312,8 @@ describe("runRefreshCommand", () => {
         }),
         includedTotals: {
           sessions: 4,
-          tokens: 480
+          tokens: 480,
+          estimatedCostUsdMicros: null
         },
         client: gistClient,
         now: "2026-03-30T19:00:00.000Z",
@@ -346,6 +350,7 @@ describe("runRefreshCommand", () => {
       summary: {
         includedSessions: 1,
         includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 0
       },
@@ -418,6 +423,7 @@ describe("runRefreshCommand", () => {
       summary: {
         includedSessions: 2,
         includedTokens: 140,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 0
       },
@@ -482,6 +488,7 @@ describe("runRefreshCommand", () => {
       summary: {
         includedSessions: 1,
         includedTokens: 90,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 0
       },
@@ -498,7 +505,8 @@ describe("runRefreshCommand", () => {
             updatedAt: "2026-03-30T18:58:00.000Z",
             status: "included" as const,
             includedSessions: 1,
-            includedTokens: 90
+            includedTokens: 90,
+            includedEstimatedCostUsdMicros: null
           }
         }
       }
@@ -573,6 +581,7 @@ describe("runRefreshCommand", () => {
       summary: {
         includedSessions: 1,
         includedTokens: 90,
+        includedEstimatedCostUsdMicros: null,
         ambiguousSessions: 0,
         excludedSessions: 0
       },

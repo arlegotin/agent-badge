@@ -9,6 +9,7 @@ import {
   applyRepoLocalRuntimeWiring,
   buildReadmeBadgeMarkdown,
   buildReadmeBadgeSnippet,
+  collectIncludedTotals,
   createGitHubGistClient,
   initializeGitRepository,
   ensurePublishTarget,
@@ -469,8 +470,11 @@ export async function runInitCommand(
     const publishedState = await publishBadgeToGist({
       config: nextPublishState.config,
       state: nextPublishState.state,
-      scan,
-      attribution,
+      includedTotals: await collectIncludedTotals(scan, attribution, {
+        cwd: preflight.cwd,
+        homeRoot,
+        includeEstimatedCost: nextPublishState.config.badge.mode === "cost"
+      }),
       client: gistClient
     });
 

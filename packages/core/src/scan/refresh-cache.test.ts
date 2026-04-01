@@ -77,7 +77,8 @@ describe("refresh-cache", () => {
         entries: {
           [buildRefreshCacheKey(session)]: buildRefreshCacheEntry({
             session,
-            status: "included"
+            status: "included",
+            includedEstimatedCostUsdMicros: null
           })
         }
       };

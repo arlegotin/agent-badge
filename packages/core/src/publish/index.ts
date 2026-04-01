@@ -4,6 +4,7 @@ export * from "./github-gist-client.js";
 export * from "./publish-state.js";
 export * from "./readme-badge.js";
 export {
+  collectIncludedTotals,
   publishBadgeIfChanged,
   publishBadgeToGist
 } from "./publish-service.js";

@@ -29,8 +29,10 @@ The badge at the top of this README is the live badge for this repo. The preview
 | Mode | Preview | Command | Notes |
 | --- | --- | --- | --- |
 | `sessions` | ![AI Usage sessions example](https://img.shields.io/badge/AI%20Usage-128%20sessions-brightgreen) | `agent-badge config set badge.mode sessions` | Shows how many attributed sessions the repo has accumulated. |
-| `tokens` | ![AI Usage tokens example](https://img.shields.io/badge/AI%20Usage-459530021%20tokens-brightgreen) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo. |
-| `cost` | ![AI Usage cost unavailable](https://img.shields.io/badge/AI%20Usage-cost%20unsupported-lightgrey) | `agent-badge config set badge.mode cost` | Reserved in config, but not shipped yet because scan results do not currently include cost totals. |
+| `tokens` | ![AI Usage tokens example](https://img.shields.io/badge/AI%20Usage-473772437%20tokens-brightgreen) | `agent-badge config set badge.mode tokens` | Shows total attributed token usage for the repo. |
+| `cost` | ![AI Usage cost example](https://img.shields.io/badge/AI%20Usage-%24221.44%20est-brightgreen) | `agent-badge config set badge.mode cost` | Shows an API-equivalent USD estimate derived from local token telemetry and current official provider pricing. |
+
+`cost` is intentionally labeled as an estimate. It uses the local usage buckets available from Claude and Codex, combines them with current official OpenAI and Anthropic API pricing when pricing fetch succeeds, and falls back to bundled official rates when it cannot refresh pricing live. That number is useful for directional tracking, but it can differ from your actual bill, plan discounts, or non-API product pricing.
 
 The CLI also exposes a few different ways to inspect the same data:
 

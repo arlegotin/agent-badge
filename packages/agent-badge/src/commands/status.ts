@@ -141,7 +141,14 @@ function formatTotalsLine(state: AgentBadgeState): string {
     return "unavailable (run `agent-badge refresh`)";
   }
 
-  return `${state.refresh.summary.includedSessions} sessions, ${state.refresh.summary.includedTokens} tokens`;
+  const estimatedCost =
+    state.refresh.summary.includedEstimatedCostUsdMicros === null
+      ? ""
+      : `, ~$${(
+          state.refresh.summary.includedEstimatedCostUsdMicros / 1_000_000
+        ).toFixed(2)} estimated`;
+
+  return `${state.refresh.summary.includedSessions} sessions, ${state.refresh.summary.includedTokens} tokens${estimatedCost}`;
 }
 
 function formatProvidersLine(config: StatusCommandConfig): string {

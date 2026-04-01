@@ -82,12 +82,6 @@ describe("publishBadgeToGist", () => {
       cwd: "/Users/example/project",
       tokenTotal: 42
     });
-    const excludedSession = createSession({
-      provider: "claude",
-      providerSessionId: "excluded-1",
-      cwd: "/Users/example/other-project",
-      tokenTotal: 200
-    });
     const updateGistFile = vi.fn().mockResolvedValue({
       id: "gist_123",
       ownerLogin: "octocat",
@@ -101,75 +95,10 @@ describe("publishBadgeToGist", () => {
         mode: "sessions"
       }),
       state: defaultAgentBadgeState,
-      scan: {
-        repo: {
-          gitRoot: "/Users/example/project",
-          gitRootRealPath: "/Users/example/project",
-          gitRootBasename: "project",
-          originUrlRaw: "git@github.com:example/agent-badge.git",
-          originUrlNormalized: "https://github.com/example/agent-badge",
-          host: "github.com",
-          owner: "example",
-          repo: "agent-badge",
-          canonicalSlug: "example/agent-badge",
-          aliasRemoteUrlsNormalized: [],
-          aliasSlugs: []
-        },
-        sessions: [includedSession, excludedSession],
-        scannedProviders: ["codex", "claude"],
-        counts: {
-          scannedSessions: 2,
-          dedupedSessions: 2,
-          byProvider: {
-            codex: {
-              scannedSessions: 1,
-              dedupedSessions: 1
-            },
-            claude: {
-              scannedSessions: 1,
-              dedupedSessions: 1
-            }
-          }
-        }
-      },
-      attribution: {
-        sessions: [
-          {
-            session: includedSession,
-            status: "included",
-            evidence: [
-              {
-                kind: "repo-root",
-                matched: true,
-                detail:
-                  "cwd realpath exactly matches repo.gitRootRealPath"
-              }
-            ],
-            reason:
-              "Included because cwdRealPath exactly matches repo.gitRootRealPath",
-            overrideApplied: null
-          },
-          {
-            session: excludedSession,
-            status: "excluded",
-            evidence: [
-              {
-                kind: "normalized-cwd",
-                matched: false,
-                detail:
-                  "cwd realpath does not resolve inside the current repo"
-              }
-            ],
-            reason:
-              "Excluded because no attribution evidence matched the current repo",
-            overrideApplied: null
-          }
-        ],
-        counts: {
-          included: 1,
-          ambiguous: 0,
-          excluded: 1
-        }
+      includedTotals: {
+        sessions: 1,
+        tokens: includedSession.tokenUsage.total,
+        estimatedCostUsdMicros: null
       },
       client: {
         getGist: vi.fn(),
@@ -223,44 +152,10 @@ describe("publishBadgeToGist", () => {
       publishBadgeToGist({
         config: defaultAgentBadgeConfig,
         state: defaultAgentBadgeState,
-        scan: {
-          repo: {
-            gitRoot: "/Users/example/project",
-            gitRootRealPath: "/Users/example/project",
-            gitRootBasename: "project",
-            originUrlRaw: null,
-            originUrlNormalized: null,
-            host: null,
-            owner: null,
-            repo: "project",
-            canonicalSlug: null,
-            aliasRemoteUrlsNormalized: [],
-            aliasSlugs: []
-          },
-          sessions: [],
-          scannedProviders: [],
-          counts: {
-            scannedSessions: 0,
-            dedupedSessions: 0,
-            byProvider: {
-              codex: {
-                scannedSessions: 0,
-                dedupedSessions: 0
-              },
-              claude: {
-                scannedSessions: 0,
-                dedupedSessions: 0
-              }
-            }
-          }
-        },
-        attribution: {
-          sessions: [],
-          counts: {
-            included: 0,
-            ambiguous: 0,
-            excluded: 0
-          }
+        includedTotals: {
+          sessions: 0,
+          tokens: 0,
+          estimatedCostUsdMicros: null
         },
         client: {
           getGist: vi.fn(),
@@ -304,7 +199,8 @@ describe("publishBadgeIfChanged", () => {
       },
       includedTotals: {
         sessions: 1,
-        tokens: 42
+        tokens: 42,
+        estimatedCostUsdMicros: null
       },
       client: {
         getGist: vi.fn(),
@@ -363,7 +259,8 @@ describe("publishBadgeIfChanged", () => {
       },
       includedTotals: {
         sessions: 1,
-        tokens: 42
+        tokens: 42,
+        estimatedCostUsdMicros: null
       },
       client: {
         getGist: vi.fn(),

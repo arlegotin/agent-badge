@@ -3,6 +3,7 @@ import type { AgentBadgeBadgeMode } from "../config/config-schema.js";
 export interface IncludedTotals {
   readonly sessions: number;
   readonly tokens: number;
+  readonly estimatedCostUsdMicros: number | null;
 }
 
 export interface BuildEndpointBadgePayloadOptions {
@@ -19,27 +20,48 @@ export interface EndpointBadgePayload {
 }
 
 const COST_MODE_ERROR =
-  'Badge mode "cost" is not yet supported because scan results do not include cost totals.';
+  'Badge mode "cost" needs an estimatedCostUsdMicros total.';
+
+function formatBadgeEstimatedCost(micros: number): string {
+  const usd = micros / 1_000_000;
+
+  if (usd >= 1_000_000) {
+    return `$${(usd / 1_000_000).toFixed(1)}m est`;
+  }
+
+  if (usd >= 1_000) {
+    return `$${(usd / 1_000).toFixed(1)}k est`;
+  }
+
+  return `$${usd.toFixed(2)} est`;
+}
 
 function resolveBadgeValue(
   mode: AgentBadgeBadgeMode,
   includedTotals: IncludedTotals
-): { readonly total: number; readonly suffix: "sessions" | "tokens" } {
+): { readonly total: number; readonly message: string } {
   if (mode === "sessions") {
     return {
       total: includedTotals.sessions,
-      suffix: "sessions"
+      message: `${includedTotals.sessions} sessions`
     };
   }
 
   if (mode === "tokens") {
     return {
       total: includedTotals.tokens,
-      suffix: "tokens"
+      message: `${includedTotals.tokens} tokens`
     };
   }
 
-  throw new Error(COST_MODE_ERROR);
+  if (includedTotals.estimatedCostUsdMicros === null) {
+    throw new Error(COST_MODE_ERROR);
+  }
+
+  return {
+    total: includedTotals.estimatedCostUsdMicros,
+    message: formatBadgeEstimatedCost(includedTotals.estimatedCostUsdMicros)
+  };
 }
 
 export function buildEndpointBadgePayload({
@@ -47,13 +69,12 @@ export function buildEndpointBadgePayload({
   mode,
   includedTotals
 }: BuildEndpointBadgePayloadOptions): EndpointBadgePayload {
-  const { total, suffix } = resolveBadgeValue(mode, includedTotals);
+  const { total, message } = resolveBadgeValue(mode, includedTotals);
 
   return {
     schemaVersion: 1,
     label,
-    message: `${total} ${suffix}`,
+    message,
     color: total > 0 ? "brightgreen" : "lightgrey"
   };
 }
-

@@ -2,8 +2,13 @@ import { createHash } from "node:crypto";
 
 import type { AttributeBackfillSessionsResult } from "../attribution/attribution-types.js";
 import type { AgentBadgeConfig } from "../config/config-schema.js";
+import type { NormalizedSessionSummary } from "../providers/session-summary.js";
 import type { RunFullBackfillScanResult } from "../scan/full-backfill.js";
 import type { AgentBadgeState } from "../state/state-schema.js";
+import {
+  estimateIncludedCostUsdMicros,
+  resolvePricingCatalog
+} from "../pricing/estimate-cost.js";
 import { AGENT_BADGE_GIST_FILE } from "./badge-url.js";
 import {
   buildEndpointBadgePayload,
@@ -14,8 +19,7 @@ import type { GitHubGistClient } from "./github-gist-client.js";
 export interface PublishBadgeToGistOptions {
   readonly config: Pick<AgentBadgeConfig, "badge" | "publish">;
   readonly state: AgentBadgeState;
-  readonly scan: RunFullBackfillScanResult;
-  readonly attribution: AttributeBackfillSessionsResult;
+  readonly includedTotals: IncludedTotals;
   readonly client: GitHubGistClient;
 }
 
@@ -39,15 +43,21 @@ function buildSessionKey(
   return `${session.provider}:${session.providerSessionId}`;
 }
 
-function collectIncludedTotals(
+export async function collectIncludedTotals(
   scan: RunFullBackfillScanResult,
-  attribution: AttributeBackfillSessionsResult
-): IncludedTotals {
+  attribution: AttributeBackfillSessionsResult,
+  options?: {
+    readonly cwd?: string;
+    readonly homeRoot?: string;
+    readonly includeEstimatedCost: boolean;
+  }
+): Promise<IncludedTotals> {
   const scannedSessionKeys = new Set(
     scan.sessions.map((session) => buildSessionKey(session))
   );
   let sessions = 0;
   let tokens = 0;
+  const includedSessions: NormalizedSessionSummary[] = [];
 
   for (const attributedSession of attribution.sessions) {
     if (attributedSession.status !== "included") {
@@ -60,11 +70,24 @@ function collectIncludedTotals(
 
     sessions += 1;
     tokens += attributedSession.session.tokenUsage.total;
+    includedSessions.push(attributedSession.session);
   }
+
+  const estimatedCostUsdMicros =
+    options?.includeEstimatedCost === true &&
+    typeof options.cwd === "string" &&
+    typeof options.homeRoot === "string"
+      ? await estimateIncludedCostUsdMicros({
+          sessions: includedSessions,
+          homeRoot: options.homeRoot,
+          pricingCatalog: await resolvePricingCatalog({ cwd: options.cwd })
+        })
+      : null;
 
   return {
     sessions,
-    tokens
+    tokens,
+    estimatedCostUsdMicros
   };
 }
 
@@ -145,11 +168,9 @@ export async function publishBadgeIfChanged({
 export async function publishBadgeToGist({
   config,
   state,
-  scan,
-  attribution,
+  includedTotals,
   client
 }: PublishBadgeToGistOptions): Promise<AgentBadgeState> {
-  const includedTotals = collectIncludedTotals(scan, attribution);
   const result = await publishBadgeIfChanged({
     config,
     state,

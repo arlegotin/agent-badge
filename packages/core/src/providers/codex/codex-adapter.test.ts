@@ -64,6 +64,7 @@ async function withNullTimestampCodexHome<T>(
         id TEXT PRIMARY KEY,
         created_at TEXT,
         updated_at TEXT,
+        rollout_path TEXT,
         source TEXT,
         model_provider TEXT,
         cwd TEXT,
@@ -87,6 +88,7 @@ async function withNullTimestampCodexHome<T>(
         id,
         created_at,
         updated_at,
+        rollout_path,
         source,
         model_provider,
         cwd,
@@ -98,12 +100,13 @@ async function withNullTimestampCodexHome<T>(
         agent_nickname,
         agent_role,
         model
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const threadId of threadIds) {
       insertThread.run(
         threadId,
+        null,
         null,
         null,
         "chat",
@@ -151,6 +154,7 @@ async function withIntegerTimestampCodexHome<T>(
         id TEXT PRIMARY KEY,
         created_at INTEGER,
         updated_at INTEGER,
+        rollout_path TEXT,
         source TEXT,
         model_provider TEXT,
         cwd TEXT,
@@ -284,6 +288,7 @@ describe("scanCodexSessions", () => {
                 id,
                 created_at,
                 updated_at,
+                rollout_path,
                 source,
                 model_provider,
                 cwd,
@@ -295,13 +300,14 @@ describe("scanCodexSessions", () => {
                 agent_nickname,
                 agent_role,
                 model
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
             "thread-int",
             1775037600,
             1775041200,
+            null,
             "chat",
             "openai",
             "/Volumes/git/legotin/agent-badge",
@@ -385,6 +391,7 @@ describe("scanCodexSessionsIncremental", () => {
                 id,
                 created_at,
                 updated_at,
+                rollout_path,
                 source,
                 model_provider,
                 cwd,
@@ -396,11 +403,12 @@ describe("scanCodexSessionsIncremental", () => {
                 agent_nickname,
                 agent_role,
                 model
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
             "thread-null-2",
+            null,
             null,
             null,
             "chat",
@@ -517,6 +525,7 @@ describe("scanCodexSessionsIncremental", () => {
                 id,
                 created_at,
                 updated_at,
+                rollout_path,
                 source,
                 model_provider,
                 cwd,
@@ -528,13 +537,14 @@ describe("scanCodexSessionsIncremental", () => {
                 agent_nickname,
                 agent_role,
                 model
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
             "thread-int-1",
             1775037600,
             1775041200,
+            null,
             "chat",
             "openai",
             "/Volumes/git/legotin/agent-badge",
@@ -565,6 +575,7 @@ describe("scanCodexSessionsIncremental", () => {
                 id,
                 created_at,
                 updated_at,
+                rollout_path,
                 source,
                 model_provider,
                 cwd,
@@ -576,13 +587,14 @@ describe("scanCodexSessionsIncremental", () => {
                 agent_nickname,
                 agent_role,
                 model
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `
           )
           .run(
             "thread-int-2",
             1775041800,
             1775042400,
+            null,
             "chat",
             "openai",
             "/Volumes/git/legotin/agent-badge",

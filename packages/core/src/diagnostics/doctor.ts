@@ -296,7 +296,8 @@ function defaultEndpointPayload(): string {
       mode: "sessions",
       includedTotals: {
         sessions: 0,
-        tokens: 0
+        tokens: 0,
+        estimatedCostUsdMicros: null
       }
     }),
     null,

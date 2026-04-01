@@ -338,8 +338,11 @@ describe("runPublishCommand", () => {
       expect(publishBadgeToGistMock).toHaveBeenCalledWith({
         config: configuredConfig,
         state: defaultAgentBadgeState,
-        scan,
-        attribution,
+        includedTotals: {
+          sessions: 1,
+          tokens: 120,
+          estimatedCostUsdMicros: null
+        },
         client: gistClient
       });
       expect(persistedState.publish.lastPublishedHash).toBe("hash_123");
