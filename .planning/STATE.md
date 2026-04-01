@@ -1,35 +1,35 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
+milestone: v1.3
 milestone_name: milestone
-status: completed
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-04-01T12:46:53Z"
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-04-01T22:09:14.066Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 1
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-31)
+See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Milestone v1.2 complete
+**Current focus:** Phase 14 — shared-remote-contribution-model
 
 ## Current Position
 
-Phase: 13 (post-publish-registry-verification-and-final-operations) — COMPLETE
-Plan: 2 of 2
-Status: Completed
-Last activity: 2026-04-01 -- Completed 13-02 and closed milestone v1.2
+Phase: 15
+Plan: Not started
+Status: Ready to execute
+Last activity: 2026-04-01
 
-Progress: [██████████] 6/6 plans complete in milestone v1.2
+Progress: [░░░░░░░░░░] 0/7 plans complete in milestone v1.3
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 6/6 plans complete in milestone v1.2
 | Phase 07-release-readiness P03 | 2m 22s | 2 tasks | 9 files |
 | Phase 12-production-publish-execution P01 | 1 | 2 tasks | 6 files |
 | Phase 13 P01 | 5m 31s | 2 tasks | 8 files |
+| Phase 14 P01 | 3m 21s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -125,15 +126,19 @@ Recent decisions affecting current work:
 - [Phase 13]: Match create-agent-badge direct execution to the runtime CLI's realpath-based guard so symlinked npm bin paths cannot silently no-op.
 - [Phase 13]: Production release operations now rely on npm trusted publishing via GitHub Actions OIDC rather than a long-lived `NPM_TOKEN`.
 - [Phase 13]: The maintained release checklist must include the exact-version post-publish registry smoke before a release can be considered closed.
+- [Phase 14]: Canonical shared Phase 14 state is one per-publisher contribution file plus one shared overrides file.
 
 ### Pending Todos
 
-None yet.
+- Define the shared remote contribution shape and deterministic merge rules.
+- Decide how publisher identity, session identity, and shared override state are represented without leaking sensitive data.
+- Plan migration from existing single-writer gist payloads to the shared model.
 
 ### Blockers/Concerns
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
 - Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
+- Current badge publishing is still last-writer-wins for shared repos; correctness across multiple contributors is the central architecture risk for this milestone.
 
 ### Quick Tasks Completed
 
@@ -146,6 +151,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T12:46:53Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-04-01T21:48:28.390Z
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None

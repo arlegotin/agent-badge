@@ -1,9 +1,9 @@
 ---
 phase: 14
 slug: shared-remote-contribution-model
-status: draft
+status: passed
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-04-01
 ---
 
@@ -41,10 +41,10 @@ created: 2026-04-01
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 14-01-01 | 01 | 1 | TEAM-01, TEAM-02 | schema/merge unit | `npm test -- --run packages/core/src/publish` | ❌ W0 | ⬜ pending |
-| 14-02-01 | 02 | 1 | TEAM-01, TEAM-02 | publish integration | `npm test -- --run packages/core/src/publish packages/agent-badge/src/commands/publish.test.ts` | ❌ W0 | ⬜ pending |
-| 14-02-02 | 02 | 1 | TEAM-01 | state/init regression | `npm test -- --run packages/core/src/state packages/core/src/init` | ❌ W0 | ⬜ pending |
-| 14-03-01 | 03 | 2 | TEAM-03 | privacy/schema assertions | `npm test -- --run packages/core/src/publish packages/core/src/state && npm run docs:check` | ❌ W0 | ⬜ pending |
+| 14-01-01 | 01 | 1 | TEAM-01, TEAM-02 | schema/merge unit | `npm test -- --run packages/core/src/publish/shared-model.test.ts packages/core/src/publish/shared-merge.test.ts` | ✅ | ✅ green |
+| 14-02-01 | 02 | 2 | TEAM-01, TEAM-02 | publish integration | `npm test -- --run packages/core/src/publish/github-gist-client.test.ts packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/publish.test.ts` | ✅ | ✅ green |
+| 14-02-02 | 02 | 2 | TEAM-01 | state/init regression | `npm test -- --run packages/core/src/state/state-schema.test.ts packages/core/src/init/scaffold.test.ts packages/core/src/publish/publish-state.test.ts` | ✅ | ✅ green |
+| 14-03-01 | 03 | 3 | TEAM-03 | privacy/schema assertions | `npm test -- --run packages/core/src/publish/shared-badge-aggregation.test.ts packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/publish.test.ts && npm run docs:check` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,11 +52,11 @@ created: 2026-04-01
 
 ## Wave 0 Requirements
 
-- [ ] `packages/core/src/publish/shared-state-schema.ts` or equivalent shared-state boundary exists
-- [ ] `packages/core/src/publish/shared-state.test.ts` or equivalent direct coverage exists
-- [ ] publish-service tests cover fetch-merge-write behavior
-- [ ] state/init tests cover stable publisher identity persistence across reruns
-- [ ] privacy assertions cover the shared-state serializer and docs wording
+- [x] `packages/core/src/publish/shared-model.ts` defines the shared-state boundary
+- [x] `packages/core/src/publish/shared-badge-aggregation.test.ts` provides direct shared aggregation coverage
+- [x] publish-service tests cover fetch-merge-write behavior
+- [x] state/init tests cover stable publisher identity persistence across reruns
+- [x] privacy assertions cover the shared-state serializer and docs wording
 
 ---
 
@@ -70,11 +70,11 @@ created: 2026-04-01
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** passed on 2026-04-02 after the full Phase 14 test suite and docs gate succeeded, plus a manual read of `docs/HOW-IT-WORKS.md` and `docs/PRIVACY.md` confirmed the wording stayed aggregate-only.
