@@ -6,13 +6,17 @@ on:
     branches:
       - main
 
+concurrency:
+  group: release-main
+  cancel-in-progress: true
+
 permissions:
   contents: write
-  pull-requests: write
   id-token: write
 
 jobs:
   release:
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release): publish ')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,16 +45,52 @@ jobs:
       - name: Verify clean checkout release path
         run: npm run verify:clean-checkout
 
-      - name: Require a changeset for publishable workspace changes (push)
+      - name: Detect publish impact
         if: github.event_name == 'push'
+        id: impact
         run: >-
-          npm run release:changeset-check -- --base "${{ github.event.before }}"
-          --head "${{ github.sha }}"
+          npm run release:publish-impact -- --base "${{ github.event.before }}"
+          --head "${{ github.sha }}" --github-output "$GITHUB_OUTPUT"
 
-      - name: Version or publish
-        uses: changesets/action@v1
-        with:
-          version: npm run changeset version
-          publish: npm run release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Stop if this push did not change publishable inputs
+        if: github.event_name == 'push' && steps.impact.outputs.impacted != 'true'
+        run: echo "No publishable inputs changed on main; skipping npm publish."
+
+      - name: Stop if main moved after this workflow started
+        if: github.event_name == 'push' && steps.impact.outputs.impacted == 'true'
+        id: freshness
+        run: |
+          git fetch origin main
+          CURRENT_MAIN=$(git rev-parse origin/main)
+          if [ "$CURRENT_MAIN" != "${{ github.sha }}" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "Main advanced to $CURRENT_MAIN; a newer release run will handle publishing."
+            exit 0
+          fi
+          echo "stale=false" >> "$GITHUB_OUTPUT"
+
+      - name: Read current npm version
+        if: github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true')
+        id: registry
+        run: |
+          echo "version=$(npm view @legotin/agent-badge version)" >> "$GITHUB_OUTPUT"
+
+      - name: Auto-bump publishable package versions
+        if: github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true')
+        id: version
+        run: >-
+          npm run release:auto-version -- --registry-version "${{ steps.registry.outputs.version }}"
+          --write --github-output "$GITHUB_OUTPUT"
+
+      - name: Publish npm packages
+        if: github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true')
+        run: npm run release
+
+      - name: Commit and push released versions
+        if: github.event_name == 'push' && steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json packages/core/package.json packages/agent-badge/package.json packages/create-agent-badge/package.json
+          git commit -m "chore(release): publish ${{ steps.version.outputs.next_version }}"
+          git push origin HEAD:main

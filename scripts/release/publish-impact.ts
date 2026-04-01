@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { appendFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -13,19 +14,24 @@ const publishableWorkspacePrefixes = [
   "packages/create-agent-badge/"
 ] as const;
 
-const ignoredChangesetFiles = new Set([".changeset/README.md", ".changeset/config.json"]);
+const publishableRootInputs = new Set([
+  "package.json",
+  "package-lock.json",
+  "tsconfig.base.json"
+]);
 
-export interface ChangesetDisciplineArgs {
+export interface PublishImpactArgs {
   readonly base: string;
   readonly head: string;
+  readonly json: boolean;
+  readonly githubOutputPath: string | null;
 }
 
-export interface ChangesetDisciplineReport {
-  readonly status: "pass" | "fail";
+export interface PublishImpactReport {
+  readonly impacted: boolean;
   readonly summary: string;
   readonly changedFiles: readonly string[];
   readonly changedPublishableFiles: readonly string[];
-  readonly changedChangesetFiles: readonly string[];
 }
 
 function isAllZeroGitSha(value: string): boolean {
@@ -44,54 +50,47 @@ function isPublishableWorkspacePath(filePath: string): boolean {
     return false;
   }
 
+  if (publishableRootInputs.has(filePath)) {
+    return true;
+  }
+
   return publishableWorkspacePrefixes.some((prefix) => filePath.startsWith(prefix));
 }
 
-function isRealChangesetFile(filePath: string): boolean {
-  return filePath.startsWith(".changeset/") && !ignoredChangesetFiles.has(filePath);
-}
-
-export function evaluateChangesetDiscipline(
+export function evaluatePublishImpact(
   changedFiles: readonly string[]
-): ChangesetDisciplineReport {
+): PublishImpactReport {
   const changedPublishableFiles = changedFiles.filter(isPublishableWorkspacePath);
-  const changedChangesetFiles = changedFiles.filter(isRealChangesetFile);
 
   if (changedPublishableFiles.length === 0) {
     return {
-      status: "pass",
-      summary: "No publishable workspace changes detected in the selected git range.",
+      impacted: false,
+      summary: "No publishable workspace or build-input changes detected in the selected git range.",
       changedFiles,
-      changedPublishableFiles,
-      changedChangesetFiles
-    };
-  }
-
-  if (changedChangesetFiles.length > 0) {
-    return {
-      status: "pass",
-      summary: "Publishable workspace changes are accompanied by at least one release changeset.",
-      changedFiles,
-      changedPublishableFiles,
-      changedChangesetFiles
+      changedPublishableFiles
     };
   }
 
   return {
-    status: "fail",
-    summary:
-      "Publishable workspace changes require a checked-in .changeset/*.md file so the release workflow can version and publish npm packages.",
+    impacted: true,
+    summary: "Publishable workspace or build-input changes detected.",
     changedFiles,
-    changedPublishableFiles,
-    changedChangesetFiles
+    changedPublishableFiles
   };
 }
 
-export function parseChangesetDisciplineArgs(argv: readonly string[]): ChangesetDisciplineArgs {
+export function parsePublishImpactArgs(argv: readonly string[]): PublishImpactArgs {
+  let json = false;
+  let githubOutputPath: string | null = null;
   const entries = new Map<string, string>();
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
+
+    if (token === "--json") {
+      json = true;
+      continue;
+    }
 
     if (!token.startsWith("--")) {
       throw new Error(`Unexpected argument: ${token}`);
@@ -104,7 +103,12 @@ export function parseChangesetDisciplineArgs(argv: readonly string[]): Changeset
       throw new Error(`Argument --${key} expects a value.`);
     }
 
-    entries.set(key, value);
+    if (key === "github-output") {
+      githubOutputPath = value;
+    } else {
+      entries.set(key, value);
+    }
+
     index += 1;
   }
 
@@ -119,7 +123,12 @@ export function parseChangesetDisciplineArgs(argv: readonly string[]): Changeset
     throw new Error("--head is required.");
   }
 
-  return { base, head };
+  return {
+    base,
+    head,
+    json,
+    githubOutputPath
+  };
 }
 
 async function runGitCommand(repoRoot: string, args: readonly string[]): Promise<string> {
@@ -132,49 +141,54 @@ async function runGitCommand(repoRoot: string, args: readonly string[]): Promise
 }
 
 export async function listChangedFiles(
-  args: ChangesetDisciplineArgs,
+  args: Pick<PublishImpactArgs, "base" | "head">,
   repoRoot = repoRootFromScript
 ): Promise<readonly string[]> {
   if (isAllZeroGitSha(args.base)) {
-    return normalizePaths(await runGitCommand(repoRoot, ["diff-tree", "--no-commit-id", "--name-only", "-r", args.head]));
+    return normalizePaths(
+      await runGitCommand(repoRoot, ["diff-tree", "--no-commit-id", "--name-only", "-r", args.head])
+    );
   }
 
   return normalizePaths(await runGitCommand(repoRoot, ["diff", "--name-only", args.base, args.head]));
 }
 
-function formatReport(report: ChangesetDisciplineReport): string {
-  const lines = [report.summary];
+async function writeGitHubOutputs(
+  outputPath: string,
+  report: PublishImpactReport
+): Promise<void> {
+  const payload = [
+    `impacted=${report.impacted ? "true" : "false"}`,
+    "changed_publishable_files<<EOF",
+    ...report.changedPublishableFiles,
+    "EOF"
+  ].join("\n");
 
-  if (report.changedPublishableFiles.length > 0) {
-    lines.push("");
-    lines.push("Publishable workspace files changed:");
-    for (const filePath of report.changedPublishableFiles) {
-      lines.push(`- ${filePath}`);
-    }
-  }
-
-  if (report.changedChangesetFiles.length > 0) {
-    lines.push("");
-    lines.push("Changeset files detected:");
-    for (const filePath of report.changedChangesetFiles) {
-      lines.push(`- ${filePath}`);
-    }
-  }
-
-  return lines.join("\n");
+  await appendFile(outputPath, `${payload}\n`, "utf8");
 }
 
 async function main(): Promise<void> {
-  const args = parseChangesetDisciplineArgs(process.argv.slice(2));
+  const args = parsePublishImpactArgs(process.argv.slice(2));
   const changedFiles = await listChangedFiles(args);
-  const report = evaluateChangesetDiscipline(changedFiles);
-  const output = formatReport(report);
+  const report = evaluatePublishImpact(changedFiles);
 
-  if (report.status === "fail") {
-    throw new Error(output);
+  if (args.githubOutputPath !== null) {
+    await writeGitHubOutputs(args.githubOutputPath, report);
   }
 
-  console.log(output);
+  if (args.json) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+
+  console.log(report.summary);
+  if (report.changedPublishableFiles.length > 0) {
+    console.log("");
+    console.log("Changed publishable inputs:");
+    for (const filePath of report.changedPublishableFiles) {
+      console.log(`- ${filePath}`);
+    }
+  }
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {

@@ -25,8 +25,9 @@ const expectedPublishablePackageNames = [
 const expectedWorkflowMarkers = [
   "workflow_dispatch",
   "id-token: write",
-  "changesets/action@v1",
-  "publish: npm run release"
+  "npm run release:publish-impact",
+  "npm run release:auto-version",
+  "npm run release"
 ] as const;
 
 export type ReleasePreflightStatus = "safe" | "warn" | "blocked";
@@ -575,7 +576,8 @@ export function evaluateWorkflowContract(
     summary: `${workflowFile} still references the expected trusted-publishing release workflow contract.`,
     details: [
       "Local preflight validates workflow markers only.",
-      "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token."
+      "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token.",
+      "The production workflow is expected to auto-bump and publish qualifying main-branch changes."
     ]
   };
 }

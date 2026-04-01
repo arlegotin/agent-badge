@@ -180,6 +180,27 @@ describe("release preflight", () => {
     expect(overall).toBe("blocked");
   });
 
+  it("accepts the auto-publish workflow markers", () => {
+    const workflowContract = preflight.evaluateWorkflowContract(`
+name: Release
+on:
+  workflow_dispatch:
+permissions:
+  id-token: write
+jobs:
+  release:
+    steps:
+      - run: npm run release:publish-impact
+      - run: npm run release:auto-version
+      - run: npm run release
+`);
+
+    expect(workflowContract).toMatchObject({
+      id: "workflow-contract",
+      status: "safe"
+    });
+  });
+
   it("blocks when the release-inputs check finds an inconsistent publish configuration", () => {
     const releaseInputs = preflight.evaluateReleaseInputs({
       manifests: [

@@ -57,16 +57,18 @@ It also runs `npm ping` and `npm whoami` from the maintainer environment. If `np
 
 The local preflight cannot prove GitHub Actions trusted-publisher state remotely. Before publish, confirm each npm package trusts the `arlegotin/agent-badge` repository with workflow file `release.yml`, and keep `.github/workflows/release.yml` on the OIDC path (`permissions.id-token: write`). `npm whoami` is still useful for local operator sanity checks, but it is not the production publish credential.
 
-## 4. Publish via workflow (primary operator path)
+## 4. Publish via workflow (automatic main-branch path)
 
-Use `.github/workflows/release.yml` as the production publish path. Trigger it using `workflow_dispatch` in the repository’s GitHub Actions tab after the preflight file is green:
+Use `.github/workflows/release.yml` as the production publish path.
 
-- The release workflow is Changesets-driven. npm package versions do not change on arbitrary commits to `main`.
-- A publish only happens when a checked-in `.changeset/*.md` release note exists and the resulting release commit reaches `main`.
-- If publishable workspace files change without a changeset, GitHub Actions now fails with a release-discipline error instead of silently no-oping.
+- Pushes to `main` automatically publish when they change publishable workspace inputs.
+- The workflow computes publish impact from `packages/core`, `packages/agent-badge`, `packages/create-agent-badge`, plus root build inputs like `package.json`, `package-lock.json`, and `tsconfig.base.json`.
+- Qualifying pushes auto-bump the three publishable packages in lockstep by one patch version, publish through npm trusted publishing, then commit the released versions back to `main`.
+- Auto-release commits use the form `chore(release): publish <version>` and are skipped by the workflow itself to prevent publish loops.
+- `workflow_dispatch` remains available as a manual recovery path for maintainers.
 
-- Start the workflow run for the production publish.
-- Record the run URL and run ID from the completed workflow page.
+- For the automatic path, record the run URL and run ID from the completed workflow page.
+- For recovery, start the workflow manually with `workflow_dispatch`.
 - Do not switch to a local publish path. If the workflow cannot publish, fix the trusted-publisher or workflow configuration first.
 - If successful, write release evidence with publish-path metadata:
 
