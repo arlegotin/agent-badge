@@ -243,6 +243,68 @@ describe("runStatusCommand", () => {
       expect(output.read()).toContain(
         "- Publish: deferred | gist configured=no"
       );
+      expect(output.read()).toContain("- Live badge trust: not attempted");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("prints stale failed publish trust separately from shared mode health", async () => {
+    const fixture = await createFixture({
+      config: {
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "gist_789",
+          badgeUrl:
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+        }
+      },
+      state: {
+        ...configuredState(),
+        publish: {
+          ...configuredState().publish,
+          status: "error",
+          gistId: "gist_789",
+          lastPublishedHash: "hash_789",
+          lastPublishedAt: "2026-03-30T19:10:00.000Z"
+        },
+        refresh: {
+          ...configuredState().refresh,
+          lastRefreshedAt: "2026-03-30T19:12:00.000Z",
+          lastPublishDecision: "failed"
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    try {
+      await runStatusCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer,
+        gistClient: buildGistClient({
+          [AGENT_BADGE_GIST_FILE]: JSON.stringify(
+            {
+              schemaVersion: 1,
+              label: "AI Usage",
+              message: "610 tokens",
+              color: "blue"
+            },
+            null,
+            2
+          )
+        })
+      });
+
+      expect(output.read()).toContain(
+        "- Live badge trust: stale after failed publish"
+      );
+      expect(output.read()).toContain(
+        "- Last successful badge update: 2026-03-30T19:10:00.000Z"
+      );
+      expect(output.read()).toContain(
+        "- Shared mode: legacy | health=healthy | contributors=0"
+      );
     } finally {
       await fixture.cleanup();
     }

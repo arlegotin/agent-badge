@@ -401,6 +401,10 @@ describe("runRefreshCommand", () => {
       expect(publishCall).not.toHaveProperty("includedTotals");
       expect(persistedState.refresh.lastPublishDecision).toBe("skipped");
       expect(output.read()).toContain("- Publish: skipped");
+      expect(output.read()).toContain("- Live badge trust: unchanged");
+      expect(output.read()).toContain(
+        "- Last successful badge update: 2026-03-29T19:00:00.000Z"
+      );
       expect(output.read()).toContain("- Publish mode: shared");
       expect(output.read()).toContain("- Migration: none");
     } finally {
@@ -815,6 +819,10 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("Refresh status: failed-soft");
       expect(output.read()).toContain("GitHub authentication missing");
+      expect(output.read()).toContain(
+        "- Live badge trust: stale after failed publish"
+      );
+      expect(output.read()).toContain("- Last successful badge update:");
       expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
         cwd: fixture.repoRoot,
         entry: expect.objectContaining({
