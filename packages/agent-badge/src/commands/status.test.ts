@@ -210,6 +210,8 @@ describe("runStatusCommand", () => {
         "- Totals: 5 sessions, 610 tokens",
         "- Providers: codex=enabled, claude=enabled",
         "- Publish: published | gist configured=yes | last published=2026-03-30T19:10:00.000Z | gistId=gist_789 | lastPublishedHash=hash_789",
+        "- Live badge trust: current",
+        "- Last successful badge update: 2026-03-30T19:10:00.000Z",
         "- Shared mode: legacy | health=healthy | contributors=0",
         "- Shared issues: legacy-no-contributors=1",
         "- Last refresh: 2026-03-30T19:12:00.000Z (incremental)",

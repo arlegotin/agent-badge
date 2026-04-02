@@ -78,3 +78,18 @@ export function derivePublishTrustReport({
 
   return report;
 }
+
+export function formatPublishTrustStatus(status: PublishTrustStatus): string {
+  switch (status) {
+    case "current":
+      return "current";
+    case "unchanged":
+      return "unchanged";
+    case "not-attempted":
+      return "not attempted";
+    case "stale-failed-publish":
+      return "stale after failed publish";
+    case "unknown":
+      return "unknown";
+  }
+}

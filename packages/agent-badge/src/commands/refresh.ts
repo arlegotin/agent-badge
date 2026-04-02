@@ -7,6 +7,8 @@ import {
   buildRefreshCacheKey,
   buildSharedOverrideDigest,
   createGitHubGistClient,
+  derivePublishTrustReport,
+  formatPublishTrustStatus,
   formatEstimatedCostUsd,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
@@ -157,6 +159,35 @@ function formatPublishLine(
   return `${decision} (last published ${state.publish.lastPublishedAt})`;
 }
 
+function printPublishTrustLines(
+  stdout: OutputWriter,
+  state: AgentBadgeState,
+  options?: {
+    readonly includeLastSuccessfulBadgeUpdate?: boolean;
+  }
+): void {
+  const trustReport = derivePublishTrustReport({
+    state,
+    now: new Date().toISOString()
+  });
+
+  writeLine(
+    stdout,
+    `- Live badge trust: ${formatPublishTrustStatus(trustReport.status)}`
+  );
+
+  if (
+    options?.includeLastSuccessfulBadgeUpdate !== false &&
+    trustReport.lastPublishedAt !== null &&
+    trustReport.status !== "not-attempted"
+  ) {
+    writeLine(
+      stdout,
+      `- Last successful badge update: ${trustReport.lastPublishedAt}`
+    );
+  }
+}
+
 function printRefreshSummary(
   stdout: OutputWriter,
   result: RefreshCommandSuccessResult,
@@ -175,6 +206,9 @@ function printRefreshSummary(
       concise
     )}`
   );
+  printPublishTrustLines(stdout, result.state, {
+    includeLastSuccessfulBadgeUpdate: !concise
+  });
   writeLine(
     stdout,
     `- Last refresh: ${result.state.refresh.lastRefreshedAt ?? "unavailable"}`
@@ -194,10 +228,22 @@ function printRefreshSummary(
   }
 }
 
-function printSoftFailure(stdout: OutputWriter, error: Error): void {
+function printSoftFailure(
+  stdout: OutputWriter,
+  error: Error,
+  state: AgentBadgeState | null
+): void {
   writeLine(stdout, "agent-badge refresh");
   writeLine(stdout, "- Refresh status: failed-soft");
   writeLine(stdout, `- Error: ${error.message}`);
+
+  if (state === null) {
+    return;
+  }
+
+  printPublishTrustLines(stdout, state);
+
+  writeLine(stdout, `- Last refresh: ${state.refresh.lastRefreshedAt ?? "unavailable"}`);
 }
 
 interface RefreshCommandLogInput {
@@ -427,7 +473,7 @@ export async function runRefreshCommand(
       throw refreshError;
     }
 
-    printSoftFailure(stdout, refreshError);
+    printSoftFailure(stdout, refreshError, persistedState);
     await appendAgentBadgeLog({
       cwd,
       entry: buildLogEntry({

@@ -3,6 +3,8 @@ import { join, resolve } from "node:path";
 
 import {
   createGitHubGistClient,
+  derivePublishTrustReport,
+  formatPublishTrustStatus,
   formatEstimatedCostUsd,
   inspectSharedPublishHealth,
   parseAgentBadgeState,
@@ -258,6 +260,27 @@ function formatPublishLine(
   return details.join(" | ");
 }
 
+function buildPublishTrustLines(state: AgentBadgeState): string[] {
+  const trustReport = derivePublishTrustReport({
+    state,
+    now: new Date().toISOString()
+  });
+  const lines = [
+    `- Live badge trust: ${formatPublishTrustStatus(trustReport.status)}`
+  ];
+
+  if (
+    trustReport.lastPublishedAt !== null &&
+    trustReport.status !== "not-attempted"
+  ) {
+    lines.push(
+      `- Last successful badge update: ${trustReport.lastPublishedAt}`
+    );
+  }
+
+  return lines;
+}
+
 function formatLastRefreshLine(state: AgentBadgeState): string {
   if (state.refresh.lastRefreshedAt === null) {
     return "unavailable";
@@ -294,6 +317,7 @@ export async function runStatusCommand(
     `- Totals: ${formatTotalsLine(state)}`,
     `- Providers: ${formatProvidersLine(config)}`,
     `- Publish: ${formatPublishLine(config, state)}`,
+    ...buildPublishTrustLines(state),
     ...sharedModeLines,
     `- Last refresh: ${formatLastRefreshLine(state)}`,
     `- Checkpoints: ${formatCheckpointsLine(state)}`

@@ -280,7 +280,19 @@ describe("runRefreshCommand", () => {
       }
     };
     const fixture = await createFixture({
-      config: configuredConfig
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_456",
+          lastPublishedHash: "hash_456",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared"
+        }
+      }
     });
     const output = createOutputCapture();
     const gistClient = {
@@ -423,7 +435,19 @@ describe("runRefreshCommand", () => {
       }
     };
     const fixture = await createFixture({
-      config: configuredConfig
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_456",
+          lastPublishedHash: "hash_456",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared"
+        }
+      }
     });
     const output = createOutputCapture();
     const gistClient = {
@@ -647,10 +671,12 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("- Scan mode: incremental");
       expect(output.read()).toContain("- Publish: skipped");
+      expect(output.read()).toContain("- Live badge trust: unchanged");
       expect(output.read()).toContain("- Publish mode: shared");
       expect(output.read()).toContain("- Migration: none");
       expect(output.read()).not.toContain("last published");
-      expect(output.read().trim().split("\n")).toHaveLength(7);
+      expect(output.read()).not.toContain("- Last successful badge update:");
+      expect(output.read().trim().split("\n")).toHaveLength(8);
     } finally {
       await fixture.cleanup();
     }
@@ -754,7 +780,19 @@ describe("runRefreshCommand", () => {
       }
     };
     const fixture = await createFixture({
-      config: configuredConfig
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_456",
+          lastPublishedHash: "hash_456",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared"
+        }
+      }
     });
     const output = createOutputCapture();
     const refreshResult = {
