@@ -46,7 +46,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: Implement deterministic cross-publisher merge and deduplication rules
+- [x] 15-01: Implement deterministic cross-publisher merge and deduplication rules
 - [ ] 15-02: Validate convergence, conflict handling, and shared override behavior
 
 ### Phase 16: Migration, Diagnostics, And Team Operator UX
@@ -68,5 +68,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. Shared Remote Contribution Model | 3/3 | Complete    | 2026-04-01 |
-| 15. Cross-Publisher Deduplication And Publish Semantics | 0/2 | Pending | — |
+| 15. Cross-Publisher Deduplication And Publish Semantics | 1/2 | In Progress | — |
 | 16. Migration, Diagnostics, And Team Operator UX | 0/2 | Pending | — |

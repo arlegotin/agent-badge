@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-04-01T22:09:14.066Z"
-last_activity: 2026-04-01
+stopped_at: Completed 15-01-PLAN.md
+last_updated: "2026-04-02T02:57:40.898Z"
+last_activity: 2026-04-02 -- Completed 15-01 and prepared 15-02
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 14 — shared-remote-contribution-model
+**Current focus:** Phase 15 — cross-publisher-deduplication-and-publish-semantics
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-01
+Phase: 15 (cross-publisher-deduplication-and-publish-semantics) — EXECUTING
+Plan: 2 of 2
+Status: Wave 1 complete; ready for publish-service and CLI wiring
+Last activity: 2026-04-02 -- Completed 15-01 and prepared 15-02
 
-Progress: [░░░░░░░░░░] 0/7 plans complete in milestone v1.3
+Progress: [████████░░] 4/5 plans complete in milestone v1.3
 
 ## Performance Metrics
 
@@ -127,11 +127,11 @@ Recent decisions affecting current work:
 - [Phase 13]: Production release operations now rely on npm trusted publishing via GitHub Actions OIDC rather than a long-lived `NPM_TOKEN`.
 - [Phase 13]: The maintained release checklist must include the exact-version post-publish registry smoke before a release can be considered closed.
 - [Phase 14]: Canonical shared Phase 14 state is one per-publisher contribution file plus one shared overrides file.
+- [Phase 15]: Shared contributor files now publish schema-version-2 session observations keyed by opaque digests rather than per-publisher totals. — Cross-publisher deduplication must operate on stable session identities instead of merged aggregate snapshots.
+- [Phase 15]: Refresh cache v2 preserves session status, override decision, tokens, and optional cost for later shared publish wiring. — Incremental publish and pre-push must be able to rebuild the shared reducer contract without a mandatory full rescan.
 
 ### Pending Todos
 
-- Define the shared remote contribution shape and deterministic merge rules.
-- Decide how publisher identity, session identity, and shared override state are represented without leaking sensitive data.
 - Plan migration from existing single-writer gist payloads to the shared model.
 
 ### Blockers/Concerns
@@ -151,6 +151,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-01T21:48:28.390Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-04-02T02:57:40.895Z
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None

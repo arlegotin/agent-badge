@@ -15,9 +15,9 @@ This milestone makes shared repo totals correct when multiple contributors publi
 
 ### Deduplication And Consistency
 
-- [ ] **CONS-01**: Shared totals deduplicate usage by stable provider session identity across contributors and machines instead of summing opaque local totals.
-- [ ] **CONS-02**: When the same underlying session is observed by more than one publisher, the merged result converges deterministically without double counting.
-- [ ] **CONS-03**: Repo-level include/exclude outcomes for ambiguous sessions are shared so contributors do not publish conflicting decisions for the same session.
+- [x] **CONS-01**: Shared totals deduplicate usage by stable provider session identity across contributors and machines instead of summing opaque local totals.
+- [x] **CONS-02**: When the same underlying session is observed by more than one publisher, the merged result converges deterministically without double counting.
+- [x] **CONS-03**: Repo-level include/exclude outcomes for ambiguous sessions are shared so contributors do not publish conflicting decisions for the same session.
 
 ### Migration And Operator UX
 
@@ -51,9 +51,9 @@ This milestone makes shared repo totals correct when multiple contributors publi
 | TEAM-01 | Phase 14 | Complete |
 | TEAM-02 | Phase 14 | Complete |
 | TEAM-03 | Phase 14 | Complete |
-| CONS-01 | Phase 15 | Pending |
-| CONS-02 | Phase 15 | Pending |
-| CONS-03 | Phase 15 | Pending |
+| CONS-01 | Phase 15 | Complete |
+| CONS-02 | Phase 15 | Complete |
+| CONS-03 | Phase 15 | Complete |
 | MIGR-01 | Phase 16 | Pending |
 | MIGR-02 | Phase 16 | Pending |
 | MIGR-03 | Phase 16 | Pending |
