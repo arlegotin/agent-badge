@@ -16,7 +16,6 @@ permissions:
 
 jobs:
   release:
-    if: ${{ github.event_name != 'push' || !startsWith(github.event.head_commit.message || '', 'chore(release): publish ') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,40 +23,57 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Skip recursive release commits
+        if: github.event_name == 'push'
+        id: release_commit
+        run: |
+          COMMIT_MESSAGE="$(git log -1 --pretty=%s)"
+          if printf '%s\n' "$COMMIT_MESSAGE" | grep -q '^chore(release): publish '; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Release publish commit detected; skipping recursive release workflow."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node.js
+        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
           cache: npm
 
       - name: Install dependencies
+        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
         run: npm ci
 
       - name: Prepare isolated HOME
+        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
         run: |
           HOME_DIR="$RUNNER_TEMP/agent-badge-home"
           mkdir -p "$HOME_DIR"
           echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
 
       - name: Typecheck
+        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
         run: npm run typecheck
 
       - name: Verify clean checkout release path
+        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
         run: npm run verify:clean-checkout
 
       - name: Detect publish impact
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true'
         id: impact
         run: >-
           npm run release:publish-impact -- --base "${{ github.event.before }}"
           --head "${{ github.sha }}" --github-output "$GITHUB_OUTPUT"
 
       - name: Stop if this push did not change publishable inputs
-        if: github.event_name == 'push' && steps.impact.outputs.impacted != 'true'
+        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true' && steps.impact.outputs.impacted != 'true'
         run: echo "No publishable inputs changed on main; skipping npm publish."
 
       - name: Stop if main moved after this workflow started
-        if: github.event_name == 'push' && steps.impact.outputs.impacted == 'true'
+        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true' && steps.impact.outputs.impacted == 'true'
         id: freshness
         run: |
           git fetch origin main
@@ -70,24 +86,24 @@ jobs:
           echo "stale=false" >> "$GITHUB_OUTPUT"
 
       - name: Read current npm version
-        if: github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true')
+        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
         id: registry
         run: |
           echo "version=$(npm view @legotin/agent-badge version)" >> "$GITHUB_OUTPUT"
 
       - name: Auto-bump publishable package versions
-        if: github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true')
+        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
         id: version
         run: >-
           npm run release:auto-version -- --registry-version "${{ steps.registry.outputs.version }}"
           --write --github-output "$GITHUB_OUTPUT"
 
       - name: Publish npm packages
-        if: github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true')
+        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
         run: npm run release
 
       - name: Commit and push released versions
-        if: github.event_name == 'push' && steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'
+        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true' && steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
