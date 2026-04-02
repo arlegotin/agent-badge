@@ -7,7 +7,10 @@ import { dirname, join } from "node:path";
 
 import {
   AGENT_BADGE_GIST_FILE,
+  AGENT_BADGE_OVERRIDES_GIST_FILE,
   buildStableBadgeUrl,
+  buildContributorGistFileName,
+  buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
   parseAgentBadgeState,
   type RunDoctorChecksResult
@@ -29,6 +32,34 @@ const execFileAsync = promisify(execFile);
 interface RepoFixture {
   readonly root: string;
   cleanup(): Promise<void>;
+}
+
+function createObservationContributorRecord(options: {
+  readonly publisherId: string;
+  readonly updatedAt?: string;
+  readonly observations: Record<string, unknown>;
+}): string {
+  return JSON.stringify(
+    {
+      schemaVersion: 2,
+      publisherId: options.publisherId,
+      updatedAt: options.updatedAt ?? "2026-03-31T00:00:00.000Z",
+      observations: options.observations
+    },
+    null,
+    2
+  );
+}
+
+function createOverridesRecord(overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      overrides
+    },
+    null,
+    2
+  );
 }
 
 interface DoctorFixture {
@@ -186,7 +217,34 @@ describe("runDoctorChecks", () => {
               id: "doctorgist",
               ownerLogin: "octocat",
               public: true,
-              files: [AGENT_BADGE_GIST_FILE]
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                },
+                [buildContributorGistFileName("publisher-a")]: {
+                  filename: buildContributorGistFileName("publisher-a"),
+                  content: createObservationContributorRecord({
+                    publisherId: "publisher-a",
+                    observations: {
+                      [buildSharedOverrideDigest("codex:session-a")]: {
+                        sessionUpdatedAt: "2026-03-31T00:00:00.000Z",
+                        attributionStatus: "included",
+                        overrideDecision: null,
+                        tokens: 42,
+                        estimatedCostUsdMicros: null
+                      }
+                    }
+                  }),
+                  truncated: false
+                },
+                [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+                  filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+                  content: createOverridesRecord(),
+                  truncated: false
+                }
+              }
             }),
             createPublicGist: async () => {
               throw new Error("createPublicGist should not run");
@@ -207,12 +265,14 @@ describe("runDoctorChecks", () => {
         "publish-auth",
         "publish-write",
         "publish-shields",
+        "shared-mode",
+        "shared-health",
         "readme-badge",
         "pre-push-hook"
       ]);
       expect(result.overallStatus).toBe("pass");
-      expect(result.total).toBe(8);
-      expect(result.passCount).toBe(8);
+      expect(result.total).toBe(10);
+      expect(result.passCount).toBe(10);
       expect(
         result.checks.some((check) =>
           check.message.includes(AGENT_BADGE_README_START_MARKER)
@@ -242,7 +302,13 @@ describe("runDoctorChecks", () => {
               id: "doctorgist",
               ownerLogin: "octocat",
               public: true,
-              files: [AGENT_BADGE_GIST_FILE]
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                }
+              }
             }),
             createPublicGist: async () => {
               throw new Error("createPublicGist should not run");
@@ -258,6 +324,120 @@ describe("runDoctorChecks", () => {
 
       expect(publishAuth?.status).toBe("warn");
       expect(publishAuth?.fix[0]).toContain("GH_TOKEN");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("adds shared-mode and shared-health checks with actionable migration guidance", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+      await writeJsonFile(fixture.repo.root, ".agent-badge/state.json", {
+        version: 1,
+        init: {
+          initialized: true,
+          scaffoldVersion: 1,
+          lastInitializedAt: "2026-03-31T00:00:00.000Z"
+        },
+        checkpoints: {
+          codex: {
+            cursor: null,
+            lastScannedAt: null
+          },
+          claude: {
+            cursor: null,
+            lastScannedAt: null
+          }
+        },
+        publish: {
+          status: "deferred",
+          gistId: "doctorgist",
+          lastPublishedHash: null,
+          lastPublishedAt: null,
+          publisherId: "publisher-local",
+          mode: "shared"
+        },
+        refresh: {
+          lastRefreshedAt: null,
+          lastScanMode: null,
+          lastPublishDecision: null,
+          summary: null
+        },
+        overrides: {
+          ambiguousSessions: {}
+        }
+      });
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                },
+                [buildContributorGistFileName("publisher-remote")]: {
+                  filename: buildContributorGistFileName("publisher-remote"),
+                  content: createObservationContributorRecord({
+                    publisherId: "publisher-remote",
+                    observations: {
+                      [buildSharedOverrideDigest("codex:session-remote")]: {
+                        sessionUpdatedAt: "2026-03-31T00:00:00.000Z",
+                        attributionStatus: "included",
+                        overrideDecision: null,
+                        tokens: 10,
+                        estimatedCostUsdMicros: null
+                      }
+                    }
+                  }),
+                  truncated: false
+                },
+                [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+                  filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+                  content: createOverridesRecord(),
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            },
+            deleteGist: async () => {
+              throw new Error("deleteGist should not run");
+            }
+          }
+        })
+      );
+
+      const sharedMode = result.checks.find((check) => check.id === "shared-mode");
+      const sharedHealth = result.checks.find((check) => check.id === "shared-health");
+
+      expect(sharedMode?.status).toBe("pass");
+      expect(sharedHealth?.status).toBe("fail");
+      expect(sharedHealth?.fix).toContain(
+        "Run `agent-badge refresh` to recreate the local contributor record."
+      );
+      expect(sharedHealth?.fix).toContain(
+        "If this repo is migrating from legacy publish state, migrate from the original publisher machine by rerunning `agent-badge init`."
+      );
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.repo.cleanup();

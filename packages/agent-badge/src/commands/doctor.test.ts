@@ -9,9 +9,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   AGENT_BADGE_GIST_FILE,
+  AGENT_BADGE_OVERRIDES_GIST_FILE,
   AGENT_BADGE_README_END_MARKER,
   AGENT_BADGE_README_START_MARKER,
   buildStableBadgeUrl,
+  buildContributorGistFileName,
+  buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
   defaultAgentBadgeState,
   type GitHubGistClient,
@@ -126,13 +129,41 @@ async function createFixture(options: {
   };
 }
 
-function buildGistClient(): GitHubGistClient {
+function createObservationContributorRecord(options: {
+  readonly publisherId: string;
+  readonly updatedAt?: string;
+  readonly observations: Record<string, unknown>;
+}): string {
+  return JSON.stringify(
+    {
+      schemaVersion: 2,
+      publisherId: options.publisherId,
+      updatedAt: options.updatedAt ?? "2026-03-31T00:00:00.000Z",
+      observations: options.observations
+    },
+    null,
+    2
+  );
+}
+
+function createOverridesRecord(overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify(
+    {
+      schemaVersion: 1,
+      overrides
+    },
+    null,
+    2
+  );
+}
+
+function buildGistClient(files: GitHubGist["files"]): GitHubGistClient {
   return {
     getGist: async (): Promise<GitHubGist> => ({
       id: "doctorgist",
       ownerLogin: "octocat",
       public: true,
-      files: [AGENT_BADGE_GIST_FILE]
+      files
     }),
     createPublicGist: async () => {
       throw new Error("createPublicGist should not run.");
@@ -173,7 +204,35 @@ describe("runDoctorCommand", () => {
           GH_TOKEN: "token"
         },
         json: true,
-        gistClient: buildGistClient(),
+        gistClient: buildGistClient({
+          [AGENT_BADGE_GIST_FILE]: {
+            filename: AGENT_BADGE_GIST_FILE,
+            content:
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"blue"}',
+            truncated: false
+          },
+          [buildContributorGistFileName("publisher-a")]: {
+            filename: buildContributorGistFileName("publisher-a"),
+            content: createObservationContributorRecord({
+              publisherId: "publisher-a",
+              observations: {
+                [buildSharedOverrideDigest("codex:session-a")]: {
+                  sessionUpdatedAt: "2026-03-31T00:00:00.000Z",
+                  attributionStatus: "included",
+                  overrideDecision: null,
+                  tokens: 42,
+                  estimatedCostUsdMicros: null
+                }
+              }
+            }),
+            truncated: false
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+            content: createOverridesRecord(),
+            truncated: false
+          }
+        }),
         stdout: output.writer
       });
 
@@ -186,6 +245,8 @@ describe("runDoctorCommand", () => {
         "publish-auth",
         "publish-write",
         "publish-shields",
+        "shared-mode",
+        "shared-health",
         "readme-badge",
         "pre-push-hook"
       ]);
@@ -213,7 +274,14 @@ describe("runDoctorCommand", () => {
         cwd: fixture.repoRoot,
         homeRoot: fixture.homeRoot,
         env: {},
-        gistClient: buildGistClient(),
+        gistClient: buildGistClient({
+          [AGENT_BADGE_GIST_FILE]: {
+            filename: AGENT_BADGE_GIST_FILE,
+            content:
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"blue"}',
+            truncated: false
+          }
+        }),
         stdout: output.writer
       });
 
@@ -225,10 +293,76 @@ describe("runDoctorCommand", () => {
       expect(rendered).toContain("- publish-auth:");
       expect(rendered).toContain("- publish-write:");
       expect(rendered).toContain("- publish-shields:");
+      expect(rendered).toContain("- shared-mode:");
+      expect(rendered).toContain("- shared-health:");
       expect(rendered).toContain("- readme-badge:");
       expect(rendered).toContain("- pre-push-hook:");
       expect(rendered).toContain("- Fix:");
       expect(rendered).toContain("agent-badge doctor");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders shared-health remediation guidance from the core doctor checks", async () => {
+    const fixture = await createFixture();
+    const output = createOutputCapture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+      await writeJsonFile(fixture.repoRoot, ".agent-badge/state.json", {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          publisherId: "publisher-local",
+          mode: "shared"
+        }
+      });
+
+      await runDoctorCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        env: {
+          GH_TOKEN: "token"
+        },
+        gistClient: buildGistClient({
+          [AGENT_BADGE_GIST_FILE]: {
+            filename: AGENT_BADGE_GIST_FILE,
+            content:
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"blue"}',
+            truncated: false
+          },
+          [buildContributorGistFileName("publisher-remote")]: {
+            filename: buildContributorGistFileName("publisher-remote"),
+            content: createObservationContributorRecord({
+              publisherId: "publisher-remote",
+              observations: {
+                [buildSharedOverrideDigest("codex:session-remote")]: {
+                  sessionUpdatedAt: "2026-03-31T00:00:00.000Z",
+                  attributionStatus: "included",
+                  overrideDecision: null,
+                  tokens: 42,
+                  estimatedCostUsdMicros: null
+                }
+              }
+            }),
+            truncated: false
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+            content: createOverridesRecord(),
+            truncated: false
+          }
+        }),
+        stdout: output.writer
+      });
+
+      const rendered = output.read();
+
+      expect(rendered).toContain("- shared-health: fail");
+      expect(rendered).toContain("migrate from the original publisher machine");
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.cleanup();

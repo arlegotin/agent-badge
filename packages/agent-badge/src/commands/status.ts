@@ -2,9 +2,13 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import {
+  createGitHubGistClient,
   formatEstimatedCostUsd,
+  inspectSharedPublishHealth,
   parseAgentBadgeState,
-  type AgentBadgeState
+  type AgentBadgeState,
+  type GitHubGistClient,
+  type SharedPublishHealthReport
 } from "@legotin/agent-badge-core";
 
 interface OutputWriter {
@@ -33,6 +37,7 @@ interface StatusCommandConfig {
 
 export interface RunStatusCommandOptions {
   readonly cwd?: string;
+  readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
 }
 
@@ -44,6 +49,72 @@ export interface StatusCommandResult {
 
 const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
+
+function buildSharedIssueCounts(
+  sharedHealth: SharedPublishHealthReport
+): Array<[string, number]> {
+  const counts: Array<[string, number]> = [];
+
+  if (sharedHealth.issues.includes("legacy-no-contributors")) {
+    counts.push(["legacy-no-contributors", 1]);
+  }
+
+  if (sharedHealth.issues.includes("missing-shared-overrides")) {
+    counts.push(["missing-shared-overrides", 1]);
+  }
+
+  if (sharedHealth.issues.includes("missing-local-contributor")) {
+    counts.push(["missing-local-contributor", 1]);
+  }
+
+  if (sharedHealth.issues.includes("stale-contributor")) {
+    counts.push(["stale-contributor", sharedHealth.stalePublisherIds.length]);
+  }
+
+  if (sharedHealth.issues.includes("conflicting-session-observations")) {
+    counts.push([
+      "conflicting-session-observations",
+      sharedHealth.conflictingSessionCount
+    ]);
+  }
+
+  return counts.filter(([, count]) => count > 0);
+}
+
+async function buildSharedModeLines(options: {
+  readonly config: StatusCommandConfig;
+  readonly state: AgentBadgeState;
+  readonly gistClient: GitHubGistClient;
+}): Promise<string[]> {
+  if (options.config.publish.gistId === null) {
+    return ["- Shared mode: unavailable (gist not configured)"];
+  }
+
+  try {
+    const gist = await options.gistClient.getGist(options.config.publish.gistId);
+    const sharedHealth = inspectSharedPublishHealth({
+      gist,
+      state: options.state,
+      now: new Date().toISOString()
+    });
+    const lines = [
+      `- Shared mode: ${sharedHealth.mode} | health=${sharedHealth.status} | contributors=${sharedHealth.remoteContributorCount}`
+    ];
+    const issueCounts = buildSharedIssueCounts(sharedHealth);
+
+    if (issueCounts.length > 0) {
+      lines.push(
+        `- Shared issues: ${issueCounts
+          .map(([issueId, count]) => `${issueId}=${count}`)
+          .join(", ")}`
+      );
+    }
+
+    return lines;
+  } catch {
+    return ["- Shared mode: unavailable (unable to inspect shared publish state)"];
+  }
+}
 
 async function readJsonFile(targetPath: string): Promise<unknown> {
   let rawContent: string;
@@ -208,15 +279,22 @@ export async function runStatusCommand(
 ): Promise<StatusCommandResult> {
   const cwd = resolve(options.cwd ?? process.cwd());
   const stdout = options.stdout ?? process.stdout;
+  const gistClient = options.gistClient ?? createGitHubGistClient();
   const config = parseStatusCommandConfig(
     await readJsonFile(join(cwd, CONFIG_PATH))
   );
   const state = parseAgentBadgeState(await readJsonFile(join(cwd, STATE_PATH)));
+  const sharedModeLines = await buildSharedModeLines({
+    config,
+    state,
+    gistClient
+  });
   const report = [
     "agent-badge status",
     `- Totals: ${formatTotalsLine(state)}`,
     `- Providers: ${formatProvidersLine(config)}`,
     `- Publish: ${formatPublishLine(config, state)}`,
+    ...sharedModeLines,
     `- Last refresh: ${formatLastRefreshLine(state)}`,
     `- Checkpoints: ${formatCheckpointsLine(state)}`
   ].join("\n");

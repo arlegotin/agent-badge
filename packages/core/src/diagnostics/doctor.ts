@@ -13,12 +13,17 @@ import {
   createGitHubGistClient,
   type GitHubGistClient
 } from "../publish/github-gist-client.js";
+import {
+  inspectSharedPublishHealth,
+  type SharedPublishHealthReport
+} from "../publish/shared-health.js";
 import { parseAgentBadgeConfig, type AgentBadgeConfig } from "../config/config-schema.js";
 import {
   agentBadgeHookEndMarker,
   agentBadgeHookStartMarker
 } from "../init/runtime-wiring.js";
 import { runInitPreflight, type InitPreflightResult } from "../init/preflight.js";
+import { parseAgentBadgeState, type AgentBadgeState } from "../state/state-schema.js";
 
 export type DoctorCheckStatus = "pass" | "warn" | "fail";
 
@@ -62,6 +67,7 @@ type ParseOutcome<T> = {
 };
 
 const CONFIG_PATH = ".agent-badge/config.json";
+const STATE_PATH = ".agent-badge/state.json";
 const PRE_PUSH_HOOK_PATH = ".git/hooks/pre-push";
 const CHECK_IDS = [
   "git",
@@ -70,6 +76,8 @@ const CHECK_IDS = [
   "publish-auth",
   "publish-write",
   "publish-shields",
+  "shared-mode",
+  "shared-health",
   "readme-badge",
   "pre-push-hook"
 ] as const;
@@ -161,6 +169,31 @@ async function readPersistedConfig(cwd: string): Promise<{
     config: parsedConfig,
     configMissing: rawConfig.missing,
     configInvalid
+  };
+}
+
+async function readPersistedState(cwd: string): Promise<{
+  readonly state: AgentBadgeState | null;
+  readonly stateMissing: boolean;
+  readonly stateInvalid: boolean;
+}> {
+  const statePath = join(cwd, STATE_PATH);
+  const rawState = await readJsonFile<unknown>(statePath);
+  let parsedState: AgentBadgeState | null = null;
+  let stateInvalid = false;
+
+  if (!rawState.missing && !rawState.parseFailed) {
+    try {
+      parsedState = parseAgentBadgeState(rawState.value);
+    } catch {
+      stateInvalid = true;
+    }
+  }
+
+  return {
+    state: parsedState,
+    stateMissing: rawState.missing,
+    stateInvalid
   };
 }
 
@@ -480,6 +513,215 @@ async function checkPublishShields(
   }
 }
 
+interface SharedPublishInspection {
+  readonly report: SharedPublishHealthReport | null;
+  readonly detail: string;
+  readonly fix: readonly string[];
+}
+
+function buildSharedInspectionFixes(report: SharedPublishHealthReport | null): readonly string[] {
+  if (report === null) {
+    return buildFix([
+      "Run `agent-badge init` to reconnect publish state, then rerun `agent-badge doctor`."
+    ]);
+  }
+
+  const fixes = new Set<string>();
+
+  if (report.mode === "legacy") {
+    fixes.add(
+      "Run `agent-badge init` on the original publisher machine to migrate existing single-writer repos."
+    );
+  }
+
+  if (report.issues.includes("missing-shared-overrides")) {
+    fixes.add("Run `agent-badge init` to repair shared publish metadata.");
+  }
+
+  if (report.issues.includes("missing-local-contributor")) {
+    fixes.add("Run `agent-badge refresh` to recreate the local contributor record.");
+    fixes.add(
+      "If this repo is migrating from legacy publish state, migrate from the original publisher machine by rerunning `agent-badge init`."
+    );
+  }
+
+  if (report.issues.includes("stale-contributor")) {
+    fixes.add(
+      "Run `agent-badge refresh` on stale contributor machines to update shared observations."
+    );
+  }
+
+  if (report.issues.includes("conflicting-session-observations")) {
+    fixes.add(
+      "Run `agent-badge refresh` on contributors that recently published, then rerun `agent-badge doctor`."
+    );
+  }
+
+  return [...fixes];
+}
+
+async function inspectSharedPublishState(options: {
+  readonly config: AgentBadgeConfig | null;
+  readonly state: AgentBadgeState | null;
+  readonly configMissing: boolean;
+  readonly configInvalid: boolean;
+  readonly stateMissing: boolean;
+  readonly stateInvalid: boolean;
+  readonly gistClient: GitHubGistClient;
+}): Promise<SharedPublishInspection> {
+  if (options.configMissing) {
+    return {
+      report: null,
+      detail: "No valid .agent-badge/config.json was found.",
+      fix: buildFix(["Run `agent-badge init` to create publish configuration."])
+    };
+  }
+
+  if (options.configInvalid || options.config === null) {
+    return {
+      report: null,
+      detail: "Shared publish inspection requires a valid .agent-badge/config.json file.",
+      fix: buildFix(["Run `agent-badge init` to repair publish configuration."])
+    };
+  }
+
+  if (options.stateMissing) {
+    return {
+      report: null,
+      detail: "No valid .agent-badge/state.json was found.",
+      fix: buildFix(["Run `agent-badge init` to recreate persisted state."])
+    };
+  }
+
+  if (options.stateInvalid || options.state === null) {
+    return {
+      report: null,
+      detail: "Shared publish inspection requires a valid .agent-badge/state.json file.",
+      fix: buildFix(["Run `agent-badge init` to repair persisted state."])
+    };
+  }
+
+  if (options.config.publish.gistId === null || options.config.publish.badgeUrl === null) {
+    return {
+      report: null,
+      detail: "Gist ID and badge endpoint have not both been configured.",
+      fix: buildFix(["Run `agent-badge init` to connect or create a publish target."])
+    };
+  }
+
+  try {
+    const gist = await options.gistClient.getGist(options.config.publish.gistId);
+    const report = inspectSharedPublishHealth({
+      gist,
+      state: options.state,
+      now: new Date().toISOString()
+    });
+
+    return {
+      report,
+      detail: `Shared mode: ${report.mode} | health=${report.status} | contributors=${report.remoteContributorCount}.`,
+      fix: buildSharedInspectionFixes(report)
+    };
+  } catch (error) {
+    const detail = error instanceof Error ? `Unable to inspect shared publish state: ${error.message}` : "Unable to inspect shared publish state.";
+
+    return {
+      report: null,
+      detail,
+      fix: buildFix([
+        "Verify gist access and rerun `agent-badge doctor` after publish wiring is reachable."
+      ])
+    };
+  }
+}
+
+function checkSharedMode(inspection: SharedPublishInspection): DoctorCheck {
+  if (inspection.report === null) {
+    return {
+      id: "shared-mode",
+      status: "warn",
+      message: "Shared publish mode could not be determined",
+      detail: inspection.detail,
+      fix: inspection.fix
+    };
+  }
+
+  if (inspection.report.mode === "legacy") {
+    return {
+      id: "shared-mode",
+      status: "warn",
+      message: "Repo is still in legacy publish mode",
+      detail: inspection.detail,
+      fix: inspection.fix
+    };
+  }
+
+  return {
+    id: "shared-mode",
+    status: "pass",
+    message: "Repo is using shared publish mode",
+    detail: inspection.detail,
+    fix: []
+  };
+}
+
+function checkSharedHealth(inspection: SharedPublishInspection): DoctorCheck {
+  if (inspection.report === null) {
+    return {
+      id: "shared-health",
+      status: "warn",
+      message: "Shared publish health could not be inspected",
+      detail: inspection.detail,
+      fix: inspection.fix
+    };
+  }
+
+  if (inspection.report.mode === "legacy") {
+    return {
+      id: "shared-health",
+      status: "pass",
+      message: "Shared contributor health is not active until migration completes",
+      detail: inspection.detail,
+      fix: []
+    };
+  }
+
+  if (inspection.report.status === "healthy") {
+    return {
+      id: "shared-health",
+      status: "pass",
+      message: "Shared contributor state is healthy",
+      detail: inspection.detail,
+      fix: []
+    };
+  }
+
+  if (inspection.report.status === "stale") {
+    return {
+      id: "shared-health",
+      status: "warn",
+      message: "Shared mode is stale",
+      detail: inspection.detail,
+      fix: inspection.fix
+    };
+  }
+
+  const message =
+    inspection.report.status === "conflict"
+      ? "Shared mode reports conflicts"
+      : inspection.report.status === "partial"
+        ? "Shared mode is partially migrated"
+        : "Shared mode is orphaned";
+
+  return {
+    id: "shared-health",
+    status: "fail",
+    message,
+    detail: inspection.detail,
+    fix: inspection.fix
+  };
+}
+
 async function checkReadme(
   cwd: string,
   preflight: InitPreflightResult
@@ -654,6 +896,7 @@ export async function runDoctorChecks(
     env: options.env
   });
   const persisted = await readPersistedConfig(cwd);
+  const persistedState = await readPersistedState(cwd);
   const gistClient =
     options.gistClient ??
     createGitHubGistClient({
@@ -676,6 +919,17 @@ export async function runDoctorChecks(
   checks.push(
     await checkPublishShields(persisted.config, options.runProbeWrite ?? false)
   );
+  const sharedInspection = await inspectSharedPublishState({
+    config: persisted.config,
+    state: persistedState.state,
+    configMissing: persisted.configMissing,
+    configInvalid: persisted.configInvalid,
+    stateMissing: persistedState.stateMissing,
+    stateInvalid: persistedState.stateInvalid,
+    gistClient
+  });
+  checks.push(checkSharedMode(sharedInspection));
+  checks.push(checkSharedHealth(sharedInspection));
   checks.push(await checkReadme(cwd, preflight));
   checks.push(await checkHook(cwd, preflight, persisted.config));
 
