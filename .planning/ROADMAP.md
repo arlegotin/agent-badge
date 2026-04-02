@@ -89,12 +89,13 @@ Plans:
   1. Refresh and publish report whether auth is missing, gist access is broken, writes fail, or remote readback is inconsistent.
   2. Pre-push automation can be configured deliberately and warns loudly when the badge did not update.
   3. Doctor and init point operators to environment-specific fixes before the repo silently falls out of sync.
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
 - [x] 18-01: Harden auth and gist readiness checks across publish, refresh, and doctor
 - [x] 18-02: Add explicit automation strictness and visible degraded-mode hook behavior
 - [x] 18-03: Repair the shared publish regression so the automated validation gate is green again
+- [ ] 18-04: Close the live publish and refresh auth-failure reporting gaps found in human UAT
 
 ### Phase 19: Recovery Paths And Production Reliability Verification
 **Goal**: Give operators supported recovery flows for publish error state and verify the real production failure-and-recovery path end to end.
@@ -118,5 +119,5 @@ Plans:
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
 | 16. Migration, Diagnostics, And Team Operator UX | 2/2 | Complete    | 2026-04-02 |
 | 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
-| 18. Auth, Hook, And Publish Readiness Hardening | 3/3 | Awaiting verification | — |
+| 18. Auth, Hook, And Publish Readiness Hardening | 3/4 | Gap closure planned | — |
 | 19. Recovery Paths And Production Reliability Verification | 0/2 | Pending | — |

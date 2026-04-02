@@ -4,12 +4,12 @@ milestone: v1.4
 milestone_name: milestone
 status: executing
 stopped_at: Completed 18-03-PLAN.md
-last_updated: "2026-04-02T10:33:43Z"
-last_activity: 2026-04-02 -- Completed Plan 18-03 and reopened the automated UAT gate
+last_updated: "2026-04-02T11:15:00Z"
+last_activity: 2026-04-02 -- Added gap-closure Plan 18-04 from live HUMAN-UAT failures
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 13
+  total_plans: 14
   completed_plans: 13
 ---
 
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 ## Current Position
 
-Phase: 18 (auth-hook-and-publish-readiness-hardening) — AWAITING VERIFICATION
-Plan: 3 of 3 complete
-Status: Automated validation is green; manual Phase 18 UAT can resume
-Last activity: 2026-04-02 -- Completed Plan 18-03 and reopened the automated UAT gate
+Phase: 18 (auth-hook-and-publish-readiness-hardening) — GAP CLOSURE PLANNED
+Plan: 3 of 4 complete
+Status: Live human UAT found publish and normal-refresh auth-reporting gaps; gap-closure Plan 18-04 is ready for execution
+Last activity: 2026-04-02 -- Added gap-closure Plan 18-04 from live HUMAN-UAT failures
 
-Progress: [██████████] 3/3 plans complete in Phase 18
+Progress: [███████░░░] 3/4 plans complete in Phase 18
 
 ## Performance Metrics
 
@@ -144,7 +144,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Resume Phase 18 manual UAT now that `npm test -- --run` is green again.
+- Execute gap-closure Plan 18-04, then rerun the failed live Phase 18 publish and normal-refresh UAT checks.
 
 ### Blockers/Concerns
 
