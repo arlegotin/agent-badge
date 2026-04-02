@@ -34,6 +34,7 @@ vi.mock("@legotin/agent-badge-core", async () => {
 });
 
 import {
+  buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
   defaultAgentBadgeState,
   parseAgentBadgeState,
@@ -337,16 +338,24 @@ describe("runPublishCommand", () => {
         sessions: scan.sessions,
         overrides: defaultAgentBadgeState.overrides.ambiguousSessions
       });
-      expect(publishBadgeToGistMock).toHaveBeenCalledWith({
+      const publishCall = publishBadgeToGistMock.mock.calls[0]?.[0];
+      const sessionDigest = buildSharedOverrideDigest("codex:codex-session-1");
+
+      expect(publishCall).toMatchObject({
         config: configuredConfig,
         state: defaultAgentBadgeState,
-        includedTotals: expect.objectContaining({
-          sessions: 1,
-          tokens: 120,
-          estimatedCostUsdMicros: expect.any(Number)
-        }),
+        publisherObservations: {
+          [sessionDigest]: {
+            sessionUpdatedAt: "2026-03-30T10:05:00.000Z",
+            attributionStatus: "included",
+            overrideDecision: null,
+            tokens: 120,
+            estimatedCostUsdMicros: expect.any(Number)
+          }
+        },
         client: gistClient
       });
+      expect(publishCall).not.toHaveProperty("includedTotals");
       expect(persistedState.publish.lastPublishedHash).toBe("hash_123");
       expect(persistedState.publish.publisherId).toBe("publisher-local");
       expect(persistedState.publish.mode).toBe("shared");
@@ -408,6 +417,81 @@ describe("runPublishCommand", () => {
           }
         })
       });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("publish output stays aggregate-only while shared override decisions converge", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        overrides: {
+          ambiguousSessions: {
+            "codex:codex-session-1": "include"
+          }
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution: AttributeBackfillSessionsResult = {
+      sessions: scan.sessions.map((session) => ({
+        session,
+        status: "included",
+        evidence: [
+          {
+            kind: "user-override",
+            matched: true,
+            detail: "explicit shared include decision"
+          }
+        ],
+        reason: "Included by shared override",
+        overrideApplied: "include"
+      })),
+      counts: {
+        included: 1,
+        ambiguous: 0,
+        excluded: 0
+      }
+    };
+
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockResolvedValueOnce({
+      ...defaultAgentBadgeState,
+      publish: {
+        ...defaultAgentBadgeState.publish,
+        status: "published",
+        gistId: "gist_publish",
+        lastPublishedHash: "hash_shared",
+        publisherId: "publisher-local",
+        mode: "shared"
+      }
+    });
+
+    try {
+      await runPublishCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer
+      });
+
+      expect(output.read()).toContain("Publish mode: shared");
+      expect(output.read()).not.toContain("codex-session-1");
+      expect(output.read()).not.toContain("sha256:");
+      expect(output.read()).not.toContain("explicit shared include decision");
+      expect(output.read()).not.toContain(fixture.repoRoot);
     } finally {
       await fixture.cleanup();
     }

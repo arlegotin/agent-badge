@@ -4,6 +4,8 @@ import { join, resolve } from "node:path";
 
 import {
   applyCompletedScanState,
+  buildRefreshCacheKey,
+  buildSharedOverrideDigest,
   createGitHubGistClient,
   formatEstimatedCostUsd,
   parseAgentBadgeConfig,
@@ -16,6 +18,8 @@ import {
   type AgentBadgeRefreshPublishDecision,
   type AgentBadgeState,
   type GitHubGistClient,
+  type RefreshCache,
+  type SharedContributorObservationMap,
   type RunIncrementalRefreshResult
 } from "@legotin/agent-badge-core";
 
@@ -222,6 +226,27 @@ function buildRefreshLogStatus(
   return "success";
 }
 
+function buildPublisherObservationsFromRefreshCache(
+  cache: RefreshCache
+): SharedContributorObservationMap {
+  return Object.fromEntries(
+    Object.values(cache.entries).map((entry) => {
+      const sessionKey = buildRefreshCacheKey(entry);
+
+      return [
+        buildSharedOverrideDigest(sessionKey),
+        {
+          sessionUpdatedAt: entry.sessionUpdatedAt,
+          attributionStatus: entry.status,
+          overrideDecision: entry.overrideDecision,
+          tokens: entry.tokens,
+          estimatedCostUsdMicros: entry.estimatedCostUsdMicros
+        }
+      ];
+    })
+  );
+}
+
 export async function runRefreshCommand(
   options: RunRefreshCommandOptions = {}
 ): Promise<RefreshCommandResult> {
@@ -292,11 +317,9 @@ export async function runRefreshCommand(
       const publishResult = await publishBadgeIfChanged({
         config,
         state: persistedState,
-        includedTotals: {
-          sessions: refresh.summary.includedSessions,
-          tokens: refresh.summary.includedTokens,
-          estimatedCostUsdMicros: refresh.summary.includedEstimatedCostUsdMicros
-        },
+        publisherObservations: buildPublisherObservationsFromRefreshCache(
+          refresh.cache
+        ),
         client:
           options.gistClient ??
           createGitHubGistClient({

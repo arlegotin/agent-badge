@@ -71,6 +71,8 @@ export type SharedContributorRecord = z.infer<typeof sharedContributorRecordSche
 export type SharedContributorObservation = z.infer<
   typeof sharedContributorObservationSchema
 >;
+export type SharedContributorObservationMap =
+  SharedContributorRecord["observations"];
 export type SharedOverridesRecord = z.infer<typeof sharedOverridesRecordSchema>;
 export type SharedOverrideDecision = z.infer<typeof sharedOverrideDecisionSchema>;
 

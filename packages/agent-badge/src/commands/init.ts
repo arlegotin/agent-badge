@@ -7,15 +7,17 @@ import {
   applyPublishTargetResult,
   applyAgentBadgeScaffold,
   applyRepoLocalRuntimeWiring,
+  buildSharedOverrideDigest,
   buildReadmeBadgeMarkdown,
   buildReadmeBadgeSnippet,
-  collectIncludedTotals,
   createGitHubGistClient,
+  estimateSessionCostsUsdMicrosByKey,
   initializeGitRepository,
   ensurePublishTarget,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
+  resolvePricingCatalog,
   runInitPreflight,
   runFullBackfillScan,
   upsertReadmeBadge,
@@ -27,6 +29,7 @@ import {
   type InitPreflightResult,
   type PublishTargetResult,
   type RepoLocalRuntimeWiringResult,
+  type SharedContributorObservationMap,
   type AgentBadgeState
 } from "@legotin/agent-badge-core";
 
@@ -283,6 +286,58 @@ function resolveGitHubAuthToken(env: NodeJS.ProcessEnv | undefined): string | un
   return undefined;
 }
 
+function buildSessionKey(session: {
+  readonly provider: string;
+  readonly providerSessionId: string;
+}): string {
+  return `${session.provider}:${session.providerSessionId}`;
+}
+
+async function buildPublisherObservations(options: {
+  readonly attribution: ReturnType<typeof attributeBackfillSessions>;
+  readonly cwd: string;
+  readonly homeRoot: string;
+  readonly includeEstimatedCost: boolean;
+}): Promise<SharedContributorObservationMap> {
+  const estimatedCostBySessionKey = new Map<string, number>();
+
+  if (options.includeEstimatedCost && options.attribution.sessions.length > 0) {
+    const pricingCatalog = await resolvePricingCatalog({ cwd: options.cwd });
+    const estimatedCosts = await estimateSessionCostsUsdMicrosByKey({
+      sessions: options.attribution.sessions.map(
+        (attributedSession) => attributedSession.session
+      ),
+      homeRoot: options.homeRoot,
+      pricingCatalog
+    });
+
+    for (const [sessionKey, estimatedCostUsdMicros] of Object.entries(
+      estimatedCosts
+    )) {
+      estimatedCostBySessionKey.set(sessionKey, estimatedCostUsdMicros);
+    }
+  }
+
+  return Object.fromEntries(
+    options.attribution.sessions.map((attributedSession) => {
+      const sessionKey = buildSessionKey(attributedSession.session);
+
+      return [
+        buildSharedOverrideDigest(sessionKey),
+        {
+          sessionUpdatedAt: attributedSession.session.updatedAt,
+          attributionStatus: attributedSession.status,
+          overrideDecision: attributedSession.overrideApplied,
+          tokens: attributedSession.session.tokenUsage.total,
+          estimatedCostUsdMicros: options.includeEstimatedCost
+            ? (estimatedCostBySessionKey.get(sessionKey) ?? 0)
+            : null
+        }
+      ];
+    })
+  );
+}
+
 async function readRuntimePackageManifest(): Promise<RuntimePackageManifest> {
   const runtimePackagePath = new URL("../../package.json", import.meta.url);
   let rawManifest: unknown;
@@ -470,7 +525,8 @@ export async function runInitCommand(
     const publishedState = await publishBadgeToGist({
       config: nextPublishState.config,
       state: nextPublishState.state,
-      includedTotals: await collectIncludedTotals(scan, attribution, {
+      publisherObservations: await buildPublisherObservations({
+        attribution,
         cwd: preflight.cwd,
         homeRoot,
         includeEstimatedCost:

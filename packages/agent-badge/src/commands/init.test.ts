@@ -235,7 +235,9 @@ describe("runInitCommand", () => {
         status: "deferred",
         gistId: null,
         lastPublishedHash: null,
-        lastPublishedAt: null
+        lastPublishedAt: null,
+        publisherId: null,
+        mode: "legacy"
       });
       expect(gitignoreContent).toContain(".agent-badge/state.json");
       expect(gitignoreContent).toContain(".agent-badge/cache/");
@@ -532,7 +534,7 @@ describe("runInitCommand", () => {
       const publishFiles = await readPublishFiles(repo.root);
       const readmeContent = await readReadmeContent(repo.root);
 
-      expect(getCalls).toBe(1);
+      expect(getCalls).toBe(3);
       expect(createCalls).toBe(0);
       expect(publishFiles.config.publish).toEqual({
         provider: "github-gist",

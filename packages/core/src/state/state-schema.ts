@@ -63,8 +63,8 @@ export const agentBadgeStateSchema = z
         gistId: z.string().min(1).nullable(),
         lastPublishedHash: z.string().min(1).nullable(),
         lastPublishedAt: isoDateTimeSchema.nullable(),
-        publisherId: z.string().min(1).nullable(),
-        mode: publishModeSchema
+        publisherId: z.string().min(1).nullable().optional().default(null),
+        mode: publishModeSchema.optional().default("legacy")
       })
       .strict(),
     refresh: z

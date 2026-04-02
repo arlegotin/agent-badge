@@ -6,6 +6,7 @@ import { AGENT_BADGE_GIST_FILE } from "./badge-url.js";
 import { publishBadgeToGist } from "./publish-service.js";
 import {
   AGENT_BADGE_OVERRIDES_GIST_FILE,
+  buildSharedOverrideDigest,
   buildContributorGistFileName
 } from "./shared-model.js";
 
@@ -47,6 +48,48 @@ function createContributorRecord(options: {
   )}\n`;
 }
 
+function createObservationContributorRecord(options: {
+  readonly publisherId: string;
+  readonly updatedAt?: string;
+  readonly observations: Record<string, unknown>;
+}): string {
+  return `${JSON.stringify(
+    {
+      schemaVersion: 2,
+      publisherId: options.publisherId,
+      updatedAt: options.updatedAt ?? "2026-03-30T12:00:00.000Z",
+      observations: options.observations
+    },
+    null,
+    2
+  )}\n`;
+}
+
+function createPublisherObservations(options: {
+  readonly sessionPrefix: string;
+  readonly sessions: number;
+  readonly tokens: number;
+  readonly estimatedCostUsdMicros: number | null;
+}) {
+  const sessions = Math.max(options.sessions, 1);
+  const baseTokens = Math.floor(options.tokens / sessions);
+  const remainderTokens = options.tokens % sessions;
+
+  return Object.fromEntries(
+    Array.from({ length: sessions }, (_, index) => [
+      buildSharedOverrideDigest(`codex:${options.sessionPrefix}-${index + 1}`),
+      {
+        sessionUpdatedAt: "2026-03-30T10:05:00.000Z",
+        attributionStatus: "included",
+        overrideDecision: null,
+        tokens: baseTokens + (index === 0 ? remainderTokens : 0),
+        estimatedCostUsdMicros:
+          index === 0 ? options.estimatedCostUsdMicros : null
+      }
+    ])
+  );
+}
+
 function createGistFileMap(
   files: Record<string, { readonly content: string; readonly truncated?: boolean }>
 ) {
@@ -74,11 +117,14 @@ describe("shared badge aggregation", () => {
         public: true,
         files: createGistFileMap({
           [buildContributorGistFileName(remotePublisherId)]: {
-            content: createContributorRecord({
+            content: createObservationContributorRecord({
               publisherId: remotePublisherId,
-              sessions: 2,
-              tokens: 20,
-              estimatedCostUsdMicros: null
+              observations: createPublisherObservations({
+                sessionPrefix: "remote",
+                sessions: 2,
+                tokens: 20,
+                estimatedCostUsdMicros: null
+              })
             })
           }
         })
@@ -89,19 +135,25 @@ describe("shared badge aggregation", () => {
         public: true,
         files: createGistFileMap({
           [buildContributorGistFileName(localPublisherId)]: {
-            content: createContributorRecord({
+            content: createObservationContributorRecord({
               publisherId: localPublisherId,
-              sessions: 3,
-              tokens: 30,
-              estimatedCostUsdMicros: null
+              observations: createPublisherObservations({
+                sessionPrefix: "local",
+                sessions: 3,
+                tokens: 30,
+                estimatedCostUsdMicros: null
+              })
             })
           },
           [buildContributorGistFileName(remotePublisherId)]: {
-            content: createContributorRecord({
+            content: createObservationContributorRecord({
               publisherId: remotePublisherId,
-              sessions: 2,
-              tokens: 20,
-              estimatedCostUsdMicros: null
+              observations: createPublisherObservations({
+                sessionPrefix: "remote",
+                sessions: 2,
+                tokens: 20,
+                estimatedCostUsdMicros: null
+              })
             })
           },
           [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
@@ -130,11 +182,12 @@ describe("shared badge aggregation", () => {
           publisherId: localPublisherId
         }
       },
-      includedTotals: {
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "local",
         sessions: 3,
         tokens: 30,
         estimatedCostUsdMicros: null
-      },
+      }),
       client: {
         getGist,
         createPublicGist: vi.fn(),
@@ -175,19 +228,25 @@ describe("shared badge aggregation", () => {
         public: true,
         files: createGistFileMap({
           [buildContributorGistFileName(localPublisherId)]: {
-            content: createContributorRecord({
+            content: createObservationContributorRecord({
               publisherId: localPublisherId,
-              sessions: 1,
-              tokens: 12,
-              estimatedCostUsdMicros: null
+              observations: createPublisherObservations({
+                sessionPrefix: "local",
+                sessions: 1,
+                tokens: 12,
+                estimatedCostUsdMicros: null
+              })
             })
           },
           [buildContributorGistFileName(remotePublisherId)]: {
-            content: createContributorRecord({
+            content: createObservationContributorRecord({
               publisherId: remotePublisherId,
-              sessions: 4,
-              tokens: 88,
-              estimatedCostUsdMicros: null
+              observations: createPublisherObservations({
+                sessionPrefix: "remote",
+                sessions: 4,
+                tokens: 88,
+                estimatedCostUsdMicros: null
+              })
             })
           },
           [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
@@ -216,11 +275,12 @@ describe("shared badge aggregation", () => {
           publisherId: localPublisherId
         }
       },
-      includedTotals: {
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "local",
         sessions: 1,
         tokens: 12,
         estimatedCostUsdMicros: null
-      },
+      }),
       client: {
         getGist,
         createPublicGist: vi.fn(),
@@ -236,6 +296,125 @@ describe("shared badge aggregation", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "100 tokens",
+  "color": "blue"
+}
+`
+        }
+      }
+    });
+  });
+
+  it("higher-watermark duplicate session is counted once", async () => {
+    const sharedDigest = buildSharedOverrideDigest("codex:shared-session");
+    const localPublisherId = "publisher-local";
+    const remotePublisherId = "publisher-remote";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [buildContributorGistFileName(remotePublisherId)]: {
+            content: createObservationContributorRecord({
+              publisherId: remotePublisherId,
+              observations: {
+                [sharedDigest]: {
+                  sessionUpdatedAt: "2026-03-30T10:04:00.000Z",
+                  attributionStatus: "included",
+                  overrideDecision: null,
+                  tokens: 18,
+                  estimatedCostUsdMicros: null
+                }
+              }
+            })
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [buildContributorGistFileName(localPublisherId)]: {
+            content: createObservationContributorRecord({
+              publisherId: localPublisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              observations: {
+                [sharedDigest]: {
+                  sessionUpdatedAt: "2026-03-30T10:05:00.000Z",
+                  attributionStatus: "included",
+                  overrideDecision: null,
+                  tokens: 30,
+                  estimatedCostUsdMicros: null
+                }
+              }
+            })
+          },
+          [buildContributorGistFileName(remotePublisherId)]: {
+            content: createObservationContributorRecord({
+              publisherId: remotePublisherId,
+              observations: {
+                [sharedDigest]: {
+                  sessionUpdatedAt: "2026-03-30T10:04:00.000Z",
+                  attributionStatus: "included",
+                  overrideDecision: null,
+                  tokens: 18,
+                  estimatedCostUsdMicros: null
+                }
+              }
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: `{
+  "schemaVersion": 1,
+  "overrides": {}
+}
+`
+          }
+        })
+      });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    await publishBadgeToGist({
+      config: createPublishConfig(),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123",
+          publisherId: localPublisherId
+        }
+      },
+      publisherObservations: {
+        [sharedDigest]: {
+          sessionUpdatedAt: "2026-03-30T10:05:00.000Z",
+          attributionStatus: "included",
+          overrideDecision: null,
+          tokens: 30,
+          estimatedCostUsdMicros: null
+        }
+      },
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      }
+    });
+
+    expect(updateGistFile).toHaveBeenLastCalledWith({
+      gistId: "gist_123",
+      files: {
+        [AGENT_BADGE_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "30 tokens",
   "color": "blue"
 }
 `

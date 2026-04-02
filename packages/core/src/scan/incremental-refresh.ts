@@ -166,8 +166,9 @@ async function mergeAttributedSessionsIntoCache(
             overrideDecision:
               options.state.overrides.ambiguousSessions[cacheKey] ??
               attributedSession.overrideApplied,
-            estimatedCostUsdMicros:
-              estimatedCostBySessionKey.get(cacheKey) ?? null
+            estimatedCostUsdMicros: shouldEstimateCost
+              ? (estimatedCostBySessionKey.get(cacheKey) ?? 0)
+              : null
           });
 
         return entries;

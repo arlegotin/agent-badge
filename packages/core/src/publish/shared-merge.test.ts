@@ -165,7 +165,32 @@ describe("shared-merge", () => {
     });
   });
 
-  it("breaks final ties with the lexicographically smallest publisherId", () => {
+  it("equal timestamps fall back to higher tokens", () => {
+    expect(
+      deriveSharedIncludedTotals([
+        createContributor("pub-lower-tokens", createObservation(digestA, {
+          sessionUpdatedAt: "2026-04-01T12:00:00.000Z",
+          attributionStatus: "included",
+          overrideDecision: null,
+          tokens: 100,
+          estimatedCostUsdMicros: 10
+        })),
+        createContributor("pub-higher-tokens", createObservation(digestA, {
+          sessionUpdatedAt: "2026-04-01T12:00:00.000Z",
+          attributionStatus: "included",
+          overrideDecision: null,
+          tokens: 140,
+          estimatedCostUsdMicros: 8
+        }))
+      ])
+    ).toEqual({
+      sessions: 1,
+      tokens: 140,
+      estimatedCostUsdMicros: 8
+    });
+  });
+
+  it("exact ties fall back to the lexicographically smaller publisherId", () => {
     expect(
       compareSharedObservationWatermark(
         {

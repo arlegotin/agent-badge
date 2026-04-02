@@ -519,6 +519,101 @@ describe("runIncrementalRefresh", () => {
     });
   });
 
+  it("shared include decisions can promote cached ambiguous usage", async () => {
+    const promotedSession = createSession({
+      provider: "codex",
+      providerSessionId: "codex-promoted",
+      tokenUsage: {
+        total: 33,
+        input: 33,
+        output: 0,
+        cacheCreation: null,
+        cacheRead: null,
+        reasoningOutput: null
+      }
+    });
+
+    resolveRepoFingerprintMock.mockResolvedValue(createRepoFingerprint());
+    scanCodexSessionsIncrementalMock.mockResolvedValue({
+      sessions: [promotedSession],
+      cursor: "codex-promoted-next",
+      mode: "incremental"
+    });
+    scanClaudeSessionsIncrementalMock.mockResolvedValue({
+      sessions: [],
+      cursor: "claude-next",
+      mode: "incremental"
+    });
+    attributeBackfillSessionsMock.mockReturnValue({
+      sessions: [createAttributedSession(promotedSession, "included", "include")],
+      counts: {
+        included: 1,
+        ambiguous: 0,
+        excluded: 0
+      }
+    });
+
+    await withTempDir(async (cwd) => {
+      await writeRefreshCache({
+        cwd,
+        cache: {
+          ...defaultRefreshCache,
+          entries: {
+            [buildRefreshCacheKey(promotedSession)]: buildRefreshCacheEntry({
+              session: promotedSession,
+              status: "ambiguous",
+              overrideDecision: "include",
+              estimatedCostUsdMicros: null
+            })
+          }
+        }
+      });
+
+      const result = await runIncrementalRefresh({
+        cwd,
+        homeRoot: "/tmp/home",
+        config: {
+          providers: defaultAgentBadgeConfig.providers,
+          repo: defaultAgentBadgeConfig.repo
+        },
+        state: {
+          ...defaultAgentBadgeState,
+          overrides: {
+            ambiguousSessions: {
+              "codex:codex-promoted": "include"
+            }
+          },
+          checkpoints: {
+            codex: {
+              cursor: "opaque-codex",
+              lastScannedAt: "2026-03-30T11:00:00Z"
+            },
+            claude: {
+              cursor: "opaque-claude",
+              lastScannedAt: "2026-03-30T11:00:00Z"
+            }
+          }
+        },
+        forceFull: false
+      });
+
+      expect(result.summary).toEqual({
+        includedSessions: 1,
+        includedTokens: 33,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      });
+      expect(result.cache.entries["codex:codex-promoted"]).toEqual(
+        expect.objectContaining({
+          status: "included",
+          overrideDecision: "include",
+          tokens: 33
+        })
+      );
+    });
+  });
+
   it("falls back to a full scan when a provider cursor is unusable", async () => {
     const incrementalSession = createSession({
       provider: "codex",

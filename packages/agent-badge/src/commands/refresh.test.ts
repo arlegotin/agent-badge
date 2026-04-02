@@ -31,6 +31,7 @@ vi.mock("@legotin/agent-badge-core", async () => {
 });
 
 import {
+  buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
   defaultAgentBadgeState,
   parseAgentBadgeState,
@@ -157,16 +158,16 @@ describe("runRefreshCommand", () => {
         claude: "claude-cursor-next"
       },
       cache: {
-        version: 1 as const,
+        version: 2 as const,
         entries: {
           "codex:session-1": {
             provider: "codex" as const,
             providerSessionId: "session-1",
-            updatedAt: "2026-03-30T18:45:00.000Z",
+            sessionUpdatedAt: "2026-03-30T18:45:00.000Z",
             status: "included" as const,
-            includedSessions: 1,
-            includedTokens: 210,
-            includedEstimatedCostUsdMicros: null
+            overrideDecision: null,
+            tokens: 210,
+            estimatedCostUsdMicros: null
           }
         }
       }
@@ -257,8 +258,27 @@ describe("runRefreshCommand", () => {
         claude: "claude-next"
       },
       cache: {
-        version: 1 as const,
-        entries: {}
+        version: 2 as const,
+        entries: {
+          "codex:shared-session": {
+            provider: "codex" as const,
+            providerSessionId: "shared-session",
+            sessionUpdatedAt: "2026-03-30T18:58:00.000Z",
+            status: "included" as const,
+            overrideDecision: null,
+            tokens: 480,
+            estimatedCostUsdMicros: null
+          },
+          "codex:ambiguous-session": {
+            provider: "codex" as const,
+            providerSessionId: "ambiguous-session",
+            sessionUpdatedAt: "2026-03-30T18:59:00.000Z",
+            status: "ambiguous" as const,
+            overrideDecision: "include" as const,
+            tokens: 120,
+            estimatedCostUsdMicros: null
+          }
+        }
       }
     };
 
@@ -278,10 +298,13 @@ describe("runRefreshCommand", () => {
           }
         },
         publish: {
+          ...defaultAgentBadgeState.publish,
           status: "published" as const,
           gistId: "gist_123",
           lastPublishedHash: "hash_123",
-          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared" as const
         },
         refresh: defaultAgentBadgeState.refresh,
         overrides: defaultAgentBadgeState.overrides,
@@ -300,7 +323,9 @@ describe("runRefreshCommand", () => {
       const persistedState = await readStateFile(fixture.statePath);
 
       expect(result.status).toBe("ok");
-      expect(publishBadgeIfChangedMock).toHaveBeenCalledWith({
+      const publishCall = publishBadgeIfChangedMock.mock.calls[0]?.[0];
+
+      expect(publishCall).toMatchObject({
         config: configuredConfig,
         state: expect.objectContaining({
           refresh: {
@@ -310,15 +335,27 @@ describe("runRefreshCommand", () => {
             summary: refreshResult.summary
           }
         }),
-        includedTotals: {
-          sessions: 4,
-          tokens: 480,
-          estimatedCostUsdMicros: null
+        publisherObservations: {
+          [buildSharedOverrideDigest("codex:shared-session")]: {
+            sessionUpdatedAt: "2026-03-30T18:58:00.000Z",
+            attributionStatus: "included",
+            overrideDecision: null,
+            tokens: 480,
+            estimatedCostUsdMicros: null
+          },
+          [buildSharedOverrideDigest("codex:ambiguous-session")]: {
+            sessionUpdatedAt: "2026-03-30T18:59:00.000Z",
+            attributionStatus: "ambiguous",
+            overrideDecision: "include",
+            tokens: 120,
+            estimatedCostUsdMicros: null
+          }
         },
         client: gistClient,
         now: "2026-03-30T19:00:00.000Z",
         skipIfUnchanged: true
       });
+      expect(publishCall).not.toHaveProperty("includedTotals");
       expect(persistedState.refresh.lastPublishDecision).toBe("skipped");
       expect(output.read()).toContain("- Publish: skipped");
     } finally {
@@ -359,7 +396,7 @@ describe("runRefreshCommand", () => {
         claude: "claude-next"
       },
       cache: {
-        version: 1 as const,
+        version: 2 as const,
         entries: {}
       }
     };
@@ -404,6 +441,105 @@ describe("runRefreshCommand", () => {
     }
   });
 
+  it("refresh publish matches full publish for duplicate sessions", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_refresh_parity",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_refresh_parity%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig
+    });
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 42,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 1,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-parity",
+        claude: "claude-parity"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {
+          "codex:shared-session": {
+            provider: "codex" as const,
+            providerSessionId: "shared-session",
+            sessionUpdatedAt: "2026-03-30T18:58:00.000Z",
+            status: "included" as const,
+            overrideDecision: null,
+            tokens: 42,
+            estimatedCostUsdMicros: null
+          },
+          "codex:ambiguous-session": {
+            provider: "codex" as const,
+            providerSessionId: "ambiguous-session",
+            sessionUpdatedAt: "2026-03-30T18:59:00.000Z",
+            status: "ambiguous" as const,
+            overrideDecision: "include" as const,
+            tokens: 12,
+            estimatedCostUsdMicros: null
+          }
+        }
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockResolvedValueOnce({
+      decision: "skipped" as const,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published" as const,
+          gistId: "gist_refresh_parity",
+          lastPublishedHash: "hash_refresh_parity",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared" as const
+        }
+      }
+    });
+
+    try {
+      await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot
+      });
+
+      expect(publishBadgeIfChangedMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          publisherObservations: {
+            [buildSharedOverrideDigest("codex:shared-session")]: {
+              sessionUpdatedAt: "2026-03-30T18:58:00.000Z",
+              attributionStatus: "included",
+              overrideDecision: null,
+              tokens: 42,
+              estimatedCostUsdMicros: null
+            },
+            [buildSharedOverrideDigest("codex:ambiguous-session")]: {
+              sessionUpdatedAt: "2026-03-30T18:59:00.000Z",
+              attributionStatus: "ambiguous",
+              overrideDecision: "include",
+              tokens: 12,
+              estimatedCostUsdMicros: null
+            }
+          }
+        })
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("keeps pre-push output concise", async () => {
     const configuredConfig = {
       ...defaultAgentBadgeConfig,
@@ -432,7 +568,7 @@ describe("runRefreshCommand", () => {
         claude: "claude-concise"
       },
       cache: {
-        version: 1 as const,
+        version: 2 as const,
         entries: {}
       }
     };
@@ -443,10 +579,13 @@ describe("runRefreshCommand", () => {
       state: {
         ...defaultAgentBadgeState,
         publish: {
+          ...defaultAgentBadgeState.publish,
           status: "published" as const,
           gistId: "gist_789",
           lastPublishedHash: "hash_789",
-          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared" as const
         }
       }
     });
@@ -497,16 +636,16 @@ describe("runRefreshCommand", () => {
         claude: "claude-fresh"
       },
       cache: {
-        version: 1 as const,
+        version: 2 as const,
         entries: {
           "codex:session-9": {
             provider: "codex" as const,
             providerSessionId: "session-9",
-            updatedAt: "2026-03-30T18:58:00.000Z",
+            sessionUpdatedAt: "2026-03-30T18:58:00.000Z",
             status: "included" as const,
-            includedSessions: 1,
-            includedTokens: 90,
-            includedEstimatedCostUsdMicros: null
+            overrideDecision: null,
+            tokens: 90,
+            estimatedCostUsdMicros: null
           }
         }
       }
@@ -590,7 +729,7 @@ describe("runRefreshCommand", () => {
         claude: "claude-strict"
       },
       cache: {
-        version: 1 as const,
+        version: 2 as const,
         entries: {}
       }
     };

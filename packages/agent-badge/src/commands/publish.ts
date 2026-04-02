@@ -4,17 +4,20 @@ import { join, resolve } from "node:path";
 
 import {
   attributeBackfillSessions,
-  collectIncludedTotals,
+  buildSharedOverrideDigest,
   createGitHubGistClient,
+  estimateSessionCostsUsdMicrosByKey,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
+  resolvePricingCatalog,
   runFullBackfillScan,
   appendAgentBadgeLog,
   buildLogEntry,
   type AgentBadgeState,
   type AttributeBackfillSessionsResult,
   type GitHubGistClient,
+  type SharedContributorObservationMap,
   type RunFullBackfillScanResult
 } from "@legotin/agent-badge-core";
 
@@ -87,6 +90,58 @@ function resolveGitHubAuthToken(
   return undefined;
 }
 
+function buildSessionKey(session: {
+  readonly provider: string;
+  readonly providerSessionId: string;
+}): string {
+  return `${session.provider}:${session.providerSessionId}`;
+}
+
+async function buildPublisherObservations(options: {
+  readonly attribution: AttributeBackfillSessionsResult;
+  readonly cwd: string;
+  readonly homeRoot: string;
+  readonly includeEstimatedCost: boolean;
+}): Promise<SharedContributorObservationMap> {
+  const estimatedCostBySessionKey = new Map<string, number>();
+
+  if (options.includeEstimatedCost && options.attribution.sessions.length > 0) {
+    const pricingCatalog = await resolvePricingCatalog({ cwd: options.cwd });
+    const estimatedCosts = await estimateSessionCostsUsdMicrosByKey({
+      sessions: options.attribution.sessions.map(
+        (attributedSession) => attributedSession.session
+      ),
+      homeRoot: options.homeRoot,
+      pricingCatalog
+    });
+
+    for (const [sessionKey, estimatedCostUsdMicros] of Object.entries(
+      estimatedCosts
+    )) {
+      estimatedCostBySessionKey.set(sessionKey, estimatedCostUsdMicros);
+    }
+  }
+
+  return Object.fromEntries(
+    options.attribution.sessions.map((attributedSession) => {
+      const sessionKey = buildSessionKey(attributedSession.session);
+
+      return [
+        buildSharedOverrideDigest(sessionKey),
+        {
+          sessionUpdatedAt: attributedSession.session.updatedAt,
+          attributionStatus: attributedSession.status,
+          overrideDecision: attributedSession.overrideApplied,
+          tokens: attributedSession.session.tokenUsage.total,
+          estimatedCostUsdMicros: options.includeEstimatedCost
+            ? (estimatedCostBySessionKey.get(sessionKey) ?? 0)
+            : null
+        }
+      ];
+    })
+  );
+}
+
 export async function runPublishCommand(
   options: RunPublishCommandOptions = {}
 ): Promise<PublishCommandResult> {
@@ -115,7 +170,8 @@ export async function runPublishCommand(
       sessions: scan.sessions,
       overrides: previousState.overrides.ambiguousSessions
     });
-    const includedTotals = await collectIncludedTotals(scan, attribution, {
+    const publisherObservations = await buildPublisherObservations({
+      attribution,
       cwd,
       homeRoot,
       includeEstimatedCost:
@@ -124,7 +180,7 @@ export async function runPublishCommand(
     const nextState = await publishBadgeToGist({
       config,
       state: previousState,
-      includedTotals,
+      publisherObservations,
       client:
         options.gistClient ??
         createGitHubGistClient({
