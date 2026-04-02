@@ -293,7 +293,7 @@ describe("publishBadgeToGist", () => {
     expect(serializedPayload).not.toContain("cwd");
     expect(serializedPayload).not.toContain("path");
     expect(serializedPayload).not.toContain("reason");
-    expect(nextState.publish).toEqual({
+    expect(nextState.state.publish).toEqual({
       status: "published",
       gistId: "gist_123",
       lastPublishedHash: createHash("sha256")
@@ -801,6 +801,176 @@ describe("publishBadgeToGist", () => {
 });
 
 describe("publishBadgeIfChanged", () => {
+  it("marks the first shared publish on a legacy gist as a migration", async () => {
+    const publisherId = "publisher-local";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "9 tokens",
+  "color": "blue"
+}
+`
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "9 tokens",
+  "color": "blue"
+}
+`
+          }
+        })
+      });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    const result = await publishBadgeIfChanged({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_123",
+          lastPublishedHash: "legacy_hash",
+          publisherId,
+          mode: "legacy"
+        }
+      } as typeof defaultAgentBadgeState,
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "migrate",
+        sessions: 1,
+        tokens: 42,
+        estimatedCostUsdMicros: null,
+        updatedAt: "2026-03-30T10:05:00.000Z"
+      }),
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      },
+      now: "2026-03-30T12:00:00.000Z",
+      skipIfUnchanged: false
+    });
+
+    expect(result.healthBeforePublish).toMatchObject({
+      mode: "legacy",
+      status: "healthy"
+    });
+    expect(result.healthAfterPublish).toMatchObject({
+      mode: "shared",
+      status: "healthy",
+      remoteContributorCount: 1,
+      hasSharedOverrides: true
+    });
+    expect(result.migrationPerformed).toBe(true);
+  });
+
+  it("does not rotate the gist id or badge payload file names during migration", async () => {
+    const publisherId = "publisher-local";
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "9 tokens",
+  "color": "blue"
+}
+`
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({})
+      });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    const result = await publishBadgeIfChanged({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_123",
+          lastPublishedHash: "legacy_hash",
+          publisherId,
+          mode: "legacy"
+        }
+      } as typeof defaultAgentBadgeState,
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "migrate",
+        sessions: 1,
+        tokens: 42,
+        estimatedCostUsdMicros: null,
+        updatedAt: "2026-03-30T10:05:00.000Z"
+      }),
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      },
+      now: "2026-03-30T12:00:00.000Z",
+      skipIfUnchanged: false
+    });
+
+    expect(result.state.publish.gistId).toBe("gist_123");
+    expect(updateGistFile).toHaveBeenLastCalledWith({
+      gistId: "gist_123",
+      files: {
+        [AGENT_BADGE_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "42 tokens",
+  "color": "blue"
+}
+`
+        }
+      }
+    });
+  });
+
   it("writes the local publisher observation map with schemaVersion 2", async () => {
     const publisherId = "publisher-local";
     const sessionDigest = buildSharedOverrideDigest("codex:included-1");
@@ -1272,7 +1442,7 @@ describe("publishBadgeIfChanged", () => {
     });
 
     expect(updateGistFile).toHaveBeenCalledTimes(2);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       decision: "skipped",
       state: {
         ...defaultAgentBadgeState,
@@ -1284,7 +1454,16 @@ describe("publishBadgeIfChanged", () => {
           publisherId,
           mode: "shared"
         }
-      }
+      },
+      healthBeforePublish: {
+        mode: "legacy",
+        status: "healthy"
+      },
+      healthAfterPublish: {
+        mode: "shared",
+        status: "healthy"
+      },
+      migrationPerformed: true
     });
   });
 

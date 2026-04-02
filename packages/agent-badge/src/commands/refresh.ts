@@ -18,6 +18,7 @@ import {
   type AgentBadgeRefreshPublishDecision,
   type AgentBadgeState,
   type GitHubGistClient,
+  type PublishBadgeIfChangedResult,
   type RefreshCache,
   type SharedContributorObservationMap,
   type RunIncrementalRefreshResult
@@ -43,6 +44,7 @@ export interface RefreshCommandSuccessResult {
   readonly refresh: RunIncrementalRefreshResult;
   readonly state: AgentBadgeState;
   readonly publishDecision: AgentBadgeRefreshPublishDecision;
+  readonly publishResult: PublishBadgeIfChangedResult | null;
 }
 
 export interface RefreshCommandSoftFailureResult {
@@ -177,6 +179,19 @@ function printRefreshSummary(
     stdout,
     `- Last refresh: ${result.state.refresh.lastRefreshedAt ?? "unavailable"}`
   );
+
+  if (result.publishResult !== null) {
+    writeLine(
+      stdout,
+      `- Publish mode: ${result.publishResult.healthAfterPublish.mode}`
+    );
+    writeLine(
+      stdout,
+      `- Migration: ${
+        result.publishResult.migrationPerformed ? "legacy -> shared" : "none"
+      }`
+    );
+  }
 }
 
 function printSoftFailure(stdout: OutputWriter, error: Error): void {
@@ -301,6 +316,7 @@ export async function runRefreshCommand(
     ]);
 
     let publishDecision: AgentBadgeRefreshPublishDecision = "not-configured";
+    let publishResult: PublishBadgeIfChangedResult | null = null;
 
     if (config.publish.gistId === null || config.publish.badgeUrl === null) {
       persistedState = {
@@ -314,7 +330,7 @@ export async function runRefreshCommand(
     } else {
       attemptedPublish = true;
 
-      const publishResult = await publishBadgeIfChanged({
+      publishResult = await publishBadgeIfChanged({
         config,
         state: persistedState,
         publisherObservations: buildPublisherObservationsFromRefreshCache(
@@ -344,7 +360,8 @@ export async function runRefreshCommand(
       status: "ok",
       refresh,
       state: persistedState,
-      publishDecision
+      publishDecision,
+      publishResult
     };
 
     printRefreshSummary(stdout, result, options.hook);

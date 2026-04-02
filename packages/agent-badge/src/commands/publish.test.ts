@@ -77,6 +77,49 @@ function createOutputCapture(): OutputCapture {
   };
 }
 
+function createSharedHealthReport(overrides?: {
+  readonly mode?: "legacy" | "shared";
+  readonly status?: "healthy" | "stale" | "conflict" | "partial" | "orphaned";
+  readonly remoteContributorCount?: number;
+  readonly hasSharedOverrides?: boolean;
+  readonly conflictingSessionCount?: number;
+  readonly stalePublisherIds?: string[];
+  readonly orphanedLocalPublisher?: boolean;
+  readonly issues?: string[];
+}) {
+  return {
+    mode: overrides?.mode ?? "shared",
+    status: overrides?.status ?? "healthy",
+    remoteContributorCount: overrides?.remoteContributorCount ?? 1,
+    hasSharedOverrides: overrides?.hasSharedOverrides ?? true,
+    conflictingSessionCount: overrides?.conflictingSessionCount ?? 0,
+    stalePublisherIds: overrides?.stalePublisherIds ?? [],
+    orphanedLocalPublisher: overrides?.orphanedLocalPublisher ?? false,
+    issues: overrides?.issues ?? []
+  };
+}
+
+function createPublishBadgeResult(
+  state: AgentBadgeState,
+  overrides?: {
+    readonly migrationPerformed?: boolean;
+  }
+) {
+  return {
+    decision: "published" as const,
+    state,
+    healthBeforePublish: createSharedHealthReport({
+      mode: overrides?.migrationPerformed ? "legacy" : "shared",
+      status: "healthy",
+      remoteContributorCount: overrides?.migrationPerformed ? 0 : 1,
+      hasSharedOverrides: overrides?.migrationPerformed ? false : true,
+      issues: overrides?.migrationPerformed ? ["legacy-no-contributors"] : []
+    }),
+    healthAfterPublish: createSharedHealthReport(),
+    migrationPerformed: overrides?.migrationPerformed ?? false
+  };
+}
+
 async function writeJsonFile(
   root: string,
   relativePath: string,
@@ -307,7 +350,8 @@ describe("runPublishCommand", () => {
 
     runFullBackfillScanMock.mockResolvedValueOnce(scan);
     attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
-    publishBadgeToGistMock.mockResolvedValueOnce({
+    publishBadgeToGistMock.mockResolvedValueOnce(
+      createPublishBadgeResult({
       ...defaultAgentBadgeState,
       publish: {
         ...defaultAgentBadgeState.publish,
@@ -317,7 +361,8 @@ describe("runPublishCommand", () => {
         publisherId: "publisher-local",
         mode: "shared"
       }
-    });
+      })
+    );
 
     try {
       const result = await runPublishCommand({
@@ -361,6 +406,7 @@ describe("runPublishCommand", () => {
       expect(persistedState.publish.mode).toBe("shared");
       expect(output.read().startsWith("agent-badge publish\n")).toBe(true);
       expect(output.read()).toContain("Publish mode: shared");
+      expect(output.read()).toContain("Migration: none");
       expect(output.read()).toContain("lastPublishedHash: hash_123");
       expect(output.read()).not.toContain("codex-session-1");
       expect(output.read()).not.toContain("transcriptProjectKey");
@@ -468,7 +514,8 @@ describe("runPublishCommand", () => {
 
     runFullBackfillScanMock.mockResolvedValueOnce(scan);
     attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
-    publishBadgeToGistMock.mockResolvedValueOnce({
+    publishBadgeToGistMock.mockResolvedValueOnce(
+      createPublishBadgeResult({
       ...defaultAgentBadgeState,
       publish: {
         ...defaultAgentBadgeState.publish,
@@ -478,7 +525,8 @@ describe("runPublishCommand", () => {
         publisherId: "publisher-local",
         mode: "shared"
       }
-    });
+      })
+    );
 
     try {
       await runPublishCommand({
@@ -488,6 +536,7 @@ describe("runPublishCommand", () => {
       });
 
       expect(output.read()).toContain("Publish mode: shared");
+      expect(output.read()).toContain("Migration: none");
       expect(output.read()).not.toContain("codex-session-1");
       expect(output.read()).not.toContain("sha256:");
       expect(output.read()).not.toContain("explicit shared include decision");
@@ -523,7 +572,8 @@ describe("runPublishCommand", () => {
     createGitHubGistClientMock.mockReturnValue(gistClient);
     runFullBackfillScanMock.mockResolvedValueOnce(scan);
     attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
-    publishBadgeToGistMock.mockResolvedValueOnce({
+    publishBadgeToGistMock.mockResolvedValueOnce(
+      createPublishBadgeResult({
       ...defaultAgentBadgeState,
       publish: {
         ...defaultAgentBadgeState.publish,
@@ -531,7 +581,8 @@ describe("runPublishCommand", () => {
         gistId: "gist_publish",
         lastPublishedHash: "hash_process_env"
       }
-    });
+      })
+    );
 
     try {
       await runPublishCommand({
@@ -543,6 +594,66 @@ describe("runPublishCommand", () => {
       expect(createGitHubGistClientMock).toHaveBeenCalledWith({
         authToken: "process-env-token"
       });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("reports Migration: legacy -> shared on the first shared write", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_publish",
+          mode: "legacy"
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution = createAttributionResult(scan);
+
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockResolvedValueOnce(
+      createPublishBadgeResult(
+        {
+          ...defaultAgentBadgeState,
+          publish: {
+            ...defaultAgentBadgeState.publish,
+            status: "published",
+            gistId: "gist_publish",
+            lastPublishedHash: "hash_migrate",
+            publisherId: "publisher-local",
+            mode: "shared"
+          }
+        },
+        {
+          migrationPerformed: true
+        }
+      )
+    );
+
+    try {
+      await runPublishCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer
+      });
+
+      expect(output.read()).toContain("Publish mode: shared");
+      expect(output.read()).toContain("Migration: legacy -> shared");
     } finally {
       await fixture.cleanup();
     }

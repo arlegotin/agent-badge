@@ -20,12 +20,14 @@ import {
   type IncludedTotals
 } from "./badge-payload.js";
 import type { GitHubGistClient } from "./github-gist-client.js";
+import type { SharedPublishHealthReport } from "./shared-health.js";
+import {
+  inspectSharedPublishHealth,
+  loadRemoteSharedRecords
+} from "./shared-health.js";
 import {
   AGENT_BADGE_OVERRIDES_GIST_FILE,
   buildContributorGistFileName,
-  isContributorGistFileName,
-  parseSharedContributorRecord,
-  parseSharedOverridesRecord,
   type SharedContributorObservationMap,
   type SharedContributorRecord,
   type SharedOverridesRecord
@@ -55,7 +57,12 @@ export interface PublishBadgeIfChangedOptions {
 export interface PublishBadgeIfChangedResult {
   readonly state: AgentBadgeState;
   readonly decision: "published" | "skipped";
+  readonly healthBeforePublish: SharedPublishHealthReport;
+  readonly healthAfterPublish: SharedPublishHealthReport;
+  readonly migrationPerformed: boolean;
 }
+
+export type PublishBadgeToGistResult = PublishBadgeIfChangedResult;
 
 interface SharedPublishStateSnapshot {
   readonly publisherId?: string | null;
@@ -229,65 +236,6 @@ function assertOpaqueSharedOverrideKeys(overrides: SharedOverridesRecord): void 
   }
 }
 
-function loadRemoteSharedRecords(
-  gist: Awaited<ReturnType<GitHubGistClient["getGist"]>>
-): {
-  readonly contributors: SharedContributorRecord[];
-  readonly overrides: SharedOverridesRecord;
-} {
-  const contributors: SharedContributorRecord[] = [];
-  let overrides: SharedOverridesRecord = {
-    schemaVersion: 1,
-    overrides: {}
-  };
-
-  for (const file of Object.values(gist.files)) {
-    if (
-      typeof file !== "object" ||
-      file === null ||
-      typeof file.filename !== "string"
-    ) {
-      continue;
-    }
-
-    if (file.truncated || file.content === null) {
-      if (
-        isContributorGistFileName(file.filename) ||
-        file.filename === AGENT_BADGE_OVERRIDES_GIST_FILE
-      ) {
-        throw new Error(
-          "Shared gist files cannot be loaded from truncated content."
-        );
-      }
-
-      continue;
-    }
-
-    if (isContributorGistFileName(file.filename)) {
-      const parsedContent = JSON.parse(file.content) as
-        | { readonly schemaVersion?: number }
-        | null;
-
-      if (parsedContent?.schemaVersion === 1) {
-        continue;
-      }
-
-      contributors.push(parseSharedContributorRecord(parsedContent));
-      continue;
-    }
-
-    if (file.filename === AGENT_BADGE_OVERRIDES_GIST_FILE) {
-      overrides = parseSharedOverridesRecord(JSON.parse(file.content));
-      assertOpaqueSharedOverrideKeys(overrides);
-    }
-  }
-
-  return {
-    contributors,
-    overrides
-  };
-}
-
 function buildLocalContributorRecord(options: {
   readonly publisherId: string;
   readonly publisherObservations: SharedContributorObservationMap;
@@ -325,6 +273,46 @@ function buildNextPublishedState(options: {
   };
 }
 
+function buildStateForSharedHealth(options: {
+  readonly state: AgentBadgeState;
+  readonly gistId: string;
+  readonly publisherId: string;
+}): AgentBadgeState {
+  return {
+    ...options.state,
+    publish: {
+      ...options.state.publish,
+      gistId: options.gistId,
+      publisherId: options.publisherId,
+      mode: "shared"
+    }
+  };
+}
+
+function buildPostPublishHealthGist(options: {
+  readonly gist: Awaited<ReturnType<GitHubGistClient["getGist"]>>;
+  readonly contributorFileName: string;
+  readonly contributorRecord: SharedContributorRecord;
+  readonly overrides: SharedOverridesRecord;
+}): Awaited<ReturnType<GitHubGistClient["getGist"]>> {
+  return {
+    ...options.gist,
+    files: {
+      ...options.gist.files,
+      [options.contributorFileName]: {
+        filename: options.contributorFileName,
+        content: serializeJsonFile(options.contributorRecord),
+        truncated: false
+      },
+      [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+        filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+        content: serializeJsonFile(options.overrides),
+        truncated: false
+      }
+    }
+  };
+}
+
 export async function publishBadgeIfChanged({
   config,
   state,
@@ -339,7 +327,13 @@ export async function publishBadgeIfChanged({
 
   const publisherId = resolvePublisherId(state);
   const existingGist = await client.getGist(config.publish.gistId);
-  loadRemoteSharedRecords(existingGist);
+  const healthBeforePublish = inspectSharedPublishHealth({
+    gist: existingGist,
+    state,
+    now
+  });
+  const existingSharedState = loadRemoteSharedRecords(existingGist);
+  assertOpaqueSharedOverrideKeys(existingSharedState.overrides);
   const localContributorFileName = buildContributorGistFileName(publisherId);
   const contributorRecord = buildLocalContributorRecord({
     publisherId,
@@ -358,6 +352,7 @@ export async function publishBadgeIfChanged({
 
   const authoritativeGist = await client.getGist(config.publish.gistId);
   const authoritativeSharedState = loadRemoteSharedRecords(authoritativeGist);
+  assertOpaqueSharedOverrideKeys(authoritativeSharedState.overrides);
   const authoritativeContributors = replaceContributorRecord(
     authoritativeSharedState.contributors,
     contributorRecord
@@ -369,6 +364,22 @@ export async function publishBadgeIfChanged({
     authoritativeContributors
   );
   assertOpaqueSharedOverrideKeys(authoritativeOverrides);
+  const healthAfterPublish = inspectSharedPublishHealth({
+    gist: buildPostPublishHealthGist({
+      gist: authoritativeGist,
+      contributorFileName: localContributorFileName,
+      contributorRecord,
+      overrides: authoritativeOverrides
+    }),
+    state: buildStateForSharedHealth({
+      state,
+      gistId: config.publish.gistId,
+      publisherId
+    }),
+    now
+  });
+  const migrationPerformed =
+    healthBeforePublish.mode === "legacy" && healthAfterPublish.mode === "shared";
 
   await client.updateGistFile({
     gistId: config.publish.gistId,
@@ -398,7 +409,10 @@ export async function publishBadgeIfChanged({
         gistId: config.publish.gistId,
         hash: nextHash,
         publisherId
-      })
+      }),
+      healthBeforePublish,
+      healthAfterPublish,
+      migrationPerformed
     };
   }
 
@@ -415,7 +429,10 @@ export async function publishBadgeIfChanged({
       hash: nextHash,
       now,
       publisherId
-    })
+    }),
+    healthBeforePublish,
+    healthAfterPublish,
+    migrationPerformed
   };
 }
 
@@ -424,8 +441,8 @@ export async function publishBadgeToGist({
   state,
   publisherObservations,
   client
-}: PublishBadgeToGistOptions): Promise<AgentBadgeState> {
-  const result = await publishBadgeIfChanged({
+}: PublishBadgeToGistOptions): Promise<PublishBadgeToGistResult> {
+  return publishBadgeIfChanged({
     config,
     state,
     publisherObservations,
@@ -433,6 +450,4 @@ export async function publishBadgeToGist({
     now: new Date().toISOString(),
     skipIfUnchanged: false
   });
-
-  return result.state;
 }

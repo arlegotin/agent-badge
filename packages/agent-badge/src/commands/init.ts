@@ -28,6 +28,7 @@ import {
   type GitHubGistClient,
   type InitPreflightResult,
   type PublishTargetResult,
+  type PublishBadgeToGistResult,
   type RepoLocalRuntimeWiringResult,
   type SharedContributorObservationMap,
   type AgentBadgeState
@@ -193,6 +194,21 @@ function writeBadgeSetupDeferred(
   message: string
 ): void {
   writeLines(stdout, [`- Badge setup deferred: ${message}`]);
+}
+
+function writeSharedPublishSummary(
+  stdout: OutputWriter,
+  publishResult: Pick<
+    PublishBadgeToGistResult,
+    "healthAfterPublish" | "migrationPerformed"
+  >
+): void {
+  writeLines(stdout, [
+    `- Publish mode: ${publishResult.healthAfterPublish.mode}`,
+    `- Migration: ${
+      publishResult.migrationPerformed ? "legacy -> shared" : "none"
+    }`
+  ]);
 }
 
 function buildPublishFailureMessage(error: unknown): string {
@@ -522,7 +538,7 @@ export async function runInitCommand(
       sessions: scan.sessions,
       overrides: nextPublishState.state.overrides.ambiguousSessions
     });
-    const publishedState = await publishBadgeToGist({
+    const publishResult = await publishBadgeToGist({
       config: nextPublishState.config,
       state: nextPublishState.state,
       publisherObservations: await buildPublisherObservations({
@@ -535,8 +551,10 @@ export async function runInitCommand(
       }),
       client: gistClient
     });
+    const publishedState = publishResult.state;
 
     await writePersistedState(preflight.cwd, nextPublishState.config, publishedState);
+    writeSharedPublishSummary(stdout, publishResult);
     await writeReadmeBadgeOutput({
       cwd: preflight.cwd,
       preflight,

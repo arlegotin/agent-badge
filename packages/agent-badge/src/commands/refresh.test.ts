@@ -72,6 +72,50 @@ function createOutputCapture(): OutputCapture {
   };
 }
 
+function createSharedHealthReport(overrides?: {
+  readonly mode?: "legacy" | "shared";
+  readonly status?: "healthy" | "stale" | "conflict" | "partial" | "orphaned";
+  readonly remoteContributorCount?: number;
+  readonly hasSharedOverrides?: boolean;
+  readonly conflictingSessionCount?: number;
+  readonly stalePublisherIds?: string[];
+  readonly orphanedLocalPublisher?: boolean;
+  readonly issues?: string[];
+}) {
+  return {
+    mode: overrides?.mode ?? "shared",
+    status: overrides?.status ?? "healthy",
+    remoteContributorCount: overrides?.remoteContributorCount ?? 1,
+    hasSharedOverrides: overrides?.hasSharedOverrides ?? true,
+    conflictingSessionCount: overrides?.conflictingSessionCount ?? 0,
+    stalePublisherIds: overrides?.stalePublisherIds ?? [],
+    orphanedLocalPublisher: overrides?.orphanedLocalPublisher ?? false,
+    issues: overrides?.issues ?? []
+  };
+}
+
+function createPublishIfChangedResult(
+  state: AgentBadgeState,
+  decision: "published" | "skipped",
+  overrides?: {
+    readonly migrationPerformed?: boolean;
+  }
+) {
+  return {
+    decision,
+    state,
+    healthBeforePublish: createSharedHealthReport({
+      mode: overrides?.migrationPerformed ? "legacy" : "shared",
+      status: "healthy",
+      remoteContributorCount: overrides?.migrationPerformed ? 0 : 1,
+      hasSharedOverrides: overrides?.migrationPerformed ? false : true,
+      issues: overrides?.migrationPerformed ? ["legacy-no-contributors"] : []
+    }),
+    healthAfterPublish: createSharedHealthReport(),
+    migrationPerformed: overrides?.migrationPerformed ?? false
+  };
+}
+
 async function writeJsonFile(
   root: string,
   relativePath: string,
@@ -283,9 +327,8 @@ describe("runRefreshCommand", () => {
     };
 
     runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
-    publishBadgeIfChangedMock.mockResolvedValueOnce({
-      decision: "skipped" as const,
-      state: {
+    publishBadgeIfChangedMock.mockResolvedValueOnce(
+      createPublishIfChangedResult({
         ...defaultAgentBadgeState,
         checkpoints: {
           codex: {
@@ -310,8 +353,8 @@ describe("runRefreshCommand", () => {
         overrides: defaultAgentBadgeState.overrides,
         init: defaultAgentBadgeState.init,
         version: defaultAgentBadgeState.version
-      }
-    });
+      }, "skipped")
+    );
 
     try {
       const result = await runRefreshCommand({
@@ -358,6 +401,8 @@ describe("runRefreshCommand", () => {
       expect(publishCall).not.toHaveProperty("includedTotals");
       expect(persistedState.refresh.lastPublishDecision).toBe("skipped");
       expect(output.read()).toContain("- Publish: skipped");
+      expect(output.read()).toContain("- Publish mode: shared");
+      expect(output.read()).toContain("- Migration: none");
     } finally {
       await fixture.cleanup();
     }
@@ -404,9 +449,8 @@ describe("runRefreshCommand", () => {
     vi.stubEnv("GH_TOKEN", "process-env-token");
     createGitHubGistClientMock.mockReturnValue(gistClient);
     runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
-    publishBadgeIfChangedMock.mockResolvedValueOnce({
-      decision: "skipped" as const,
-      state: {
+    publishBadgeIfChangedMock.mockResolvedValueOnce(
+      createPublishIfChangedResult({
         ...defaultAgentBadgeState,
         checkpoints: {
           codex: {
@@ -423,8 +467,8 @@ describe("runRefreshCommand", () => {
           status: "published",
           gistId: "gist_123"
         }
-      }
-    });
+      }, "skipped")
+    );
 
     try {
       await runRefreshCommand({
@@ -493,9 +537,8 @@ describe("runRefreshCommand", () => {
     };
 
     runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
-    publishBadgeIfChangedMock.mockResolvedValueOnce({
-      decision: "skipped" as const,
-      state: {
+    publishBadgeIfChangedMock.mockResolvedValueOnce(
+      createPublishIfChangedResult({
         ...defaultAgentBadgeState,
         publish: {
           ...defaultAgentBadgeState.publish,
@@ -506,8 +549,8 @@ describe("runRefreshCommand", () => {
           publisherId: "publisher-local",
           mode: "shared" as const
         }
-      }
-    });
+      }, "skipped")
+    );
 
     try {
       await runRefreshCommand({
@@ -574,9 +617,8 @@ describe("runRefreshCommand", () => {
     };
 
     runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
-    publishBadgeIfChangedMock.mockResolvedValueOnce({
-      decision: "skipped" as const,
-      state: {
+    publishBadgeIfChangedMock.mockResolvedValueOnce(
+      createPublishIfChangedResult({
         ...defaultAgentBadgeState,
         publish: {
           ...defaultAgentBadgeState.publish,
@@ -587,8 +629,8 @@ describe("runRefreshCommand", () => {
           publisherId: "publisher-local",
           mode: "shared" as const
         }
-      }
-    });
+      }, "skipped")
+    );
 
     try {
       await runRefreshCommand({
@@ -601,8 +643,97 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("- Scan mode: incremental");
       expect(output.read()).toContain("- Publish: skipped");
+      expect(output.read()).toContain("- Publish mode: shared");
+      expect(output.read()).toContain("- Migration: none");
       expect(output.read()).not.toContain("last published");
-      expect(output.read().trim().split("\n")).toHaveLength(5);
+      expect(output.read().trim().split("\n")).toHaveLength(7);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("reports Migration: legacy -> shared when refresh performs the first shared publish", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_migrate_refresh",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_migrate_refresh%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_migrate_refresh",
+          mode: "legacy"
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 90,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-migrate",
+        claude: "claude-migrate"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {
+          "codex:session-9": {
+            provider: "codex" as const,
+            providerSessionId: "session-9",
+            sessionUpdatedAt: "2026-03-30T18:58:00.000Z",
+            status: "included" as const,
+            overrideDecision: null,
+            tokens: 90,
+            estimatedCostUsdMicros: null
+          }
+        }
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockResolvedValueOnce(
+      createPublishIfChangedResult(
+        {
+          ...defaultAgentBadgeState,
+          publish: {
+            ...defaultAgentBadgeState.publish,
+            status: "published" as const,
+            gistId: "gist_migrate_refresh",
+            lastPublishedHash: "hash_migrate_refresh",
+            lastPublishedAt: "2026-03-30T19:00:00.000Z",
+            publisherId: "publisher-local",
+            mode: "shared" as const
+          }
+        },
+        "published",
+        {
+          migrationPerformed: true
+        }
+      )
+    );
+
+    try {
+      await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer
+      });
+
+      expect(output.read()).toContain("- Publish mode: shared");
+      expect(output.read()).toContain("- Migration: legacy -> shared");
     } finally {
       await fixture.cleanup();
     }

@@ -20,6 +20,7 @@ export {
 export type {
   PublishBadgeIfChangedOptions,
   PublishBadgeIfChangedResult,
+  PublishBadgeToGistResult,
   PublishBadgeToGistOptions
 } from "./publish-service.js";
 export { deletePublishTarget, type DeletePublishTargetResult } from "./publish-target.js";

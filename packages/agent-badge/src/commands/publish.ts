@@ -76,6 +76,17 @@ function writeLine(stdout: OutputWriter, line: string): void {
   stdout.write(`${line}\n`);
 }
 
+function writeSharedPublishSummary(stdout: OutputWriter, options: {
+  readonly mode: "legacy" | "shared";
+  readonly migrationPerformed: boolean;
+}): void {
+  writeLine(stdout, `- Publish mode: ${options.mode}`);
+  writeLine(
+    stdout,
+    `- Migration: ${options.migrationPerformed ? "legacy -> shared" : "none"}`
+  );
+}
+
 function resolveGitHubAuthToken(
   env: NodeJS.ProcessEnv | undefined
 ): string | undefined {
@@ -177,7 +188,7 @@ export async function runPublishCommand(
       includeEstimatedCost:
         config.badge.mode === "combined" || config.badge.mode === "cost"
     });
-    const nextState = await publishBadgeToGist({
+    const publishResult = await publishBadgeToGist({
       config,
       state: previousState,
       publisherObservations,
@@ -187,12 +198,16 @@ export async function runPublishCommand(
           authToken: resolveGitHubAuthToken(env)
         })
     });
+    const nextState = publishResult.state;
 
     await writeStateFile(statePath, nextState);
     writeLine(stdout, "agent-badge publish");
     writeLine(stdout, `- Badge URL: ${config.publish.badgeUrl}`);
     writeLine(stdout, `- Publish status: ${nextState.publish.status}`);
-    writeLine(stdout, `- Publish mode: ${nextState.publish.mode}`);
+    writeSharedPublishSummary(stdout, {
+      mode: publishResult.healthAfterPublish.mode,
+      migrationPerformed: publishResult.migrationPerformed
+    });
     writeLine(stdout, `- lastPublishedHash: ${nextState.publish.lastPublishedHash}`);
     await appendAgentBadgeLog({
       cwd,

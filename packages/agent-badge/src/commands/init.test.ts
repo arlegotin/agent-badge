@@ -7,7 +7,13 @@ import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 
-import { defaultAgentBadgeConfig, defaultAgentBadgeState } from "@legotin/agent-badge-core";
+import {
+  AGENT_BADGE_GIST_FILE,
+  AGENT_BADGE_OVERRIDES_GIST_FILE,
+  buildContributorGistFileName,
+  defaultAgentBadgeConfig,
+  defaultAgentBadgeState
+} from "@legotin/agent-badge-core";
 import { runInitCommand } from "./init.js";
 import { runUninstallCommand } from "./uninstall.js";
 
@@ -124,6 +130,67 @@ function createGistMetadata(id: string): {
     ownerLogin: "octocat",
     public: true,
     files: ["agent-badge.json"]
+  };
+}
+
+function createGistFileMap(
+  files: Record<
+    string,
+    {
+      readonly content: string;
+      readonly truncated?: boolean;
+    }
+  >
+) {
+  return Object.fromEntries(
+    Object.entries(files).map(([filename, file]) => [
+      filename,
+      {
+        filename,
+        content: file.content,
+        truncated: file.truncated ?? false
+      }
+    ])
+  );
+}
+
+function createMutableGistClient(options: {
+  readonly id: string;
+  readonly files: Record<string, { readonly content: string }>;
+}) {
+  const gist = {
+    id: options.id,
+    ownerLogin: "octocat",
+    public: true as const,
+    files: createGistFileMap(options.files)
+  };
+
+  return {
+    async getGist() {
+      return {
+        ...gist,
+        files: { ...gist.files }
+      };
+    },
+    async createPublicGist() {
+      return {
+        ...gist,
+        files: { ...gist.files }
+      };
+    },
+    async updateGistFile(input: {
+      readonly files: Record<string, { readonly content: string }>;
+    }) {
+      gist.files = {
+        ...gist.files,
+        ...createGistFileMap(input.files)
+      };
+
+      return {
+        ...gist,
+        files: { ...gist.files }
+      };
+    }
   };
 }
 
@@ -551,6 +618,71 @@ describe("runInitCommand", () => {
       ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: reused existing gist");
       expect(readmeContent).toContain("<!-- agent-badge:start -->");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("migrates an existing legacy gist without changing the badge URL", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const output = createOutputCapture();
+    const gistClient = createMutableGistClient({
+      id: "gist_legacy",
+      files: {
+        [AGENT_BADGE_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "Vibe budget",
+  "message": "9 tokens",
+  "color": "blue"
+}
+`
+        }
+      }
+    });
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_legacy",
+        stdout: output.writer,
+        gistClient
+      });
+
+      const publishFiles = await readPublishFiles(repo.root);
+      const readmeContent = await readReadmeContent(repo.root);
+      const badgeUrl = (publishFiles.config.publish as Record<string, unknown>).badgeUrl;
+      const publisherId = (publishFiles.state.publish as Record<string, unknown>)
+        .publisherId as string;
+      const remoteGist = await gistClient.getGist();
+
+      expect(publishFiles.config.publish).toEqual({
+        provider: "github-gist",
+        gistId: "gist_legacy",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_legacy%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      });
+      expect(publishFiles.state.publish).toMatchObject({
+        status: "published",
+        gistId: "gist_legacy",
+        mode: "shared"
+      });
+      expect(remoteGist.files).toHaveProperty(AGENT_BADGE_GIST_FILE);
+      expect(remoteGist.files).toHaveProperty(AGENT_BADGE_OVERRIDES_GIST_FILE);
+      expect(remoteGist.files).toHaveProperty(
+        buildContributorGistFileName(publisherId)
+      );
+      expect(readmeContent).toContain(String(badgeUrl));
+      expect(output.read()).toContain("- Publish target: connected existing gist");
+      expect(output.read()).toContain("- Publish mode: shared");
+      expect(output.read()).toContain("- Migration: legacy -> shared");
+      expect(output.read()).toContain("Publish mode: shared");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
