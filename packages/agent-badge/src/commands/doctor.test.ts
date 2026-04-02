@@ -245,6 +245,7 @@ describe("runDoctorCommand", () => {
         "publish-auth",
         "publish-write",
         "publish-shields",
+        "publish-trust",
         "shared-mode",
         "shared-health",
         "readme-badge",
@@ -363,6 +364,86 @@ describe("runDoctorCommand", () => {
 
       expect(rendered).toContain("- shared-health: fail");
       expect(rendered).toContain("migrate from the original publisher machine");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders publish-trust output with the same Live badge trust wording used by status and refresh", async () => {
+    const fixture = await createFixture();
+    const output = createOutputCapture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+      await writeJsonFile(fixture.repoRoot, ".agent-badge/state.json", {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "error",
+          gistId: "doctorgist",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-31T00:00:00.000Z",
+          lastAttemptedAt: "2026-03-31T01:00:00.000Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-03-31T00:00:00.000Z",
+          lastAttemptCandidateHash: "hash_live",
+          lastAttemptChangedBadge: "no",
+          lastFailureCode: "remote-write-failed"
+        },
+        refresh: {
+          lastRefreshedAt: "2026-03-31T01:00:00.000Z",
+          lastScanMode: "incremental",
+          lastPublishDecision: "failed",
+          summary: null
+        }
+      });
+
+      await runDoctorCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        env: {
+          GH_TOKEN: "token"
+        },
+        gistClient: buildGistClient({
+          [AGENT_BADGE_GIST_FILE]: {
+            filename: AGENT_BADGE_GIST_FILE,
+            content:
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"blue"}',
+            truncated: false
+          },
+          [buildContributorGistFileName("publisher-a")]: {
+            filename: buildContributorGistFileName("publisher-a"),
+            content: createObservationContributorRecord({
+              publisherId: "publisher-a",
+              observations: {
+                [buildSharedOverrideDigest("codex:session-a")]: {
+                  sessionUpdatedAt: "2026-03-31T00:00:00.000Z",
+                  attributionStatus: "included",
+                  overrideDecision: null,
+                  tokens: 42,
+                  estimatedCostUsdMicros: null
+                }
+              }
+            }),
+            truncated: false
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+            content: createOverridesRecord(),
+            truncated: false
+          }
+        }),
+        stdout: output.writer
+      });
+
+      const rendered = output.read();
+
+      expect(rendered).toContain("- publish-trust:");
+      expect(rendered).toContain(
+        "Live badge trust: publish failed but live badge is unchanged"
+      );
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.cleanup();

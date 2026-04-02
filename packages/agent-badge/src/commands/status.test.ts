@@ -154,7 +154,13 @@ function configuredState(): AgentBadgeState {
       status: "published",
       gistId: "gist_789",
       lastPublishedHash: "hash_789",
-      lastPublishedAt: "2026-03-30T19:10:00.000Z"
+      lastPublishedAt: "2026-03-30T19:10:00.000Z",
+      lastAttemptedAt: "2026-03-30T19:12:00.000Z",
+      lastAttemptOutcome: "published",
+      lastSuccessfulSyncAt: "2026-03-30T19:12:00.000Z",
+      lastAttemptCandidateHash: "hash_789",
+      lastAttemptChangedBadge: "yes",
+      lastFailureCode: null
     },
     refresh: {
       lastRefreshedAt: "2026-03-30T19:12:00.000Z",
@@ -269,7 +275,13 @@ describe("runStatusCommand", () => {
           status: "error",
           gistId: "gist_789",
           lastPublishedHash: "hash_789",
-          lastPublishedAt: "2026-03-30T19:10:00.000Z"
+          lastPublishedAt: "2026-03-30T19:10:00.000Z",
+          lastAttemptedAt: "2026-03-30T19:12:00.000Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-03-30T19:10:00.000Z",
+          lastAttemptCandidateHash: "hash_next",
+          lastAttemptChangedBadge: "yes",
+          lastFailureCode: "remote-write-failed"
         },
         refresh: {
           ...configuredState().refresh,
@@ -306,6 +318,70 @@ describe("runStatusCommand", () => {
       );
       expect(output.read()).toContain(
         "- Shared mode: legacy | health=healthy | contributors=0"
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("prints failed-but-unchanged live badge trust from canonical publish diagnostics", async () => {
+    const fixture = await createFixture({
+      config: {
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "gist_789",
+          badgeUrl:
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_789%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+        }
+      },
+      state: {
+        ...configuredState(),
+        publish: {
+          ...configuredState().publish,
+          status: "error",
+          gistId: "gist_789",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-30T19:10:00.000Z",
+          lastAttemptedAt: "2026-03-30T19:12:00.000Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-03-30T19:10:00.000Z",
+          lastAttemptCandidateHash: "hash_live",
+          lastAttemptChangedBadge: "no",
+          lastFailureCode: "remote-write-failed"
+        },
+        refresh: {
+          ...configuredState().refresh,
+          lastRefreshedAt: "2026-03-30T19:12:00.000Z",
+          lastPublishDecision: "failed"
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    try {
+      await runStatusCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer,
+        gistClient: buildGistClient({
+          [AGENT_BADGE_GIST_FILE]: JSON.stringify(
+            {
+              schemaVersion: 1,
+              label: "AI Usage",
+              message: "610 tokens",
+              color: "blue"
+            },
+            null,
+            2
+          )
+        })
+      });
+
+      expect(output.read()).toContain(
+        "- Live badge trust: publish failed but live badge is unchanged"
+      );
+      expect(output.read()).toContain(
+        "- Last successful badge update: 2026-03-30T19:10:00.000Z"
       );
     } finally {
       await fixture.cleanup();

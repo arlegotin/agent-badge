@@ -6,6 +6,10 @@ import {
 } from "../publish/badge-url.js";
 import { buildEndpointBadgePayload } from "../publish/badge-payload.js";
 import {
+  derivePublishTrustReport,
+  formatPublishTrustStatus
+} from "../publish/publish-trust.js";
+import {
   AGENT_BADGE_README_END_MARKER,
   AGENT_BADGE_README_START_MARKER
 } from "../publish/readme-badge.js";
@@ -76,6 +80,7 @@ const CHECK_IDS = [
   "publish-auth",
   "publish-write",
   "publish-shields",
+  "publish-trust",
   "shared-mode",
   "shared-health",
   "readme-badge",
@@ -316,6 +321,109 @@ function checkPublishAuth(preflight: InitPreflightResult): DoctorCheck {
     message: `GitHub auth detected (${preflight.githubAuth.source})`,
     detail: "GitHub auth token is available for credential checks.",
     fix: []
+  };
+}
+
+function buildPublishTrustFix(options: {
+  readonly config: AgentBadgeConfig | null;
+  readonly state: AgentBadgeState;
+  readonly status:
+    | "current"
+    | "failed-but-unchanged"
+    | "unchanged"
+    | "not-attempted"
+    | "stale-failed-publish"
+    | "unknown";
+}): readonly string[] {
+  const fixes = new Set<string>();
+  const publishTargetMissing =
+    options.config === null ||
+    options.config.publish.gistId === null ||
+    options.config.publish.badgeUrl === null;
+
+  if (publishTargetMissing || options.status === "not-attempted") {
+    fixes.add("Run `agent-badge init --gist-id <id>` to reconnect publish targets.");
+  }
+
+  if (
+    options.status === "stale-failed-publish" ||
+    options.status === "failed-but-unchanged" ||
+    options.status === "unknown"
+  ) {
+    fixes.add(
+      "Retry publish from the machine with the latest local state by rerunning `agent-badge refresh`."
+    );
+  }
+
+  if (options.status === "stale-failed-publish") {
+    fixes.add(
+      "If publish still fails, reconnect the gist target and rerun `agent-badge refresh`."
+    );
+  }
+
+  return [...fixes];
+}
+
+function checkPublishTrust(options: {
+  readonly config: AgentBadgeConfig | null;
+  readonly state: AgentBadgeState | null;
+  readonly stateMissing: boolean;
+  readonly stateInvalid: boolean;
+}): DoctorCheck {
+  if (options.stateMissing) {
+    return {
+      id: "publish-trust",
+      status: "warn",
+      message: "Live badge trust could not be inspected",
+      detail: "No valid .agent-badge/state.json was found.",
+      fix: buildFix(["Run `agent-badge init` to recreate persisted state."])
+    };
+  }
+
+  if (options.stateInvalid || options.state === null) {
+    return {
+      id: "publish-trust",
+      status: "warn",
+      message: "Live badge trust could not be inspected",
+      detail: "Live badge trust requires a valid .agent-badge/state.json file.",
+      fix: buildFix(["Run `agent-badge init` to repair persisted state."])
+    };
+  }
+
+  const report = derivePublishTrustReport({
+    state: options.state,
+    now: new Date().toISOString()
+  });
+  const detailParts = [
+    `Last refresh=${options.state.refresh.lastRefreshedAt ?? "unavailable"}`,
+    `last published=${options.state.publish.lastPublishedAt ?? "unavailable"}`
+  ];
+
+  let status: DoctorCheckStatus = "pass";
+
+  if (report.status === "stale-failed-publish") {
+    status = "fail";
+  } else if (
+    report.status === "failed-but-unchanged" ||
+    report.status === "not-attempted" ||
+    report.status === "unknown"
+  ) {
+    status = "warn";
+  }
+
+  return {
+    id: "publish-trust",
+    status,
+    message: `Live badge trust: ${formatPublishTrustStatus(report.status)}`,
+    detail: detailParts.join(" | "),
+    fix:
+      status === "pass"
+        ? []
+        : buildPublishTrustFix({
+            config: options.config,
+            state: options.state,
+            status: report.status
+          })
   };
 }
 
@@ -918,6 +1026,14 @@ export async function runDoctorChecks(
   );
   checks.push(
     await checkPublishShields(persisted.config, options.runProbeWrite ?? false)
+  );
+  checks.push(
+    checkPublishTrust({
+      config: persisted.config,
+      state: persistedState.state,
+      stateMissing: persistedState.stateMissing,
+      stateInvalid: persistedState.stateInvalid
+    })
   );
   const sharedInspection = await inspectSharedPublishState({
     config: persisted.config,

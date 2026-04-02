@@ -146,15 +146,21 @@ async function createRepoFixture(options: {
       }
     },
     publish: {
-      status: "deferred",
+      status: "published",
       gistId,
-      lastPublishedHash: null,
-      lastPublishedAt: null
+      lastPublishedHash: "hash_live",
+      lastPublishedAt: "2026-03-31T00:00:00.000Z",
+      lastAttemptedAt: "2026-03-31T00:00:00.000Z",
+      lastAttemptOutcome: "published",
+      lastSuccessfulSyncAt: "2026-03-31T00:00:00.000Z",
+      lastAttemptCandidateHash: "hash_live",
+      lastAttemptChangedBadge: "yes",
+      lastFailureCode: null
     },
     refresh: {
-      lastRefreshedAt: null,
-      lastScanMode: null,
-      lastPublishDecision: null,
+      lastRefreshedAt: "2026-03-31T00:00:00.000Z",
+      lastScanMode: "incremental",
+      lastPublishDecision: "published",
       summary: null
     },
     overrides: {
@@ -265,14 +271,15 @@ describe("runDoctorChecks", () => {
         "publish-auth",
         "publish-write",
         "publish-shields",
+        "publish-trust",
         "shared-mode",
         "shared-health",
         "readme-badge",
         "pre-push-hook"
       ]);
       expect(result.overallStatus).toBe("pass");
-      expect(result.total).toBe(10);
-      expect(result.passCount).toBe(10);
+      expect(result.total).toBe(11);
+      expect(result.passCount).toBe(11);
       expect(
         result.checks.some((check) =>
           check.message.includes(AGENT_BADGE_README_START_MARKER)
@@ -438,6 +445,129 @@ describe("runDoctorChecks", () => {
       expect(sharedHealth?.fix).toContain(
         "If this repo is migrating from legacy publish state, migrate from the original publisher machine by rerunning `agent-badge init`."
       );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("adds a publish-trust check for failed-but-unchanged badge state without overloading shared-health", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+      await writeJsonFile(fixture.repo.root, ".agent-badge/state.json", {
+        version: 1,
+        init: {
+          initialized: true,
+          scaffoldVersion: 1,
+          lastInitializedAt: "2026-03-31T00:00:00.000Z"
+        },
+        checkpoints: {
+          codex: {
+            cursor: null,
+            lastScannedAt: "2026-03-31T00:00:00.000Z"
+          },
+          claude: {
+            cursor: null,
+            lastScannedAt: "2026-03-31T00:00:00.000Z"
+          }
+        },
+        publish: {
+          status: "error",
+          gistId: "doctorgist",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-30T23:00:00.000Z",
+          lastAttemptedAt: "2026-03-31T00:00:00.000Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-03-30T23:00:00.000Z",
+          lastAttemptCandidateHash: "hash_live",
+          lastAttemptChangedBadge: "no",
+          lastFailureCode: "remote-write-failed",
+          publisherId: "publisher-local",
+          mode: "shared"
+        },
+        refresh: {
+          lastRefreshedAt: "2026-03-31T00:00:00.000Z",
+          lastScanMode: "incremental",
+          lastPublishDecision: "failed",
+          summary: null
+        },
+        overrides: {
+          ambiguousSessions: {}
+        }
+      });
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                },
+                [buildContributorGistFileName("publisher-local")]: {
+                  filename: buildContributorGistFileName("publisher-local"),
+                  content: createObservationContributorRecord({
+                    publisherId: "publisher-local",
+                    observations: {
+                      [buildSharedOverrideDigest("codex:session-a")]: {
+                        sessionUpdatedAt: "2026-03-31T00:00:00.000Z",
+                        attributionStatus: "included",
+                        overrideDecision: null,
+                        tokens: 42,
+                        estimatedCostUsdMicros: null
+                      }
+                    }
+                  }),
+                  truncated: false
+                },
+                [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+                  filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+                  content: createOverridesRecord(),
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            },
+            deleteGist: async () => {
+              throw new Error("deleteGist should not run");
+            }
+          }
+        })
+      );
+
+      const publishTrust = result.checks.find((check) => check.id === "publish-trust");
+      const sharedHealth = result.checks.find((check) => check.id === "shared-health");
+
+      expect(publishTrust).toMatchObject({
+        id: "publish-trust",
+        status: "warn"
+      });
+      expect(publishTrust?.message).toContain(
+        "Live badge trust: publish failed but live badge is unchanged"
+      );
+      expect(publishTrust?.fix).toContain(
+        "Retry publish from the machine with the latest local state by rerunning `agent-badge refresh`."
+      );
+      expect(sharedHealth?.status).toBe("pass");
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.repo.cleanup();

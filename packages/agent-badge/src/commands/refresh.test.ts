@@ -31,6 +31,7 @@ vi.mock("@legotin/agent-badge-core", async () => {
 });
 
 import {
+  PublishBadgeError,
   buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
   defaultAgentBadgeState,
@@ -101,9 +102,23 @@ function createPublishIfChangedResult(
     readonly migrationPerformed?: boolean;
   }
 ) {
+  const attemptedAt = "2026-03-30T19:00:00.000Z";
+  const candidateHash = state.publish.lastPublishedHash ?? "hash_candidate";
+
   return {
     decision,
-    state,
+    state: {
+      ...state,
+      publish: {
+        ...state.publish,
+        lastAttemptedAt: attemptedAt,
+        lastAttemptOutcome: decision === "published" ? "published" : "unchanged",
+        lastSuccessfulSyncAt: attemptedAt,
+        lastAttemptCandidateHash: candidateHash,
+        lastAttemptChangedBadge: decision === "published" ? "yes" : "no",
+        lastFailureCode: null
+      }
+    },
     healthBeforePublish: createSharedHealthReport({
       mode: overrides?.migrationPerformed ? "legacy" : "shared",
       status: "healthy",
@@ -487,7 +502,77 @@ describe("runRefreshCommand", () => {
       expect(persistedState.publish.lastFailureCode).toBe("unknown");
       expect(persistedState.publish.lastAttemptChangedBadge).toBe("unknown");
       expect(persistedRaw).not.toContain("/Users/example/private.txt");
-      expect(output.read()).toContain("- Live badge trust: stale after failed publish");
+      expect(output.read()).toContain("- Live badge trust: unknown");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("prints failed-but-unchanged trust when publish fails without changing the live badge", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_123",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_123",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new PublishBadgeError("remote write failed", {
+        failureCode: "remote-write-failed",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: "hash_live",
+        changedBadge: false
+      })
+    );
+
+    try {
+      const result = await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer,
+        failSoft: true
+      });
+
+      expect(result.status).toBe("failed-soft");
+      expect(output.read()).toContain(
+        "- Live badge trust: publish failed but live badge is unchanged"
+      );
     } finally {
       await fixture.cleanup();
     }
@@ -926,9 +1011,7 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("Refresh status: failed-soft");
       expect(output.read()).toContain("GitHub authentication missing");
-      expect(output.read()).toContain(
-        "- Live badge trust: stale after failed publish"
-      );
+      expect(output.read()).toContain("- Live badge trust: unknown");
       expect(output.read()).toContain("- Last successful badge update:");
       expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
         cwd: fixture.repoRoot,
