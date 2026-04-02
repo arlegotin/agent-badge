@@ -37,8 +37,9 @@ The public gist contains stable badge endpoint payloads and deterministic shared
 
 - stable endpoint payload for the main badge
 - preview payloads for `combined`, `tokens`, and `cost` badge modes when cost totals are available
-- `agent-badge-contrib-<publisher>.json` contributor files with aggregate totals, opaque publisher ids, and freshness metadata
-- `agent-badge-overrides.json` with shared include or exclude decisions keyed by opaque digest values instead of raw `provider:providerSessionId`
+- `agent-badge-contrib-<publisher>.json` contributor files with aggregate-only per-session observations, opaque publisher ids, and freshness metadata
+- those per-session observations are keyed by opaque digests instead of raw `provider:providerSessionId`
+- `agent-badge-overrides.json` with shared include or exclude decisions keyed by opaque digests instead of raw `provider:providerSessionId`
 - no prompt text
 - no raw transcript
 - no filenames
@@ -63,3 +64,5 @@ That refresh path prefers incremental updates and falls back to a full scan when
 ## How Shared Publishing Stays Deterministic
 
 Each publisher updates exactly one contributor file, refreshes the shared overrides file, then rereads the gist to derive the badge payloads from the full remote contributor set. That means the public badge remains aggregate-first even though the shared model keeps per-publisher contribution slots under deterministic filenames.
+
+Existing single-writer repos still depend on local machine history at migration time. To preserve continuity, rerun `agent-badge init` on the original publisher machine first so the first shared publish is seeded from the machine that already holds the repo's trusted local scan data.

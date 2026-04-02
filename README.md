@@ -51,6 +51,8 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 
 If GitHub auth is already available through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that one command also creates or reuses a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
+To migrate existing single-writer repos, rerun `agent-badge init` on the original publisher machine before other contributors start publishing. That first shared publish keeps the same gist id and stable badge URL while seeding the shared contributor state from the local history that already exists on that machine.
+
 What init sets up:
 
 - installs `@legotin/agent-badge` as a repo-local dev dependency
@@ -101,13 +103,6 @@ The CLI exposes a small configuration surface on purpose. The product is not try
 Read the full supported config surface in [Configuration](docs/CONFIGURATION.md).
 
 
-## Contributing
-
-Issues, ideas, and sharper badge modes are welcome.
-
-If you think AI-assisted work should be visible, measurable, and privacy-conscious, you’re in the right repo.
-
-
 ## Documentation
 
 - [Quickstart](docs/QUICKSTART.md)
@@ -118,3 +113,10 @@ If you think AI-assisted work should be visible, measurable, and privacy-conscio
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Manual Gist Connection](docs/MANUAL-GIST.md)
 - [Release Checklist](docs/RELEASE.md)
+
+
+## Contributing
+
+Issues, ideas, and sharper badge modes are welcome.
+
+If you think AI-assisted work should be visible and measurable, you’re in the right repo.

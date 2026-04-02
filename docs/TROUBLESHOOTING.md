@@ -81,3 +81,43 @@ Recovery:
 1. Run `agent-badge status` and confirm a recent refresh happened.
 2. Run `agent-badge refresh` manually to force the local refresh path.
 3. Remember the Shields endpoint uses `cacheSeconds=300`, so a short delay is expected.
+
+## shared mode is stale
+
+Symptom: `agent-badge status` shows `Shared mode: shared | health=stale`, or `agent-badge doctor` warns that shared mode is stale.
+
+Recovery:
+
+1. Ask contributors with stale local state to run `agent-badge refresh`.
+2. Re-run `agent-badge status` to confirm the shared contributor count is still correct and the health moved back to healthy.
+3. Run `agent-badge doctor` if stale warnings remain after refresh.
+
+## shared mode reports conflicts
+
+Symptom: `agent-badge doctor` fails with `shared-health` conflict guidance, or `agent-badge status` prints `Shared issues: conflicting-session-observations=...`.
+
+Recovery:
+
+1. Ask the contributors who published recently to rerun `agent-badge refresh`.
+2. Re-run `agent-badge doctor` to confirm the conflict is gone.
+3. If the repo was never migrated cleanly, rerun `agent-badge init` on the original publisher machine before resuming normal team publishing.
+
+## shared mode is partially migrated
+
+Symptom: `agent-badge doctor` reports partial shared mode or missing shared metadata.
+
+Recovery:
+
+1. Rerun `agent-badge init` to repair the shared publish metadata on the existing gist.
+2. Run `agent-badge status` and `agent-badge doctor` to confirm the repo now reports shared mode cleanly.
+3. If continuity still looks wrong, repeat the migration from the original publisher machine that already has the trusted local history.
+
+## orphaned local publisher
+
+Symptom: `agent-badge status` reports `missing-local-contributor`, or `agent-badge doctor` reports an orphaned local publisher.
+
+Recovery:
+
+1. Run `agent-badge refresh` on the current machine to recreate the local contributor record.
+2. Re-run `agent-badge status` to confirm the shared issues line clears.
+3. If the repo is still migrating from legacy mode, rerun `agent-badge init` on the original publisher machine and verify again with `agent-badge doctor`.

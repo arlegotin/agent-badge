@@ -67,14 +67,21 @@ require_fixed "npm_config_cache" docs/RELEASE.md
 require_fixed "/tmp" docs/RELEASE.md
 require_fixed "npm init agent-badge@latest" docs/QUICKSTART.md
 require_fixed "exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override" docs/ATTRIBUTION.md
+require_fixed "migrate existing single-writer repos" README.md
+require_fixed "original publisher machine" README.md
 require_fixed "agent-badge-contrib-<publisher>.json" docs/HOW-IT-WORKS.md
 require_fixed "agent-badge-overrides.json" docs/HOW-IT-WORKS.md
 require_fixed "opaque publisher ids" docs/HOW-IT-WORKS.md
 require_fixed "opaque digest" docs/HOW-IT-WORKS.md
+require_fixed "per-session observations" docs/HOW-IT-WORKS.md
+require_fixed "opaque digests" docs/HOW-IT-WORKS.md
 require_fixed "Aggregate-only publishing" docs/PRIVACY.md
+require_fixed "Diagnostics stay aggregate-only" docs/PRIVACY.md
 require_fixed "agent-badge-overrides.json" docs/PRIVACY.md
 require_fixed "provider:providerSessionId" docs/PRIVACY.md
 require_fixed "opaque digest" docs/PRIVACY.md
 require_fixed "agent-badge init --gist-id <id>" docs/MANUAL-GIST.md
+require_fixed "original publisher machine" docs/MANUAL-GIST.md
+require_fixed "orphaned local publisher" docs/TROUBLESHOOTING.md
 
 echo "Documentation verification passed."

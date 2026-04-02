@@ -4,6 +4,8 @@
 
 `agent-badge` keeps the badge endpoint payload aggregate-only even when shared publishing is enabled. The public gist may contain derived badge payloads, deterministic contributor files such as `agent-badge-contrib-<publisher>.json`, and the shared overrides file `agent-badge-overrides.json`, but those shared-state files still never publish prompt text, transcript text, filenames, or local paths.
 
+Diagnostics stay aggregate-only. When `agent-badge status` or `agent-badge doctor` reports stale shared mode, conflicts, partial migration, or an orphaned local publisher, the CLI reports only mode, issue ids, counts, and remediation guidance. It does not print raw session ids, raw `provider:providerSessionId` values, prompt text, transcript text, filenames, or local paths.
+
 ## Forbidden Outbound Data
 
 The following data must never leave the local machine:
