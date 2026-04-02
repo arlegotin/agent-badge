@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: milestone
 status: executing
-stopped_at: Completed 17-03-PLAN.md
-last_updated: "2026-04-02T08:33:44.621Z"
-last_activity: 2026-04-02
+stopped_at: Completed 18-03-PLAN.md
+last_updated: "2026-04-02T10:33:43Z"
+last_activity: 2026-04-02 -- Completed Plan 18-03 and reopened the automated UAT gate
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
+  completed_phases: 5
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-02)
 
 ## Current Position
 
-Phase: 18
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-02
+Phase: 18 (auth-hook-and-publish-readiness-hardening) — AWAITING VERIFICATION
+Plan: 3 of 3 complete
+Status: Automated validation is green; manual Phase 18 UAT can resume
+Last activity: 2026-04-02 -- Completed Plan 18-03 and reopened the automated UAT gate
 
-Progress: [░░░░░░░░░░] 0/0 plans complete in milestone v1.4
+Progress: [██████████] 3/3 plans complete in Phase 18
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0/0 plans complete in milestone v1.4
 | Phase 14 P01 | 3m 21s | 2 tasks | 5 files |
 | Phase 16 P02 | 9 min | 2 tasks | 11 files |
 | Phase 17 P03 | 9 min | 2 tasks | 7 files |
+| Phase 18-auth-hook-and-publish-readiness-hardening P03 | 4 min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -139,10 +140,11 @@ Recent decisions affecting current work:
 - [Phase 16]: Migration docs explicitly direct legacy repos back to the original publisher machine because the old badge payload is not a lossless history source.
 - [Phase 17]: Publish trust now derives from persisted attempt outcome, candidate hash, and last successful sync facts rather than refresh-time heuristics. — Canonical persisted facts keep status, refresh, and doctor aligned without command-local inference drift.
 - [Phase 17]: Doctor owns a dedicated publish-trust check so badge trust stays separate from shared-mode health and recovery guidance. — Operators need distinct signals for live badge freshness and shared contributor health.
+- [Phase 18-auth-hook-and-publish-readiness-hardening]: Kept the regression strong by asserting the exact three-call gist write sequence: badge payload first, local contributor snapshot second, overrides snapshot third.
 
 ### Pending Todos
 
-- Plan milestone v1.4 phases for publish-failure visibility, auth/readiness hardening, and stale badge recovery.
+- Resume Phase 18 manual UAT now that `npm test -- --run` is green again.
 
 ### Blockers/Concerns
 
@@ -161,6 +163,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-02T08:26:51.058Z
-Stopped at: Completed 17-03-PLAN.md
+Last session: 2026-04-02T10:30:45.049Z
+Stopped at: Completed 18-03-PLAN.md
 Resume file: None

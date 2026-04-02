@@ -11,16 +11,16 @@ This milestone makes the live badge operationally trustworthy under local-first,
 
 - [x] **OPER-01**: Operators can immediately see when the live badge is stale because publish failed or was skipped for an actionable reason.
 - [x] **OPER-02**: `status`, `refresh`, and `doctor` expose one coherent view of last successful publish, current failure state, and required recovery action.
-- [ ] **OPER-03**: Pre-push automation reports degraded publish health clearly enough that a developer cannot mistake a stale badge for a successful update.
+- [x] **OPER-03**: Pre-push automation reports degraded publish health clearly enough that a developer cannot mistake a stale badge for a successful update.
 
 ### Auth And Readiness
 
-- [ ] **AUTH-01**: Refresh and publish flows validate GitHub auth and gist write readiness before or during publish with concrete, local-environment-specific remediation.
-- [ ] **AUTH-02**: The runtime distinguishes auth-missing, gist-unreachable, write-failed, and remote-readback mismatch states instead of collapsing them into one generic publish error.
+- [x] **AUTH-01**: Refresh and publish flows validate GitHub auth and gist write readiness before or during publish with concrete, local-environment-specific remediation.
+- [x] **AUTH-02**: The runtime distinguishes auth-missing, gist-unreachable, write-failed, and remote-readback mismatch states instead of collapsing them into one generic publish error.
 
 ### Recovery And Controls
 
-- [ ] **CTRL-01**: Repos can choose explicit automation strictness for badge publish failures rather than inheriting one hidden failure-soft default.
+- [x] **CTRL-01**: Repos can choose explicit automation strictness for badge publish failures rather than inheriting one hidden failure-soft default.
 - [ ] **CTRL-02**: Repos in publish error state can recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits.
 - [ ] **CTRL-03**: Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging.
 
@@ -50,10 +50,10 @@ This milestone makes the live badge operationally trustworthy under local-first,
 |-------------|-------|--------|
 | OPER-01 | Phase 17 | Complete |
 | OPER-02 | Phase 17 | Complete |
-| OPER-03 | Phase 18 | Pending |
-| AUTH-01 | Phase 18 | Pending |
-| AUTH-02 | Phase 18 | Pending |
-| CTRL-01 | Phase 18 | Pending |
+| OPER-03 | Phase 18 | Complete |
+| AUTH-01 | Phase 18 | Complete |
+| AUTH-02 | Phase 18 | Complete |
+| CTRL-01 | Phase 18 | Complete |
 | CTRL-02 | Phase 19 | Pending |
 | CTRL-03 | Phase 19 | Pending |
 

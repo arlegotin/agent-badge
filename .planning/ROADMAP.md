@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
 - [x] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state. (completed 2026-04-02)
 - [x] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows. (completed 2026-04-02)
-- [ ] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows.
+- [ ] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows. (plans complete; verification pending)
 - [ ] **Phase 19: Recovery Paths And Production Reliability Verification** - Prove the stale-badge recovery path and lock the operator runbooks to real failure modes.
 
 ## Phase Details
@@ -89,11 +89,12 @@ Plans:
   1. Refresh and publish report whether auth is missing, gist access is broken, writes fail, or remote readback is inconsistent.
   2. Pre-push automation can be configured deliberately and warns loudly when the badge did not update.
   3. Doctor and init point operators to environment-specific fixes before the repo silently falls out of sync.
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 18-01: Harden auth and gist readiness checks across publish, refresh, and doctor
-- [ ] 18-02: Add explicit automation strictness and visible degraded-mode hook behavior
+- [x] 18-01: Harden auth and gist readiness checks across publish, refresh, and doctor
+- [x] 18-02: Add explicit automation strictness and visible degraded-mode hook behavior
+- [x] 18-03: Repair the shared publish regression so the automated validation gate is green again
 
 ### Phase 19: Recovery Paths And Production Reliability Verification
 **Goal**: Give operators supported recovery flows for publish error state and verify the real production failure-and-recovery path end to end.
@@ -117,5 +118,5 @@ Plans:
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
 | 16. Migration, Diagnostics, And Team Operator UX | 2/2 | Complete    | 2026-04-02 |
 | 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
-| 18. Auth, Hook, And Publish Readiness Hardening | 0/2 | Pending | — |
+| 18. Auth, Hook, And Publish Readiness Hardening | 3/3 | Awaiting verification | — |
 | 19. Recovery Paths And Production Reliability Verification | 0/2 | Pending | — |
