@@ -133,7 +133,10 @@ function buildSerializedBadgePayload(options: {
 }
 
 function buildSerializedBadgeFiles(
-  options: Pick<PublishBadgeIfChangedOptions, "config" | "includedTotals">
+  options: {
+    readonly config: Pick<AgentBadgeConfig, "badge">;
+    readonly includedTotals: IncludedTotals;
+  }
 ): Record<string, { readonly content: string }> {
   const files: Record<string, { readonly content: string }> = {
     [AGENT_BADGE_GIST_FILE]: {

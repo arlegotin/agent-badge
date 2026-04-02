@@ -87,6 +87,13 @@ function countOccurrences(content: string, token: string): number {
   return content.split(token).length - 1;
 }
 
+function gistHasFile(
+  files: Record<string, unknown> | readonly string[],
+  fileName: string
+): boolean {
+  return Array.isArray(files) ? files.includes(fileName) : fileName in files;
+}
+
 function resolveAuthToken(env?: NodeJS.ProcessEnv): string | undefined {
   const activeEnv = env ?? process.env;
 
@@ -363,7 +370,7 @@ async function checkPublishWrite(options: {
       };
     }
 
-    if (!gist.files.includes(AGENT_BADGE_GIST_FILE)) {
+    if (!gistHasFile(gist.files, AGENT_BADGE_GIST_FILE)) {
       return {
         id: "publish-write",
         status: "warn",
