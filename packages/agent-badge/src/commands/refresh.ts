@@ -41,6 +41,10 @@ interface OutputWriter {
   write(chunk: string): unknown;
 }
 
+type ReportedCommandError = Error & {
+  alreadyReported?: boolean;
+};
+
 export interface RunRefreshCommandOptions {
   readonly cwd?: string;
   readonly homeRoot?: string;
@@ -106,6 +110,15 @@ async function writeStateFile(
 
 function writeLine(stdout: OutputWriter, line: string): void {
   stdout.write(`${line}\n`);
+}
+
+function markErrorAsReported<T extends Error>(error: T): T {
+  Object.defineProperty(error as ReportedCommandError, "alreadyReported", {
+    value: true,
+    configurable: true
+  });
+
+  return error;
 }
 
 function normalizePublishSurfaceError(error: Error): Error {
@@ -667,7 +680,9 @@ export async function runRefreshCommand(
       }).catch(() => {
         // Logging is best-effort and must not block command output.
       });
-      throw refreshError;
+      throw persistedState !== null && config !== null
+        ? markErrorAsReported(refreshError)
+        : refreshError;
     }
 
     printSoftFailure(stdout, refreshError, persistedState, config, hookPolicy);

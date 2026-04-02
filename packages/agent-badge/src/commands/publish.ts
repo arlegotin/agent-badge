@@ -32,6 +32,10 @@ interface OutputWriter {
   write(chunk: string): unknown;
 }
 
+type ReportedCommandError = Error & {
+  alreadyReported?: boolean;
+};
+
 export interface RunPublishCommandOptions {
   readonly cwd?: string;
   readonly homeRoot?: string;
@@ -83,6 +87,15 @@ async function writeStateFile(
 
 function writeLine(stdout: OutputWriter, line: string): void {
   stdout.write(`${line}\n`);
+}
+
+function markErrorAsReported<T extends Error>(error: T): T {
+  Object.defineProperty(error as ReportedCommandError, "alreadyReported", {
+    value: true,
+    configurable: true
+  });
+
+  return error;
 }
 
 function normalizePublishSurfaceError(error: Error): Error {
@@ -192,6 +205,7 @@ export async function runPublishCommand(
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
   let previousState: AgentBadgeState | null = null;
+  let alreadyReported = false;
   try {
     const config = parseAgentBadgeConfig(await readJsonFile(configPath));
     previousState = parseAgentBadgeState(await readJsonFile(statePath));
@@ -331,6 +345,7 @@ export async function runPublishCommand(
           }).status
         )}`
       );
+      alreadyReported = true;
     }
 
     await appendAgentBadgeLog({
@@ -350,6 +365,6 @@ export async function runPublishCommand(
       // Logging is best-effort and must not hide command failures.
     });
 
-    throw publishError;
+    throw alreadyReported ? markErrorAsReported(publishError) : publishError;
   }
 }

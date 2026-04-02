@@ -14,6 +14,10 @@ import { runScanCommand } from "../commands/scan.js";
 import { runStatusCommand } from "../commands/status.js";
 import { runUninstallCommand } from "../commands/uninstall.js";
 
+type ReportedCliError = Error & {
+  alreadyReported?: boolean;
+};
+
 function collectOptionValue(value: string, previous: string[] = []): string[] {
   return [...previous, value];
 }
@@ -213,6 +217,19 @@ export async function run(argv: string[] = process.argv): Promise<void> {
   await buildProgram().parseAsync(argv);
 }
 
+export function handleRunError(
+  error: unknown,
+  stderr: Pick<typeof console, "error"> = console
+): void {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if ((error as ReportedCliError | null)?.alreadyReported !== true) {
+    stderr.error(message);
+  }
+
+  process.exitCode = 1;
+}
+
 export function isDirectExecution(
   argv: readonly string[] = process.argv
 ): boolean {
@@ -230,10 +247,5 @@ export function isDirectExecution(
 }
 
 if (isDirectExecution()) {
-  void run().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-
-    console.error(message);
-    process.exitCode = 1;
-  });
+  void run().catch(handleRunError);
 }

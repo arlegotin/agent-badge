@@ -3,15 +3,19 @@ import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { buildProgram, isDirectExecution } from "./main.js";
+import { buildProgram, handleRunError, isDirectExecution } from "./main.js";
 
 function findCommand(name: string) {
   return buildProgram().commands.find((command) => command.name() === name);
 }
 
 describe("buildProgram", () => {
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
   it("declares a node shebang for the published bin entry", async () => {
     const source = await readFile(new URL("./main.ts", import.meta.url), "utf8");
 
@@ -111,5 +115,33 @@ describe("buildProgram", () => {
         "--force"
       ])
     );
+  });
+
+  it("does not reprint errors that commands already reported", () => {
+    const stderr = {
+      error: vi.fn()
+    };
+    const error = new Error("sanitized failure");
+
+    Object.defineProperty(error, "alreadyReported", {
+      value: true,
+      configurable: true
+    });
+
+    handleRunError(error, stderr);
+
+    expect(stderr.error).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("prints unreported fatal errors", () => {
+    const stderr = {
+      error: vi.fn()
+    };
+
+    handleRunError(new Error("fatal failure"), stderr);
+
+    expect(stderr.error).toHaveBeenCalledWith("fatal failure");
+    expect(process.exitCode).toBe(1);
   });
 });

@@ -646,7 +646,10 @@ describe("runPublishCommand", () => {
           homeRoot: fixture.homeRoot,
           stdout: output.writer
         })
-      ).rejects.toThrow("GitHub authentication missing or invalid.");
+      ).rejects.toMatchObject({
+        message: "GitHub authentication missing or invalid.",
+        alreadyReported: true
+      });
 
       expect(output.read()).toContain("- Publish readiness: auth missing");
       expect(output.read()).not.toContain(rawAuthMessage);
