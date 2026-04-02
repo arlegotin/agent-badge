@@ -78,7 +78,8 @@ describe("refresh-cache", () => {
           [buildRefreshCacheKey(session)]: buildRefreshCacheEntry({
             session,
             status: "included",
-            includedEstimatedCostUsdMicros: null
+            overrideDecision: null,
+            estimatedCostUsdMicros: null
           })
         }
       };
@@ -89,11 +90,32 @@ describe("refresh-cache", () => {
       const serialized = await readFile(cachePath, "utf8");
 
       expect(await readRefreshCache({ cwd })).toEqual(cache);
-      expect(serialized).toContain('"includedSessions": 1');
-      expect(serialized).toContain('"includedTokens": 42');
+      expect(serialized).toContain('"version": 2');
+      expect(serialized).toContain('"tokens": 42');
       expect(serialized).not.toContain("/Users/example/project");
       expect(serialized).not.toContain("observedRemoteUrl");
       expect(serialized).not.toContain("evidence");
+    });
+  });
+
+  it("preserves ambiguous session tokens for shared publish", () => {
+    const session = createSession();
+
+    expect(
+      buildRefreshCacheEntry({
+        session,
+        status: "ambiguous",
+        overrideDecision: "include",
+        estimatedCostUsdMicros: 99
+      })
+    ).toEqual({
+      provider: "codex",
+      providerSessionId: "session-1",
+      sessionUpdatedAt: "2026-03-30T10:05:00Z",
+      status: "ambiguous",
+      overrideDecision: "include",
+      tokens: 42,
+      estimatedCostUsdMicros: 99
     });
   });
 
@@ -106,15 +128,16 @@ describe("refresh-cache", () => {
         cachePath,
         JSON.stringify(
           {
-            version: 1,
+            version: 2,
             entries: {
               "codex:session-1": {
                 provider: "codex",
                 providerSessionId: "session-1",
-                updatedAt: "2026-03-30T10:05:00Z",
+                sessionUpdatedAt: "2026-03-30T10:05:00Z",
                 status: "included",
-                includedSessions: 1,
-                includedTokens: 42,
+                overrideDecision: null,
+                tokens: 42,
+                estimatedCostUsdMicros: null,
                 cwd: "/Users/example/project"
               }
             }

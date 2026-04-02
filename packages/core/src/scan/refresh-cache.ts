@@ -12,11 +12,11 @@ const refreshCacheEntrySchema = z
   .object({
     provider: z.enum(["codex", "claude"]),
     providerSessionId: z.string().min(1),
-    updatedAt: z.string().min(1).nullable(),
+    sessionUpdatedAt: z.string().min(1).nullable(),
     status: z.enum(["included", "ambiguous", "excluded"]),
-    includedSessions: z.number().int().nonnegative(),
-    includedTokens: z.number().int().nonnegative(),
-    includedEstimatedCostUsdMicros: z
+    overrideDecision: z.enum(["include", "exclude"]).nullable(),
+    tokens: z.number().int().nonnegative(),
+    estimatedCostUsdMicros: z
       .number()
       .int()
       .nonnegative()
@@ -28,7 +28,7 @@ const refreshCacheEntrySchema = z
 
 const refreshCacheSchema = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     entries: z.record(z.string(), refreshCacheEntrySchema)
   })
   .strict();
@@ -51,11 +51,12 @@ export interface BuildRefreshCacheEntryOptions {
     "provider" | "providerSessionId" | "updatedAt" | "tokenUsage"
   >;
   readonly status: AttributionStatus;
-  readonly includedEstimatedCostUsdMicros: number | null;
+  readonly overrideDecision: "include" | "exclude" | null;
+  readonly estimatedCostUsdMicros: number | null;
 }
 
 export const defaultRefreshCache: RefreshCache = {
-  version: 1,
+  version: 2,
   entries: {}
 };
 
@@ -70,17 +71,17 @@ export function buildRefreshCacheKey(
 export function buildRefreshCacheEntry({
   session,
   status,
-  includedEstimatedCostUsdMicros
+  overrideDecision,
+  estimatedCostUsdMicros
 }: BuildRefreshCacheEntryOptions): RefreshCacheEntry {
   return {
     provider: session.provider,
     providerSessionId: session.providerSessionId,
-    updatedAt: session.updatedAt,
+    sessionUpdatedAt: session.updatedAt,
     status,
-    includedSessions: status === "included" ? 1 : 0,
-    includedTokens: status === "included" ? session.tokenUsage.total : 0,
-    includedEstimatedCostUsdMicros:
-      status === "included" ? includedEstimatedCostUsdMicros : null
+    overrideDecision,
+    tokens: session.tokenUsage.total,
+    estimatedCostUsdMicros
   };
 }
 

@@ -27,6 +27,7 @@ import type {
 import { runFullBackfillScan } from "./full-backfill.js";
 import {
   buildRefreshCacheEntry,
+  buildRefreshCacheKey,
   defaultRefreshCache,
   readRefreshCache,
   type RefreshCache
@@ -91,16 +92,18 @@ function filterCacheByEnabledProviders(
 function summarizeRefreshCache(cache: RefreshCache): AgentBadgeRefreshSummary {
   const entries = Object.values(cache.entries);
   const hasEstimatedCost = entries.some(
-    (entry) => entry.includedEstimatedCostUsdMicros !== null
+    (entry) => entry.status === "included" && entry.estimatedCostUsdMicros !== null
   );
 
   return entries.reduce<AgentBadgeRefreshSummary>(
     (summary, entry) => ({
-      includedSessions: summary.includedSessions + entry.includedSessions,
-      includedTokens: summary.includedTokens + entry.includedTokens,
+      includedSessions:
+        summary.includedSessions + (entry.status === "included" ? 1 : 0),
+      includedTokens:
+        summary.includedTokens + (entry.status === "included" ? entry.tokens : 0),
       includedEstimatedCostUsdMicros: hasEstimatedCost
         ? (summary.includedEstimatedCostUsdMicros ?? 0) +
-          (entry.includedEstimatedCostUsdMicros ?? 0)
+          (entry.status === "included" ? (entry.estimatedCostUsdMicros ?? 0) : 0)
         : null,
       ambiguousSessions:
         summary.ambiguousSessions + (entry.status === "ambiguous" ? 1 : 0),
@@ -120,30 +123,33 @@ function summarizeRefreshCache(cache: RefreshCache): AgentBadgeRefreshSummary {
 async function mergeAttributedSessionsIntoCache(
   cache: RefreshCache,
   attributedSessions: readonly AttributedSession[],
-  options: Pick<RunIncrementalRefreshOptions, "cwd" | "homeRoot" | "config">
+  options: Pick<
+    RunIncrementalRefreshOptions,
+    "cwd" | "homeRoot" | "config" | "state"
+  >
 ): Promise<RefreshCache> {
   const shouldEstimateCost =
     options.config.badge?.mode === "combined" ||
     options.config.badge?.mode === "cost";
-  const includedSessions = attributedSessions
-    .filter((attributedSession) => attributedSession.status === "included")
-    .map((attributedSession) => attributedSession.session);
-  const includedCostBySessionKey = shouldEstimateCost
+  const observationSessions = attributedSessions.map(
+    (attributedSession) => attributedSession.session
+  );
+  const estimatedCostBySessionKey = shouldEstimateCost
     ? new Map<string, number>()
     : new Map<string, number>();
 
-  if (shouldEstimateCost && includedSessions.length > 0) {
+  if (shouldEstimateCost && observationSessions.length > 0) {
     const pricingCatalog = await resolvePricingCatalog({ cwd: options.cwd });
-    const estimatedCostBySessionKey = await estimateSessionCostsUsdMicrosByKey({
-      sessions: includedSessions,
+    const estimatedCosts = await estimateSessionCostsUsdMicrosByKey({
+      sessions: observationSessions,
       homeRoot: options.homeRoot,
       pricingCatalog
     });
 
     for (const [sessionKey, estimatedCostUsdMicros] of Object.entries(
-      estimatedCostBySessionKey
+      estimatedCosts
     )) {
-      includedCostBySessionKey.set(sessionKey, estimatedCostUsdMicros);
+      estimatedCostBySessionKey.set(sessionKey, estimatedCostUsdMicros);
     }
   }
 
@@ -151,13 +157,17 @@ async function mergeAttributedSessionsIntoCache(
     ...cache,
     entries: attributedSessions.reduce(
       (entries, attributedSession) => {
-        entries[`${attributedSession.session.provider}:${attributedSession.session.providerSessionId}`] =
+        const cacheKey = buildRefreshCacheKey(attributedSession.session);
+
+        entries[cacheKey] =
           buildRefreshCacheEntry({
             session: attributedSession.session,
             status: attributedSession.status,
-            includedEstimatedCostUsdMicros: includedCostBySessionKey.get(
-              `${attributedSession.session.provider}:${attributedSession.session.providerSessionId}`
-            ) ?? null
+            overrideDecision:
+              options.state.overrides.ambiguousSessions[cacheKey] ??
+              attributedSession.overrideApplied,
+            estimatedCostUsdMicros:
+              estimatedCostBySessionKey.get(cacheKey) ?? null
           });
 
         return entries;
@@ -304,7 +314,7 @@ export async function runIncrementalRefresh(
     Object.values(cache.entries).some(
       (entry) =>
         entry.status === "included" &&
-        entry.includedEstimatedCostUsdMicros === null
+        entry.estimatedCostUsdMicros === null
     )
   ) {
     return runFullRefresh(options, providers);

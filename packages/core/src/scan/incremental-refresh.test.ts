@@ -159,14 +159,15 @@ function createRepoFingerprint() {
 
 function createAttributedSession(
   session: NormalizedSessionSummary,
-  status: "included" | "ambiguous" | "excluded"
+  status: "included" | "ambiguous" | "excluded",
+  overrideApplied: "include" | "exclude" | null = null
 ) {
   return {
     session,
     status,
     evidence: [],
     reason: `${status} for test`,
-    overrideApplied: null
+    overrideApplied
   };
 }
 
@@ -266,10 +267,11 @@ describe("runIncrementalRefresh", () => {
       });
       expect(result.cache.entries["codex:codex-full"]).toEqual(
         expect.objectContaining({
+          sessionUpdatedAt: "2026-03-30T10:05:00Z",
           status: "included",
-          includedSessions: 1,
-          includedTokens: 42,
-          includedEstimatedCostUsdMicros: null
+          overrideDecision: null,
+          tokens: 42,
+          estimatedCostUsdMicros: null
         })
       );
       expect(result.providerCursors.codex).toContain("codex-thread-watermark-v1");
@@ -279,7 +281,7 @@ describe("runIncrementalRefresh", () => {
     });
   });
 
-  it("recomputes only changed sessions and merges them into the derived cache", async () => {
+  it("merges ambiguous sessions into the cache without zeroing their tokens", async () => {
     const changedCodexSession = createSession({
       provider: "codex",
       providerSessionId: "codex-1",
@@ -312,15 +314,18 @@ describe("runIncrementalRefresh", () => {
       mode: "incremental"
     });
     scanClaudeSessionsIncrementalMock.mockResolvedValue({
-      sessions: [],
+      sessions: [ambiguousClaudeSession],
       cursor: "claude-next",
       mode: "incremental"
     });
     attributeBackfillSessionsMock.mockReturnValue({
-      sessions: [createAttributedSession(changedCodexSession, "included")],
+      sessions: [
+        createAttributedSession(changedCodexSession, "included"),
+        createAttributedSession(ambiguousClaudeSession, "ambiguous", "include")
+      ],
       counts: {
         included: 1,
-        ambiguous: 0,
+        ambiguous: 1,
         excluded: 0
       }
     });
@@ -340,12 +345,14 @@ describe("runIncrementalRefresh", () => {
                 }
               },
               status: "included",
-              includedEstimatedCostUsdMicros: null
+              overrideDecision: null,
+              estimatedCostUsdMicros: null
             }),
             [buildRefreshCacheKey(ambiguousClaudeSession)]: buildRefreshCacheEntry({
               session: ambiguousClaudeSession,
               status: "ambiguous",
-              includedEstimatedCostUsdMicros: null
+              overrideDecision: null,
+              estimatedCostUsdMicros: null
             })
           }
         }
@@ -360,6 +367,11 @@ describe("runIncrementalRefresh", () => {
         },
         state: {
           ...defaultAgentBadgeState,
+          overrides: {
+            ambiguousSessions: {
+              "claude:claude-1": "include"
+            }
+          },
           checkpoints: {
             codex: {
               cursor: "opaque-codex",
@@ -389,18 +401,119 @@ describe("runIncrementalRefresh", () => {
       });
       expect(result.cache.entries["codex:codex-1"]).toEqual(
         expect.objectContaining({
+          sessionUpdatedAt: "2026-03-30T10:05:00Z",
           status: "included",
-          includedSessions: 1,
-          includedTokens: 84,
-          includedEstimatedCostUsdMicros: null
+          overrideDecision: null,
+          tokens: 84,
+          estimatedCostUsdMicros: null
         })
       );
       expect(result.cache.entries["claude:claude-1"]).toEqual(
         expect.objectContaining({
+          sessionUpdatedAt: "2026-03-30T10:05:00Z",
           status: "ambiguous",
-          includedSessions: 0,
-          includedTokens: 0,
-          includedEstimatedCostUsdMicros: null
+          overrideDecision: "include",
+          tokens: 15,
+          estimatedCostUsdMicros: null
+        })
+      );
+    });
+  });
+
+  it("persists explicit include or exclude overrides into cache entries", async () => {
+    const ambiguousCodexSession = createSession({
+      provider: "codex",
+      providerSessionId: "codex-override",
+      tokenUsage: {
+        total: 9,
+        input: 9,
+        output: 0,
+        cacheCreation: null,
+        cacheRead: null,
+        reasoningOutput: null
+      }
+    });
+    const ambiguousClaudeSession = createSession({
+      provider: "claude",
+      providerSessionId: "claude-override",
+      tokenUsage: {
+        total: 13,
+        input: 13,
+        output: 0,
+        cacheCreation: null,
+        cacheRead: null,
+        reasoningOutput: null
+      }
+    });
+
+    resolveRepoFingerprintMock.mockResolvedValue(createRepoFingerprint());
+    scanCodexSessionsIncrementalMock.mockResolvedValue({
+      sessions: [ambiguousCodexSession],
+      cursor: "codex-next",
+      mode: "incremental"
+    });
+    scanClaudeSessionsIncrementalMock.mockResolvedValue({
+      sessions: [ambiguousClaudeSession],
+      cursor: "claude-next",
+      mode: "incremental"
+    });
+    attributeBackfillSessionsMock.mockReturnValue({
+      sessions: [
+        createAttributedSession(ambiguousCodexSession, "ambiguous"),
+        createAttributedSession(ambiguousClaudeSession, "ambiguous")
+      ],
+      counts: {
+        included: 0,
+        ambiguous: 2,
+        excluded: 0
+      }
+    });
+
+    await withTempDir(async (cwd) => {
+      await writeRefreshCache({
+        cwd,
+        cache: defaultRefreshCache
+      });
+
+      const result = await runIncrementalRefresh({
+        cwd,
+        homeRoot: "/tmp/home",
+        config: {
+          providers: defaultAgentBadgeConfig.providers,
+          repo: defaultAgentBadgeConfig.repo
+        },
+        state: {
+          ...defaultAgentBadgeState,
+          overrides: {
+            ambiguousSessions: {
+              "codex:codex-override": "include",
+              "claude:claude-override": "exclude"
+            }
+          },
+          checkpoints: {
+            codex: {
+              cursor: "opaque-codex",
+              lastScannedAt: "2026-03-30T11:00:00Z"
+            },
+            claude: {
+              cursor: "opaque-claude",
+              lastScannedAt: "2026-03-30T11:00:00Z"
+            }
+          }
+        },
+        forceFull: false
+      });
+
+      expect(result.cache.entries["codex:codex-override"]).toEqual(
+        expect.objectContaining({
+          overrideDecision: "include",
+          tokens: 9
+        })
+      );
+      expect(result.cache.entries["claude:claude-override"]).toEqual(
+        expect.objectContaining({
+          overrideDecision: "exclude",
+          tokens: 13
         })
       );
     });
@@ -474,7 +587,8 @@ describe("runIncrementalRefresh", () => {
             [buildRefreshCacheKey(incrementalSession)]: buildRefreshCacheEntry({
               session: incrementalSession,
               status: "included",
-              includedEstimatedCostUsdMicros: null
+              overrideDecision: null,
+              estimatedCostUsdMicros: null
             })
           }
         }
@@ -518,10 +632,11 @@ describe("runIncrementalRefresh", () => {
       });
       expect(result.cache.entries["codex:codex-full-after-fallback"]).toEqual(
         expect.objectContaining({
+          sessionUpdatedAt: "2026-03-30T10:05:00Z",
           status: "excluded",
-          includedSessions: 0,
-          includedTokens: 0,
-          includedEstimatedCostUsdMicros: null
+          overrideDecision: null,
+          tokens: 12,
+          estimatedCostUsdMicros: null
         })
       );
     });
