@@ -40,10 +40,11 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Shared badge totals deduplicate by stable session identity across contributors and machines instead of summing opaque local aggregates. Validated in Phase 15.
 - [x] Repo-level include/exclude decisions for ambiguous sessions are consistent across contributors. Validated in Phase 15.
 - [x] Existing single-writer repos can migrate to the shared model safely without losing badge continuity or privacy guarantees. Validated in Phase 16.
+- [x] Operators can immediately tell when the live badge is stale, unchanged, or not attempted from the normal CLI surfaces they already use. Validated in Phase 17.
+- [x] `status`, `refresh`, and `doctor` expose one coherent live-badge trust view with last successful publish state and recovery guidance. Validated in Phase 17.
 
 ### Active
 
-- [ ] Operators can immediately tell when the badge is stale because publish failed, not just because Shields is cached.
 - [ ] Refresh and pre-push flows can verify GitHub auth and publish readiness before silently leaving badge state behind.
 - [ ] Repos can choose explicit strictness and recovery behavior for publish failures instead of one hidden fail-soft default.
 - [ ] Shared-mode repos can recover from publish error state without manual local-state edits.
@@ -124,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after starting milestone v1.4*
+*Last updated: 2026-04-02 after completing Phase 17*
