@@ -32,38 +32,75 @@ describe("shared-model", () => {
     expect(digest).not.toContain("codex:session-1");
   });
 
-  it("parses shared contributor records and rejects privacy-sensitive fields", () => {
+  it("parses schemaVersion: 2 contributor observation records", () => {
+    const digest = buildSharedOverrideDigest("codex:session-1");
+
     expect(
       parseSharedContributorRecord({
-        schemaVersion: 1,
+        schemaVersion: 2,
         publisherId: "pub-1",
         updatedAt: "2026-04-01T12:00:00.000Z",
-        totals: {
-          sessions: 2,
-          tokens: 150,
-          estimatedCostUsdMicros: null
+        observations: {
+          [digest]: {
+            sessionUpdatedAt: "2026-03-31T23:59:00.000Z",
+            attributionStatus: "included",
+            overrideDecision: null,
+            tokens: 150,
+            estimatedCostUsdMicros: null
+          }
         }
       })
     ).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       publisherId: "pub-1",
       updatedAt: "2026-04-01T12:00:00.000Z",
-      totals: {
-        sessions: 2,
-        tokens: 150,
-        estimatedCostUsdMicros: null
+      observations: {
+        [digest]: {
+          sessionUpdatedAt: "2026-03-31T23:59:00.000Z",
+          attributionStatus: "included",
+          overrideDecision: null,
+          tokens: 150,
+          estimatedCostUsdMicros: null
+        }
       }
     });
+  });
+
+  it("rejects raw provider:providerSessionId contributor observation keys", () => {
+    expect(() =>
+      parseSharedContributorRecord({
+        schemaVersion: 2,
+        publisherId: "pub-1",
+        updatedAt: "2026-04-01T12:00:00.000Z",
+        observations: {
+          "codex:session-1": {
+            sessionUpdatedAt: "2026-03-31T23:59:00.000Z",
+            attributionStatus: "ambiguous",
+            overrideDecision: "include",
+            tokens: 150,
+            estimatedCostUsdMicros: 99
+          }
+        }
+      })
+    ).toThrow();
+  });
+
+  it("parses shared contributor records and rejects privacy-sensitive fields", () => {
+    const digest = buildSharedOverrideDigest("codex:session-1");
 
     expect(() =>
       parseSharedContributorRecord({
-        schemaVersion: 1,
+        schemaVersion: 2,
         publisherId: "pub-1",
         updatedAt: "2026-04-01T12:00:00.000Z",
-        totals: {
-          sessions: 2,
-          tokens: 150,
-          estimatedCostUsdMicros: 99
+        observations: {
+          [digest]: {
+            sessionUpdatedAt: "2026-03-31T23:59:00.000Z",
+            attributionStatus: "included",
+            overrideDecision: null,
+            tokens: 150,
+            estimatedCostUsdMicros: 99
+          }
         },
         cwd: "/Users/example/project",
         transcriptProjectKey: "Users-example-project",
