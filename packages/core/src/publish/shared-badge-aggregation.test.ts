@@ -105,6 +105,69 @@ function createGistFileMap(
   );
 }
 
+function createOverridesRecord(): string {
+  return `{
+  "schemaVersion": 1,
+  "overrides": {}
+}
+`;
+}
+
+function expectSharedPublishSequence(options: {
+  readonly gistId: string;
+  readonly updateGistFile: ReturnType<typeof vi.fn>;
+  readonly localPublisherId: string;
+  readonly expectedBadgeTokens: number;
+  readonly expectedObservations: Record<string, unknown>;
+}) {
+  const writtenCalls = options.updateGistFile.mock.calls.map(
+    ([call]) => call as { gistId: string; files: Record<string, { content: string }> }
+  );
+  const localContributorFileName = buildContributorGistFileName(
+    options.localPublisherId
+  );
+
+  expect(writtenCalls).toHaveLength(3);
+  expect(
+    writtenCalls.map((call) => Object.keys(call.files))
+  ).toEqual([
+    [AGENT_BADGE_GIST_FILE],
+    [localContributorFileName],
+    [AGENT_BADGE_OVERRIDES_GIST_FILE]
+  ]);
+  expect(writtenCalls[0]).toEqual({
+    gistId: options.gistId,
+    files: {
+      [AGENT_BADGE_GIST_FILE]: {
+        content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "${options.expectedBadgeTokens} tokens",
+  "color": "blue"
+}
+`
+      }
+    }
+  });
+  expect(writtenCalls[1]?.gistId).toBe(options.gistId);
+  expect(
+    JSON.parse(writtenCalls[1]?.files?.[localContributorFileName]?.content ?? "")
+  ).toEqual({
+    schemaVersion: 2,
+    publisherId: options.localPublisherId,
+    updatedAt: expect.any(String),
+    observations: options.expectedObservations
+  });
+  expect(writtenCalls[2]).toEqual({
+    gistId: options.gistId,
+    files: {
+      [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+        content: createOverridesRecord()
+      }
+    }
+  });
+}
+
 describe("shared badge aggregation", () => {
   it("derives the badge payload from remote contributor totals", async () => {
     const localPublisherId = "publisher-local";
@@ -157,11 +220,7 @@ describe("shared badge aggregation", () => {
             })
           },
           [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-            content: `{
-  "schemaVersion": 1,
-  "overrides": {}
-}
-`
+            content: createOverridesRecord()
           }
         })
       });
@@ -195,19 +254,17 @@ describe("shared badge aggregation", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expectSharedPublishSequence({
       gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
-  "schemaVersion": 1,
-  "label": "AI Usage",
-  "message": "50 tokens",
-  "color": "blue"
-}
-`
-        }
-      }
+      updateGistFile,
+      localPublisherId,
+      expectedBadgeTokens: 50,
+      expectedObservations: createPublisherObservations({
+        sessionPrefix: "local",
+        sessions: 3,
+        tokens: 30,
+        estimatedCostUsdMicros: null
+      })
     });
   });
 
@@ -220,7 +277,19 @@ describe("shared badge aggregation", () => {
         id: "gist_123",
         ownerLogin: "octocat",
         public: true,
-        files: createGistFileMap({})
+        files: createGistFileMap({
+          [buildContributorGistFileName(remotePublisherId)]: {
+            content: createObservationContributorRecord({
+              publisherId: remotePublisherId,
+              observations: createPublisherObservations({
+                sessionPrefix: "remote",
+                sessions: 4,
+                tokens: 88,
+                estimatedCostUsdMicros: null
+              })
+            })
+          }
+        })
       })
       .mockResolvedValueOnce({
         id: "gist_123",
@@ -250,11 +319,7 @@ describe("shared badge aggregation", () => {
             })
           },
           [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-            content: `{
-  "schemaVersion": 1,
-  "overrides": {}
-}
-`
+            content: createOverridesRecord()
           }
         })
       });
@@ -288,19 +353,17 @@ describe("shared badge aggregation", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expectSharedPublishSequence({
       gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
-  "schemaVersion": 1,
-  "label": "AI Usage",
-  "message": "100 tokens",
-  "color": "blue"
-}
-`
-        }
-      }
+      updateGistFile,
+      localPublisherId,
+      expectedBadgeTokens: 100,
+      expectedObservations: createPublisherObservations({
+        sessionPrefix: "local",
+        sessions: 1,
+        tokens: 12,
+        estimatedCostUsdMicros: null
+      })
     });
   });
 
@@ -366,11 +429,7 @@ describe("shared badge aggregation", () => {
             })
           },
           [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-            content: `{
-  "schemaVersion": 1,
-  "overrides": {}
-}
-`
+            content: createOverridesRecord()
           }
         })
       });
@@ -407,17 +466,18 @@ describe("shared badge aggregation", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expectSharedPublishSequence({
       gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
-  "schemaVersion": 1,
-  "label": "AI Usage",
-  "message": "30 tokens",
-  "color": "blue"
-}
-`
+      updateGistFile,
+      localPublisherId,
+      expectedBadgeTokens: 30,
+      expectedObservations: {
+        [sharedDigest]: {
+          sessionUpdatedAt: "2026-03-30T10:05:00.000Z",
+          attributionStatus: "included",
+          overrideDecision: null,
+          tokens: 30,
+          estimatedCostUsdMicros: null
         }
       }
     });
