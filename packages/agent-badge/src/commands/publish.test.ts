@@ -433,6 +433,121 @@ describe("runPublishCommand", () => {
     }
   });
 
+  it("persists canonical publish attempt diagnostics after a successful publish", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig
+    });
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution = createAttributionResult(scan);
+
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockResolvedValueOnce(
+      createPublishBadgeResult({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_publish",
+          lastPublishedHash: "hash_123",
+          lastPublishedAt: "2026-03-30T19:00:00.000Z",
+          publisherId: "publisher-local",
+          mode: "shared",
+          lastAttemptedAt: "2026-03-30T19:00:00.000Z",
+          lastAttemptOutcome: "published",
+          lastSuccessfulSyncAt: "2026-03-30T19:00:00.000Z",
+          lastAttemptCandidateHash: "hash_123",
+          lastAttemptChangedBadge: "yes",
+          lastFailureCode: null
+        }
+      })
+    );
+
+    try {
+      await runPublishCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: createOutputCapture().writer
+      });
+
+      const persistedState = await readStateFile(fixture.statePath);
+
+      expect(persistedState.publish.lastAttemptedAt).toBe(
+        "2026-03-30T19:00:00.000Z"
+      );
+      expect(persistedState.publish.lastAttemptOutcome).toBe("published");
+      expect(persistedState.publish.lastSuccessfulSyncAt).toBe(
+        "2026-03-30T19:00:00.000Z"
+      );
+      expect(persistedState.publish.lastAttemptCandidateHash).toBe("hash_123");
+      expect(persistedState.publish.lastAttemptChangedBadge).toBe("yes");
+      expect(persistedState.publish.lastFailureCode).toBeNull();
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("persists failed publish diagnostics without storing the raw error message", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_publish",
+          lastPublishedHash: "hash_old",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+        }
+      }
+    });
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution = createAttributionResult(scan);
+
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockRejectedValueOnce(
+      new Error("remote write failed for /Users/example/private.txt")
+    );
+
+    try {
+      await expect(
+        runPublishCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          stdout: createOutputCapture().writer
+        })
+      ).rejects.toThrow("remote write failed for /Users/example/private.txt");
+
+      const persistedRaw = await readFile(fixture.statePath, "utf8");
+      const persistedState = parseAgentBadgeState(JSON.parse(persistedRaw));
+
+      expect(persistedState.publish.lastAttemptOutcome).toBe("failed");
+      expect(persistedState.publish.lastFailureCode).toBe("unknown");
+      expect(persistedState.publish.lastAttemptCandidateHash).toBeNull();
+      expect(persistedRaw).not.toContain("/Users/example/private.txt");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("fails explicitly when publish is not configured", async () => {
     const fixture = await createFixture();
 

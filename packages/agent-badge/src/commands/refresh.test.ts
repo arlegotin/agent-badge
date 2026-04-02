@@ -424,6 +424,75 @@ describe("runRefreshCommand", () => {
     }
   });
 
+  it("persists failed publish diagnostics without storing the raw error message", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_123",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "published",
+          gistId: "gist_123",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new Error("remote write failed for /Users/example/private.txt")
+    );
+
+    try {
+      const result = await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer,
+        failSoft: true
+      });
+      const persistedRaw = await readFile(fixture.statePath, "utf8");
+      const persistedState = parseAgentBadgeState(JSON.parse(persistedRaw));
+
+      expect(result.status).toBe("failed-soft");
+      expect(persistedState.publish.lastAttemptOutcome).toBe("failed");
+      expect(persistedState.publish.lastFailureCode).toBe("unknown");
+      expect(persistedState.publish.lastAttemptChangedBadge).toBe("unknown");
+      expect(persistedRaw).not.toContain("/Users/example/private.txt");
+      expect(output.read()).toContain("- Live badge trust: stale after failed publish");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("uses process.env GitHub auth when no explicit env override is passed", async () => {
     const configuredConfig = {
       ...defaultAgentBadgeConfig,

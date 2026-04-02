@@ -1467,6 +1467,136 @@ describe("publishBadgeIfChanged", () => {
     });
   });
 
+  it("computes the next badge hash before remote writes", async () => {
+    const publisherId = "publisher-local";
+    const getGist = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: createGistFileMap({
+        [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+          content: createOverridesRecord()
+        }
+      })
+    });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    const result = await publishBadgeIfChanged({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123",
+          publisherId
+        }
+      },
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "candidate",
+        sessions: 1,
+        tokens: 42,
+        estimatedCostUsdMicros: null
+      }),
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      },
+      now: "2026-03-30T12:00:00.000Z",
+      skipIfUnchanged: true
+    });
+
+    expect(result).toMatchObject({
+      candidateHash: expect.any(String),
+      changedBadge: true
+    });
+    expect(updateGistFile).toHaveBeenCalledTimes(3);
+    expect(updateGistFile).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: expect.any(Object)
+        })
+      })
+    );
+  });
+
+  it("keeps lastPublishedAt unchanged when the badge payload is unchanged", async () => {
+    const publisherId = "publisher-local";
+    const getGist = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: createGistFileMap({
+        [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+          content: createOverridesRecord()
+        }
+      })
+    });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    const result = await publishBadgeIfChanged({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123",
+          lastPublishedHash: createHash("sha256")
+            .update(
+              `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "42 tokens",
+  "color": "blue"
+}
+`
+            )
+            .digest("hex"),
+          lastPublishedAt: "2026-03-29T12:00:00.000Z",
+          publisherId
+        }
+      },
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "candidate",
+        sessions: 1,
+        tokens: 42,
+        estimatedCostUsdMicros: null
+      }),
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      },
+      now: "2026-03-30T12:00:00.000Z",
+      skipIfUnchanged: true
+    });
+
+    expect(result.decision).toBe("skipped");
+    expect(result.state.publish.lastPublishedAt).toBe("2026-03-29T12:00:00.000Z");
+    expect(result.state.publish.lastSuccessfulSyncAt).toBe(
+      "2026-03-30T12:00:00.000Z"
+    );
+    expect(result.state.publish.lastAttemptOutcome).toBe("unchanged");
+  });
+
   it("publishes when the label changes", async () => {
     const previousPayload = `{
   "schemaVersion": 1,

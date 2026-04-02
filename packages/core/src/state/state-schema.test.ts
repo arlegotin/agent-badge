@@ -76,6 +76,42 @@ describe("agentBadgeStateSchema", () => {
     });
   });
 
+  it("parses publish attempt diagnostics without raw error detail", () => {
+    expect(
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "error",
+          gistId: "gist_123",
+          lastPublishedHash: "hash_published",
+          lastPublishedAt: "2026-03-30T12:00:00Z",
+          publisherId: "publisher_123",
+          mode: "shared",
+          lastAttemptedAt: "2026-03-30T12:05:00Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-03-30T12:00:00Z",
+          lastAttemptCandidateHash: "hash_candidate",
+          lastAttemptChangedBadge: "yes",
+          lastFailureCode: "remote-write-failed"
+        }
+      }).publish
+    ).toEqual({
+      status: "error",
+      gistId: "gist_123",
+      lastPublishedHash: "hash_published",
+      lastPublishedAt: "2026-03-30T12:00:00Z",
+      publisherId: "publisher_123",
+      mode: "shared",
+      lastAttemptedAt: "2026-03-30T12:05:00Z",
+      lastAttemptOutcome: "failed",
+      lastSuccessfulSyncAt: "2026-03-30T12:00:00Z",
+      lastAttemptCandidateHash: "hash_candidate",
+      lastAttemptChangedBadge: "yes",
+      lastFailureCode: "remote-write-failed"
+    });
+  });
+
   it("rejects transcript-like fields", () => {
     expect(() =>
       parseAgentBadgeState({
