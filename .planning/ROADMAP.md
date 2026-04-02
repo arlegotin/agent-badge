@@ -60,7 +60,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 16-01: Add migration path and diagnostics for existing repos
+- [x] 16-01: Add migration path and diagnostics for existing repos
 - [ ] 16-02: Finalize team operator UX, docs, and verification
 
 ## Progress
@@ -69,4 +69,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 14. Shared Remote Contribution Model | 3/3 | Complete    | 2026-04-01 |
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
-| 16. Migration, Diagnostics, And Team Operator UX | 0/2 | Pending | — |
+| 16. Migration, Diagnostics, And Team Operator UX | 1/2 | In Progress | — |

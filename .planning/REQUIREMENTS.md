@@ -54,8 +54,8 @@ This milestone makes shared repo totals correct when multiple contributors publi
 | CONS-01 | Phase 15 | Complete |
 | CONS-02 | Phase 15 | Complete |
 | CONS-03 | Phase 15 | Complete |
-| MIGR-01 | Phase 16 | Pending |
-| MIGR-02 | Phase 16 | Pending |
+| MIGR-01 | Phase 16 | Complete |
+| MIGR-02 | Phase 16 | Complete |
 | MIGR-03 | Phase 16 | Pending |
 
 **Coverage:**

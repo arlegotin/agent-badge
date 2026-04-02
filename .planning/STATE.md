@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-status: planning
+status: executing
 stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-04-02T03:22:10.000Z"
-last_activity: 2026-04-02 -- Completed Phase 15 and advanced focus to Phase 16
+last_updated: "2026-04-02T04:38:44.000Z"
+last_activity: 2026-04-02 -- Completed 16-01 and advanced to Phase 16 plan 2
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 ## Current Position
 
-Phase: 16 (migration-diagnostics-and-team-operator-ux) — READY TO PLAN
-Plan: 0 of 2
-Status: Phase 15 complete; migration and operator UX are next
-Last activity: 2026-04-02 -- Completed Phase 15 and advanced focus to Phase 16
+Phase: 16 (migration-diagnostics-and-team-operator-ux) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 16
+Last activity: 2026-04-02 -- Completed 16-01 and advanced to Phase 16 plan 2
 
-Progress: [███████░░░] 5/7 plans complete in milestone v1.3
+Progress: [█████████░] 6/7 plans complete in milestone v1.3
 
 ## Performance Metrics
 
@@ -131,16 +131,18 @@ Recent decisions affecting current work:
 - [Phase 15]: Refresh cache v2 preserves session status, override decision, tokens, and optional cost for later shared publish wiring. — Incremental publish and pre-push must be able to rebuild the shared reducer contract without a mandatory full rescan.
 - [Phase 15]: Shared publish-service now recomputes authoritative badge totals from merged observation maps after injecting the just-written local contributor record. — Deterministic totals should not depend on immediate gist read-after-write consistency.
 - [Phase 15]: Combined-mode zero usage now publishes as `$0` rather than failing first-publish flows. — Shared publish correctness includes empty repos and init-time release-readiness scenarios.
+- [Phase 16]: Shared publish health is a typed core report reused by publish flows instead of command-specific migration heuristics.
+- [Phase 16]: Migration is explicit only when the pre-write gist is legacy and the post-write authoritative shared view is shared on the same gist id.
 
 ### Pending Todos
 
-- Plan migration from existing single-writer gist payloads to the shared model.
+- Finish operator-facing shared-health diagnostics and recovery docs for Phase 16.
 
 ### Blockers/Concerns
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
 - Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
-- Phase 16 still needs a migration path and operator diagnostics for repos that already published legacy single-writer badge state.
+- Phase 16 still needs the operator UX and docs layer on top of the new migration and shared-health foundation.
 
 ### Quick Tasks Completed
 
