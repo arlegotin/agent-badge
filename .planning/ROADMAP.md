@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 14: Shared Remote Contribution Model** - Define and implement a merge-safe remote representation for per-contributor repo usage and shared override state.
 - [x] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
-- [ ] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state.
+- [x] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state. (completed 2026-04-02)
 
 ## Phase Details
 
@@ -61,7 +61,7 @@ Plans:
 
 Plans:
 - [x] 16-01: Add migration path and diagnostics for existing repos
-- [ ] 16-02: Finalize team operator UX, docs, and verification
+- [x] 16-02: Finalize team operator UX, docs, and verification
 
 ## Progress
 
@@ -69,4 +69,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 14. Shared Remote Contribution Model | 3/3 | Complete    | 2026-04-01 |
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
-| 16. Migration, Diagnostics, And Team Operator UX | 1/2 | In Progress | — |
+| 16. Migration, Diagnostics, And Team Operator UX | 2/2 | Complete    | 2026-04-02 |

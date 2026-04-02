@@ -21,9 +21,9 @@ This milestone makes shared repo totals correct when multiple contributors publi
 
 ### Migration And Operator UX
 
-- [ ] **MIGR-01**: Existing single-writer repositories can migrate to the shared publishing model without losing badge continuity or requiring README badge URL changes.
-- [ ] **MIGR-02**: Operators can inspect whether a badge is in single-writer or shared mode and diagnose stale, conflicting, or orphaned contributor state.
-- [ ] **MIGR-03**: Team publish flows document the limits of correctness clearly, including what still depends on local machine data and what is now shared remotely.
+- [x] **MIGR-01**: Existing single-writer repositories can migrate to the shared publishing model without losing badge continuity or requiring README badge URL changes.
+- [x] **MIGR-02**: Operators can inspect whether a badge is in single-writer or shared mode and diagnose stale, conflicting, or orphaned contributor state.
+- [x] **MIGR-03**: Team publish flows document the limits of correctness clearly, including what still depends on local machine data and what is now shared remotely.
 
 ## Future Requirements
 
@@ -56,7 +56,7 @@ This milestone makes shared repo totals correct when multiple contributors publi
 | CONS-03 | Phase 15 | Complete |
 | MIGR-01 | Phase 16 | Complete |
 | MIGR-02 | Phase 16 | Complete |
-| MIGR-03 | Phase 16 | Pending |
+| MIGR-03 | Phase 16 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 9 total

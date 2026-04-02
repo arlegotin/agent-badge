@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: milestone
-status: executing
-stopped_at: Completed 15-02-PLAN.md
-last_updated: "2026-04-02T04:38:44.000Z"
-last_activity: 2026-04-02 -- Completed 16-01 and advanced to Phase 16 plan 2
+status: complete
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-04-02T05:00:44.038Z"
+last_activity: 2026-04-02 -- Completed Phase 16 and milestone v1.3
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 16 — migration-diagnostics-and-team-operator-ux
+**Current focus:** Milestone v1.3 complete
 
 ## Current Position
 
-Phase: 16 (migration-diagnostics-and-team-operator-ux) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 16
-Last activity: 2026-04-02 -- Completed 16-01 and advanced to Phase 16 plan 2
+Phase: 16 (migration-diagnostics-and-team-operator-ux) — COMPLETE
+Plan: 2 of 2
+Status: Milestone v1.3 complete
+Last activity: 2026-04-02 -- Completed Phase 16 and milestone v1.3
 
-Progress: [█████████░] 6/7 plans complete in milestone v1.3
+Progress: [██████████] 7/7 plans complete in milestone v1.3
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 6/7 plans complete in milestone v1.3
 | Phase 12-production-publish-execution P01 | 1 | 2 tasks | 6 files |
 | Phase 13 P01 | 5m 31s | 2 tasks | 8 files |
 | Phase 14 P01 | 3m 21s | 2 tasks | 5 files |
+| Phase 16 P02 | 9 min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -133,16 +134,18 @@ Recent decisions affecting current work:
 - [Phase 15]: Combined-mode zero usage now publishes as `$0` rather than failing first-publish flows. — Shared publish correctness includes empty repos and init-time release-readiness scenarios.
 - [Phase 16]: Shared publish health is a typed core report reused by publish flows instead of command-specific migration heuristics.
 - [Phase 16]: Migration is explicit only when the pre-write gist is legacy and the post-write authoritative shared view is shared on the same gist id.
+- [Phase 16]: Status and doctor both consume inspectSharedPublishHealth() so operator mode and health vocabulary cannot drift between commands.
+- [Phase 16]: Migration docs explicitly direct legacy repos back to the original publisher machine because the old badge payload is not a lossless history source.
 
 ### Pending Todos
 
-- Finish operator-facing shared-health diagnostics and recovery docs for Phase 16.
+- Start planning the next milestone after v1.3 completion review.
 
 ### Blockers/Concerns
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
 - Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
-- Phase 16 still needs the operator UX and docs layer on top of the new migration and shared-health foundation.
+- Phase 16 operator UX and docs are complete; remaining live validation is captured in `16-HUMAN-UAT.md`.
 
 ### Quick Tasks Completed
 
@@ -155,6 +158,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-02T03:22:10.000Z
-Stopped at: Completed 15-02-PLAN.md
+Last session: 2026-04-02T04:52:59.055Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
