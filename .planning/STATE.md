@@ -1,35 +1,35 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
+milestone: v1.4
 milestone_name: milestone
-status: complete
+status: planning
 stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-04-02T05:00:44.038Z"
-last_activity: 2026-04-02 -- Completed Phase 16 and milestone v1.3
+last_updated: "2026-04-02T05:31:00.000Z"
+last_activity: 2026-04-02 -- Milestone v1.4 started
 progress:
   total_phases: 3
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-01)
+See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Milestone v1.3 complete
+**Current focus:** Phase 17 — publish-failure-visibility-and-state-trust
 
 ## Current Position
 
-Phase: 16 (migration-diagnostics-and-team-operator-ux) — COMPLETE
-Plan: 2 of 2
-Status: Milestone v1.3 complete
-Last activity: 2026-04-02 -- Completed Phase 16 and milestone v1.3
+Phase: 17 (publish-failure-visibility-and-state-trust) — READY TO PLAN
+Plan: 0 of 2
+Status: Defining requirements and roadmap for milestone v1.4
+Last activity: 2026-04-02 -- Milestone v1.4 started
 
-Progress: [██████████] 7/7 plans complete in milestone v1.3
+Progress: [░░░░░░░░░░] 0/0 plans complete in milestone v1.4
 
 ## Performance Metrics
 
@@ -139,13 +139,13 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Start planning the next milestone after v1.3 completion review.
+- Plan milestone v1.4 phases for publish-failure visibility, auth/readiness hardening, and stale badge recovery.
 
 ### Blockers/Concerns
 
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
 - Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
-- Phase 16 operator UX and docs are complete; remaining live validation is captured in `16-HUMAN-UAT.md`.
+- Local-first fail-soft refresh can still let the live badge drift stale when GitHub auth or gist writes fail in the push environment.
 
 ### Quick Tasks Completed
 
@@ -158,6 +158,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-02T04:52:59.055Z
+Last session: 2026-04-02T05:31:00.000Z
 Stopped at: Completed 16-02-PLAN.md
 Resume file: None

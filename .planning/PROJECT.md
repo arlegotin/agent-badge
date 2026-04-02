@@ -10,15 +10,15 @@ The product is for developers who want a low-friction, trustworthy way to show h
 
 Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
-## Current Milestone: v1.3 Team-Correct Shared Badge Totals
+## Current Milestone: v1.4 Publish Reliability Hardening
 
-**Goal:** Replace last-writer-wins badge publishing with a merge-safe team model so multiple developers can contribute correct shared totals to one repo badge without breaking the local-first privacy boundary.
+**Goal:** Make the live badge operationally trustworthy by ensuring publish failures are visible, diagnosable, and recoverable before a repo silently drifts away from its local usage state.
 
 **Target features:**
-- Publish per-contributor usage state to a shared remote shape that can be merged safely instead of overwritten.
-- Deduplicate shared totals by stable session identity so the same underlying work is not double-counted across machines or users.
-- Share repo-level ambiguous-session decisions so include/exclude outcomes stay consistent across contributors.
-- Add migration, diagnostics, and operator UX for enabling team-correct badge publishing in existing repos.
+- Surface failed or skipped publish state clearly in normal CLI and pre-push flows instead of letting badge staleness hide behind failure-soft automation.
+- Validate GitHub auth, gist reachability, and write readiness at the points where operators actually need them.
+- Detect when the remote badge is stale relative to local refresh state and explain why.
+- Provide explicit recovery paths that bring repos back to a healthy shared publish state without manual state-file surgery.
 
 ## Requirements
 
@@ -36,31 +36,36 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Maintainers can prove the packed-install release path from a cleaned tree and follow one enforced release checklist covering constrained-machine operation and live publish-time checks. Validated in Phase 10.
 - [x] Maintainers can run one repo-owned release preflight that checks live registry state, npm auth, release-input coherence, and workflow prerequisites before production publish. Validated in Phase 11.
 - [x] Maintainers can execute the real trusted-publishing release path from `main` and verify the actual published registry artifacts after release. Validated across Phases 12-13.
+- [x] Multiple contributors can publish usage for the same repo without the badge becoming a last-writer-wins snapshot of one machine. Validated across Phases 14-15.
+- [x] Shared badge totals deduplicate by stable session identity across contributors and machines instead of summing opaque local aggregates. Validated in Phase 15.
+- [x] Repo-level include/exclude decisions for ambiguous sessions are consistent across contributors. Validated in Phase 15.
+- [x] Existing single-writer repos can migrate to the shared model safely without losing badge continuity or privacy guarantees. Validated in Phase 16.
 
 ### Active
 
-- [ ] Multiple contributors can publish usage for the same repo without the badge becoming a last-writer-wins snapshot of one machine.
-- [ ] Shared badge totals deduplicate by stable session identity across contributors and machines instead of summing opaque local aggregates.
-- [ ] Repo-level include/exclude decisions for ambiguous sessions are consistent across contributors.
-- [ ] Existing single-writer repos can migrate to the shared model safely without losing badge continuity or privacy guarantees.
+- [ ] Operators can immediately tell when the badge is stale because publish failed, not just because Shields is cached.
+- [ ] Refresh and pre-push flows can verify GitHub auth and publish readiness before silently leaving badge state behind.
+- [ ] Repos can choose explicit strictness and recovery behavior for publish failures instead of one hidden fail-soft default.
+- [ ] Shared-mode repos can recover from publish error state without manual local-state edits.
 
 ### Out of Scope
 
 - Hosted backend collection or server-managed badge rendering - v1 must stay local-first and serverless.
 - Uploading raw transcripts, prompt content, filenames, or local absolute paths - publishing must expose aggregates only.
-- Team dashboards, org analytics, or contributor leaderboards - the milestone is about correctness of one shared repo badge, not a broader analytics product.
+- Team dashboards, org analytics, or contributor leaderboards - the milestone is about reliability of one shared repo badge, not a broader analytics product.
 - GitHub Actions-based collection from `~/.codex` or `~/.claude` - repository CI cannot access the local-first data sources reliably.
 - Cross-provider identity stitching beyond stable provider session identity - useful later, but not required for correct shared totals in the current supported providers.
+- Replacing the local-first publish model with a hosted backend - this milestone hardens the current operational model instead of changing the product architecture.
 
 ## Context
 
 Phases 1 through 7 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, incremental refresh flows, operator commands, and release-oriented docs/tests.
 
-As of 2026-04-01 after Phases 11-13, the production release path is proven: maintainers can gate release readiness through a repo-owned preflight, publish via the GitHub Actions trusted-publishing workflow, and verify the actual published registry artifacts from npm after release.
+As of 2026-04-02 after Phases 14-16, shared publish correctness is in place: contributor observations merge safely, duplicate sessions deduplicate deterministically, legacy repos can migrate to shared mode, and operators can inspect shared publish health through `status`, `doctor`, and the public docs.
 
-That closes the shipping-confidence milestone and exposes the next product gap more sharply: multi-user correctness. Today the badge is still fundamentally published from one developer machine at a time. Multiple contributors on the same repo can all produce locally correct scans, but the shared published badge is not a true team aggregate because the remote payload is overwritten by whichever publisher ran last.
+The new sharp gap is operational trust. The product is still intentionally local-first and failure-soft on developer machines. That means a repo can keep scanning locally while the live badge quietly stops updating if GitHub auth disappears, gist writes fail, or refresh degrades without the operator noticing.
 
-The next milestone is architectural rather than packaging-focused. It needs a merge-safe remote representation for shared repo usage, stable session-level deduplication across publishers, and shared override semantics for ambiguous sessions, all while preserving the local-first and aggregate-only promises that make the product trustworthy.
+The next milestone is not a new capability layer; it is a production-hardening pass over the existing publish path. It needs visible publish failure states, better auth/readiness checks, stale badge detection, and explicit recovery flows so the live badge remains trustworthy under normal local developer workflows.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -96,9 +101,10 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | The packed-install smoke rehearsal must rebuild before packing and resolve exact tarball names before install | Clean-tree release proof must not depend on prior build state or overlapping tarball globs | Implemented in Phase 10 |
 | Release operators should follow one repo-owned checklist that includes `/tmp` scratch-space guidance, isolated npm cache usage, and live `npm view` checks immediately before publish | Constrained-machine release work and registry state are real operational constraints, not side notes | Implemented in Phase 10 |
 | Production publish must be gated by one repo-owned `npm run release:preflight` command | Registry conflicts, missing npm auth, and workflow drift should block before the real publish path starts | Implemented in Phase 11 |
-| Shared repo totals must move from single aggregate overwrite to merge-safe remote contribution state | Correct multi-user totals cannot be recovered from last-writer-wins aggregate payloads | Active for v1.3 |
-| Cross-publisher deduplication should use stable provider session identity rather than publisher-local totals | Team correctness requires set-union semantics, not sum-of-summaries | Active for v1.3 |
-| Shared ambiguous-session outcomes must become repo-level state rather than machine-local overrides | Team badge correctness breaks when different users resolve the same ambiguous session differently | Active for v1.3 |
+| Shared repo totals must move from single aggregate overwrite to merge-safe remote contribution state | Correct multi-user totals cannot be recovered from last-writer-wins aggregate payloads | Implemented across Phases 14-16 |
+| Cross-publisher deduplication should use stable provider session identity rather than publisher-local totals | Team correctness requires set-union semantics, not sum-of-summaries | Implemented in Phase 15 |
+| Shared ambiguous-session outcomes must become repo-level state rather than machine-local overrides | Team badge correctness breaks when different users resolve the same ambiguous session differently | Implemented in Phase 15 |
+| Local-first publish automation must make remote failure visible instead of silently letting the badge drift stale | A trustworthy badge cannot depend on operators noticing hidden fail-soft background failures | Active for v1.4 |
 
 ## Evolution
 
@@ -118,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after starting milestone v1.3*
+*Last updated: 2026-04-02 after starting milestone v1.4*

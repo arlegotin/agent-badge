@@ -1,29 +1,28 @@
 # Requirements: agent-badge
 
-**Defined:** 2026-04-01
+**Defined:** 2026-04-02
 **Core Value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
-## v1.3 Requirements
+## v1.4 Requirements
 
-This milestone makes shared repo totals correct when multiple contributors publish usage for the same repository.
+This milestone makes the live badge operationally trustworthy under local-first, failure-soft developer workflows.
 
-### Shared Publishing Model
+### Publish Visibility
 
-- [x] **TEAM-01**: Multiple contributors can publish usage for the same repository without the badge degrading into a last-writer-wins snapshot of one machine.
-- [x] **TEAM-02**: Shared totals are computed from mergeable remote contribution data rather than only one aggregate payload overwritten in place.
-- [x] **TEAM-03**: The shared remote format remains aggregate-only and does not publish prompts, transcript text, filenames, or local paths.
+- [ ] **OPER-01**: Operators can immediately see when the live badge is stale because publish failed or was skipped for an actionable reason.
+- [ ] **OPER-02**: `status`, `refresh`, and `doctor` expose one coherent view of last successful publish, current failure state, and required recovery action.
+- [ ] **OPER-03**: Pre-push automation reports degraded publish health clearly enough that a developer cannot mistake a stale badge for a successful update.
 
-### Deduplication And Consistency
+### Auth And Readiness
 
-- [x] **CONS-01**: Shared totals deduplicate usage by stable provider session identity across contributors and machines instead of summing opaque local totals.
-- [x] **CONS-02**: When the same underlying session is observed by more than one publisher, the merged result converges deterministically without double counting.
-- [x] **CONS-03**: Repo-level include/exclude outcomes for ambiguous sessions are shared so contributors do not publish conflicting decisions for the same session.
+- [ ] **AUTH-01**: Refresh and publish flows validate GitHub auth and gist write readiness before or during publish with concrete, local-environment-specific remediation.
+- [ ] **AUTH-02**: The runtime distinguishes auth-missing, gist-unreachable, write-failed, and remote-readback mismatch states instead of collapsing them into one generic publish error.
 
-### Migration And Operator UX
+### Recovery And Controls
 
-- [x] **MIGR-01**: Existing single-writer repositories can migrate to the shared publishing model without losing badge continuity or requiring README badge URL changes.
-- [x] **MIGR-02**: Operators can inspect whether a badge is in single-writer or shared mode and diagnose stale, conflicting, or orphaned contributor state.
-- [x] **MIGR-03**: Team publish flows document the limits of correctness clearly, including what still depends on local machine data and what is now shared remotely.
+- [ ] **CTRL-01**: Repos can choose explicit automation strictness for badge publish failures rather than inheriting one hidden failure-soft default.
+- [ ] **CTRL-02**: Repos in publish error state can recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits.
+- [ ] **CTRL-03**: Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging.
 
 ## Future Requirements
 
@@ -39,30 +38,30 @@ This milestone makes shared repo totals correct when multiple contributors publi
 
 | Feature | Reason |
 |---------|--------|
-| Team dashboards, org analytics, or contribution leaderboards | This milestone is about one correct shared badge, not a broader analytics surface. |
+| Team dashboards, org analytics, or contribution leaderboards | This milestone is about one trustworthy shared badge, not a broader analytics surface. |
 | New provider integrations beyond Codex and Claude | Team correctness should be solved against the current provider set first. |
 | Hosted backend collection or central transcript processing | Still violates the local-first aggregate-only product boundary. |
 | Branch-level or PR-level badge segmentation | Shared repo correctness is the problem to solve first; branch analytics are a separate product decision. |
+| Replacing local-first automation with a hosted scheduler | The goal is to harden the current local publish model, not introduce backend infrastructure. |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEAM-01 | Phase 14 | Complete |
-| TEAM-02 | Phase 14 | Complete |
-| TEAM-03 | Phase 14 | Complete |
-| CONS-01 | Phase 15 | Complete |
-| CONS-02 | Phase 15 | Complete |
-| CONS-03 | Phase 15 | Complete |
-| MIGR-01 | Phase 16 | Complete |
-| MIGR-02 | Phase 16 | Complete |
-| MIGR-03 | Phase 16 | Complete |
+| OPER-01 | Phase 17 | Pending |
+| OPER-02 | Phase 17 | Pending |
+| OPER-03 | Phase 18 | Pending |
+| AUTH-01 | Phase 18 | Pending |
+| AUTH-02 | Phase 18 | Pending |
+| CTRL-01 | Phase 18 | Pending |
+| CTRL-02 | Phase 19 | Pending |
+| CTRL-03 | Phase 19 | Pending |
 
 **Coverage:**
-- v1.3 requirements: 9 total
-- Mapped to phases: 9
+- v1.4 requirements: 8 total
+- Mapped to phases: 8
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-04-01*
-*Last updated: 2026-04-02 for milestone v1.3*
+*Requirements defined: 2026-04-02*
+*Last updated: 2026-04-02 for milestone v1.4*

@@ -2,9 +2,9 @@
 
 ## Overview
 
-Phases 1 through 13 established the local-first scanning model, conservative attribution, stable gist-backed badge publishing, operator tooling, and the production release path. The next milestone addresses the most important remaining product correctness gap: multiple users on the same repo do not currently contribute to one correct shared badge total because publishing still overwrites a single aggregate payload.
+Phases 1 through 16 established the local-first scanning model, stable gist-backed badge publishing, release verification, merge-safe shared publishing, migration flows, and operator-facing shared-health diagnostics. The next milestone addresses the most important remaining trust gap: the live badge can still drift stale when local publish automation fails softly and the operator does not notice.
 
-Milestone v1.3 focuses on replacing that last-writer-wins model with a merge-safe shared publishing architecture that preserves privacy, local-first collection, and stable badge URLs.
+Milestone v1.4 focuses on publish reliability hardening: visible failure states, auth and gist readiness checks, stale badge detection, and supported recovery flows that keep the local-first model trustworthy in production use.
 
 ## Phases
 
@@ -17,6 +17,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Shared Remote Contribution Model** - Define and implement a merge-safe remote representation for per-contributor repo usage and shared override state.
 - [x] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
 - [x] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state. (completed 2026-04-02)
+- [ ] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows.
+- [ ] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows.
+- [ ] **Phase 19: Recovery Paths And Production Reliability Verification** - Prove the stale-badge recovery path and lock the operator runbooks to real failure modes.
 
 ## Phase Details
 
@@ -63,6 +66,48 @@ Plans:
 - [x] 16-01: Add migration path and diagnostics for existing repos
 - [x] 16-02: Finalize team operator UX, docs, and verification
 
+### Phase 17: Publish Failure Visibility And State Trust
+**Goal**: Make the difference between a fresh badge and a stale failed publish obvious from the normal repo surfaces operators already use.
+**Depends on**: Phase 16
+**Requirements**: [OPER-01, OPER-02]
+**Success Criteria** (what must be TRUE):
+  1. `status`, `refresh`, and persisted state distinguish successful local refresh from failed remote publish with explicit timestamps and stale-state messaging.
+  2. Operators can tell whether the live badge is stale because publish failed, because no publish was attempted, or because the remote value genuinely did not change.
+  3. Shared-mode state and live-badge trust signals do not drift between CLI output and persisted diagnostics.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 17-01: Add stale badge and failed publish visibility to status and refresh flows
+- [ ] 17-02: Persist canonical publish failure diagnostics and state trust markers
+
+### Phase 18: Auth, Hook, And Publish Readiness Hardening
+**Goal**: Validate GitHub auth and publish readiness where operators need it, and give repos explicit control over how strict pre-push publish failures should be.
+**Depends on**: Phase 17
+**Requirements**: [OPER-03, AUTH-01, AUTH-02, CTRL-01]
+**Success Criteria** (what must be TRUE):
+  1. Refresh and publish report whether auth is missing, gist access is broken, writes fail, or remote readback is inconsistent.
+  2. Pre-push automation can be configured deliberately and warns loudly when the badge did not update.
+  3. Doctor and init point operators to environment-specific fixes before the repo silently falls out of sync.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 18-01: Harden auth and gist readiness checks across publish, refresh, and doctor
+- [ ] 18-02: Add explicit automation strictness and visible degraded-mode hook behavior
+
+### Phase 19: Recovery Paths And Production Reliability Verification
+**Goal**: Give operators supported recovery flows for publish error state and verify the real production failure-and-recovery path end to end.
+**Depends on**: Phase 18
+**Requirements**: [CTRL-02, CTRL-03]
+**Success Criteria** (what must be TRUE):
+  1. Repos can recover from publish error state and return to healthy shared publish mode through supported CLI flows.
+  2. Production-readiness verification proves the stale-badge failure path, recovery path, and operator instructions against live repo state.
+  3. Docs and checklists match the actual failure signals and recovery workflow used by the CLI.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 19-01: Implement supported recovery flows for publish error and stale shared state
+- [ ] 19-02: Add production reliability verification and operational runbooks for stale badge recovery
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -70,3 +115,6 @@ Plans:
 | 14. Shared Remote Contribution Model | 3/3 | Complete    | 2026-04-01 |
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
 | 16. Migration, Diagnostics, And Team Operator UX | 2/2 | Complete    | 2026-04-02 |
+| 17. Publish Failure Visibility And State Trust | 0/2 | Pending | — |
+| 18. Auth, Hook, And Publish Readiness Hardening | 0/2 | Pending | — |
+| 19. Recovery Paths And Production Reliability Verification | 0/2 | Pending | — |
