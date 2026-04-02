@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 14: Shared Remote Contribution Model** - Define and implement a merge-safe remote representation for per-contributor repo usage and shared override state.
 - [x] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
 - [x] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state. (completed 2026-04-02)
-- [ ] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows.
+- [x] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows. (completed 2026-04-02)
 - [ ] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows.
 - [ ] **Phase 19: Recovery Paths And Production Reliability Verification** - Prove the stale-badge recovery path and lock the operator runbooks to real failure modes.
 
@@ -74,11 +74,12 @@ Plans:
   1. `status`, `refresh`, and persisted state distinguish successful local refresh from failed remote publish with explicit timestamps and stale-state messaging.
   2. Operators can tell whether the live badge is stale because publish failed, because no publish was attempted, or because the remote value genuinely did not change.
   3. Shared-mode state and live-badge trust signals do not drift between CLI output and persisted diagnostics.
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
-- [ ] 17-01: Add stale badge and failed publish visibility to status and refresh flows
-- [ ] 17-02: Persist canonical publish failure diagnostics and state trust markers
+- [x] 17-01: Add stale badge and failed publish visibility to status and refresh flows
+- [x] 17-02: Persist canonical publish failure diagnostics and attempt facts
+- [x] 17-03: Align doctor and command trust output with canonical persisted diagnostics
 
 ### Phase 18: Auth, Hook, And Publish Readiness Hardening
 **Goal**: Validate GitHub auth and publish readiness where operators need it, and give repos explicit control over how strict pre-push publish failures should be.
@@ -115,6 +116,6 @@ Plans:
 | 14. Shared Remote Contribution Model | 3/3 | Complete    | 2026-04-01 |
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
 | 16. Migration, Diagnostics, And Team Operator UX | 2/2 | Complete    | 2026-04-02 |
-| 17. Publish Failure Visibility And State Trust | 0/2 | Pending | — |
+| 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
 | 18. Auth, Hook, And Publish Readiness Hardening | 0/2 | Pending | — |
 | 19. Recovery Paths And Production Reliability Verification | 0/2 | Pending | — |

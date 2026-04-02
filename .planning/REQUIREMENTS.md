@@ -9,8 +9,8 @@ This milestone makes the live badge operationally trustworthy under local-first,
 
 ### Publish Visibility
 
-- [ ] **OPER-01**: Operators can immediately see when the live badge is stale because publish failed or was skipped for an actionable reason.
-- [ ] **OPER-02**: `status`, `refresh`, and `doctor` expose one coherent view of last successful publish, current failure state, and required recovery action.
+- [x] **OPER-01**: Operators can immediately see when the live badge is stale because publish failed or was skipped for an actionable reason.
+- [x] **OPER-02**: `status`, `refresh`, and `doctor` expose one coherent view of last successful publish, current failure state, and required recovery action.
 - [ ] **OPER-03**: Pre-push automation reports degraded publish health clearly enough that a developer cannot mistake a stale badge for a successful update.
 
 ### Auth And Readiness
@@ -48,8 +48,8 @@ This milestone makes the live badge operationally trustworthy under local-first,
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| OPER-01 | Phase 17 | Pending |
-| OPER-02 | Phase 17 | Pending |
+| OPER-01 | Phase 17 | Complete |
+| OPER-02 | Phase 17 | Complete |
 | OPER-03 | Phase 18 | Pending |
 | AUTH-01 | Phase 18 | Pending |
 | AUTH-02 | Phase 18 | Pending |

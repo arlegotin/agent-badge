@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: milestone
-status: planning
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-04-02T05:31:00.000Z"
-last_activity: 2026-04-02 -- Milestone v1.4 started
+status: executing
+stopped_at: Completed 17-03-PLAN.md
+last_updated: "2026-04-02T08:33:44.621Z"
+last_activity: 2026-04-02
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 6
+  completed_phases: 4
+  total_plans: 10
+  completed_plans: 10
 ---
 
 # Project State
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 17 — publish-failure-visibility-and-state-trust
+**Current focus:** Phase 18 — auth-hook-and-publish-readiness-hardening
 
 ## Current Position
 
-Phase: 17 (publish-failure-visibility-and-state-trust) — READY TO PLAN
-Plan: 0 of 2
-Status: Defining requirements and roadmap for milestone v1.4
-Last activity: 2026-04-02 -- Milestone v1.4 started
+Phase: 18
+Plan: Not started
+Status: Ready to execute
+Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0/0 plans complete in milestone v1.4
 
@@ -70,6 +70,7 @@ Progress: [░░░░░░░░░░] 0/0 plans complete in milestone v1.4
 | Phase 13 P01 | 5m 31s | 2 tasks | 8 files |
 | Phase 14 P01 | 3m 21s | 2 tasks | 5 files |
 | Phase 16 P02 | 9 min | 2 tasks | 11 files |
+| Phase 17 P03 | 9 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,8 @@ Recent decisions affecting current work:
 - [Phase 16]: Migration is explicit only when the pre-write gist is legacy and the post-write authoritative shared view is shared on the same gist id.
 - [Phase 16]: Status and doctor both consume inspectSharedPublishHealth() so operator mode and health vocabulary cannot drift between commands.
 - [Phase 16]: Migration docs explicitly direct legacy repos back to the original publisher machine because the old badge payload is not a lossless history source.
+- [Phase 17]: Publish trust now derives from persisted attempt outcome, candidate hash, and last successful sync facts rather than refresh-time heuristics. — Canonical persisted facts keep status, refresh, and doctor aligned without command-local inference drift.
+- [Phase 17]: Doctor owns a dedicated publish-trust check so badge trust stays separate from shared-mode health and recovery guidance. — Operators need distinct signals for live badge freshness and shared contributor health.
 
 ### Pending Todos
 
@@ -158,6 +161,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-02T05:31:00.000Z
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-04-02T08:26:51.058Z
+Stopped at: Completed 17-03-PLAN.md
 Resume file: None
