@@ -165,6 +165,21 @@ function buildSettingsLines(config: AgentBadgeConfig): string[] {
   return supportedConfigKeys.map((key) => `${key}=${readConfigValue(config, key)}`);
 }
 
+function buildOperatorLines(
+  config: AgentBadgeConfig,
+  key?: SupportedConfigKey
+): string[] {
+  if (
+    typeof key === "undefined" ||
+    key === "refresh.prePush.enabled" ||
+    key === "refresh.prePush.mode"
+  ) {
+    return [`Pre-push policy: ${config.refresh.prePush.mode}`];
+  }
+
+  return [];
+}
+
 function keyRequiresRuntimeWiring(key: SupportedConfigKey): boolean {
   return key === "refresh.prePush.enabled" || key === "refresh.prePush.mode";
 }
@@ -264,19 +279,25 @@ function buildReport(
 ): string {
   if (action === "get") {
     if (typeof key === "undefined") {
-      return ["agent-badge config", ...buildSettingsLines(config).map((line) => `- ${line}`)].join(
-        "\n"
-      );
+      return [
+        "agent-badge config",
+        ...buildSettingsLines(config).map((line) => `- ${line}`),
+        ...buildOperatorLines(config).map((line) => `- ${line}`)
+      ].join("\n");
     }
 
-    return ["agent-badge config", `- ${key}=${readConfigValue(config, key)}`].join(
-      "\n"
-    );
+    return [
+      "agent-badge config",
+      `- ${key}=${readConfigValue(config, key)}`,
+      ...buildOperatorLines(config, key).map((line) => `- ${line}`)
+    ].join("\n");
   }
 
-  return ["agent-badge config", `- Updated: ${key}=${readConfigValue(config, key!)}`].join(
-    "\n"
-  );
+  return [
+    "agent-badge config",
+    `- Updated: ${key}=${readConfigValue(config, key!)}`,
+    ...buildOperatorLines(config, key).map((line) => `- ${line}`)
+  ].join("\n");
 }
 
 async function readRuntimePackageManifest(): Promise<RuntimePackageManifest> {

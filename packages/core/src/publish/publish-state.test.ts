@@ -7,7 +7,10 @@ import {
   AGENT_BADGE_GIST_FILE,
   buildStableBadgeUrl
 } from "./badge-url.js";
-import { applyPublishTargetResult } from "./publish-state.js";
+import {
+  applyPublishAttemptFailure,
+  applyPublishTargetResult
+} from "./publish-state.js";
 import { ensurePublishTarget } from "./publish-target.js";
 
 describe("buildStableBadgeUrl", () => {
@@ -122,6 +125,22 @@ describe("applyPublishTargetResult", () => {
         }
       }
     });
+  });
+});
+
+describe("applyPublishAttemptFailure", () => {
+  it("persists auth-missing without raw error detail", () => {
+    const nextState = applyPublishAttemptFailure({
+      state: defaultAgentBadgeState,
+      at: "2026-03-30T12:00:00.000Z",
+      failureCode: "auth-missing"
+    });
+
+    expect(nextState.publish.lastFailureCode).toBe("auth-missing");
+    expect(
+      "errorMessage" in (nextState.publish as Record<string, unknown>)
+    ).toBe(false);
+    expect("stack" in (nextState.publish as Record<string, unknown>)).toBe(false);
   });
 });
 
@@ -255,7 +274,7 @@ describe("ensurePublishTarget", () => {
       status: "deferred",
       gistId: null,
       badgeUrl: null,
-      reason: "auth-unavailable"
+      reason: "auth-missing"
     });
   });
 

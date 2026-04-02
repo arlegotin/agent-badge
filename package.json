@@ -23,7 +23,7 @@
     "dev:agent-badge": "tsx packages/agent-badge/src/cli/main.ts",
     "dev:create-agent-badge": "tsx packages/create-agent-badge/src/index.ts",
     "agent-badge:init": "agent-badge init",
-    "agent-badge:refresh": "agent-badge refresh --hook pre-push --fail-soft"
+    "agent-badge:refresh": "agent-badge refresh --hook pre-push --hook-policy strict"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.0",

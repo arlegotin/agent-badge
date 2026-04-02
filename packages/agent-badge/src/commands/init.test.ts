@@ -297,7 +297,7 @@ describe("runInitCommand", () => {
       });
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
       expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --fail-soft"
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
       );
       expect(publishFiles.config.publish).toEqual({
         provider: "github-gist",
@@ -309,6 +309,12 @@ describe("runInitCommand", () => {
         gistId: null,
         lastPublishedHash: null,
         lastPublishedAt: null,
+        lastAttemptedAt: null,
+        lastAttemptOutcome: "not-attempted",
+        lastSuccessfulSyncAt: null,
+        lastAttemptCandidateHash: null,
+        lastAttemptChangedBadge: "unknown",
+        lastFailureCode: null,
         publisherId: null,
         mode: "legacy"
       });
@@ -480,7 +486,7 @@ describe("runInitCommand", () => {
       const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
 
       expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push"
+        "agent-badge refresh --hook pre-push --hook-policy strict"
       );
       expect(hookContent).toContain("npm run --silent agent-badge:refresh");
       expect(hookContent).not.toContain("|| true");
@@ -897,7 +903,7 @@ describe("runInitCommand", () => {
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
       expect(scripts["agent-badge:init"]).toBe("agent-badge init");
       expect(scripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --fail-soft"
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
       );
       expect(typeof devDependencies["@legotin/agent-badge"]).toBe("string");
     } finally {

@@ -3,6 +3,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
+import type { AgentBadgeRefreshMode } from "@legotin/agent-badge-core";
 
 import { runConfigCommand } from "../commands/config.js";
 import { runInitCommand } from "../commands/init.js";
@@ -27,6 +28,20 @@ function parseRefreshHook(value: string | undefined): "pre-push" | undefined {
   }
 
   throw new Error(`Unsupported hook: ${value}`);
+}
+
+function parseRefreshHookPolicy(
+  value: string | undefined
+): AgentBadgeRefreshMode | undefined {
+  if (typeof value === "undefined") {
+    return undefined;
+  }
+
+  if (value === "fail-soft" || value === "strict") {
+    return value;
+  }
+
+  throw new Error(`Unsupported hook policy: ${value}`);
 }
 
 export function buildProgram(): Command {
@@ -84,17 +99,30 @@ export function buildProgram(): Command {
     .command("refresh")
     .description("Refresh persisted badge state and publish when needed.")
     .option("--hook <name>", "Run the refresh flow for a supported hook mode.")
+    .option(
+      "--hook-policy <mode>",
+      "Set the pre-push hook policy explicitly: fail-soft or strict."
+    )
     .option("--fail-soft", "Return a structured soft failure instead of throwing.")
     .option("--force-full", "Rebuild refresh state from a full scan.")
     .action(
       async (options: {
         hook?: string;
+        hookPolicy?: string;
         failSoft?: boolean;
         forceFull?: boolean;
       }) => {
+        const hookPolicy = parseRefreshHookPolicy(options.hookPolicy);
+
+        if (options.failSoft && hookPolicy === "strict") {
+          throw new Error(
+            "--fail-soft cannot be combined with --hook-policy strict."
+          );
+        }
+
         await runRefreshCommand({
           hook: parseRefreshHook(options.hook),
-          failSoft: options.failSoft ?? false,
+          hookPolicy: hookPolicy ?? (options.failSoft ? "fail-soft" : undefined),
           forceFull: options.forceFull ?? false
         });
       }

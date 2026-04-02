@@ -3,7 +3,10 @@ import { join, resolve } from "node:path";
 
 import {
   createGitHubGistClient,
+  derivePrePushPolicyConsequence,
+  derivePrePushPolicyReport,
   derivePublishTrustReport,
+  formatPrePushPolicyLine,
   formatPublishTrustStatus,
   formatEstimatedCostUsd,
   inspectSharedPublishHealth,
@@ -29,8 +32,15 @@ interface StatusCommandConfig {
     };
   };
   readonly publish: {
+    readonly provider: "github-gist";
     readonly gistId: string | null;
     readonly badgeUrl: string | null;
+  };
+  readonly refresh: {
+    readonly prePush: {
+      readonly enabled: boolean;
+      readonly mode: "fail-soft" | "strict";
+    };
   };
   readonly privacy: {
     readonly output: PrivacyOutput;
@@ -188,6 +198,8 @@ function parseStatusCommandConfig(input: unknown): StatusCommandConfig {
   const codex = asObject(providers.codex, "providers.codex");
   const claude = asObject(providers.claude, "providers.claude");
   const publish = asObject(root.publish, "publish");
+  const refresh = asObject(root.refresh, "refresh");
+  const prePush = asObject(refresh.prePush, "refresh.prePush");
   const privacy = asObject(root.privacy, "privacy");
   const output =
     privacy.output === "minimal" || privacy.output === "standard"
@@ -204,8 +216,19 @@ function parseStatusCommandConfig(input: unknown): StatusCommandConfig {
       }
     },
     publish: {
+      provider: publish.provider === "github-gist" ? "github-gist" : "github-gist",
       gistId: readNullableString(publish.gistId, "publish.gistId", null),
       badgeUrl: readNullableString(publish.badgeUrl, "publish.badgeUrl", null)
+    },
+    refresh: {
+      prePush: {
+        enabled: readBoolean(
+          prePush.enabled,
+          "refresh.prePush.enabled",
+          true
+        ),
+        mode: prePush.mode === "strict" ? "strict" : "fail-soft"
+      }
     },
     privacy: {
       output
@@ -281,6 +304,27 @@ function buildPublishTrustLines(state: AgentBadgeState): string[] {
   return lines;
 }
 
+function buildPrePushPolicyLines(
+  config: StatusCommandConfig,
+  state: AgentBadgeState
+): string[] {
+  const report = derivePrePushPolicyReport({
+    config,
+    state,
+    now: new Date().toISOString()
+  });
+  const consequence = derivePrePushPolicyConsequence(report);
+  const lines = [`- ${formatPrePushPolicyLine(report.policy)}`];
+
+  if (consequence.level === "warning" && consequence.message !== null) {
+    lines.push(`- Warning: ${consequence.message}`);
+  } else if (consequence.level === "blocking" && consequence.message !== null) {
+    lines.push(`- Blocking: ${consequence.message}`);
+  }
+
+  return lines;
+}
+
 function formatLastRefreshLine(state: AgentBadgeState): string {
   if (state.refresh.lastRefreshedAt === null) {
     return "unavailable";
@@ -317,6 +361,7 @@ export async function runStatusCommand(
     `- Totals: ${formatTotalsLine(state)}`,
     `- Providers: ${formatProvidersLine(config)}`,
     `- Publish: ${formatPublishLine(config, state)}`,
+    ...buildPrePushPolicyLines(config, state),
     ...buildPublishTrustLines(state),
     ...sharedModeLines,
     `- Last refresh: ${formatLastRefreshLine(state)}`,

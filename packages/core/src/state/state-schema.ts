@@ -23,9 +23,16 @@ const publishAttemptOutcomeSchema = z.enum([
 ]);
 const publishAttemptChangedBadgeSchema = z.enum(["yes", "no", "unknown"]);
 const publishFailureCodeSchema = z.enum([
+  "auth-missing",
+  "gist-unreachable",
+  "gist-not-public",
+  "gist-missing-owner",
   "not-configured",
   "deferred",
   "remote-write-failed",
+  "remote-readback-failed",
+  "remote-readback-mismatch",
+  "remote-state-invalid",
   "remote-inspection-failed",
   "unknown"
 ]);

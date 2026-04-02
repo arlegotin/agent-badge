@@ -26,7 +26,7 @@
   "refresh": {
     "prePush": {
       "enabled": true,
-      "mode": "fail-soft"
+      "mode": "strict"
     }
   },
   "privacy": {

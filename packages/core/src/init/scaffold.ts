@@ -60,9 +60,16 @@ const publishAttemptChangedBadges: AgentBadgePublishAttemptChangedBadge[] = [
   "unknown"
 ];
 const publishFailureCodes: AgentBadgePublishFailureCode[] = [
+  "auth-missing",
+  "gist-unreachable",
+  "gist-not-public",
+  "gist-missing-owner",
   "not-configured",
   "deferred",
   "remote-write-failed",
+  "remote-readback-failed",
+  "remote-readback-mismatch",
+  "remote-state-invalid",
   "remote-inspection-failed",
   "unknown"
 ];

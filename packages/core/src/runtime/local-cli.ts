@@ -32,9 +32,7 @@ export function getAgentBadgeInitScriptCommand(): string {
 export function getAgentBadgeRefreshScriptCommand(
   mode: AgentBadgeRefreshMode = "fail-soft"
 ): string {
-  return mode === "fail-soft"
-    ? "agent-badge refresh --hook pre-push --fail-soft"
-    : "agent-badge refresh --hook pre-push";
+  return `agent-badge refresh --hook pre-push --hook-policy ${mode}`;
 }
 
 export function getPackageScriptRunnerCommand(

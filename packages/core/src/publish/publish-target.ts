@@ -23,7 +23,7 @@ export interface PublishTargetResult {
   readonly gistId: string | null;
   readonly badgeUrl: string | null;
   readonly reason?:
-    | "auth-unavailable"
+    | "auth-missing"
     | "gist-not-public"
     | "gist-missing-owner"
     | "gist-unreachable"
@@ -117,7 +117,7 @@ export async function ensurePublishTarget(
   const configuredGistId = normalizeGistId(options.config.publish.gistId);
 
   if (!explicitGistId && !configuredGistId && !options.githubAuth.available) {
-    return buildDeferredResult("auth-unavailable");
+    return buildDeferredResult("auth-missing");
   }
 
   const client = options.client ?? createGitHubGistClient();

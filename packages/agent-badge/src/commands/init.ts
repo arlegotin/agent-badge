@@ -175,7 +175,7 @@ function buildDeferredBadgeSetupMessage(
   target: PublishTargetResult
 ): string {
   switch (target.reason) {
-    case "auth-unavailable":
+    case "auth-missing":
       return "set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.";
     case "gist-create-failed":
       return "public gist creation failed. Check GitHub auth and rerun `agent-badge init`, or connect an existing public gist with `--gist-id <id>`.";

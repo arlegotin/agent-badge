@@ -4,9 +4,10 @@ coverage/
 .agent-badge/cache/
 .agent-badge/logs/
 
+.env
+*.tsbuildinfo
+.DS_Store
+
 # agent-badge:gitignore:start
 .agent-badge/state.json
 # agent-badge:gitignore:end
-
-.env
-*.tsbuildinfo

@@ -1,33 +1,33 @@
 # Phase 18: Auth, Hook, And Publish Readiness Hardening - Research
 
 **Researched:** 2026-04-02
-**Domain:** GitHub auth/readiness classification, pre-push automation strictness, and operator-visible publish degradation for local-first Gist publishing
-**Confidence:** HIGH
+**Domain:** GitHub auth detection, gist readiness classification, publish verification, and pre-push automation strictness for local-first badge publishing
+**Confidence:** MEDIUM
 
 <user_constraints>
 ## User Constraints
 
-No phase `CONTEXT.md` exists for Phase 18. Planner must treat the following as the active constraints derived from `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, the user prompt, and the current codebase.
+No phase `CONTEXT.md` exists for Phase 18. Planner must treat the following as the active constraints derived from `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, Phase 17 artifacts, and the current codebase.
 
 ### Locked Decisions
 - Goal: validate GitHub auth and publish readiness where operators need it, and give repos explicit control over how strict pre-push publish failures should be.
 - Must satisfy `OPER-03`, `AUTH-01`, `AUTH-02`, and `CTRL-01`.
-- Refresh and publish must report whether auth is missing, gist access is broken, writes fail, or remote readback is inconsistent.
-- Pre-push automation must be configurable deliberately and must warn loudly when the badge did not update.
-- Doctor and init must point operators to environment-specific fixes before the repo silently falls out of sync.
-- Keep the product local-first, aggregate-only, privacy-safe, failure-soft by default, and idempotent on `init` reruns.
-- Phase 17's persisted publish-attempt facts are the foundation. Phase 18 should extend them additively, not replace them.
+- `refresh` and `publish` must distinguish auth missing, gist access broken, remote write failure, and remote readback mismatch instead of collapsing failures into one generic error bucket.
+- `doctor` and `init` must point operators to environment-specific fixes before the repo silently falls out of sync.
+- Pre-push automation must remain explicit and repo-controlled rather than hidden in one default behavior.
+- Preserve the product boundary: local-first, aggregate-only, stable gist-backed badge URL, failure-soft by default, and no leaking prompts, transcript text, local paths, or raw provider session ids.
 
 ### Claude's Discretion
-- Choose the exact shared readiness-report shape and where it lives in core.
-- Choose whether auth detection stays env-first only or adds an optional checker path such as GitHub CLI detection behind the existing checker boundary.
-- Choose the exact additive failure/readiness enum expansion and operator wording.
-- Choose how much degraded-mode visibility appears in `refresh`, `status`, `doctor`, and managed hook wiring, as long as one control surface remains authoritative.
+- Choose the exact readiness-report and failure-code shape as long as it is additive and machine-readable.
+- Choose where publish verification lives, as long as `refresh`, `publish`, `doctor`, and `init` consume one canonical readiness contract instead of per-command heuristics.
+- Choose whether pre-push automation grows beyond the current `fail-soft` / `strict` pair, as long as the resulting behavior is explicit in config, hook wiring, and operator output.
+- Choose how aggressively to probe remote readiness during `doctor`, as long as default behavior stays read-only unless the repo already uses explicit probe semantics.
 
 ### Deferred Ideas (OUT OF SCOPE)
-- Supported recovery commands and end-to-end stale-badge recovery flows. That is Phase 19.
-- Hosted scheduling, backend coordination, new provider integrations, dashboards, or richer remote analytics.
-- Any persisted diagnostic that stores raw exception text, HTTP bodies, local filesystem paths, prompts, transcript text, or raw provider session IDs.
+- Supported recovery commands for clearing publish error state or repairing shared remote files. That is Phase 19 work.
+- Hosted scheduling, background daemons, or server-side automation to keep badges fresh.
+- New provider integrations or richer shared/team analytics.
+- Any persistence of raw exception stacks, HTTP response bodies, local filesystem evidence, or provider session identifiers.
 </user_constraints>
 
 <phase_requirements>
@@ -35,374 +35,251 @@ No phase `CONTEXT.md` exists for Phase 18. Planner must treat the following as t
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| OPER-03 | Pre-push automation reports degraded publish health clearly enough that a developer cannot mistake a stale badge for a successful update. | Reuse the existing `refresh.prePush.enabled` / `refresh.prePush.mode` config surface, but add explicit degraded-mode output and doctor/status visibility so strict vs fail-soft is obvious and testable. |
-| AUTH-01 | Refresh and publish flows validate GitHub auth and gist write readiness before or during publish with concrete, local-environment-specific remediation. | Add one shared readiness inspector for init/doctor and attempt-time classification for refresh/publish so read-only checks and mutating checks stay consistent but distinct. |
-| AUTH-02 | The runtime distinguishes auth-missing, gist-unreachable, write-failed, and remote-readback mismatch states instead of collapsing them into one generic publish error. | Extend the publish failure taxonomy additively and classify Octokit `RequestError.status` plus post-write verification results into privacy-safe failure codes. |
-| CTRL-01 | Repos can choose explicit automation strictness for badge publish failures rather than inheriting one hidden failure-soft default. | Keep `refresh.prePush.mode` as the single source of truth, route hook/script/status/doctor messaging through it, and avoid introducing a second hidden toggle. |
+| OPER-03 | Pre-push automation reports degraded publish health clearly enough that a developer cannot mistake a stale badge for a successful update. | The hook path needs explicit degraded-mode output and configurable failure policy rather than only a hidden `|| true` difference. |
+| AUTH-01 | Refresh and publish flows validate GitHub auth and gist write readiness before or during publish with concrete, local-environment-specific remediation. | Introduce a canonical publish readiness report that checks auth source, gist reachability/publicity/ownership, and write prerequisites before or during publish. |
+| AUTH-02 | The runtime distinguishes auth-missing, gist-unreachable, write-failed, and remote-readback mismatch states instead of collapsing them into one generic publish error. | Expand failure-code vocabulary and publish-service verification so persisted diagnostics and command output classify each failure mode explicitly. |
+| CTRL-01 | Repos can choose explicit automation strictness for badge publish failures rather than inheriting one hidden failure-soft default. | Promote pre-push behavior into an explicit, operator-visible automation policy that rewires the hook and command output coherently. |
 </phase_requirements>
 
 ## Project Constraints (from AGENTS.md)
 
 - Keep the product local-first and serverless.
 - Preserve the aggregate-only public boundary.
-- Preserve the initializer-first npm UX and stable public Gist + Shields badge URL model.
-- Keep incremental refresh fast enough for `pre-push` and failure-soft by default.
-- Keep `init` idempotent: reruns must not duplicate hooks, README badge blocks, or Gist wiring.
+- Preserve the initializer-first npm UX and stable gist + Shields URL model.
+- Keep incremental refresh and `pre-push` fast and failure-soft by default.
+- Keep `init` idempotent and safe on reruns.
 
 ## Repo Reality
 
 ### What already exists
-- Fine-grained automation control already exists in config and hook wiring. `packages/core/src/config/config-schema.ts` defines `refresh.prePush.enabled` and `refresh.prePush.mode: "fail-soft" | "strict"`. `packages/agent-badge/src/commands/config.ts` can already mutate both, and `packages/core/src/init/runtime-wiring.ts` already toggles `|| true` in the managed hook block.
-- The managed pre-push command is already centralized. `packages/core/src/runtime/local-cli.ts` emits either `agent-badge refresh --hook pre-push --fail-soft` or `agent-badge refresh --hook pre-push`.
-- `refresh` already persists local refresh state before any remote publish work. That is the correct foundation for local-first failure-soft behavior and should not change.
-- `doctor` already has a useful split between read-only checks and an explicit `--probe-write` path. `packages/core/src/diagnostics/doctor.ts` validates auth presence, gist reachability, Shields reachability, publish trust, shared mode/health, README markers, and hook wiring. The probe-write path intentionally performs a no-op Gist overwrite only when the operator asks for it.
-- Init preflight already has an auth abstraction seam. `packages/core/src/init/github-auth.ts` supports env-token detection plus an injected `checker`, and `packages/core/src/init/preflight.ts` already threads that result into init/doctor.
-- Phase 17 already persisted canonical attempt facts such as `lastAttemptedAt`, `lastAttemptOutcome`, `lastSuccessfulSyncAt`, `lastAttemptCandidateHash`, `lastAttemptChangedBadge`, and `lastFailureCode`. The current failure enum is intentionally broad: `not-configured`, `deferred`, `remote-write-failed`, `remote-inspection-failed`, `unknown`.
+- Phase 17 already added canonical publish-attempt persistence under `publish.lastAttemptedAt`, `lastAttemptOutcome`, `lastSuccessfulSyncAt`, `lastAttemptCandidateHash`, `lastAttemptChangedBadge`, and `lastFailureCode`. [`packages/core/src/state/state-schema.ts`](../../../packages/core/src/state/state-schema.ts)
+- `refresh`, `publish`, `status`, and `doctor` already share one live-badge trust vocabulary through `derivePublishTrustReport()` and `formatPublishTrustStatus()`. [`packages/core/src/publish/publish-trust.ts`](../../../packages/core/src/publish/publish-trust.ts), [`packages/agent-badge/src/commands/refresh.ts`](../../../packages/agent-badge/src/commands/refresh.ts), [`packages/agent-badge/src/commands/status.ts`](../../../packages/agent-badge/src/commands/status.ts), [`packages/core/src/diagnostics/doctor.ts`](../../../packages/core/src/diagnostics/doctor.ts)
+- The publish path already computes a candidate badge hash before remote writes and tracks whether the badge would change. [`packages/core/src/publish/publish-service.ts`](../../../packages/core/src/publish/publish-service.ts)
+- Current failure classification is still coarse: `remote-inspection-failed`, `remote-write-failed`, `deferred`, `not-configured`, and `unknown`. There is no explicit state for auth missing versus gist unreachable versus readback mismatch. [`packages/core/src/state/state-schema.ts`](../../../packages/core/src/state/state-schema.ts), [`packages/core/src/publish/publish-service.ts`](../../../packages/core/src/publish/publish-service.ts)
+- GitHub auth detection is still binary. `detectGitHubAuth()` only reports whether one of `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT` exists, or whether an injected checker passed. It does not describe the source beyond env/checker, and it does not verify that the token can read/write the configured gist. [`packages/core/src/init/github-auth.ts`](../../../packages/core/src/init/github-auth.ts)
+- `ensurePublishTarget()` can tell init whether auth is unavailable, a gist is unreachable, non-public, or missing an owner, but that readiness logic is scoped to target setup and does not drive the ongoing publish/refresh/doctor contract. [`packages/core/src/publish/publish-target.ts`](../../../packages/core/src/publish/publish-target.ts)
+- `doctor` already has separate `publish-auth`, `publish-write`, and `publish-trust` checks, but the write check only verifies gist reachability/publicity and optional probe-write behavior. It does not classify readback mismatch or reuse the exact same failure vocabulary as publish/refresh. [`packages/core/src/diagnostics/doctor.ts`](../../../packages/core/src/diagnostics/doctor.ts)
+- Runtime wiring currently exposes only `refresh.prePush.enabled` and `refresh.prePush.mode`, with `mode` limited to `"fail-soft"` or `"strict"`. The managed hook behavior is just whether the command ends with `|| true`. [`packages/core/src/config/config-schema.ts`](../../../packages/core/src/config/config-schema.ts), [`packages/core/src/init/runtime-wiring.ts`](../../../packages/core/src/init/runtime-wiring.ts)
+- Config mutation and hook rewiring for `refresh.prePush.*` already exist and are well-tested, so Phase 18 can extend automation behavior without inventing a new config pipeline. [`packages/agent-badge/src/commands/config.ts`](../../../packages/agent-badge/src/commands/config.ts), [`packages/agent-badge/src/commands/config.test.ts`](../../../packages/agent-badge/src/commands/config.test.ts), [`packages/core/src/init/runtime-wiring.test.ts`](../../../packages/core/src/init/runtime-wiring.test.ts)
+- The release-readiness matrix already exercises init scenarios like no auth and idempotent reruns. It is a good place to add readiness/degraded-hook coverage without building a new fixture system. [`packages/agent-badge/src/commands/release-readiness-matrix.test.ts`](../../../packages/agent-badge/src/commands/release-readiness-matrix.test.ts)
 
 ### Gaps Phase 18 must close
-- `refresh` and `publish` still mostly collapse runtime failures into `unknown`, `remote-write-failed`, or `remote-inspection-failed`. There is no typed distinction between auth missing, public gist unreachable/not found, write denied, and post-write readback mismatch.
-- `publish-service.ts` computes `candidateHash` before remote writes, but it does not perform any post-write verification. That means AUTH-02's "remote readback mismatch" state requires real new logic, not just a renamed enum.
-- `doctor` can currently tell whether a Gist is reachable and whether a write probe succeeds, but it does not produce the same readiness vocabulary the runtime publish path would use.
-- `status` does not surface hook strictness or degraded publish-readiness state directly; it only prints persisted publish state plus shared-mode health.
-- `init` reports only coarse GitHub auth availability and deferred badge-setup reasons. It does not yet give the same explicit environment-specific readiness vocabulary that Phase 18 needs for refresh/publish/doctor.
-- Current auth detection is env-token-only unless an injected checker is provided by the caller. There is a seam for optional richer detection, but no repo-owned implementation yet.
+- The runtime cannot currently answer, in a canonical way, whether a failed publish was caused by:
+  - missing auth,
+  - an unreachable or invalid configured gist,
+  - a write failure after readiness checks passed,
+  - a post-write remote readback mismatch.
+- `publish` and `refresh` still resolve auth tokens locally and only classify most failures after they occur, which means the operator gets a generic error string rather than a durable readiness diagnosis.
+- There is no post-write verification step. After `updateGistFile()` succeeds, the runtime assumes the remote state matches the candidate payload without readback confirmation.
+- `doctor` and `init` expose related but not fully unified readiness guidance. Init knows about target-setup deferrals, doctor knows about auth/write/trust, and publish/refresh have their own failure wording.
+- Pre-push automation strictness is not explicit enough for operators. The repo can choose `fail-soft` or `strict`, but the hook surface still looks like one silent command; degraded stale-badge risk is easy to miss when fail-soft remains enabled.
+- The current config model conflates "should the hook fail the push?" with "how should degraded publish state be announced?" Those need to become explicit operator policy choices if `OPER-03` and `CTRL-01` are both going to hold.
 
 ## Summary
 
-Phase 18 should not invent a new hook model, a new config surface, or a new GitHub transport. The repo already has the right structural pieces: one Gist client wrapper, one config field for pre-push strictness, one managed hook writer, one init preflight auth seam, and Phase 17's canonical publish-attempt facts. The missing piece is a shared readiness and failure-classification layer that turns GitHub and Gist outcomes into stable, privacy-safe operator signals.
+Phase 17 gave the repo canonical publish-attempt facts and live-badge trust messaging. Phase 18 should not replace that work. It should add one layer underneath it: a canonical publish-readiness and publish-verification contract that classifies *why* the badge is stale or at risk and feeds that same classification into `publish`, `refresh`, `doctor`, `init`, and pre-push automation.
 
-The implementation should split cleanly into two concerns. First, add a reusable read-only publish-readiness inspector for `init`, `doctor`, and optional `status` output. Second, enrich the mutating publish path so `refresh` and `publish` classify actual failures using Octokit `RequestError.status` and a final post-write readback verification step. Keep failure-soft as the default repo behavior, but make degraded mode loud enough that developers cannot misread "push succeeded" as "badge updated."
+The key repo-specific insight is that the code already has almost every ingredient needed for this phase:
+- explicit persisted attempt facts,
+- pre-write candidate hash calculation,
+- a shared doctor framework,
+- managed config and hook rewiring,
+- and scenario-style integration tests.
 
-**Primary recommendation:** add one core `inspectPublishReadiness()` / `classifyPublishFailure()` boundary, extend the Phase 17 failure enums additively, and keep `refresh.prePush.mode` as the only strictness control while surfacing it explicitly in hook, status, and doctor output.
+The missing piece is unification. Readiness setup (`publish-target.ts`), publish execution (`publish-service.ts`), auth detection (`github-auth.ts`), and hook policy (`runtime-wiring.ts`) are still separate islands. Phase 18 should consolidate them into one readiness contract and then make automation policy explicit on top of that.
+
+**Primary recommendation:** split the phase into two plans:
+1. Add canonical auth/readiness classification plus post-write verification across `publish`, `refresh`, `doctor`, and `init`.
+2. Build explicit pre-push automation strictness and degraded-mode UX on top of that canonical readiness contract.
 
 ## Standard Stack
 
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| Existing Gist wrapper over `octokit` | repo pins `^5.0.0`; npm latest `5.0.5` | GitHub Gist read/write transport and typed error handling | Already the repo-standard GitHub boundary; Phase 18 should extend it rather than add `fetch` wrappers or CLI-only publishing. |
-| `zod` | repo pins `^4.0.0`; npm latest `4.3.6` | Additive state-schema and readiness-report validation | Phase 18 needs enum expansion and possibly a shared readiness result contract without breaking old state files. |
-| Existing config + runtime wiring modules | repo code | Single source of truth for pre-push enablement and strictness | `refresh.prePush.mode` already exists; this phase should reuse it rather than add a second hidden policy knob. |
+| Node.js | repo runtime (`>=20`, developed on 24.x) | auth env inspection, optional local CLI probing, and gist verification | No runtime change is needed; this phase is service + command orchestration. |
+| TypeScript | repo line (`5.x`) | shared readiness/failure enums, reports, and command contracts | Existing repo standard and required for additive state/report safety. |
+| `zod` | repo standard | additive validation for any expanded failure-code vocabulary or config schema | State/config changes must stay migration-safe and fail closed. |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `commander` | repo pins `^14.0.0`; npm latest `14.0.3` | Existing CLI surface for `doctor`, `status`, `refresh`, `publish`, and `config` | Reuse current commands; no new top-level command is required for Phase 18. |
-| `vitest` | repo pins `^3.2.0`; npm latest `4.1.2` | Unit and command regression coverage | Use the existing test harness. Do not turn Phase 18 into a dependency-upgrade phase. |
-| Optional GitHub auth checker via existing `DetectGitHubAuthOptions.checker` seam | repo code | Non-env auth detection if the project decides to support it | Only use as an additive convenience path; env-token detection remains the canonical supported baseline. |
+| `vitest` | repo standard | state, publish-service, doctor, init, config, hook, and command regression tests | Use for all new readiness and automation-policy coverage. |
+| Existing gist client and publish helpers | repo code | gist inspection, write, and readback verification | Reuse current core publish modules instead of introducing a second remote layer. |
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| Existing `octokit` wrapper + typed status classification | Manual `fetch` wrappers and string parsing | Worse error fidelity, more auth/header code, and more drift from official GitHub behavior. |
-| Existing `refresh.prePush.mode` config | New env vars or hook-only flags | Hidden control surfaces violate `CTRL-01` and drift from `config` / `runtime-wiring` reconciliation. |
-| Read-only readiness inspection plus explicit `--probe-write` | Always mutating no-op writes to "test" auth | Breaks the current safety model and adds unnecessary remote churn to normal status/doctor flows. |
-| Optional checker integration behind existing seam | Hard dependency on `gh` CLI | GitHub CLI is not installed everywhere, including this environment; it must remain optional if supported at all. |
+| One canonical readiness report shared across commands | Command-local auth/write checks in `init`, `refresh`, `publish`, and `doctor` | Faster to patch, but guaranteed to drift and violate `AUTH-01` / `AUTH-02`. |
+| Additive failure-code expansion plus post-write verification | Continue storing only `remote-inspection-failed` / `remote-write-failed` | Simpler schema, but operators still cannot tell whether the badge is stale because auth is missing, the gist is broken, or a write diverged after success. |
+| Explicit automation policy surfaced in config and hook output | Keep `fail-soft` / `strict` as an implementation detail of `|| true` | Preserves behavior, but does not meet `OPER-03` or `CTRL-01` because degraded badge risk stays easy to miss. |
 
 **Installation:**
 ```bash
 # No new packages are required for Phase 18.
-# Reuse the existing workspace dependencies and extend current modules.
+# Reuse the existing workspace dependencies and test infrastructure.
 ```
-
-**Version verification (2026-04-02):**
-- `commander` latest `14.0.3` (published 2026-01-31)
-- `octokit` latest `5.0.5` (published 2025-10-31)
-- `zod` latest `4.3.6` (published 2026-01-22)
-- `vitest` latest `4.1.2` (published 2026-03-26) but repo stays on `^3.2.0` for this phase
-- `tsx` latest `4.21.0` (published 2025-11-30) but Phase 18 does not require changes here
 
 ## Architecture Patterns
 
-### Recommended Project Structure
-```text
-packages/core/src/
-├── init/                 # auth detection + init/readiness preflight
-├── publish/              # typed readiness inspection, failure classification, publish service
-├── diagnostics/          # doctor checks rendered from shared facts
-└── state/                # additive enums and persisted attempt facts
+### Pattern 1: Separate publish readiness from live badge trust
+**What:** Keep Phase 17's trust report, but feed it with a new readiness/verification layer that classifies the failure source.
 
-packages/agent-badge/src/commands/
-├── init.ts               # preflight + readiness remediation
-├── refresh.ts            # attempt-time classification and hook output
-├── publish.ts            # explicit publish path using the same classifier
-├── status.ts             # persisted trust + strictness/degraded-mode summary
-└── config.ts             # authoritative strictness control surface
-```
+**Why:** Trust answers "is the live badge current?". Readiness answers "why did publish succeed or fail?". They are adjacent but not the same concept.
 
-### Pattern 1: One Read-Only Publish Readiness Report
-**What:** Add a shared core helper that inspects auth presence, configured Gist target, Gist reachability/public-ness, and optional write-readiness without mutating state by default.
+**Recommended model:**
+- Add a core readiness report, for example `inspectPublishReadiness()` or `verifyPublishReadiness()`, that returns:
+  - `authStatus`
+  - `targetStatus`
+  - `writeStatus`
+  - `readbackStatus`
+  - `failureCode`
+  - `fixes`
+- Keep `derivePublishTrustReport()` focused on badge freshness, not auth diagnostics.
+- Let commands render both:
+  - readiness / degraded cause
+  - live badge trust
 
-**When to use:** `init`, `doctor`, and optionally `status` when operators need environment-specific readiness fixes before a publish attempt.
+### Pattern 2: Expand failure codes to match operator-relevant causes
+**What:** Replace the coarse Phase 17 failure vocabulary with more precise additive codes.
 
-**Recommended shape:**
-- `auth`: `available | missing | unknown`
-- `target`: `not-configured | deferred | ready`
-- `read`: `ok | forbidden | not-found | unreachable | malformed`
-- `write`: `not-checked | ok | auth-missing | forbidden | failed`
-- `remediation`: stable fix strings derived from the same result
-
-**Why:** It keeps `init` and `doctor` aligned while preserving the current safety model where write probes are explicit.
-
-### Pattern 2: Attempt-Time Failure Classification Owns Runtime Truth
-**What:** Classify real publish failures at the transport boundary using Octokit `RequestError.status`, then persist only privacy-safe enums plus candidate-hash metadata.
-
-**When to use:** `refresh` and `publish`, where the runtime is already making mutating Gist calls.
+**Why:** `AUTH-02` requires the runtime to distinguish auth missing, gist unreachable, write failure, and readback mismatch in persisted diagnostics and command output.
 
 **Recommended additive failure codes:**
 - `auth-missing`
 - `gist-unreachable`
-- `gist-forbidden`
-- `gist-not-found`
-- `remote-write-forbidden`
+- `gist-not-public`
+- `gist-missing-owner`
 - `remote-write-failed`
 - `remote-readback-failed`
 - `remote-readback-mismatch`
-- retain `not-configured`, `deferred`, and `unknown`
+- `remote-state-invalid`
+- `not-configured`
+- `deferred`
+- `unknown`
 
-**Why:** The current Phase 17 schema was explicitly designed for additive refinement in Phase 18. This path should extend enums, not redesign persistence.
+**Rules:**
+- Persist only machine-readable codes, not raw error bodies.
+- Map exceptions to one of these codes at the publish-service or publish-target boundary.
+- Keep init/scaffold backward-compatible by treating Phase 17 codes as legacy accepted values during migration if needed.
 
-### Pattern 3: Verify Final Remote State After the Last Write
-**What:** After the final publish write, perform one final authoritative readback and compare the resulting badge payload hash to `candidateHash`.
+### Pattern 3: Verify remote state after writes
+**What:** Add post-write readback verification to `publishBadgeIfChanged()`.
 
-**When to use:** The normal `publishBadgeIfChanged()` path after the badge file, contributor file, and shared overrides file have all been updated.
+**Why:** A successful `updateGistFile()` call does not prove the gist ended in the expected state. `AUTH-02` explicitly requires a readback mismatch state.
 
-**Recommended behavior:**
-- If the final `getGist()` succeeds and the endpoint file hash matches `candidateHash`, treat the publish as successful.
-- If the final `getGist()` succeeds but the endpoint file hash does not match `candidateHash`, persist `remote-readback-mismatch`.
-- If the final `getGist()` fails, persist `remote-readback-failed`.
+**Recommended implementation shape:**
+- Compute the candidate hash before writes, as the repo already does.
+- After the write sequence, re-read the gist.
+- Verify:
+  - the expected badge file exists,
+  - its payload hash matches `candidateHash`,
+  - required shared files are present and parseable.
+- On failure:
+  - throw a typed `PublishBadgeError` with `failureCode = "remote-readback-failed"` or `"remote-readback-mismatch"`,
+  - persist those facts through the existing publish-state helpers,
+  - keep trust reporting honest by preserving the failed attempt and candidate hash.
 
-**Why:** AUTH-02 explicitly requires a distinct readback-mismatch state, and the current code does no post-write verification.
+### Pattern 4: Centralize environment-specific remediation
+**What:** Generate fixes from one readiness contract instead of writing separate command copy.
 
-### Pattern 4: One Strictness Control, Multiple Visibility Surfaces
-**What:** Keep `refresh.prePush.mode` as the only automation strictness knob, but surface its effect in:
-- managed hook content
-- `config get`
-- `status`
-- `doctor`
-- pre-push refresh output
+**Why:** `init`, `doctor`, `publish`, and `refresh` currently have overlapping but different remediation wording. That will drift unless the repo chooses one source of truth.
 
-**When to use:** Any operator-facing view that can otherwise make degraded fail-soft behavior look invisible.
+**Recommended behaviors:**
+- Auth missing:
+  - tell the operator exactly which env vars are supported,
+  - if the project later supports a CLI checker, report the source explicitly.
+- Gist unreachable / invalid:
+  - tell the operator to rerun `agent-badge init --gist-id <id>` or verify gist access.
+- Remote readback mismatch:
+  - instruct the operator to rerun publish/refresh and inspect doctor output before trusting the live badge.
+- Hook degraded mode:
+  - print an explicit stale-badge warning in pre-push output, not just an error line.
 
-**Recommended messaging:**
-- `fail-soft`: push is allowed to continue, but output must clearly say the badge may be stale
-- `strict`: publish/readiness failure returns non-zero and blocks push
+### Pattern 5: Treat hook strictness as explicit automation policy
+**What:** Promote pre-push behavior from a hidden shell detail to a visible repo policy.
 
-### Anti-Patterns to Avoid
-- **String-matching raw `error.message`:** use `RequestError.status` and privacy-safe classification, not ad-hoc message parsing.
-- **Always-on write probes in doctor/init:** keep normal readiness inspection read-only and reserve remote writes for publish or explicit `--probe-write`.
-- **A second hidden strictness toggle:** do not add env-only or hook-only policy that can drift from `refresh.prePush.mode`.
-- **Persisting raw HTTP or filesystem details:** keep state aggregate-only and privacy-safe.
+**Why:** `CTRL-01` requires explicit automation strictness, and `OPER-03` requires degraded publish health to be obvious when the repo keeps fail-soft behavior.
 
-## Don't Hand-Roll
+**Recommended implementation shape:**
+- Preserve backward compatibility with `refresh.prePush.enabled`.
+- Evolve `refresh.prePush.mode` into a policy with explicit semantics, for example:
+  - `fail-soft` — push continues, but hook prints a loud degraded badge warning when publish trust is stale or readiness failed
+  - `strict` — push fails on publish/readiness failures
+- Optionally add a second config flag only if needed for clarity, but avoid multiplying knobs unless the single `mode` field becomes ambiguous.
+- Keep the hook block managed and idempotent, but make the command output self-describing so an operator can tell which mode is active during a failing pre-push run.
 
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| GitHub failure taxonomy | Manual substring parsing of thrown errors | Octokit `RequestError` classification plus official Gist status semantics | Official docs define the meaningful HTTP states; Octokit exposes them directly. |
-| Hook strictness policy | Shell-only `|| true` logic scattered across templates | Existing `refresh.prePush.mode` + `applyRepoLocalRuntimeWiring()` | One authority keeps `config`, scripts, and hooks in sync. |
-| Publish readiness checks | Separate ad-hoc checks in `init`, `doctor`, `refresh`, and `status` | Shared core readiness inspector reused by commands | Prevents wording drift and contradictory remediation. |
-| Readback verification | Assuming `PATCH` success means final remote state is correct | Final `getGist()` verification against `candidateHash` | AUTH-02 explicitly requires distinguishing write success from readback mismatch. |
+## Recommended Delivery Shape
 
-**Key insight:** the hard part here is not adding more output. It is making every output surface derive from the same transport-aware, privacy-safe facts.
+### 18-01: Harden auth and gist readiness checks across publish, refresh, and doctor
+**Goal:** make readiness failures precise, durable, and shared across all operator surfaces before hook policy builds on them.
 
-## Common Pitfalls
+**Recommended scope:**
+- add a core publish-readiness / failure-classification module
+- expand state failure-code vocabulary additively
+- upgrade `publish-service.ts` to classify auth missing, gist unreachable, write failure, and readback mismatch explicitly
+- make `publish.ts` and `refresh.ts` persist and print the new codes and remediation
+- align `doctor.ts` and `init.ts` to the same readiness vocabulary
+- add tests for typed failure classification and post-write readback verification
 
-### Pitfall 1: Confusing Anonymous Gist Reads With Authenticated Gist Writes
-**What goes wrong:** A repo can read a public Gist successfully and still fail every write because no token is present or the token lacks Gists write permission.
-**Why it happens:** GitHub allows public Gist reads without special permissions, but Gist updates require authenticated write access.
-**How to avoid:** Treat read readiness and write readiness as separate checks and separate failure codes.
-**Warning signs:** `doctor`/`status` can inspect the Gist, but `refresh`/`publish` fail at the first write call.
+### 18-02: Add explicit automation strictness and visible degraded-mode hook behavior
+**Goal:** make pre-push automation policy deliberate and keep stale-badge risk visible even when the repo stays failure-soft.
 
-### Pitfall 2: Collapsing 403/404/Auth Failures Into One Generic Remote Error
-**What goes wrong:** Operators cannot tell whether they need a token, a different Gist id, a public Gist, or just a retry.
-**Why it happens:** The current wrapper returns normalized Gist objects but does not yet normalize transport failures.
-**How to avoid:** Classify `RequestError.status` at the Gist-client boundary and persist only stable enums.
-**Warning signs:** state only says `remote-inspection-failed` or `unknown`, and remediation text becomes generic.
+**Recommended scope:**
+- update config schema and config command wording so automation strictness is explicit and operator-readable
+- update runtime wiring so managed hooks encode the selected policy unambiguously
+- update `refresh --hook pre-push` output to report degraded publish health loudly and in a concise hook-specific format
+- extend doctor/init/status or config output where needed so the current hook policy is inspectable
+- add regression coverage for hook rewiring, config mutation, degraded fail-soft output, strict blocking behavior, and release-readiness scenarios
 
-### Pitfall 3: Declaring Success Without Post-Write Verification
-**What goes wrong:** The local machine believes publish succeeded even though the final endpoint file is stale or inconsistent.
-**Why it happens:** `publish-service.ts` currently computes `candidateHash` before writes but never verifies the final remote badge payload after the last update.
-**How to avoid:** Do one final `getGist()` and compare the endpoint badge payload hash to the candidate hash before returning success.
-**Warning signs:** write calls succeed, but the live badge or fetched Gist payload does not reflect the intended hash.
+## Concrete Extension Points
 
-### Pitfall 4: Failure-Soft Hooks That Are Too Quiet
-**What goes wrong:** Pushes succeed and developers assume the badge updated when it did not.
-**Why it happens:** Exit behavior is configurable today, but degraded-mode messaging is still thinner than the requirement demands.
-**How to avoid:** Make `refresh --hook pre-push --fail-soft` print an unmistakable stale/degraded message and expose current mode in `status`/`doctor`.
-**Warning signs:** operators can see `status: error` later, but the pre-push path did not make the risk obvious at the time.
+### Auth and readiness seams
+- [`packages/core/src/init/github-auth.ts`](../../../packages/core/src/init/github-auth.ts)
+  - currently binary auth detection; likely place to grow source/fix detail
+- [`packages/core/src/publish/publish-target.ts`](../../../packages/core/src/publish/publish-target.ts)
+  - already knows `auth-unavailable`, `gist-not-public`, `gist-missing-owner`, `gist-unreachable`, `gist-create-failed`
+- [`packages/core/src/publish/publish-service.ts`](../../../packages/core/src/publish/publish-service.ts)
+  - already computes candidate hash and owns write sequencing; the right home for readback verification
+- [`packages/core/src/publish/publish-state.ts`](../../../packages/core/src/publish/publish-state.ts)
+  - canonical persistence seam for expanded failure codes
 
-### Pitfall 5: Environment Probes That Mutate the Repo
-**What goes wrong:** A "harmless" availability check edits tracked files and dirties the worktree.
-**Why it happens:** In this environment, `pnpm --version` via Corepack attempted to inject a `packageManager` field into `package.json`.
-**How to avoid:** Prefer non-mutating presence checks (`command -v pnpm`) or document that some package-manager probes are not read-only.
-**Warning signs:** worktree changes appear immediately after a version probe.
+### Operator surfaces
+- [`packages/agent-badge/src/commands/publish.ts`](../../../packages/agent-badge/src/commands/publish.ts)
+  - direct publish path should surface precise readiness failure causes
+- [`packages/agent-badge/src/commands/refresh.ts`](../../../packages/agent-badge/src/commands/refresh.ts)
+  - pre-push and normal refresh both need precise degraded-state output
+- [`packages/core/src/diagnostics/doctor.ts`](../../../packages/core/src/diagnostics/doctor.ts)
+  - should reuse the same readiness vocabulary and fixes
+- [`packages/agent-badge/src/commands/init.ts`](../../../packages/agent-badge/src/commands/init.ts)
+  - should reuse the same readiness guidance for first-run/deferred setup
 
-## Code Examples
-
-Verified patterns from official sources:
-
-### Classify Octokit Request Errors For Gist Operations
-```ts
-// Source: https://github.com/octokit/octokit.js/
-import { RequestError } from "octokit";
-
-function classifyGistError(error: unknown) {
-  if (!(error instanceof RequestError)) {
-    return "unknown";
-  }
-
-  switch (error.status) {
-    case 401:
-      return "auth-missing";
-    case 403:
-      return "gist-forbidden";
-    case 404:
-      return "gist-not-found";
-    default:
-      return "remote-write-failed";
-  }
-}
-```
-
-### Keep Readiness Inspection Read-Only Unless The Operator Opts Into A Probe Write
-```ts
-// Sources:
-// - https://docs.github.com/en/rest/gists/gists
-// - packages/core/src/diagnostics/doctor.ts
-async function inspectPublishReadiness({
-  gistId,
-  probeWrite,
-  client,
-  currentPayload
-}: {
-  gistId: string;
-  probeWrite: boolean;
-  client: GitHubGistClient;
-  currentPayload: string;
-}) {
-  const gist = await client.getGist(gistId);
-
-  if (!probeWrite) {
-    return { read: "ok", write: "not-checked", gist };
-  }
-
-  await client.updateGistFile({
-    gistId,
-    files: { "agent-badge.json": { content: currentPayload } }
-  });
-
-  return { read: "ok", write: "ok", gist };
-}
-```
-
-## State of the Art
-
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
-| Broad Phase 17 failure buckets like `remote-write-failed` / `remote-inspection-failed` | Additive typed classification driven by HTTP status and post-write verification | Phase 17 explicitly deferred fine-grained readiness/auth detail to Phase 18 | Planner should extend enums and helpers, not replace the persistence model. |
-| Hidden fail-soft hook behavior inferred from hook content | Explicit repo-controlled strictness via `refresh.prePush.mode`, surfaced in command output | Control surface already exists from earlier phases; Phase 18 hardens visibility | No new config key is needed; planner should focus on output clarity and trust signals. |
-| Trusting successful write calls as final success | Verifying final remote badge payload against `candidateHash` | Required now by `AUTH-02` | One extra read after the last write is the cleanest way to detect mismatch without persisting payload bodies. |
-
-**Deprecated/outdated:**
-- Raw error-message persistence or string matching as the primary failure taxonomy.
-- Adding a second hidden hook strictness mechanism outside `config`.
-- Treating public Gist readability as proof of publish readiness.
-
-## Open Questions
-
-1. **Should Phase 18 add optional GitHub CLI-backed auth detection, or stay env-token-only?**
-   - What we know: `detectGitHubAuth()` already supports an injected checker seam; `gh` is not installed in this environment; env-token detection is already the product baseline.
-   - What's unclear: whether the project wants to support "logged into `gh`" as a first-class readiness path.
-   - Recommendation: keep env tokens as the canonical supported path for Phase 18. If a CLI checker is added, keep it optional and behind the existing checker seam so the product does not depend on `gh`.
-
-2. **Should readback verification use the final `PATCH` response, a final `GET`, or both?**
-   - What we know: GitHub's Update Gist endpoint returns a `200` response with Gist data, and the current publish path performs three sequential updates with no final verification.
-   - What's unclear: whether relying only on the final update response is sufficient once badge, contributor, and override files have all changed.
-   - Recommendation: prefer one final authoritative `getGist()` after the last update. Use returned `PATCH` data only as a fallback optimization, not as the sole proof of final state.
-
-## Environment Availability
-
-| Dependency | Required By | Available | Version | Fallback |
-|------------|------------|-----------|---------|----------|
-| Node.js | CLI runtime, tests | ✓ | `v22.14.0` | Product support remains `>=20` |
-| npm | Workspace scripts, initializer UX | ✓ | `11.6.0` | — |
-| git | init, repo detection, hooks | ✓ | `2.49.0` | — |
-| GitHub CLI (`gh`) | Optional richer auth detection only | ✗ | — | Keep env-token detection as the supported baseline |
-| pnpm | Cross-package-manager hook/script test cases | ✓, but probe is not read-only here | `9.15.0` | Use `command -v pnpm` or mocked package-manager tests instead of mutating probes |
-| bun | Cross-package-manager hook/script test cases | ✓ | `1.3.6` | Mocked package-manager tests are still sufficient |
-| Live GitHub auth token / Gist API access | End-to-end readiness verification | Not locally provable from repo state | — | Use mocked `GitHubGistClient` tests plus `doctor --probe-write` when an operator has real credentials |
-
-**Missing dependencies with no fallback:**
-- None for implementation work. Live end-to-end auth/write verification still requires a real operator environment and credentials.
-
-**Missing dependencies with fallback:**
-- `gh` CLI is absent; fall back to env-token detection.
-- Live GitHub token presence is intentionally not inferred from repo files; fall back to mocked transport tests and explicit operator probes.
+### Automation policy seams
+- [`packages/core/src/config/config-schema.ts`](../../../packages/core/src/config/config-schema.ts)
+  - current `refresh.prePush.mode` is the policy seam
+- [`packages/agent-badge/src/commands/config.ts`](../../../packages/agent-badge/src/commands/config.ts)
+  - existing mutation path for hook policy
+- [`packages/core/src/init/runtime-wiring.ts`](../../../packages/core/src/init/runtime-wiring.ts)
+  - managed hook block generation and idempotent rewiring
+- [`packages/core/src/init/runtime-wiring.test.ts`](../../../packages/core/src/init/runtime-wiring.test.ts)
+  - concrete place to lock policy-specific hook behavior
 
 ## Validation Architecture
 
-### Test Framework
-| Property | Value |
-|----------|-------|
-| Framework | `vitest` via `vitest.config.ts` |
-| Config file | `vitest.config.ts` |
-| Quick run command | `npm test -- --run packages/core/src/publish/publish-service.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/status.test.ts` |
-| Full suite command | `npm test -- --run` |
+Phase 18 already has strong infrastructure and does not need new frameworks. Validation should focus on the seams where readiness can silently drift:
 
-### Phase Requirements → Test Map
-| Req ID | Behavior | Test Type | Automated Command | File Exists? |
-|--------|----------|-----------|-------------------|-------------|
-| OPER-03 | Pre-push fail-soft vs strict behavior is explicit and degraded publish health is visible | command/unit | `npm test -- --run packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/status.test.ts packages/core/src/diagnostics/doctor.test.ts` | ✅ extend existing |
-| AUTH-01 | Init/doctor/refresh/publish classify auth and publish readiness with actionable remediation | unit/command | `npm test -- --run packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/publish.test.ts` | ✅ extend existing |
-| AUTH-02 | Runtime distinguishes auth-missing, gist-unreachable, write-failed, and readback mismatch | unit/integration | `npm test -- --run packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/publish.test.ts` | ✅ extend existing |
-| CTRL-01 | Repo strictness control stays explicit and authoritative through config + runtime wiring | unit/command | `npm test -- --run packages/agent-badge/src/commands/config.test.ts packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/refresh.test.ts` | ✅ existing |
+- **State + schema:** `packages/core/src/state/state-schema.test.ts`, `packages/core/src/init/scaffold.test.ts`
+- **Publish classification + verification:** `packages/core/src/publish/publish-service.test.ts`, `packages/core/src/publish/publish-target.test.ts`, `packages/core/src/publish/publish-state.test.ts`
+- **Doctor + init readiness output:** `packages/core/src/diagnostics/doctor.test.ts`, `packages/agent-badge/src/commands/init.test.ts`
+- **Command surfaces:** `packages/agent-badge/src/commands/publish.test.ts`, `packages/agent-badge/src/commands/refresh.test.ts`, `packages/agent-badge/src/commands/status.test.ts`, `packages/agent-badge/src/commands/doctor.test.ts`
+- **Automation policy + hooks:** `packages/core/src/init/runtime-wiring.test.ts`, `packages/agent-badge/src/commands/config.test.ts`
+- **Scenario coverage:** `packages/agent-badge/src/commands/release-readiness-matrix.test.ts`
 
-### Sampling Rate
-- **Per task commit:** targeted Vitest command covering changed command/core files
-- **Per wave merge:** `npm test -- --run`
-- **Phase gate:** full suite green before `/gsd:verify-work`
+The fast validation loop for execution should stay under roughly one minute by using a targeted command spanning those files, then a full `npm test -- --run` sweep after each wave.
 
-### Wave 0 Gaps
-- [ ] `packages/core/src/publish/publish-readiness.test.ts` — new shared readiness-inspector coverage for auth/read/write classification and remediation
-- [ ] Extend `packages/core/src/publish/publish-service.test.ts` — add final readback-failed and readback-mismatch cases
-- [ ] Extend `packages/agent-badge/src/commands/refresh.test.ts` — add hook-mode degraded messaging assertions for auth-missing, gist-unreachable, and readback mismatch
-- [ ] Extend `packages/agent-badge/src/commands/status.test.ts` — add strictness/degraded-mode visibility assertions
-- [ ] Extend `packages/core/src/diagnostics/doctor.test.ts` and `packages/agent-badge/src/commands/init.test.ts` — align readiness vocabulary and environment-specific fixes across doctor/init
+## Planner Notes
 
-## Sources
-
-### Primary (HIGH confidence)
-- GitHub REST API docs for Gists: https://docs.github.com/en/rest/gists/gists
-  - Verified public Gist read semantics, update permissions, and response status codes for Get/Update Gist.
-- Octokit official README: https://github.com/octokit/octokit.js/
-  - Verified `RequestError` handling and `error.status` availability.
-- npm package registry metadata:
-  - https://www.npmjs.com/package/commander
-  - https://www.npmjs.com/package/octokit
-  - https://www.npmjs.com/package/zod
-  - https://www.npmjs.com/package/vitest
-  - https://www.npmjs.com/package/tsx
-  - Versions were also verified with live `npm view` queries on 2026-04-02.
-- Repo source of truth:
-  - `packages/core/src/publish/publish-service.ts`
-  - `packages/core/src/diagnostics/doctor.ts`
-  - `packages/core/src/init/runtime-wiring.ts`
-  - `packages/core/src/config/config-schema.ts`
-  - `packages/agent-badge/src/commands/{init,refresh,publish,status,config}.ts`
-
-### Secondary (MEDIUM confidence)
-- Existing Phase 17 research and plans in `.planning/phases/17-publish-failure-visibility-and-state-trust/`
-  - Used to keep the Phase 18 recommendation additive to the Phase 17 persistence contract.
-
-### Tertiary (LOW confidence)
-- None.
-
-## Metadata
-
-**Confidence breakdown:**
-- Standard stack: HIGH - Phase 18 reuses the existing repo stack and the current package lines were verified against the registry.
-- Architecture: HIGH - The recommended split is directly grounded in current code seams plus official GitHub/Octokit behavior.
-- Pitfalls: HIGH - Most are directly evidenced by the current implementation or official API semantics; one environment pitfall (`pnpm --version` via Corepack mutating `package.json`) was observed locally during research.
-
-**Research date:** 2026-04-02
-**Valid until:** 2026-05-02
+- Plan 01 should own the new readiness/failure vocabulary and all stateful publish verification changes. That work is foundational and should land before hook policy changes rely on it.
+- Plan 02 should depend on Plan 01 because degraded pre-push output needs the canonical readiness/trust contract from Plan 01.
+- The planner should keep acceptance criteria grep-verifiable and anchored to exact strings such as `remote-readback-mismatch`, `Publish readiness:`, `Live badge trust:`, and explicit hook-command output.
+- The planner should preserve local-first failure-soft defaults. Even if strict behavior expands, the repo must still support a safe failure-soft mode with loud degraded-state output.

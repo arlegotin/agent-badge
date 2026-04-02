@@ -108,7 +108,7 @@ async function createFixture(options: {
   if (options.withManagedHook ?? true) {
     const hookBlock = [
       "# agent-badge:start",
-      "agent-badge refresh --hook pre-push --fail-soft",
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft",
       "# agent-badge:end",
       ""
     ].join("\n");

@@ -107,6 +107,7 @@ describe("runConfigCommand", () => {
       expect(output.read()).toContain("- badge.mode=combined");
       expect(output.read()).toContain("- refresh.prePush.enabled=true");
       expect(output.read()).toContain("- refresh.prePush.mode=fail-soft");
+      expect(output.read()).toContain("- Pre-push policy: fail-soft");
       expect(output.read()).toContain("- privacy.aggregateOnly=true");
       expect(output.read()).toContain("- privacy.output=standard");
     } finally {
@@ -180,6 +181,7 @@ describe("runConfigCommand", () => {
       expect(config.privacy.aggregateOnly).toBe(true);
       expect(config.privacy.output).toBe("minimal");
       expect(output.read()).toContain("- Updated: privacy.output=minimal");
+      expect(output.read()).toContain("- Pre-push policy: strict");
     } finally {
       await fixture.cleanup();
     }
@@ -212,7 +214,7 @@ describe("runConfigCommand", () => {
 
       expect(config.refresh.prePush.mode).toBe("strict");
       expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push"
+        "agent-badge refresh --hook pre-push --hook-policy strict"
       );
       expect(hookContent).toContain("npm run --silent agent-badge:refresh");
       expect(hookContent).not.toContain("|| true");

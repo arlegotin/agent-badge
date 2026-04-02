@@ -578,6 +578,270 @@ describe("runRefreshCommand", () => {
     }
   });
 
+  it("renders Publish readiness: auth missing in fail-soft refresh output", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_123",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123"
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    runIncrementalRefreshMock.mockResolvedValueOnce({
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    });
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new PublishBadgeError("auth missing", {
+        failureCode: "auth-missing",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: null,
+        changedBadge: null
+      })
+    );
+
+    try {
+      const result = await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer,
+        failSoft: true
+      });
+
+      expect(result.status).toBe("failed-soft");
+      expect(output.read()).toContain("- Publish readiness: auth missing");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders Publish readiness: gist unreachable in fail-soft refresh output", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_123",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_123"
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    runIncrementalRefreshMock.mockResolvedValueOnce({
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    });
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new PublishBadgeError("gist unreachable", {
+        failureCode: "gist-unreachable",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: null,
+        changedBadge: null
+      })
+    );
+
+    try {
+      const result = await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        stdout: output.writer,
+        failSoft: true
+      });
+
+      expect(result.status).toBe("failed-soft");
+      expect(output.read()).toContain("- Publish readiness: gist unreachable");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders Publish readiness and Live badge trust in standard refresh failure output", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_standard",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_standard%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_standard",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    runIncrementalRefreshMock.mockResolvedValueOnce({
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    });
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new PublishBadgeError("remote write failed", {
+        failureCode: "remote-write-failed",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: "hash_live",
+        changedBadge: false
+      })
+    );
+
+    try {
+      await expect(
+        runRefreshCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          stdout: output.writer
+        })
+      ).rejects.toThrow("remote write failed");
+
+      expect(output.read()).toContain("- Publish readiness: remote write failed");
+      expect(output.read()).toContain("- Live badge trust:");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders Publish readiness: auth missing in standard refresh failure output", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_standard_auth",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_standard_auth%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_standard_auth",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z"
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const rawAuthMessage =
+      "Requires authentication - https://docs.github.com/rest";
+
+    runIncrementalRefreshMock.mockResolvedValueOnce({
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 10,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-next",
+        claude: "claude-next"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    });
+    publishBadgeIfChangedMock.mockRejectedValueOnce(
+      new PublishBadgeError(rawAuthMessage, {
+        failureCode: "auth-missing",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: null,
+        changedBadge: null
+      })
+    );
+
+    try {
+      await expect(
+        runRefreshCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          stdout: output.writer
+        })
+      ).rejects.toThrow("GitHub authentication missing or invalid.");
+
+      expect(output.read()).toContain("- Publish readiness: auth missing");
+      expect(output.read()).toContain("- Live badge trust:");
+      expect(output.read()).not.toContain(rawAuthMessage);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("uses process.env GitHub auth when no explicit env override is passed", async () => {
     const configuredConfig = {
       ...defaultAgentBadgeConfig,
@@ -819,18 +1083,20 @@ describe("runRefreshCommand", () => {
         cwd: fixture.repoRoot,
         homeRoot: fixture.homeRoot,
         stdout: output.writer,
-        hook: "pre-push"
+        hook: "pre-push",
+        hookPolicy: "fail-soft"
       });
 
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("- Scan mode: incremental");
       expect(output.read()).toContain("- Publish: skipped");
+      expect(output.read()).toContain("- Pre-push policy: fail-soft");
       expect(output.read()).toContain("- Live badge trust: unchanged");
       expect(output.read()).toContain("- Publish mode: shared");
       expect(output.read()).toContain("- Migration: none");
       expect(output.read()).not.toContain("last published");
       expect(output.read()).not.toContain("- Last successful badge update:");
-      expect(output.read().trim().split("\n")).toHaveLength(8);
+      expect(output.read().trim().split("\n")).toHaveLength(10);
     } finally {
       await fixture.cleanup();
     }
@@ -989,7 +1255,7 @@ describe("runRefreshCommand", () => {
         homeRoot: fixture.homeRoot,
         stdout: output.writer,
         hook: "pre-push",
-        failSoft: true
+        hookPolicy: "fail-soft"
       });
       const persistedState = await readStateFile(fixture.statePath);
       const cache = await readRefreshCache({ cwd: fixture.repoRoot });
@@ -1011,6 +1277,10 @@ describe("runRefreshCommand", () => {
       expect(output.read()).toContain("agent-badge refresh");
       expect(output.read()).toContain("Refresh status: failed-soft");
       expect(output.read()).toContain("GitHub authentication missing");
+      expect(output.read()).toContain("- Pre-push policy: fail-soft");
+      expect(output.read()).toContain(
+        "- Warning: live badge may be stale; push continues because pre-push policy is fail-soft."
+      );
       expect(output.read()).toContain("- Live badge trust: unknown");
       expect(output.read()).toContain("- Last successful badge update:");
       expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
@@ -1044,6 +1314,7 @@ describe("runRefreshCommand", () => {
     const fixture = await createFixture({
       config: configuredConfig
     });
+    const output = createOutputCapture();
     const refreshResult = {
       scanMode: "incremental" as const,
       summary: {
@@ -1073,7 +1344,9 @@ describe("runRefreshCommand", () => {
         runRefreshCommand({
           cwd: fixture.repoRoot,
           homeRoot: fixture.homeRoot,
-          hook: "pre-push"
+          hook: "pre-push",
+          hookPolicy: "strict",
+          stdout: output.writer
         })
       ).rejects.toThrow("GitHub authentication missing");
 
@@ -1081,6 +1354,11 @@ describe("runRefreshCommand", () => {
 
       expect(persistedState.refresh.lastPublishDecision).toBe("failed");
       expect(persistedState.publish.status).toBe("error");
+      expect(output.read()).toContain("- Refresh status: failed");
+      expect(output.read()).toContain("- Pre-push policy: strict");
+      expect(output.read()).toContain(
+        "- Blocking: push stopped because pre-push policy is strict."
+      );
       expect(appendAgentBadgeLogMock).toHaveBeenCalledWith({
         cwd: fixture.repoRoot,
         entry: expect.objectContaining({
@@ -1094,6 +1372,61 @@ describe("runRefreshCommand", () => {
           }
         })
       });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("blocks strict pre-push runs when publish readiness is degraded without a publish exception", async () => {
+    const fixture = await createFixture({
+      config: {
+        ...defaultAgentBadgeConfig,
+        refresh: {
+          prePush: {
+            enabled: true,
+            mode: "strict"
+          }
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    runIncrementalRefreshMock.mockResolvedValueOnce({
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 1,
+        includedTokens: 25,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-strict-ready",
+        claude: "claude-strict-ready"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    });
+
+    try {
+      await expect(
+        runRefreshCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          hook: "pre-push",
+          hookPolicy: "strict",
+          stdout: output.writer
+        })
+      ).rejects.toThrow("push stopped because pre-push policy is strict.");
+
+      expect(output.read()).toContain("- Pre-push policy: strict");
+      expect(output.read()).toContain("- Publish readiness: not configured");
+      expect(output.read()).toContain("- Live badge trust: not attempted");
+      expect(output.read()).toContain(
+        "- Blocking: push stopped because pre-push policy is strict."
+      );
     } finally {
       await fixture.cleanup();
     }

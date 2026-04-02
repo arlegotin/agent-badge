@@ -443,4 +443,94 @@ describe("applyAgentBadgeScaffold", () => {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
   });
+
+  it("preserves expanded publish failure codes on init reruns", async () => {
+    const repo = await createRepoFixture();
+    const providers = await createProviderHome();
+    const scaffoldRoot = join(repo.root, ".agent-badge");
+
+    try {
+      await mkdir(scaffoldRoot, { recursive: true });
+      await writeFile(
+        join(scaffoldRoot, "state.json"),
+        JSON.stringify(
+          {
+            version: 1,
+            init: {
+              initialized: true,
+              scaffoldVersion: 1,
+              lastInitializedAt: initializedAt
+            },
+            checkpoints: {
+              codex: {
+                cursor: null,
+                lastScannedAt: null
+              },
+              claude: {
+                cursor: null,
+                lastScannedAt: null
+              }
+            },
+            publish: {
+              status: "error",
+              gistId: "gist_123",
+              lastPublishedHash: "hash_123",
+              lastPublishedAt: "2026-03-30T01:00:00.000Z",
+              publisherId: "publisher-existing",
+              mode: "shared",
+              lastAttemptedAt: "2026-03-30T02:00:00.000Z",
+              lastAttemptOutcome: "failed",
+              lastSuccessfulSyncAt: "2026-03-30T01:00:00.000Z",
+              lastAttemptCandidateHash: "hash_candidate",
+              lastAttemptChangedBadge: "yes",
+              lastFailureCode: "remote-readback-mismatch"
+            },
+            refresh: {
+              lastRefreshedAt: "2026-03-30T02:00:00.000Z",
+              lastScanMode: "incremental",
+              lastPublishDecision: "failed",
+              summary: {
+                includedSessions: 2,
+                includedTokens: 120,
+                ambiguousSessions: 1,
+                excludedSessions: 0
+              }
+            },
+            overrides: {
+              ambiguousSessions: {}
+            }
+          },
+          null,
+          2
+        ),
+        "utf8"
+      );
+
+      const preflight = await runInitPreflight({
+        cwd: repo.root,
+        homeRoot: providers.root
+      });
+
+      await applyAgentBadgeScaffold({
+        cwd: repo.root,
+        preflight,
+        now: () => new Date("2026-04-01T00:00:00.000Z")
+      });
+
+      const state = parseAgentBadgeState(
+        await readJson(join(repo.root, ".agent-badge/state.json"))
+      );
+
+      expect(state.publish.lastAttemptedAt).toBe("2026-03-30T02:00:00.000Z");
+      expect(state.publish.lastAttemptOutcome).toBe("failed");
+      expect(state.publish.lastSuccessfulSyncAt).toBe(
+        "2026-03-30T01:00:00.000Z"
+      );
+      expect(state.publish.lastAttemptCandidateHash).toBe("hash_candidate");
+      expect(state.publish.lastAttemptChangedBadge).toBe("yes");
+      expect(state.publish.lastFailureCode).toBe("remote-readback-mismatch");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
 });

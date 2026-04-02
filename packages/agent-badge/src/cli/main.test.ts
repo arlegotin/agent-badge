@@ -74,6 +74,7 @@ describe("buildProgram", () => {
     const optionFlags = refreshCommand?.options.map((option) => option.flags);
 
     expect(optionFlags).toContain("--hook <name>");
+    expect(optionFlags).toContain("--hook-policy <mode>");
     expect(optionFlags).toContain("--fail-soft");
     expect(optionFlags).toContain("--force-full");
   });

@@ -113,7 +113,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(devDependencies["@legotin/agent-badge"]).toBe("latest");
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
       expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --fail-soft"
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
       );
 
       const hookContent = await readFile(prePushHookPath, "utf8");
@@ -220,7 +220,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(packageScripts.test).toBe("vitest --run");
       expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
       expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --fail-soft"
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
       );
       expect(devDependencies.typescript).toBe("^5.0.0");
       expect(devDependencies["@legotin/agent-badge"]).toBe("^1.2.3");
@@ -305,7 +305,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       const hookContent = await readFile(prePushHookPath, "utf8");
 
       expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push"
+        "agent-badge refresh --hook pre-push --hook-policy strict"
       );
       expect(hookContent).toContain("npm run --silent agent-badge:refresh");
       expect(hookContent).not.toContain("|| true");

@@ -6,9 +6,13 @@ import {
 } from "../publish/badge-url.js";
 import { buildEndpointBadgePayload } from "../publish/badge-payload.js";
 import {
+  derivePrePushPolicyConsequence,
+  derivePrePushPolicyReport,
+  formatPrePushPolicyLine,
   derivePublishTrustReport,
   formatPublishTrustStatus
-} from "../publish/publish-trust.js";
+} from "../publish/index.js";
+import { inspectPublishReadiness } from "../publish/publish-readiness.js";
 import {
   AGENT_BADGE_README_END_MARKER,
   AGENT_BADGE_README_START_MARKER
@@ -303,15 +307,17 @@ async function checkScanAccess(preflight: InitPreflightResult): Promise<DoctorCh
 }
 
 function checkPublishAuth(preflight: InitPreflightResult): DoctorCheck {
-  if (!preflight.githubAuth.available) {
+  const readiness = inspectPublishReadiness({
+    githubAuth: preflight.githubAuth
+  });
+
+  if (readiness.status === "auth-missing") {
     return {
       id: "publish-auth",
       status: "warn",
       message: "GitHub auth was not detected",
       detail: "Publish checks cannot verify write access without an auth token.",
-      fix: buildFix([
-        "Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT in the environment and rerun `agent-badge doctor`."
-      ])
+      fix: readiness.fix
     };
   }
 
@@ -487,14 +493,16 @@ async function checkPublishWrite(options: {
   }
 
   if (options.config.publish.gistId === null || options.config.publish.badgeUrl === null) {
+    const readiness = inspectPublishReadiness({
+      config: options.config
+    });
+
     return {
       id: "publish-write",
       status: "warn",
       message: "Publish target is not connected",
       detail: "Gist ID and badge endpoint have not both been configured.",
-      fix: buildFix([
-        "Run `agent-badge init` to connect or create a publish target."
-      ])
+      fix: readiness.fix
     };
   }
 
@@ -502,22 +510,40 @@ async function checkPublishWrite(options: {
     const gist = await options.gistClient.getGist(options.config.publish.gistId);
 
     if (!gist.public) {
+      const readiness = inspectPublishReadiness({
+        target: {
+          status: "deferred",
+          gistId: null,
+          badgeUrl: null,
+          reason: "gist-not-public"
+        }
+      });
+
       return {
         id: "publish-write",
         status: "fail",
         message: "Configured Gist is private",
         detail: "Shields endpoints and publish recovery require a public gist.",
-        fix: buildFix(["Use a public gist or run `agent-badge init --gist-id <id>` with a public gist."])
+        fix: readiness.fix
       };
     }
 
     if (!gistHasFile(gist.files, AGENT_BADGE_GIST_FILE)) {
+      const readiness = inspectPublishReadiness({
+        target: {
+          status: "deferred",
+          gistId: null,
+          badgeUrl: null,
+          reason: "gist-unreachable"
+        }
+      });
+
       return {
         id: "publish-write",
         status: "warn",
         message: "Configured gist is missing the expected payload filename",
         detail: `Expected ${AGENT_BADGE_GIST_FILE} in ${options.config.publish.gistId}.`,
-        fix: buildFix(["Run `agent-badge init --gist-id <id>` to repair publish wiring."])
+        fix: readiness.fix
       };
     }
 
@@ -553,13 +579,21 @@ async function checkPublishWrite(options: {
     };
   } catch (error) {
     const detail = error instanceof Error ? `: ${error.message}` : ".";
+    const readiness = inspectPublishReadiness({
+      target: {
+        status: "deferred",
+        gistId: null,
+        badgeUrl: null,
+        reason: "gist-unreachable"
+      }
+    });
 
     return {
       id: "publish-write",
       status: options.config.publish.gistId === null ? "warn" : "fail",
       message: "Unable to validate configured gist",
       detail: `Readback check failed${detail}`,
-      fix: buildMissingPublishTargetFix()
+      fix: readiness.fix
     };
   }
 }
@@ -900,12 +934,31 @@ async function checkReadme(
 
 async function checkHook(
   cwd: string,
-  preflight: InitPreflightResult,
-  config: AgentBadgeConfig | null
+  _preflight: InitPreflightResult,
+  config: AgentBadgeConfig | null,
+  state: AgentBadgeState | null
 ): Promise<DoctorCheck> {
   const hookPath = join(cwd, PRE_PUSH_HOOK_PATH);
   const hookContent = await readTextFile(hookPath);
   const shouldHaveHook = config?.refresh.prePush.enabled !== false;
+  const policyLine =
+    config === null
+      ? "Pre-push policy: unavailable"
+      : formatPrePushPolicyLine(config.refresh.prePush.mode);
+  const policyReport =
+    config !== null && state !== null
+      ? derivePrePushPolicyReport({
+          config,
+          state,
+          now: new Date().toISOString()
+        })
+      : null;
+  const policyConsequence =
+    policyReport === null ? null : derivePrePushPolicyConsequence(policyReport);
+  const policyDetail =
+    policyConsequence?.message === null || typeof policyConsequence?.message !== "string"
+      ? policyLine
+      : `${policyLine} | ${policyConsequence.message}`;
 
   if (hookContent === null) {
     return {
@@ -915,8 +968,8 @@ async function checkHook(
         ? "pre-push hook file is missing"
         : "pre-push hook file is intentionally not required",
       detail: shouldHaveHook
-        ? "Re-run init to install the managed hook block."
-        : "pre-push hook was intentionally disabled in configuration.",
+        ? `${policyDetail} | Re-run init to install the managed hook block.`
+        : `${policyLine} | pre-push hook was intentionally disabled in configuration.`,
       fix: shouldHaveHook
         ? buildFix(["Run `agent-badge init` to install the managed pre-push hook."])
         : []
@@ -931,7 +984,7 @@ async function checkHook(
       id: "pre-push-hook",
       status: "fail",
       message: "Managed pre-push hook block is malformed",
-      detail: `Found ${startCount} start marker(s) and ${endCount} end marker(s).`,
+      detail: `${policyLine} | Found ${startCount} start marker(s) and ${endCount} end marker(s).`,
       fix: buildFix(["Run `agent-badge init` to repair managed hook state."])
     };
   }
@@ -941,21 +994,40 @@ async function checkHook(
     .split(agentBadgeHookEndMarker)[0]
     .trim();
 
-  if (!managedContent.includes("agent-badge refresh --hook pre-push")) {
+  const invokesRefresh =
+    managedContent.includes("agent-badge refresh --hook pre-push") ||
+    managedContent.includes("agent-badge:refresh");
+
+  if (!invokesRefresh) {
     return {
       id: "pre-push-hook",
       status: "warn",
       message: "Managed pre-push hook exists but is not wired",
-      detail: "Managed block was detected but does not invoke the refresh command.",
+      detail: `${policyLine} | Managed block was detected but does not invoke the refresh command.`,
       fix: buildFix(["Run `agent-badge init` to repair managed hook wiring."])
     };
+  }
+
+  if (config !== null && managedContent.includes("agent-badge:refresh")) {
+    const expectsFailSoftFallback = config.refresh.prePush.mode === "fail-soft";
+    const hasFailSoftFallback = managedContent.includes("|| true");
+
+    if (expectsFailSoftFallback !== hasFailSoftFallback) {
+      return {
+        id: "pre-push-hook",
+        status: "warn",
+        message: "Managed pre-push hook policy does not match configuration",
+        detail: `${policyLine} | Managed hook fallback does not match the configured pre-push policy.`,
+        fix: buildFix(["Run `agent-badge init` to repair managed hook wiring."])
+      };
+    }
   }
 
   return {
     id: "pre-push-hook",
     status: "pass",
     message: "pre-push hook is wired",
-    detail: "Managed hook block is present and invokes refresh.",
+    detail: `${policyDetail} | Managed hook block is present and invokes refresh.`,
     fix: []
   };
 }
@@ -1047,7 +1119,9 @@ export async function runDoctorChecks(
   checks.push(checkSharedMode(sharedInspection));
   checks.push(checkSharedHealth(sharedInspection));
   checks.push(await checkReadme(cwd, preflight));
-  checks.push(await checkHook(cwd, preflight, persisted.config));
+  checks.push(
+    await checkHook(cwd, preflight, persisted.config, persistedState.state)
+  );
 
   for (const [index, check] of checks.entries()) {
     if (check.id !== CHECK_IDS[index]) {

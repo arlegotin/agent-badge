@@ -9,9 +9,14 @@ import {
   buildRefreshCacheKey,
   buildSharedOverrideDigest,
   createGitHubGistClient,
+  derivePrePushPolicyConsequence,
+  derivePrePushPolicyReport,
   derivePublishTrustReport,
+  formatPrePushPolicyLine,
+  formatPublishReadinessStatus,
   formatPublishTrustStatus,
   formatEstimatedCostUsd,
+  inspectPublishReadiness,
   isPublishBadgeError,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
@@ -21,6 +26,8 @@ import {
   writeRefreshCache,
   appendAgentBadgeLog,
   buildLogEntry,
+  PublishBadgeError,
+  type AgentBadgeRefreshMode,
   type AgentBadgeRefreshPublishDecision,
   type AgentBadgeState,
   type GitHubGistClient,
@@ -41,6 +48,7 @@ export interface RunRefreshCommandOptions {
   readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
   readonly hook?: "pre-push";
+  readonly hookPolicy?: AgentBadgeRefreshMode;
   readonly failSoft?: boolean;
   readonly forceFull?: boolean;
 }
@@ -66,6 +74,8 @@ export type RefreshCommandResult =
 const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
 const githubTokenEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
+const GITHUB_AUTH_MISSING_ERROR_MESSAGE =
+  "GitHub authentication missing or invalid.";
 
 async function readJsonFile(targetPath: string): Promise<unknown> {
   let rawContent: string;
@@ -96,6 +106,24 @@ async function writeStateFile(
 
 function writeLine(stdout: OutputWriter, line: string): void {
   stdout.write(`${line}\n`);
+}
+
+function normalizePublishSurfaceError(error: Error): Error {
+  if (!isPublishBadgeError(error) || error.failureCode !== "auth-missing") {
+    return error;
+  }
+
+  if (error.message === GITHUB_AUTH_MISSING_ERROR_MESSAGE) {
+    return error;
+  }
+
+  return new PublishBadgeError(GITHUB_AUTH_MISSING_ERROR_MESSAGE, {
+    cause: error.cause ?? error,
+    attemptedAt: error.attemptedAt,
+    failureCode: error.failureCode,
+    candidateHash: error.candidateHash,
+    changedBadge: error.changedBadge
+  });
 }
 
 function resolveGitHubAuthToken(
@@ -192,12 +220,101 @@ function printPublishTrustLines(
   }
 }
 
+function printPublishReadinessLine(
+  stdout: OutputWriter,
+  state: AgentBadgeState,
+  config: ReturnType<typeof parseAgentBadgeConfig>
+): void {
+  const readiness = inspectPublishReadiness({
+    config,
+    state
+  });
+
+  writeLine(
+    stdout,
+    `- Publish readiness: ${formatPublishReadinessStatus(readiness.status)}`
+  );
+}
+
+function resolveHookPolicy(
+  options: RunRefreshCommandOptions,
+  config: ReturnType<typeof parseAgentBadgeConfig>
+): AgentBadgeRefreshMode | undefined {
+  if (options.hook !== "pre-push") {
+    return undefined;
+  }
+
+  if (typeof options.hookPolicy !== "undefined") {
+    return options.hookPolicy;
+  }
+
+  if (options.failSoft) {
+    return "fail-soft";
+  }
+
+  return config.refresh.prePush.mode;
+}
+
+function shouldFailSoftForExecution(
+  options: RunRefreshCommandOptions,
+  config: ReturnType<typeof parseAgentBadgeConfig>
+): boolean {
+  const hookPolicy = resolveHookPolicy(options, config);
+
+  return options.failSoft === true || hookPolicy === "fail-soft";
+}
+
+function printHookPolicyLines(
+  stdout: OutputWriter,
+  state: AgentBadgeState,
+  config: ReturnType<typeof parseAgentBadgeConfig>,
+  hookPolicy: AgentBadgeRefreshMode | undefined
+): {
+  readonly degraded: boolean;
+  readonly blocking: boolean;
+} {
+  if (hookPolicy === undefined) {
+    return {
+      degraded: false,
+      blocking: false
+    };
+  }
+
+  const report = derivePrePushPolicyReport({
+    config,
+    state,
+    now: new Date().toISOString()
+  });
+  const policyReport = {
+    ...report,
+    policy: hookPolicy
+  };
+  const consequence = derivePrePushPolicyConsequence(policyReport);
+
+  writeLine(stdout, `- ${formatPrePushPolicyLine(hookPolicy)}`);
+
+  if (consequence.level === "warning" && consequence.message !== null) {
+    writeLine(stdout, `- Warning: ${consequence.message}`);
+  } else if (consequence.level === "blocking" && consequence.message !== null) {
+    writeLine(stdout, `- Blocking: ${consequence.message}`);
+  }
+
+  return {
+    degraded: policyReport.degraded,
+    blocking: consequence.level === "blocking"
+  };
+}
+
 function printRefreshSummary(
   stdout: OutputWriter,
   result: RefreshCommandSuccessResult,
-  hook: RunRefreshCommandOptions["hook"]
-): void {
-  const concise = hook === "pre-push";
+  config: ReturnType<typeof parseAgentBadgeConfig>,
+  hookPolicy: AgentBadgeRefreshMode | undefined
+): {
+  readonly degraded: boolean;
+  readonly blocking: boolean;
+} {
+  const concise = hookPolicy !== undefined;
 
   writeLine(stdout, "agent-badge refresh");
   writeLine(stdout, `- Scan mode: ${result.refresh.scanMode}`);
@@ -210,6 +327,13 @@ function printRefreshSummary(
       concise
     )}`
   );
+  const hookOutcome = printHookPolicyLines(
+    stdout,
+    result.state,
+    config,
+    hookPolicy
+  );
+  printPublishReadinessLine(stdout, result.state, config);
   printPublishTrustLines(stdout, result.state, {
     includeLastSuccessfulBadgeUpdate: !concise
   });
@@ -230,24 +354,39 @@ function printRefreshSummary(
       }`
     );
   }
+
+  return hookOutcome;
 }
 
 function printSoftFailure(
   stdout: OutputWriter,
   error: Error,
-  state: AgentBadgeState | null
+  state: AgentBadgeState | null,
+  config: ReturnType<typeof parseAgentBadgeConfig> | null,
+  hookPolicy?: AgentBadgeRefreshMode,
+  failureStatus: "failed-soft" | "failed" = "failed-soft"
 ): void {
   writeLine(stdout, "agent-badge refresh");
-  writeLine(stdout, "- Refresh status: failed-soft");
+  writeLine(stdout, `- Refresh status: ${failureStatus}`);
   writeLine(stdout, `- Error: ${error.message}`);
 
-  if (state === null) {
+  if (state === null || config === null) {
     return;
   }
 
+  printHookPolicyLines(stdout, state, config, hookPolicy);
+  printPublishReadinessLine(stdout, state, config);
   printPublishTrustLines(stdout, state);
 
   writeLine(stdout, `- Last refresh: ${state.refresh.lastRefreshedAt ?? "unavailable"}`);
+}
+
+class HookPolicyBlockingError extends Error {
+  readonly alreadyReported = true;
+
+  constructor() {
+    super("push stopped because pre-push policy is strict.");
+  }
 }
 
 interface RefreshCommandLogInput {
@@ -256,7 +395,9 @@ interface RefreshCommandLogInput {
 }
 
 function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
+  return normalizePublishSurfaceError(
+    error instanceof Error ? error : new Error(String(error))
+  );
 }
 
 function buildRefreshLogCounts(input: RefreshCommandLogInput): {
@@ -323,10 +464,12 @@ export async function runRefreshCommand(
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
   let persistedState: AgentBadgeState | null = null;
+  let config: ReturnType<typeof parseAgentBadgeConfig> | null = null;
   let attemptedPublish = false;
 
   try {
-    const config = parseAgentBadgeConfig(await readJsonFile(configPath));
+    config = parseAgentBadgeConfig(await readJsonFile(configPath));
+    const hookPolicy = resolveHookPolicy(options, config);
     const previousState = parseAgentBadgeState(await readJsonFile(statePath));
     const refresh = await runIncrementalRefresh({
       cwd,
@@ -422,12 +565,15 @@ export async function runRefreshCommand(
       publishResult
     };
 
-    printRefreshSummary(stdout, result, options.hook);
+    const hookOutcome = printRefreshSummary(stdout, result, config, hookPolicy);
     await appendAgentBadgeLog({
       cwd,
       entry: buildLogEntry({
         operation: "refresh",
-        status: buildRefreshLogStatus(publishDecision),
+        status:
+          hookOutcome.blocking
+            ? "failure"
+            : buildRefreshLogStatus(publishDecision),
         startAtMs,
         counts: buildRefreshLogCounts({
           summary: result.refresh.summary,
@@ -438,9 +584,23 @@ export async function runRefreshCommand(
       // Logging is best-effort and must not block command output.
     });
 
+    if (hookOutcome.blocking) {
+      throw new HookPolicyBlockingError();
+    }
+
     return result;
   } catch (error) {
     const refreshError = toError(error);
+    const hookPolicy =
+      config === null ? undefined : resolveHookPolicy(options, config);
+    const failSoft =
+      config === null
+        ? options.failSoft === true
+        : shouldFailSoftForExecution(options, config);
+
+    if (refreshError instanceof HookPolicyBlockingError) {
+      throw refreshError;
+    }
 
     if (persistedState !== null) {
       const failedState: AgentBadgeState = {
@@ -481,7 +641,18 @@ export async function runRefreshCommand(
       }
     }
 
-    if (!options.failSoft) {
+    if (!failSoft && persistedState !== null && config !== null) {
+      printSoftFailure(
+        stdout,
+        refreshError,
+        persistedState,
+        config,
+        hookPolicy,
+        "failed"
+      );
+    }
+
+    if (!failSoft) {
       await appendAgentBadgeLog({
         cwd,
         entry: buildLogEntry({
@@ -499,7 +670,7 @@ export async function runRefreshCommand(
       throw refreshError;
     }
 
-    printSoftFailure(stdout, refreshError, persistedState);
+    printSoftFailure(stdout, refreshError, persistedState, config, hookPolicy);
     await appendAgentBadgeLog({
       cwd,
       entry: buildLogEntry({

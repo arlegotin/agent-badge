@@ -34,6 +34,7 @@ vi.mock("@legotin/agent-badge-core", async () => {
 });
 
 import {
+  PublishBadgeError,
   buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
   defaultAgentBadgeState,
@@ -405,6 +406,7 @@ describe("runPublishCommand", () => {
       expect(persistedState.publish.publisherId).toBe("publisher-local");
       expect(persistedState.publish.mode).toBe("shared");
       expect(output.read().startsWith("agent-badge publish\n")).toBe(true);
+      expect(output.read()).toContain("- Publish readiness: ready");
       expect(output.read()).toContain("Publish mode: shared");
       expect(output.read()).toContain("Migration: none");
       expect(output.read()).toContain("lastPublishedHash: hash_123");
@@ -543,6 +545,111 @@ describe("runPublishCommand", () => {
       expect(persistedState.publish.lastFailureCode).toBe("unknown");
       expect(persistedState.publish.lastAttemptCandidateHash).toBeNull();
       expect(persistedRaw).not.toContain("/Users/example/private.txt");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders Publish readiness: remote readback mismatch before rethrowing a typed publish failure", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_publish"
+        }
+      }
+    });
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution = createAttributionResult(scan);
+    const output = createOutputCapture();
+
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockRejectedValueOnce(
+      new PublishBadgeError("remote readback mismatch", {
+        failureCode: "remote-readback-mismatch",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: "hash_candidate",
+        changedBadge: true
+      })
+    );
+
+    try {
+      await expect(
+        runPublishCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          stdout: output.writer
+        })
+      ).rejects.toThrow("remote readback mismatch");
+
+      expect(output.read()).toContain(
+        "- Publish readiness: remote readback mismatch"
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("renders Publish readiness: auth missing before rethrowing a typed auth failure", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_publish",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_publish%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          gistId: "gist_publish"
+        }
+      }
+    });
+    const scan = createScanResult(fixture.repoRoot);
+    const attribution = createAttributionResult(scan);
+    const output = createOutputCapture();
+    const rawAuthMessage =
+      "Requires authentication - https://docs.github.com/rest";
+
+    runFullBackfillScanMock.mockResolvedValueOnce(scan);
+    attributeBackfillSessionsMock.mockReturnValueOnce(attribution);
+    publishBadgeToGistMock.mockRejectedValueOnce(
+      new PublishBadgeError(rawAuthMessage, {
+        failureCode: "auth-missing",
+        attemptedAt: "2026-03-30T19:00:00.000Z",
+        candidateHash: null,
+        changedBadge: null
+      })
+    );
+
+    try {
+      await expect(
+        runPublishCommand({
+          cwd: fixture.repoRoot,
+          homeRoot: fixture.homeRoot,
+          stdout: output.writer
+        })
+      ).rejects.toThrow("GitHub authentication missing or invalid.");
+
+      expect(output.read()).toContain("- Publish readiness: auth missing");
+      expect(output.read()).not.toContain(rawAuthMessage);
     } finally {
       await fixture.cleanup();
     }

@@ -108,7 +108,7 @@ async function createRepoFixture(options: {
     await mkdir(dirname(join(repoRoot, ".git/hooks/pre-push")), { recursive: true });
     const hookBlock = [
       agentBadgeHookStartMarker,
-      "agent-badge refresh --hook pre-push --fail-soft",
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft",
       agentBadgeHookEndMarker,
       ""
     ].join("\n");
@@ -331,6 +331,47 @@ describe("runDoctorChecks", () => {
 
       expect(publishAuth?.status).toBe("warn");
       expect(publishAuth?.fix[0]).toContain("GH_TOKEN");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("reuses canonical publish readiness fixes for gist-unreachable", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => {
+              throw new Error("404");
+            },
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+
+      const publishWrite = result.checks.find((check) => check.id === "publish-write");
+
+      expect(publishWrite?.status).toBe("fail");
+      expect(publishWrite?.fix).toContain(
+        "Run `agent-badge init --gist-id <id>` to reconnect a valid public gist target."
+      );
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.repo.cleanup();
@@ -568,6 +609,188 @@ describe("runDoctorChecks", () => {
         "Retry publish from the machine with the latest local state by rerunning `agent-badge refresh`."
       );
       expect(sharedHealth?.status).toBe("pass");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("reports pre-push policy wording and degraded-mode semantics in hook diagnostics", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+
+      await writeJsonFile(fixture.repo.root, ".agent-badge/config.json", {
+        ...defaultAgentBadgeConfig,
+        refresh: {
+          prePush: {
+            enabled: true,
+            mode: "strict"
+          }
+        },
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "doctorgist",
+          badgeUrl: buildStableBadgeUrl({
+            ownerLogin: "octocat",
+            gistId: "doctorgist"
+          })
+        }
+      });
+      await writeJsonFile(fixture.repo.root, ".agent-badge/state.json", {
+        version: 1,
+        init: {
+          initialized: true,
+          scaffoldVersion: 1,
+          lastInitializedAt: "2026-03-31T00:00:00.000Z"
+        },
+        checkpoints: {
+          codex: {
+            cursor: null,
+            lastScannedAt: "2026-03-31T00:00:00.000Z"
+          },
+          claude: {
+            cursor: null,
+            lastScannedAt: "2026-03-31T00:00:00.000Z"
+          }
+        },
+        publish: {
+          status: "deferred",
+          gistId: "doctorgist",
+          lastPublishedHash: null,
+          lastPublishedAt: null,
+          lastAttemptedAt: null,
+          lastAttemptOutcome: "not-attempted",
+          lastSuccessfulSyncAt: null,
+          lastAttemptCandidateHash: null,
+          lastAttemptChangedBadge: "unknown",
+          lastFailureCode: "deferred",
+          publisherId: null,
+          mode: "legacy"
+        },
+        refresh: {
+          lastRefreshedAt: "2026-03-31T00:00:00.000Z",
+          lastScanMode: "incremental",
+          lastPublishDecision: "deferred",
+          summary: null
+        },
+        overrides: {
+          ambiguousSessions: {}
+        }
+      });
+      await writeFile(
+        join(fixture.repo.root, ".git/hooks/pre-push"),
+        [
+          "#!/bin/sh",
+          "",
+          agentBadgeHookStartMarker,
+          "npm run --silent agent-badge:refresh",
+          agentBadgeHookEndMarker,
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+
+      const strictResult = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+      const strictHook = strictResult.checks.find((check) => check.id === "pre-push-hook");
+
+      expect(strictHook?.detail).toContain("Pre-push policy: strict");
+      expect(strictHook?.detail).toContain(
+        "push stopped because pre-push policy is strict."
+      );
+
+      await writeJsonFile(fixture.repo.root, ".agent-badge/config.json", {
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "doctorgist",
+          badgeUrl: buildStableBadgeUrl({
+            ownerLogin: "octocat",
+            gistId: "doctorgist"
+          })
+        }
+      });
+      await writeFile(
+        join(fixture.repo.root, ".git/hooks/pre-push"),
+        [
+          "#!/bin/sh",
+          "",
+          agentBadgeHookStartMarker,
+          "npm run --silent agent-badge:refresh || true",
+          agentBadgeHookEndMarker,
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+
+      const failSoftResult = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+      const failSoftHook = failSoftResult.checks.find(
+        (check) => check.id === "pre-push-hook"
+      );
+
+      expect(failSoftHook?.detail).toContain("Pre-push policy: fail-soft");
+      expect(failSoftHook?.detail).toContain(
+        "live badge may be stale; push continues because pre-push policy is fail-soft."
+      );
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.repo.cleanup();

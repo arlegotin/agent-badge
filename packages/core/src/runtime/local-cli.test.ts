@@ -20,16 +20,16 @@ describe("getLocalAgentBadgeCommand", () => {
   it("returns stable managed script commands", () => {
     expect(getAgentBadgeInitScriptCommand()).toBe("agent-badge init");
     expect(getAgentBadgeRefreshScriptCommand()).toBe(
-      "agent-badge refresh --hook pre-push --fail-soft"
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft"
     );
     expect(getAgentBadgeRefreshScriptCommand("fail-soft")).toBe(
-      "agent-badge refresh --hook pre-push --fail-soft"
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft"
     );
   });
 
   it("returns the exact pre-push refresh command for strict mode", () => {
     expect(getAgentBadgeRefreshScriptCommand("strict")).toBe(
-      "agent-badge refresh --hook pre-push"
+      "agent-badge refresh --hook pre-push --hook-policy strict"
     );
   });
 

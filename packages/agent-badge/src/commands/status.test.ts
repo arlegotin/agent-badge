@@ -216,6 +216,7 @@ describe("runStatusCommand", () => {
         "- Totals: 5 sessions, 610 tokens",
         "- Providers: codex=enabled, claude=enabled",
         "- Publish: published | gist configured=yes | last published=2026-03-30T19:10:00.000Z | gistId=gist_789 | lastPublishedHash=hash_789",
+        "- Pre-push policy: fail-soft",
         "- Live badge trust: current",
         "- Last successful badge update: 2026-03-30T19:10:00.000Z",
         "- Shared mode: legacy | health=healthy | contributors=0",
@@ -250,6 +251,10 @@ describe("runStatusCommand", () => {
 
       expect(output.read()).toContain(
         "- Publish: deferred | gist configured=no"
+      );
+      expect(output.read()).toContain("- Pre-push policy: fail-soft");
+      expect(output.read()).toContain(
+        "- Warning: live badge may be stale; push continues because pre-push policy is fail-soft."
       );
       expect(output.read()).toContain("- Live badge trust: not attempted");
     } finally {
@@ -312,6 +317,9 @@ describe("runStatusCommand", () => {
 
       expect(output.read()).toContain(
         "- Live badge trust: stale after failed publish"
+      );
+      expect(output.read()).toContain(
+        "- Warning: live badge may be stale; push continues because pre-push policy is fail-soft."
       );
       expect(output.read()).toContain(
         "- Last successful badge update: 2026-03-30T19:10:00.000Z"
@@ -381,7 +389,47 @@ describe("runStatusCommand", () => {
         "- Live badge trust: publish failed but live badge is unchanged"
       );
       expect(output.read()).toContain(
+        "- Warning: live badge may be stale; push continues because pre-push policy is fail-soft."
+      );
+      expect(output.read()).toContain(
         "- Last successful badge update: 2026-03-30T19:10:00.000Z"
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("prints strict pre-push policy with blocking wording when publish state is degraded", async () => {
+    const fixture = await createFixture({
+      config: {
+        ...defaultAgentBadgeConfig,
+        refresh: {
+          prePush: {
+            enabled: true,
+            mode: "strict"
+          }
+        }
+      },
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "deferred",
+          lastFailureCode: "deferred"
+        }
+      }
+    });
+    const output = createOutputCapture();
+
+    try {
+      await runStatusCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer
+      });
+
+      expect(output.read()).toContain("- Pre-push policy: strict");
+      expect(output.read()).toContain(
+        "- Blocking: push stopped because pre-push policy is strict."
       );
     } finally {
       await fixture.cleanup();

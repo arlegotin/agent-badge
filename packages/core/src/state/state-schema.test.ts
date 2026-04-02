@@ -118,6 +118,41 @@ describe("agentBadgeStateSchema", () => {
     });
   });
 
+  it("accepts expanded publish failure codes without raw detail", () => {
+    expect(
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "error",
+          lastFailureCode: "auth-missing"
+        }
+      }).publish.lastFailureCode
+    ).toBe("auth-missing");
+
+    expect(
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "error",
+          lastFailureCode: "remote-readback-mismatch"
+        }
+      }).publish.lastFailureCode
+    ).toBe("remote-readback-mismatch");
+
+    expect(
+      parseAgentBadgeState({
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "error",
+          lastFailureCode: "remote-state-invalid"
+        }
+      }).publish.lastFailureCode
+    ).toBe("remote-state-invalid");
+  });
+
   it("rejects transcript-like fields", () => {
     expect(() =>
       parseAgentBadgeState({

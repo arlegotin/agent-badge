@@ -44,6 +44,7 @@ import {
   applySuccessfulPublishAttempt,
   toPublishAttemptChangedBadge
 } from "./publish-state.js";
+import { type GitHubGist } from "./github-gist-client.js";
 
 export interface PublishBadgeToGistOptions {
   readonly config: Pick<AgentBadgeConfig, "badge" | "publish">;
@@ -111,11 +112,74 @@ export function isPublishBadgeError(
 }
 
 const sharedOverrideDigestPattern = /^sha256:[a-f0-9]{64}$/;
+const GITHUB_AUTH_MISSING_ERROR_MESSAGE =
+  "GitHub authentication missing or invalid.";
 
 function buildSessionKey(
   session: { readonly provider: string; readonly providerSessionId: string }
 ): string {
   return `${session.provider}:${session.providerSessionId}`;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getErrorStatus(error: unknown): number | null {
+  if (typeof error !== "object" || error === null) {
+    return null;
+  }
+
+  const candidate = error as {
+    readonly status?: unknown;
+    readonly response?: {
+      readonly status?: unknown;
+    };
+  };
+
+  if (typeof candidate.status === "number") {
+    return candidate.status;
+  }
+
+  if (typeof candidate.response?.status === "number") {
+    return candidate.response.status;
+  }
+
+  return null;
+}
+
+function isGitHubAuthenticationError(error: unknown): boolean {
+  const status = getErrorStatus(error);
+
+  if (status === 401) {
+    return true;
+  }
+
+  const normalizedMessage = getErrorMessage(error).toLowerCase();
+
+  return (
+    normalizedMessage.includes("requires authentication") ||
+    normalizedMessage.includes("bad credentials") ||
+    normalizedMessage.includes("authentication failed") ||
+    normalizedMessage.includes("unauthorized")
+  );
+}
+
+function normalizePublishBadgeError(error: PublishBadgeError): PublishBadgeError {
+  if (
+    error.failureCode !== "auth-missing" ||
+    error.message === GITHUB_AUTH_MISSING_ERROR_MESSAGE
+  ) {
+    return error;
+  }
+
+  return new PublishBadgeError(GITHUB_AUTH_MISSING_ERROR_MESSAGE, {
+    cause: error.cause ?? error,
+    attemptedAt: error.attemptedAt,
+    failureCode: "auth-missing",
+    candidateHash: error.candidateHash,
+    changedBadge: error.changedBadge
+  });
 }
 
 export async function collectIncludedTotals(
@@ -306,8 +370,9 @@ function buildStateForSharedHealth(options: {
   };
 }
 
-function buildPostPublishHealthGist(options: {
+function buildExpectedRemoteGist(options: {
   readonly gist: Awaited<ReturnType<GitHubGistClient["getGist"]>>;
+  readonly serializedFiles: Record<string, { readonly content: string }>;
   readonly contributorFileName: string;
   readonly contributorRecord: SharedContributorRecord;
   readonly overrides: SharedOverridesRecord;
@@ -316,6 +381,16 @@ function buildPostPublishHealthGist(options: {
     ...options.gist,
     files: {
       ...options.gist.files,
+      ...Object.fromEntries(
+        Object.entries(options.serializedFiles).map(([filename, file]) => [
+          filename,
+          {
+            filename,
+            content: file.content,
+            truncated: false
+          }
+        ])
+      ),
       [options.contributorFileName]: {
         filename: options.contributorFileName,
         content: serializeJsonFile(options.contributorRecord),
@@ -328,6 +403,88 @@ function buildPostPublishHealthGist(options: {
       }
     }
   };
+}
+
+function readRemoteFile(
+  gist: GitHubGist,
+  filename: string
+):
+  | { readonly status: "missing" }
+  | { readonly status: "invalid" }
+  | { readonly status: "ok"; readonly content: string } {
+  const file = gist.files[filename];
+
+  if (!file) {
+    return {
+      status: "missing"
+    };
+  }
+
+  if (file.truncated || file.content === null) {
+    return {
+      status: "invalid"
+    };
+  }
+
+  return {
+    status: "ok",
+    content: file.content
+  };
+}
+
+function resolveVerifiedRemoteState(options: {
+  readonly readbackGist: GitHubGist;
+  readonly fallbackGist: GitHubGist;
+  readonly candidateHash: string;
+  readonly contributorFileName: string;
+}): GitHubGist {
+  const badgeFile = readRemoteFile(options.readbackGist, AGENT_BADGE_GIST_FILE);
+  const contributorFile = readRemoteFile(
+    options.readbackGist,
+    options.contributorFileName
+  );
+  const overridesFile = readRemoteFile(
+    options.readbackGist,
+    AGENT_BADGE_OVERRIDES_GIST_FILE
+  );
+
+  if (badgeFile.status === "missing") {
+    return options.fallbackGist;
+  }
+
+  if (
+    badgeFile.status === "invalid" ||
+    contributorFile.status === "invalid" ||
+    overridesFile.status === "invalid"
+  ) {
+    throw new Error("Remote gist contained unreadable shared publish files.");
+  }
+
+  if (contributorFile.status === "missing" || overridesFile.status === "missing") {
+    return options.fallbackGist;
+  }
+
+  const remoteSharedState = loadRemoteSharedRecords(options.readbackGist);
+  assertOpaqueSharedOverrideKeys(remoteSharedState.overrides);
+
+  const hasLocalContributor = remoteSharedState.contributors.some(
+    (contributor) =>
+      buildContributorGistFileName(contributor.publisherId) ===
+      options.contributorFileName
+  );
+
+  if (
+    buildPayloadHash(badgeFile.content) !== options.candidateHash &&
+    hasLocalContributor
+  ) {
+    throw new Error("Remote badge payload hash did not match the candidate hash.");
+  }
+
+  if (!hasLocalContributor) {
+    return options.fallbackGist;
+  }
+
+  return options.readbackGist;
 }
 
 export async function publishBadgeIfChanged({
@@ -351,15 +508,21 @@ export async function publishBadgeIfChanged({
     failureCode: AgentBadgePublishFailureCode
   ): PublishBadgeError => {
     if (isPublishBadgeError(error)) {
-      return error;
+      return normalizePublishBadgeError(error);
     }
 
-    const message = error instanceof Error ? error.message : String(error);
+    const normalizedFailureCode = isGitHubAuthenticationError(error)
+      ? "auth-missing"
+      : failureCode;
+    const message =
+      normalizedFailureCode === "auth-missing"
+        ? GITHUB_AUTH_MISSING_ERROR_MESSAGE
+        : getErrorMessage(error);
 
     return new PublishBadgeError(message, {
       cause: error,
       attemptedAt: now,
-      failureCode,
+      failureCode: normalizedFailureCode,
       candidateHash,
       changedBadge
     });
@@ -370,7 +533,7 @@ export async function publishBadgeIfChanged({
   try {
     existingGist = await client.getGist(config.publish.gistId);
   } catch (error) {
-    throw wrapError(error, "remote-inspection-failed");
+    throw wrapError(error, "gist-unreachable");
   }
 
   let existingSharedState: ReturnType<typeof loadRemoteSharedRecords>;
@@ -379,7 +542,7 @@ export async function publishBadgeIfChanged({
     existingSharedState = loadRemoteSharedRecords(existingGist);
     assertOpaqueSharedOverrideKeys(existingSharedState.overrides);
   } catch (error) {
-    throw wrapError(error, "remote-inspection-failed");
+    throw wrapError(error, "remote-state-invalid");
   }
 
   const healthBeforePublish = inspectSharedPublishHealth({
@@ -407,9 +570,8 @@ export async function publishBadgeIfChanged({
   try {
     assertOpaqueSharedOverrideKeys(authoritativeOverrides);
   } catch (error) {
-    throw wrapError(error, "remote-inspection-failed");
+    throw wrapError(error, "remote-state-invalid");
   }
-
   const publishableTotals = normalizeIncludedTotalsForBadgeMode(
     config.badge.mode,
     authoritativeTotals
@@ -422,23 +584,13 @@ export async function publishBadgeIfChanged({
 
   candidateHash = buildPayloadHash(serializedPayload);
   changedBadge = candidateHash !== state.publish.lastPublishedHash;
-
-  const healthAfterPublish = inspectSharedPublishHealth({
-    gist: buildPostPublishHealthGist({
-      gist: existingGist,
-      contributorFileName: localContributorFileName,
-      contributorRecord,
-      overrides: authoritativeOverrides
-    }),
-    state: buildStateForSharedHealth({
-      state,
-      gistId: config.publish.gistId,
-      publisherId
-    }),
-    now
+  const fallbackGist = buildExpectedRemoteGist({
+    gist: existingGist,
+    serializedFiles,
+    contributorFileName: localContributorFileName,
+    contributorRecord,
+    overrides: authoritativeOverrides
   });
-  const migrationPerformed =
-    healthBeforePublish.mode === "legacy" && healthAfterPublish.mode === "shared";
 
   if (skipIfUnchanged && changedBadge === false) {
     try {
@@ -461,6 +613,44 @@ export async function publishBadgeIfChanged({
     } catch (error) {
       throw wrapError(error, "remote-write-failed");
     }
+
+    let readbackGist: Awaited<ReturnType<GitHubGistClient["getGist"]>>;
+
+    try {
+      readbackGist = await client.getGist(config.publish.gistId);
+    } catch (error) {
+      throw wrapError(error, "remote-readback-failed");
+    }
+
+    let verifiedGist: GitHubGist;
+
+    try {
+      verifiedGist = resolveVerifiedRemoteState({
+        readbackGist,
+        fallbackGist,
+        candidateHash,
+        contributorFileName: localContributorFileName
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const failureCode = message.includes("candidate hash")
+        ? "remote-readback-mismatch"
+        : "remote-state-invalid";
+
+      throw wrapError(error, failureCode);
+    }
+
+    const healthAfterPublish = inspectSharedPublishHealth({
+      gist: verifiedGist,
+      state: buildStateForSharedHealth({
+        state,
+        gistId: config.publish.gistId,
+        publisherId
+      }),
+      now
+    });
+    const migrationPerformed =
+      healthBeforePublish.mode === "legacy" && healthAfterPublish.mode === "shared";
 
     return {
       decision: "skipped",
@@ -514,6 +704,44 @@ export async function publishBadgeIfChanged({
   } catch (error) {
     throw wrapError(error, "remote-write-failed");
   }
+
+  let readbackGist: Awaited<ReturnType<GitHubGistClient["getGist"]>>;
+
+  try {
+    readbackGist = await client.getGist(config.publish.gistId);
+  } catch (error) {
+    throw wrapError(error, "remote-readback-failed");
+  }
+
+  let verifiedGist: GitHubGist;
+
+  try {
+    verifiedGist = resolveVerifiedRemoteState({
+      readbackGist,
+      fallbackGist,
+      candidateHash,
+      contributorFileName: localContributorFileName
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failureCode = message.includes("candidate hash")
+      ? "remote-readback-mismatch"
+      : "remote-state-invalid";
+
+    throw wrapError(error, failureCode);
+  }
+
+  const healthAfterPublish = inspectSharedPublishHealth({
+    gist: verifiedGist,
+    state: buildStateForSharedHealth({
+      state,
+      gistId: config.publish.gistId,
+      publisherId
+    }),
+    now
+  });
+  const migrationPerformed =
+    healthBeforePublish.mode === "legacy" && healthAfterPublish.mode === "shared";
 
   return {
     decision: "published",

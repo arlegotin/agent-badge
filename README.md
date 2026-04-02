@@ -15,6 +15,10 @@ Some people just want to flex how hard they ship with agents.
 npm init agent-badge@latest
 ```
 
+If you already have GitHub auth configured in your shell through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that same command will create or reuse a public gist, publish the initial badge payload, and add the badge to `README.md`.
+
+Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens and rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
+
 
 ## How it works
 
@@ -50,6 +54,8 @@ npm init agent-badge@latest
 That initializer sets up the local runtime, creates `.agent-badge/` state, configures a failure-soft `pre-push` refresh hook, and inserts or prints the badge snippet.
 
 If GitHub auth is already available through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that one command also creates or reuses a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
+
+Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens and rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
 
 To migrate existing single-writer repos, rerun `agent-badge init` on the original publisher machine before other contributors start publishing. That first shared publish keeps the same gist id and stable badge URL while seeding the shared contributor state from the local history that already exists on that machine.
 

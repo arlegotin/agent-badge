@@ -12,6 +12,7 @@ import {
   type CreateProviderFixtureOptions,
   type CreateRepoFixtureOptions
 } from "@agent-badge/testkit";
+import { runConfigCommand } from "./config.js";
 import { runInitCommand } from "./init.js";
 
 const execFileAsync = promisify(execFile);
@@ -143,6 +144,18 @@ async function readPublishStatus(repoRoot: string): Promise<"published" | "defer
   const statePath = join(repoRoot, ".agent-badge/state.json");
   const parsed = JSON.parse(await readFile(statePath, "utf8")) as JsonStateFile;
   return parsed.publish.status;
+}
+
+async function readPackageScripts(
+  repoRoot: string
+): Promise<Record<string, string>> {
+  const parsed = JSON.parse(
+    await readFile(join(repoRoot, "package.json"), "utf8")
+  ) as {
+    scripts?: Record<string, string>;
+  };
+
+  return parsed.scripts ?? {};
 }
 
 async function addOrigin(repoRoot: string): Promise<void> {
@@ -359,8 +372,12 @@ describe("release readiness scenario matrix", () => {
             join(repo.root, ".git/hooks/pre-push"),
             "utf8"
           );
+          const packageScripts = await readPackageScripts(repo.root);
 
           expect(countOccurrences(hookContent, hookStartMarker)).toBe(1);
+          expect(packageScripts["agent-badge:refresh"]).toBe(
+            "agent-badge refresh --hook pre-push --hook-policy fail-soft"
+          );
 
           if (scenario.name === "no-auth") {
             expect(gistClient.getGistCalls).toBe(0);
@@ -375,4 +392,39 @@ describe("release readiness scenario matrix", () => {
       15_000
     );
   }
+
+  it("rewires strict pre-push policy explicitly after init", async () => {
+    const repo = await createRepoFixture({
+      files: { "package-lock.json": "{}" }
+    });
+    const providerFixture = await createProviderFixture();
+    const gistClient = createDeterministicGistClient("gist-strict");
+
+    try {
+      await addOrigin(repo.root);
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providerFixture.homeRoot,
+        env: { GITHUB_TOKEN: "matrix-token" },
+        gistClient
+      });
+
+      await runConfigCommand({
+        cwd: repo.root,
+        action: "set",
+        key: "refresh.prePush.mode",
+        value: "strict"
+      });
+
+      const packageScripts = await readPackageScripts(repo.root);
+      const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+
+      expect(packageScripts["agent-badge:refresh"]).toBe(
+        "agent-badge refresh --hook pre-push --hook-policy strict"
+      );
+      expect(hookContent).not.toContain("|| true");
+    } finally {
+      await Promise.all([repo.cleanup(), providerFixture.cleanup()]);
+    }
+  });
 });

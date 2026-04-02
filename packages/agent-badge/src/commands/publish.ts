@@ -8,6 +8,8 @@ import {
   attributeBackfillSessions,
   buildSharedOverrideDigest,
   createGitHubGistClient,
+  formatPublishReadinessStatus,
+  inspectPublishReadiness,
   estimateSessionCostsUsdMicrosByKey,
   isPublishBadgeError,
   parseAgentBadgeConfig,
@@ -18,6 +20,7 @@ import {
   runFullBackfillScan,
   appendAgentBadgeLog,
   buildLogEntry,
+  PublishBadgeError,
   type AgentBadgeState,
   type AttributeBackfillSessionsResult,
   type GitHubGistClient,
@@ -48,6 +51,8 @@ const STATE_PATH = ".agent-badge/state.json";
 const githubTokenEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
 const PUBLISH_NOT_CONFIGURED_ERROR =
   "Publish is not configured. Run `agent-badge init` or re-run init with `--gist-id <id>` first.";
+const GITHUB_AUTH_MISSING_ERROR_MESSAGE =
+  "GitHub authentication missing or invalid.";
 
 async function readJsonFile(targetPath: string): Promise<unknown> {
   let rawContent: string;
@@ -78,6 +83,24 @@ async function writeStateFile(
 
 function writeLine(stdout: OutputWriter, line: string): void {
   stdout.write(`${line}\n`);
+}
+
+function normalizePublishSurfaceError(error: Error): Error {
+  if (!isPublishBadgeError(error) || error.failureCode !== "auth-missing") {
+    return error;
+  }
+
+  if (error.message === GITHUB_AUTH_MISSING_ERROR_MESSAGE) {
+    return error;
+  }
+
+  return new PublishBadgeError(GITHUB_AUTH_MISSING_ERROR_MESSAGE, {
+    cause: error.cause ?? error,
+    attemptedAt: error.attemptedAt,
+    failureCode: error.failureCode,
+    candidateHash: error.candidateHash,
+    changedBadge: error.changedBadge
+  });
 }
 
 function writeSharedPublishSummary(stdout: OutputWriter, options: {
@@ -219,6 +242,15 @@ export async function runPublishCommand(
     writeLine(stdout, "agent-badge publish");
     writeLine(stdout, `- Badge URL: ${config.publish.badgeUrl}`);
     writeLine(stdout, `- Publish status: ${nextState.publish.status}`);
+    writeLine(
+      stdout,
+      `- Publish readiness: ${formatPublishReadinessStatus(
+        inspectPublishReadiness({
+          config,
+          state: nextState
+        }).status
+      )}`
+    );
     writeSharedPublishSummary(stdout, {
       mode: publishResult.healthAfterPublish.mode,
       migrationPerformed: publishResult.migrationPerformed
@@ -247,7 +279,9 @@ export async function runPublishCommand(
       state: nextState
     };
   } catch (error) {
-    const publishError = error instanceof Error ? error : new Error(String(error));
+    const publishError = normalizePublishSurfaceError(
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     if (
       previousState !== null &&
@@ -275,6 +309,28 @@ export async function runPublishCommand(
       } catch {
         // Preserve the original publish failure for callers.
       }
+    }
+
+    if (isPublishBadgeError(publishError) && previousState !== null) {
+      const failedState = applyPublishAttemptFailure({
+        state: previousState,
+        at:
+          publishError.attemptedAt.length > 0 ? publishError.attemptedAt : now,
+        failureCode: publishError.failureCode,
+        candidateHash: publishError.candidateHash,
+        changedBadge: toPublishAttemptChangedBadge(publishError.changedBadge)
+      });
+
+      writeLine(stdout, "agent-badge publish");
+      writeLine(
+        stdout,
+        `- Publish readiness: ${formatPublishReadinessStatus(
+          inspectPublishReadiness({
+            config: parseAgentBadgeConfig(await readJsonFile(configPath)),
+            state: failedState
+          }).status
+        )}`
+      );
     }
 
     await appendAgentBadgeLog({

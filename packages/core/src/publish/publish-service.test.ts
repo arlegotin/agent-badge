@@ -824,6 +824,56 @@ describe("publishBadgeToGist", () => {
 });
 
 describe("publishBadgeIfChanged", () => {
+  it("classifies unauthenticated GitHub write failures as auth-missing", async () => {
+    const publisherId = "publisher-local";
+    const getGist = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: createGistFileMap({})
+    });
+    const updateGistFile = vi.fn().mockRejectedValue(
+      Object.assign(
+        new Error("Requires authentication - https://docs.github.com/rest"),
+        { status: 401 }
+      )
+    );
+
+    await expect(
+      publishBadgeIfChanged({
+        config: createPublishConfig({
+          label: "AI Usage",
+          mode: "tokens"
+        }),
+        state: {
+          ...defaultAgentBadgeState,
+          publish: {
+            ...defaultAgentBadgeState.publish,
+            gistId: "gist_123",
+            publisherId
+          }
+        } as typeof defaultAgentBadgeState,
+        publisherObservations: createPublisherObservations({
+          sessionPrefix: "auth-failure",
+          sessions: 1,
+          tokens: 42,
+          estimatedCostUsdMicros: null
+        }),
+        client: {
+          getGist,
+          createPublicGist: vi.fn(),
+          updateGistFile
+        },
+        now: "2026-03-30T12:00:00.000Z",
+        skipIfUnchanged: false
+      })
+    ).rejects.toMatchObject({
+      name: "PublishBadgeError",
+      failureCode: "auth-missing",
+      message: "GitHub authentication missing or invalid."
+    });
+  });
+
   it("marks the first shared publish on a legacy gist as a migration", async () => {
     const publisherId = "publisher-local";
     const getGist = vi
