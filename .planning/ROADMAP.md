@@ -15,7 +15,7 @@ Milestone v1.3 focuses on replacing that last-writer-wins model with a merge-saf
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 14: Shared Remote Contribution Model** - Define and implement a merge-safe remote representation for per-contributor repo usage and shared override state.
-- [ ] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
+- [x] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
 - [ ] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state.
 
 ## Phase Details
@@ -47,7 +47,7 @@ Plans:
 
 Plans:
 - [x] 15-01: Implement deterministic cross-publisher merge and deduplication rules
-- [ ] 15-02: Validate convergence, conflict handling, and shared override behavior
+- [x] 15-02: Validate convergence, conflict handling, and shared override behavior
 
 ### Phase 16: Migration, Diagnostics, And Team Operator UX
 **Goal**: Move existing repos to the shared model safely and give operators enough visibility to trust and recover shared badge state.
@@ -68,5 +68,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 14. Shared Remote Contribution Model | 3/3 | Complete    | 2026-04-01 |
-| 15. Cross-Publisher Deduplication And Publish Semantics | 1/2 | In Progress | — |
+| 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
 | 16. Migration, Diagnostics, And Team Operator UX | 0/2 | Pending | — |
