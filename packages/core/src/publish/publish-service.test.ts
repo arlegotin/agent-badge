@@ -181,6 +181,21 @@ function createGistFileMap(
   );
 }
 
+function findWrittenFileContent(
+  updateGistFile: ReturnType<typeof vi.fn>,
+  filename: string
+): string | undefined {
+  for (const call of updateGistFile.mock.calls) {
+    const content = call[0]?.files?.[filename]?.content;
+
+    if (typeof content === "string") {
+      return content;
+    }
+  }
+
+  return undefined;
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-03-30T12:00:00.000Z"));
@@ -271,7 +286,7 @@ describe("publishBadgeToGist", () => {
 }
 `;
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         "agent-badge.json": {
@@ -300,6 +315,14 @@ describe("publishBadgeToGist", () => {
         .update(serializedPayload)
         .digest("hex"),
       lastPublishedAt: "2026-03-30T12:00:00.000Z",
+      lastAttemptedAt: "2026-03-30T12:00:00.000Z",
+      lastAttemptOutcome: "published",
+      lastSuccessfulSyncAt: "2026-03-30T12:00:00.000Z",
+      lastAttemptCandidateHash: createHash("sha256")
+        .update(serializedPayload)
+        .digest("hex"),
+      lastAttemptChangedBadge: "yes",
+      lastFailureCode: null,
       publisherId,
       mode: "shared"
     });
@@ -371,7 +394,7 @@ describe("publishBadgeToGist", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {
@@ -536,7 +559,7 @@ describe("publishBadgeToGist", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         "agent-badge.json": {
@@ -955,7 +978,7 @@ describe("publishBadgeIfChanged", () => {
     });
 
     expect(result.state.publish.gistId).toBe("gist_123");
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {
@@ -1044,9 +1067,10 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: false
     });
 
-    const contributorContent = updateGistFile.mock.calls[0]?.[0]?.files?.[
+    const contributorContent = findWrittenFileContent(
+      updateGistFile,
       buildContributorGistFileName(publisherId)
-    ]?.content;
+    );
 
     expect(JSON.parse(contributorContent)).toEqual({
       schemaVersion: 2,
@@ -1121,7 +1145,7 @@ describe("publishBadgeIfChanged", () => {
       publisherId,
       mode: "shared"
     });
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {
@@ -1215,7 +1239,7 @@ describe("publishBadgeIfChanged", () => {
       publisherId,
       mode: "shared"
     });
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {
@@ -1349,7 +1373,7 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: false
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {
@@ -1444,6 +1468,8 @@ describe("publishBadgeIfChanged", () => {
     expect(updateGistFile).toHaveBeenCalledTimes(2);
     expect(result).toMatchObject({
       decision: "skipped",
+      candidateHash: existingHash,
+      changedBadge: false,
       state: {
         ...defaultAgentBadgeState,
         publish: {
@@ -1451,6 +1477,12 @@ describe("publishBadgeIfChanged", () => {
           gistId: "gist_123",
           lastPublishedHash: existingHash,
           lastPublishedAt: "2026-03-30T10:00:00Z",
+          lastAttemptedAt: "2026-03-30T12:05:00Z",
+          lastAttemptOutcome: "unchanged",
+          lastSuccessfulSyncAt: "2026-03-30T12:05:00Z",
+          lastAttemptCandidateHash: existingHash,
+          lastAttemptChangedBadge: "no",
+          lastFailureCode: null,
           publisherId,
           mode: "shared"
         }
@@ -1677,7 +1709,7 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: true
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         "agent-badge.json": {
@@ -1948,7 +1980,7 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: false
     });
 
-    expect(updateGistFile).toHaveBeenLastCalledWith({
+    expect(updateGistFile).toHaveBeenCalledWith({
       gistId: "gist_123",
       files: {
         [AGENT_BADGE_GIST_FILE]: {

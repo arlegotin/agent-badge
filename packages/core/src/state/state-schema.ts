@@ -15,6 +15,20 @@ const publishStatusSchema = z.enum([
   "published",
   "error"
 ]);
+const publishAttemptOutcomeSchema = z.enum([
+  "not-attempted",
+  "published",
+  "unchanged",
+  "failed"
+]);
+const publishAttemptChangedBadgeSchema = z.enum(["yes", "no", "unknown"]);
+const publishFailureCodeSchema = z.enum([
+  "not-configured",
+  "deferred",
+  "remote-write-failed",
+  "remote-inspection-failed",
+  "unknown"
+]);
 const publishModeSchema = z.enum(["legacy", "shared"]);
 const refreshScanModeSchema = z.enum(["full", "incremental"]);
 const refreshPublishDecisionSchema = z.enum([
@@ -63,6 +77,16 @@ export const agentBadgeStateSchema = z
         gistId: z.string().min(1).nullable(),
         lastPublishedHash: z.string().min(1).nullable(),
         lastPublishedAt: isoDateTimeSchema.nullable(),
+        lastAttemptedAt: isoDateTimeSchema.nullable().optional().default(null),
+        lastAttemptOutcome: publishAttemptOutcomeSchema
+          .optional()
+          .default("not-attempted"),
+        lastSuccessfulSyncAt: isoDateTimeSchema.nullable().optional().default(null),
+        lastAttemptCandidateHash: z.string().min(1).nullable().optional().default(null),
+        lastAttemptChangedBadge: publishAttemptChangedBadgeSchema
+          .optional()
+          .default("unknown"),
+        lastFailureCode: publishFailureCodeSchema.nullable().optional().default(null),
         publisherId: z.string().min(1).nullable().optional().default(null),
         mode: publishModeSchema.optional().default("legacy")
       })
@@ -85,6 +109,13 @@ export const agentBadgeStateSchema = z
 
 export type AgentBadgeState = z.infer<typeof agentBadgeStateSchema>;
 export type AgentBadgePublishStatus = z.infer<typeof publishStatusSchema>;
+export type AgentBadgePublishAttemptOutcome = z.infer<
+  typeof publishAttemptOutcomeSchema
+>;
+export type AgentBadgePublishAttemptChangedBadge = z.infer<
+  typeof publishAttemptChangedBadgeSchema
+>;
+export type AgentBadgePublishFailureCode = z.infer<typeof publishFailureCodeSchema>;
 export type AgentBadgePublishMode = z.infer<typeof publishModeSchema>;
 export type AgentBadgeRefreshScanMode = z.infer<typeof refreshScanModeSchema>;
 export type AgentBadgeRefreshPublishDecision = z.infer<
@@ -117,6 +148,12 @@ export const defaultAgentBadgeState: AgentBadgeState = {
     gistId: null,
     lastPublishedHash: null,
     lastPublishedAt: null,
+    lastAttemptedAt: null,
+    lastAttemptOutcome: "not-attempted",
+    lastSuccessfulSyncAt: null,
+    lastAttemptCandidateHash: null,
+    lastAttemptChangedBadge: "unknown",
+    lastFailureCode: null,
     publisherId: null,
     mode: "legacy"
   },

@@ -4,7 +4,10 @@ import type { AttributeBackfillSessionsResult } from "../attribution/attribution
 import type { AgentBadgeConfig } from "../config/config-schema.js";
 import type { NormalizedSessionSummary } from "../providers/session-summary.js";
 import type { RunFullBackfillScanResult } from "../scan/full-backfill.js";
-import type { AgentBadgeState } from "../state/state-schema.js";
+import type {
+  AgentBadgePublishFailureCode,
+  AgentBadgeState
+} from "../state/state-schema.js";
 import {
   estimateIncludedCostUsdMicros,
   resolvePricingCatalog
@@ -37,6 +40,10 @@ import {
   deriveSharedIncludedTotals,
   replaceContributorRecord
 } from "./shared-merge.js";
+import {
+  applySuccessfulPublishAttempt,
+  toPublishAttemptChangedBadge
+} from "./publish-state.js";
 
 export interface PublishBadgeToGistOptions {
   readonly config: Pick<AgentBadgeConfig, "badge" | "publish">;
@@ -57,6 +64,8 @@ export interface PublishBadgeIfChangedOptions {
 export interface PublishBadgeIfChangedResult {
   readonly state: AgentBadgeState;
   readonly decision: "published" | "skipped";
+  readonly candidateHash: string;
+  readonly changedBadge: boolean;
   readonly healthBeforePublish: SharedPublishHealthReport;
   readonly healthAfterPublish: SharedPublishHealthReport;
   readonly migrationPerformed: boolean;
@@ -67,6 +76,38 @@ export type PublishBadgeToGistResult = PublishBadgeIfChangedResult;
 interface SharedPublishStateSnapshot {
   readonly publisherId?: string | null;
   readonly mode?: "legacy" | "shared";
+}
+
+export interface PublishBadgeErrorOptions {
+  readonly cause?: unknown;
+  readonly attemptedAt: string;
+  readonly failureCode: AgentBadgePublishFailureCode;
+  readonly candidateHash?: string | null;
+  readonly changedBadge?: boolean | null;
+}
+
+export class PublishBadgeError extends Error {
+  readonly cause?: unknown;
+  readonly attemptedAt: string;
+  readonly failureCode: AgentBadgePublishFailureCode;
+  readonly candidateHash: string | null;
+  readonly changedBadge: boolean | null;
+
+  constructor(message: string, options: PublishBadgeErrorOptions) {
+    super(message);
+    this.name = "PublishBadgeError";
+    this.cause = options.cause;
+    this.attemptedAt = options.attemptedAt;
+    this.failureCode = options.failureCode;
+    this.candidateHash = options.candidateHash ?? null;
+    this.changedBadge = options.changedBadge ?? null;
+  }
+}
+
+export function isPublishBadgeError(
+  error: unknown
+): error is PublishBadgeError {
+  return error instanceof PublishBadgeError;
 }
 
 const sharedOverrideDigestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -249,30 +290,6 @@ function buildLocalContributorRecord(options: {
   };
 }
 
-function buildNextPublishedState(options: {
-  readonly state: AgentBadgeState;
-  readonly gistId: string;
-  readonly hash: string;
-  readonly now?: string;
-  readonly publisherId: string;
-}): AgentBadgeState {
-  const nextPublish = {
-    ...options.state.publish,
-    status: "published",
-    gistId: options.gistId,
-    lastPublishedHash: options.hash,
-    lastPublishedAt:
-      options.now === undefined ? options.state.publish.lastPublishedAt : options.now,
-    publisherId: options.publisherId,
-    mode: "shared"
-  } as AgentBadgeState["publish"];
-
-  return {
-    ...options.state,
-    publish: nextPublish
-  };
-}
-
 function buildStateForSharedHealth(options: {
   readonly state: AgentBadgeState;
   readonly gistId: string;
@@ -326,35 +343,58 @@ export async function publishBadgeIfChanged({
   }
 
   const publisherId = resolvePublisherId(state);
-  const existingGist = await client.getGist(config.publish.gistId);
+  let candidateHash: string | null = null;
+  let changedBadge: boolean | null = null;
+
+  const wrapError = (
+    error: unknown,
+    failureCode: AgentBadgePublishFailureCode
+  ): PublishBadgeError => {
+    if (isPublishBadgeError(error)) {
+      return error;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+
+    return new PublishBadgeError(message, {
+      cause: error,
+      attemptedAt: now,
+      failureCode,
+      candidateHash,
+      changedBadge
+    });
+  };
+
+  let existingGist: Awaited<ReturnType<GitHubGistClient["getGist"]>>;
+
+  try {
+    existingGist = await client.getGist(config.publish.gistId);
+  } catch (error) {
+    throw wrapError(error, "remote-inspection-failed");
+  }
+
+  let existingSharedState: ReturnType<typeof loadRemoteSharedRecords>;
+
+  try {
+    existingSharedState = loadRemoteSharedRecords(existingGist);
+    assertOpaqueSharedOverrideKeys(existingSharedState.overrides);
+  } catch (error) {
+    throw wrapError(error, "remote-inspection-failed");
+  }
+
   const healthBeforePublish = inspectSharedPublishHealth({
     gist: existingGist,
     state,
     now
   });
-  const existingSharedState = loadRemoteSharedRecords(existingGist);
-  assertOpaqueSharedOverrideKeys(existingSharedState.overrides);
   const localContributorFileName = buildContributorGistFileName(publisherId);
   const contributorRecord = buildLocalContributorRecord({
     publisherId,
     publisherObservations,
     now
   });
-
-  await client.updateGistFile({
-    gistId: config.publish.gistId,
-    files: {
-      [localContributorFileName]: {
-        content: serializeJsonFile(contributorRecord)
-      }
-    }
-  });
-
-  const authoritativeGist = await client.getGist(config.publish.gistId);
-  const authoritativeSharedState = loadRemoteSharedRecords(authoritativeGist);
-  assertOpaqueSharedOverrideKeys(authoritativeSharedState.overrides);
   const authoritativeContributors = replaceContributorRecord(
-    authoritativeSharedState.contributors,
+    existingSharedState.contributors,
     contributorRecord
   );
   const authoritativeTotals = deriveSharedIncludedTotals(
@@ -363,10 +403,29 @@ export async function publishBadgeIfChanged({
   const authoritativeOverrides = deriveResolvedSharedOverrides(
     authoritativeContributors
   );
-  assertOpaqueSharedOverrideKeys(authoritativeOverrides);
+
+  try {
+    assertOpaqueSharedOverrideKeys(authoritativeOverrides);
+  } catch (error) {
+    throw wrapError(error, "remote-inspection-failed");
+  }
+
+  const publishableTotals = normalizeIncludedTotalsForBadgeMode(
+    config.badge.mode,
+    authoritativeTotals
+  );
+  const serializedFiles = buildSerializedBadgeFiles({
+    config,
+    includedTotals: publishableTotals
+  });
+  const serializedPayload = serializedFiles[AGENT_BADGE_GIST_FILE].content;
+
+  candidateHash = buildPayloadHash(serializedPayload);
+  changedBadge = candidateHash !== state.publish.lastPublishedHash;
+
   const healthAfterPublish = inspectSharedPublishHealth({
     gist: buildPostPublishHealthGist({
-      gist: authoritativeGist,
+      gist: existingGist,
       contributorFileName: localContributorFileName,
       contributorRecord,
       overrides: authoritativeOverrides
@@ -381,34 +440,39 @@ export async function publishBadgeIfChanged({
   const migrationPerformed =
     healthBeforePublish.mode === "legacy" && healthAfterPublish.mode === "shared";
 
-  await client.updateGistFile({
-    gistId: config.publish.gistId,
-    files: {
-      [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-        content: serializeJsonFile(authoritativeOverrides)
-      }
+  if (skipIfUnchanged && changedBadge === false) {
+    try {
+      await client.updateGistFile({
+        gistId: config.publish.gistId,
+        files: {
+          [localContributorFileName]: {
+            content: serializeJsonFile(contributorRecord)
+          }
+        }
+      });
+      await client.updateGistFile({
+        gistId: config.publish.gistId,
+        files: {
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: serializeJsonFile(authoritativeOverrides)
+          }
+        }
+      });
+    } catch (error) {
+      throw wrapError(error, "remote-write-failed");
     }
-  });
 
-  const publishableTotals = normalizeIncludedTotalsForBadgeMode(
-    config.badge.mode,
-    authoritativeTotals
-  );
-  const serializedFiles = buildSerializedBadgeFiles({
-    config,
-    includedTotals: publishableTotals
-  });
-  const serializedPayload = serializedFiles[AGENT_BADGE_GIST_FILE].content;
-  const nextHash = buildPayloadHash(serializedPayload);
-
-  if (skipIfUnchanged && nextHash === state.publish.lastPublishedHash) {
     return {
       decision: "skipped",
-      state: buildNextPublishedState({
+      candidateHash,
+      changedBadge,
+      state: applySuccessfulPublishAttempt({
         state,
+        at: now,
         gistId: config.publish.gistId,
-        hash: nextHash,
-        publisherId
+        hash: candidateHash,
+        publisherId,
+        changedBadge
       }),
       healthBeforePublish,
       healthAfterPublish,
@@ -416,19 +480,52 @@ export async function publishBadgeIfChanged({
     };
   }
 
-  await client.updateGistFile({
-    gistId: config.publish.gistId,
-    files: serializedFiles
-  });
+  try {
+    await client.updateGistFile({
+      gistId: config.publish.gistId,
+      files: serializedFiles
+    });
+  } catch (error) {
+    throw wrapError(error, "remote-write-failed");
+  }
+
+  try {
+    await client.updateGistFile({
+      gistId: config.publish.gistId,
+      files: {
+        [localContributorFileName]: {
+          content: serializeJsonFile(contributorRecord)
+        }
+      }
+    });
+  } catch (error) {
+    throw wrapError(error, "remote-write-failed");
+  }
+
+  try {
+    await client.updateGistFile({
+      gistId: config.publish.gistId,
+      files: {
+        [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+          content: serializeJsonFile(authoritativeOverrides)
+        }
+      }
+    });
+  } catch (error) {
+    throw wrapError(error, "remote-write-failed");
+  }
 
   return {
     decision: "published",
-    state: buildNextPublishedState({
+    candidateHash,
+    changedBadge,
+    state: applySuccessfulPublishAttempt({
       state,
+      at: now,
       gistId: config.publish.gistId,
-      hash: nextHash,
-      now,
-      publisherId
+      hash: candidateHash,
+      publisherId,
+      changedBadge
     }),
     healthBeforePublish,
     healthAfterPublish,

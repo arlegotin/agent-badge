@@ -3,14 +3,18 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 import {
+  applyPublishAttemptFailure,
+  applyPublishAttemptNotAttempted,
   attributeBackfillSessions,
   buildSharedOverrideDigest,
   createGitHubGistClient,
   estimateSessionCostsUsdMicrosByKey,
+  isPublishBadgeError,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
   resolvePricingCatalog,
+  toPublishAttemptChangedBadge,
   runFullBackfillScan,
   appendAgentBadgeLog,
   buildLogEntry,
@@ -160,17 +164,28 @@ export async function runPublishCommand(
   const homeRoot = resolve(options.homeRoot ?? homedir());
   const stdout = options.stdout ?? process.stdout;
   const startAtMs = Date.now();
+  const now = new Date().toISOString();
   const env = options.env ?? process.env;
   const configPath = join(cwd, CONFIG_PATH);
   const statePath = join(cwd, STATE_PATH);
+  let previousState: AgentBadgeState | null = null;
   try {
     const config = parseAgentBadgeConfig(await readJsonFile(configPath));
+    previousState = parseAgentBadgeState(await readJsonFile(statePath));
 
     if (config.publish.gistId === null || config.publish.badgeUrl === null) {
+      await writeStateFile(
+        statePath,
+        applyPublishAttemptNotAttempted({
+          state: previousState,
+          at: now,
+          failureCode: "not-configured",
+          gistId: config.publish.gistId
+        })
+      );
       throw new Error(PUBLISH_NOT_CONFIGURED_ERROR);
     }
 
-    const previousState = parseAgentBadgeState(await readJsonFile(statePath));
     const scan = await runFullBackfillScan({
       cwd,
       homeRoot,
@@ -233,6 +248,34 @@ export async function runPublishCommand(
     };
   } catch (error) {
     const publishError = error instanceof Error ? error : new Error(String(error));
+
+    if (
+      previousState !== null &&
+      publishError.message !== PUBLISH_NOT_CONFIGURED_ERROR
+    ) {
+      const failedState = applyPublishAttemptFailure({
+        state: previousState,
+        at:
+          isPublishBadgeError(publishError) && publishError.attemptedAt.length > 0
+            ? publishError.attemptedAt
+            : now,
+        failureCode: isPublishBadgeError(publishError)
+          ? publishError.failureCode
+          : "unknown",
+        candidateHash: isPublishBadgeError(publishError)
+          ? publishError.candidateHash
+          : null,
+        changedBadge: isPublishBadgeError(publishError)
+          ? toPublishAttemptChangedBadge(publishError.changedBadge)
+          : "unknown"
+      });
+
+      try {
+        await writeStateFile(statePath, failedState);
+      } catch {
+        // Preserve the original publish failure for callers.
+      }
+    }
 
     await appendAgentBadgeLog({
       cwd,

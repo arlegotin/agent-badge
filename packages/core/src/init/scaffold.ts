@@ -11,6 +11,9 @@ import {
 } from "../config/config-schema.js";
 import {
   parseAgentBadgeState,
+  type AgentBadgePublishAttemptChangedBadge,
+  type AgentBadgePublishAttemptOutcome,
+  type AgentBadgePublishFailureCode,
   type AgentBadgePublishMode,
   type AgentBadgePublishStatus,
   type AgentBadgeRefreshPublishDecision,
@@ -44,6 +47,24 @@ const publishStatuses: AgentBadgePublishStatus[] = [
   "pending",
   "published",
   "error"
+];
+const publishAttemptOutcomes: AgentBadgePublishAttemptOutcome[] = [
+  "not-attempted",
+  "published",
+  "unchanged",
+  "failed"
+];
+const publishAttemptChangedBadges: AgentBadgePublishAttemptChangedBadge[] = [
+  "yes",
+  "no",
+  "unknown"
+];
+const publishFailureCodes: AgentBadgePublishFailureCode[] = [
+  "not-configured",
+  "deferred",
+  "remote-write-failed",
+  "remote-inspection-failed",
+  "unknown"
 ];
 const publishModes: AgentBadgePublishMode[] = ["legacy", "shared"];
 const refreshScanModes: AgentBadgeRefreshScanMode[] = ["full", "incremental"];
@@ -321,6 +342,28 @@ function reconcileState(
       lastPublishedAt:
         readNullableString(publish.lastPublishedAt) ??
         defaults.publish.lastPublishedAt,
+      lastAttemptedAt:
+        readNullableString(publish.lastAttemptedAt) ??
+        defaults.publish.lastAttemptedAt,
+      lastAttemptOutcome:
+        readEnumValue(publish.lastAttemptOutcome, publishAttemptOutcomes) ??
+        defaults.publish.lastAttemptOutcome,
+      lastSuccessfulSyncAt:
+        readNullableString(publish.lastSuccessfulSyncAt) ??
+        defaults.publish.lastSuccessfulSyncAt,
+      lastAttemptCandidateHash:
+        readNullableString(publish.lastAttemptCandidateHash) ??
+        defaults.publish.lastAttemptCandidateHash,
+      lastAttemptChangedBadge:
+        readEnumValue(
+          publish.lastAttemptChangedBadge,
+          publishAttemptChangedBadges
+        ) ?? defaults.publish.lastAttemptChangedBadge,
+      lastFailureCode:
+        publish.lastFailureCode === null
+          ? null
+          : readEnumValue(publish.lastFailureCode, publishFailureCodes) ??
+            defaults.publish.lastFailureCode,
       publisherId:
         readNullableString(publish.publisherId) ?? defaults.publish.publisherId,
       mode: readEnumValue(publish.mode, publishModes) ?? defaults.publish.mode

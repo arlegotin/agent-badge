@@ -15,7 +15,9 @@ export {
 } from "./shared-merge.js";
 export {
   collectIncludedTotals,
+  isPublishBadgeError,
   publishBadgeIfChanged,
+  PublishBadgeError,
   publishBadgeToGist
 } from "./publish-service.js";
 export type {

@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 import {
+  applyPublishAttemptFailure,
+  applyPublishAttemptNotAttempted,
   applyCompletedScanState,
   buildRefreshCacheKey,
   buildSharedOverrideDigest,
@@ -10,10 +12,12 @@ import {
   derivePublishTrustReport,
   formatPublishTrustStatus,
   formatEstimatedCostUsd,
+  isPublishBadgeError,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeIfChanged,
   runIncrementalRefresh,
+  toPublishAttemptChangedBadge,
   writeRefreshCache,
   appendAgentBadgeLog,
   buildLogEntry,
@@ -365,11 +369,19 @@ export async function runRefreshCommand(
     let publishResult: PublishBadgeIfChangedResult | null = null;
 
     if (config.publish.gistId === null || config.publish.badgeUrl === null) {
+      publishDecision =
+        previousState.publish.status === "deferred" ? "deferred" : "not-configured";
       persistedState = {
-        ...persistedState,
+        ...applyPublishAttemptNotAttempted({
+          state: persistedState,
+          at: now,
+          failureCode: publishDecision,
+          status: previousState.publish.status,
+          gistId: config.publish.gistId
+        }),
         refresh: {
           ...persistedState.refresh,
-          lastPublishDecision: "not-configured"
+          lastPublishDecision: publishDecision
         }
       };
       await writeStateFile(statePath, persistedState);
@@ -432,14 +444,28 @@ export async function runRefreshCommand(
 
     if (persistedState !== null) {
       const failedState: AgentBadgeState = {
-        ...persistedState,
-        publish:
+        ...(
           attemptedPublish && persistedState.publish.gistId !== null
-            ? {
-                ...persistedState.publish,
-                status: "error"
-              }
-            : persistedState.publish,
+            ? applyPublishAttemptFailure({
+                state: persistedState,
+                at:
+                  isPublishBadgeError(refreshError) &&
+                  refreshError.attemptedAt.length > 0
+                    ? refreshError.attemptedAt
+                    : new Date().toISOString(),
+                failureCode: isPublishBadgeError(refreshError)
+                  ? refreshError.failureCode
+                  : "unknown",
+                candidateHash: isPublishBadgeError(refreshError)
+                  ? refreshError.candidateHash
+                  : null,
+                changedBadge: isPublishBadgeError(refreshError)
+                  ? toPublishAttemptChangedBadge(refreshError.changedBadge)
+                  : "unknown",
+                gistId: persistedState.publish.gistId
+              })
+            : persistedState
+        ),
         refresh: {
           ...persistedState.refresh,
           lastPublishDecision: "failed"

@@ -40,6 +40,12 @@ describe("agentBadgeStateSchema", () => {
       gistId: "gist_123",
       lastPublishedHash: "hash_123",
       lastPublishedAt: "2026-03-30T12:00:00Z",
+      lastAttemptedAt: null,
+      lastAttemptOutcome: "not-attempted",
+      lastSuccessfulSyncAt: null,
+      lastAttemptCandidateHash: null,
+      lastAttemptChangedBadge: "unknown",
+      lastFailureCode: null,
       publisherId: "publisher_123",
       mode: "shared"
     });
