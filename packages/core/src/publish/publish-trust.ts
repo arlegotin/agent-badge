@@ -2,6 +2,7 @@ import type { AgentBadgeState } from "../state/state-schema.js";
 
 export type PublishTrustStatus =
   | "current"
+  | "failed-but-unchanged"
   | "unchanged"
   | "not-attempted"
   | "stale-failed-publish"
@@ -18,18 +19,6 @@ export interface DerivePublishTrustReportOptions {
   readonly now: string;
 }
 
-function isNewerThan(left: string | null, right: string | null): boolean {
-  if (left === null) {
-    return false;
-  }
-
-  if (right === null) {
-    return true;
-  }
-
-  return Date.parse(left) > Date.parse(right);
-}
-
 export function derivePublishTrustReport({
   state,
   now: _now
@@ -39,12 +28,13 @@ export function derivePublishTrustReport({
     lastRefreshedAt: state.refresh.lastRefreshedAt,
     lastPublishedAt: state.publish.lastPublishedAt
   };
-  const publishDecision = state.refresh.lastPublishDecision;
+  const { publish } = state;
 
   if (
-    state.publish.gistId === null ||
-    publishDecision === "not-configured" ||
-    publishDecision === "deferred"
+    publish.gistId === null ||
+    publish.lastAttemptOutcome === "not-attempted" ||
+    publish.lastFailureCode === "not-configured" ||
+    publish.lastFailureCode === "deferred"
   ) {
     return {
       ...report,
@@ -52,14 +42,11 @@ export function derivePublishTrustReport({
     };
   }
 
-  if (publishDecision === "skipped") {
-    return {
-      ...report,
-      status: "unchanged"
-    };
-  }
-
-  if (publishDecision === "published") {
+  if (
+    publish.lastAttemptOutcome === "published" &&
+    publish.lastPublishedAt !== null &&
+    publish.lastSuccessfulSyncAt !== null
+  ) {
     return {
       ...report,
       status: "current"
@@ -67,8 +54,34 @@ export function derivePublishTrustReport({
   }
 
   if (
-    publishDecision === "failed" &&
-    isNewerThan(state.refresh.lastRefreshedAt, state.publish.lastPublishedAt)
+    publish.lastAttemptOutcome === "unchanged" &&
+    publish.lastSuccessfulSyncAt !== null
+  ) {
+    return {
+      ...report,
+      status: "unchanged"
+    };
+  }
+
+  if (publish.lastAttemptOutcome !== "failed" || publish.lastAttemptedAt === null) {
+    return report;
+  }
+
+  if (
+    publish.lastAttemptChangedBadge === "no" &&
+    publish.lastAttemptCandidateHash !== null &&
+    publish.lastPublishedHash !== null &&
+    publish.lastAttemptCandidateHash === publish.lastPublishedHash
+  ) {
+    return {
+      ...report,
+      status: "failed-but-unchanged"
+    };
+  }
+
+  if (
+    publish.lastAttemptChangedBadge === "yes" &&
+    publish.lastAttemptCandidateHash !== null
   ) {
     return {
       ...report,
@@ -83,6 +96,8 @@ export function formatPublishTrustStatus(status: PublishTrustStatus): string {
   switch (status) {
     case "current":
       return "current";
+    case "failed-but-unchanged":
+      return "publish failed but live badge is unchanged";
     case "unchanged":
       return "unchanged";
     case "not-attempted":
