@@ -4,6 +4,7 @@ export const AGENT_BADGE_README_END_MARKER = "<!-- agent-badge:end -->";
 export interface ReadmeBadgeMarkupOptions {
   readonly label: string;
   readonly badgeUrl: string;
+  readonly linkUrl?: string | null;
 }
 
 const README_BADGE_BLOCK_PATTERN =
@@ -22,9 +23,12 @@ ${AGENT_BADGE_README_END_MARKER}
 
 export function buildReadmeBadgeMarkdown({
   label,
-  badgeUrl
+  badgeUrl,
+  linkUrl = null
 }: ReadmeBadgeMarkupOptions): string {
-  return `![${label}](${badgeUrl})`;
+  const imageMarkdown = `![${label}](${badgeUrl})`;
+
+  return linkUrl === null ? imageMarkdown : `[${imageMarkdown}](${linkUrl})`;
 }
 
 export function buildReadmeBadgeSnippet(

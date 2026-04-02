@@ -17,6 +17,7 @@ import {
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
+  resolveRepoFingerprint,
   resolvePricingCatalog,
   runInitPreflight,
   runFullBackfillScan,
@@ -235,11 +236,20 @@ async function writeReadmeBadgeOutput(options: {
     return;
   }
 
+  const repoFingerprint = options.preflight.git.isRepo
+    ? await resolveRepoFingerprint({
+        cwd: options.cwd,
+        config: options.config
+      })
+    : null;
+  const linkUrl = repoFingerprint?.originUrlNormalized ?? null;
+
   if (!options.preflight.readme.exists || options.preflight.readme.fileName === null) {
     writeLines(options.stdout, [
       `- Badge snippet: ${buildReadmeBadgeSnippet({
         label: options.config.badge.label,
-        badgeUrl
+        badgeUrl,
+        linkUrl
       })}`
     ]);
     return;
@@ -251,7 +261,8 @@ async function writeReadmeBadgeOutput(options: {
     readmeContent,
     buildReadmeBadgeMarkdown({
       label: options.config.badge.label,
-      badgeUrl
+      badgeUrl,
+      linkUrl
     })
   );
 

@@ -62,6 +62,12 @@ async function createRepoFixture(options: {
   };
 }
 
+async function addOriginRemote(repoRoot: string, remoteUrl: string): Promise<void> {
+  await execFileAsync("git", ["remote", "add", "origin", remoteUrl], {
+    cwd: repoRoot
+  });
+}
+
 async function createProviderHome(options: {
   readonly codex?: boolean;
   readonly claude?: boolean;
@@ -716,6 +722,75 @@ describe("runInitCommand", () => {
       expect(existsSync(join(repo.root, "README.md"))).toBe(false);
       expect(output.read()).toContain(
         "- Badge snippet: ![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
+      );
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("links the managed README badge to the normalized origin URL when origin is configured", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+
+    try {
+      await addOriginRemote(repo.root, "git@github.com:Owner/Repo.git");
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_linked",
+        gistClient: {
+          getGist: async () => createGistMetadata("gist_linked"),
+          createPublicGist: async () => {
+            throw new Error("create should not run");
+          },
+          updateGistFile: async () => createGistMetadata("gist_linked")
+        }
+      });
+
+      const readmeContent = await readReadmeContent(repo.root);
+
+      expect(readmeContent).toContain(
+        "[![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/owner/repo)"
+      );
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("prints a linked snippet when README is missing and origin is configured", async () => {
+    const repo = await createRepoFixture({
+      readme: false,
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const output = createOutputCapture();
+
+    try {
+      await addOriginRemote(repo.root, "https://github.com/Owner/Repo.git");
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_snippet_linked",
+        stdout: output.writer,
+        gistClient: {
+          getGist: async () => createGistMetadata("gist_snippet_linked"),
+          createPublicGist: async () => {
+            throw new Error("create should not run");
+          },
+          updateGistFile: async () => createGistMetadata("gist_snippet_linked")
+        }
+      });
+
+      expect(output.read()).toContain(
+        "- Badge snippet: [![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/owner/repo)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
