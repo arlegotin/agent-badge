@@ -3,8 +3,14 @@ export * from "./badge-url.js";
 export * from "./github-gist-client.js";
 export * from "./publish-state.js";
 export * from "./readme-badge.js";
-export * from "./shared-merge.js";
 export * from "./shared-model.js";
+export {
+  compareSharedObservationWatermark,
+  deriveResolvedSharedOverrides,
+  deriveSharedIncludedTotals,
+  flattenSharedContributorObservations,
+  replaceContributorRecord
+} from "./shared-merge.js";
 export {
   collectIncludedTotals,
   publishBadgeIfChanged,

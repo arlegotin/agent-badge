@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const isoDateTimeSchema = z.string().datetime({ offset: true });
 const nonnegativeIntSchema = z.number().int().nonnegative();
+const sharedObservationDigestPattern = /^sha256:[a-f0-9]{64}$/;
 
 export const AGENT_BADGE_CONTRIB_GIST_FILE_PREFIX = "agent-badge-contrib-";
 export const AGENT_BADGE_OVERRIDES_GIST_FILE = "agent-badge-overrides.json";
@@ -25,18 +26,29 @@ export function buildSharedOverrideDigest(sessionKey: string): string {
   return `sha256:${createHash("sha256").update(sessionKey).digest("hex")}`;
 }
 
+const sharedObservationDigestSchema = z
+  .string()
+  .regex(sharedObservationDigestPattern);
+
+const sharedContributorObservationSchema = z
+  .object({
+    sessionUpdatedAt: isoDateTimeSchema.nullable(),
+    attributionStatus: z.enum(["included", "ambiguous", "excluded"]),
+    overrideDecision: z.enum(["include", "exclude"]).nullable(),
+    tokens: nonnegativeIntSchema,
+    estimatedCostUsdMicros: nonnegativeIntSchema.nullable()
+  })
+  .strict();
+
 export const sharedContributorRecordSchema = z
   .object({
-    schemaVersion: z.literal(1),
+    schemaVersion: z.literal(2),
     publisherId: z.string(),
     updatedAt: isoDateTimeSchema,
-    totals: z
-      .object({
-        sessions: nonnegativeIntSchema,
-        tokens: nonnegativeIntSchema,
-        estimatedCostUsdMicros: nonnegativeIntSchema.nullable()
-      })
-      .strict()
+    observations: z.record(
+      sharedObservationDigestSchema,
+      sharedContributorObservationSchema
+    )
   })
   .strict();
 
@@ -56,6 +68,9 @@ export const sharedOverridesRecordSchema = z
   .strict();
 
 export type SharedContributorRecord = z.infer<typeof sharedContributorRecordSchema>;
+export type SharedContributorObservation = z.infer<
+  typeof sharedContributorObservationSchema
+>;
 export type SharedOverridesRecord = z.infer<typeof sharedOverridesRecordSchema>;
 export type SharedOverrideDecision = z.infer<typeof sharedOverrideDecisionSchema>;
 
