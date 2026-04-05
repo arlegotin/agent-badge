@@ -4,13 +4,30 @@
 
 `agent-badge` is a local-first, serverless CLI that lets a repository publish a stable GitHub README badge showing historical and ongoing AI-agent usage. It initializes a repo, scans local Codex and Claude data under `~/.codex` and `~/.claude`, attributes that usage to the current repo, publishes aggregate badge JSON to a public Gist, and renders the badge through a fixed Shields endpoint URL.
 
-The product is for developers who want a low-friction, trustworthy way to show how much AI assistance a repository has consumed without running a backend or exposing raw transcripts.
+The product is for developers who want a low-friction, trustworthy way to show how much AI assistance a repository has consumed without running a backend or exposing raw transcripts. The shipped product now supports shared multi-contributor publishing, deterministic cross-publisher deduplication, operator-visible trust and readiness checks, and supported recovery flows for degraded publish state.
 
 ## Core Value
 
 Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
-## Current Milestone: v1.4 Publish Reliability Hardening
+## Current State
+
+**Latest shipped milestone:** v1.4 Publish Reliability Hardening (2026-04-05)
+
+The current released planning state covers:
+- merge-safe shared contributor publishing and repo-level ambiguous-session decisions
+- deterministic cross-publisher deduplication across publish, refresh, and init
+- migration and shared-health operator flows for legacy repos
+- explicit badge-trust, readiness, and pre-push policy reporting
+- supported recovery flows plus live proof artifacts for returning degraded repos to healthy shared mode
+
+## Next Milestone Goals
+
+- Decide which post-v1.4 expansion matters most: faster local freshness, richer history surfaces, or broader publish targets.
+- Start a fresh milestone with newly scoped requirements instead of carrying archived v1.4 planning context forward.
+
+<details>
+<summary>Archived Milestone Focus: v1.4 Publish Reliability Hardening</summary>
 
 **Goal:** Make the live badge operationally trustworthy by ensuring publish failures are visible, diagnosable, and recoverable before a repo silently drifts away from its local usage state.
 
@@ -19,6 +36,8 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - Validate GitHub auth, gist reachability, and write readiness at the points where operators actually need them.
 - Detect when the remote badge is stale relative to local refresh state and explain why.
 - Provide explicit recovery paths that bring repos back to a healthy shared publish state without manual state-file surgery.
+
+</details>
 
 ## Requirements
 
@@ -44,10 +63,14 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] `status`, `refresh`, and `doctor` expose one coherent live-badge trust view with last successful publish state and recovery guidance. Validated in Phase 17.
 - [x] Refresh and publish validate GitHub auth and publish readiness with canonical remediation before or during live publish flows. Validated in Phase 18.
 - [x] Repos can choose explicit fail-soft versus strict pre-push publish behavior instead of inheriting a hidden default. Validated in Phase 18.
+- [x] Shared-mode repos can recover from publish error state without manual local-state edits. Validated in Phase 19.
+- [x] Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging. Validated in Phase 19.
 
 ### Active
 
-- [ ] Shared-mode repos can recover from publish error state without manual local-state edits.
+- [ ] Evaluate Codex hook integration for lower-latency local freshness after the current shared/reliability baseline.
+- [ ] Decide whether richer history views should ship as badge-adjacent outputs or remain future product expansion.
+- [ ] Reassess whether additional publish backends materially improve the local-first story over the current public Gist model.
 
 ### Out of Scope
 
@@ -62,13 +85,11 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 Phases 1 through 7 established the monorepo, shared schemas, init preflight, idempotent `.agent-badge` scaffolding, repo fingerprinting, provider parsing, historical backfill, conservative attribution, deterministic public Gist publishing, stable README badge insertion, incremental refresh flows, operator commands, and release-oriented docs/tests.
 
-As of 2026-04-02 after Phases 14-16, shared publish correctness is in place: contributor observations merge safely, duplicate sessions deduplicate deterministically, legacy repos can migrate to shared mode, and operators can inspect shared publish health through `status`, `doctor`, and the public docs.
+As of 2026-04-05 after milestone v1.4, shared publish correctness and publish reliability are both shipped. Contributor observations merge safely, duplicate sessions deduplicate deterministically, legacy repos can migrate to shared mode, and operators can inspect shared publish health through `status`, `doctor`, and the public docs.
 
-The new sharp gap is operational trust. The product is still intentionally local-first and failure-soft on developer machines. That means a repo can keep scanning locally while the live badge quietly stops updating if GitHub auth disappears, gist writes fail, or refresh degrades without the operator noticing.
+The live CLI now classifies missing auth and gist readiness problems with canonical remediation, normal refresh failures print both readiness and trust lines, managed pre-push automation encodes explicit `fail-soft` versus `strict` behavior, and supported recovery flows can return degraded repos to healthy shared publish mode without manual state surgery.
 
-As of 2026-04-05 after Phase 18, the live CLI now classifies missing auth and gist readiness problems with canonical remediation, normal refresh failures print both readiness and trust lines, and managed pre-push automation encodes explicit `fail-soft` versus `strict` behavior.
-
-The remaining milestone gap is supported recovery after publish error state and production-proof verification of the stale-badge failure-and-recovery path. The next work should harden those recovery flows without weakening the local-first, aggregate-only model.
+The next product decisions are expansion choices, not missing baseline trust work. Any next milestone should be scoped from the shipped local-first shared/reliability baseline rather than reopening the v1.4 verification set.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -110,6 +131,8 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Local-first publish automation must make remote failure visible instead of silently letting the badge drift stale | A trustworthy badge cannot depend on operators noticing hidden fail-soft background failures | Active for v1.4 |
 | Publish readiness must use one canonical auth/gist failure vocabulary across init, publish, refresh, and doctor | Operators need consistent remediation text instead of command-local error wording | Implemented in Phase 18 |
 | Managed pre-push hooks must encode `fail-soft` or `strict` explicitly in the generated command | Badge automation policy should be inspectable and deliberate, not inferred from shell fallthrough | Implemented in Phase 18 |
+| Supported recovery must be phase-owned proof, not only operator docs or traceability | Recovery trust is only credible when the owning phase verification cites refreshed live evidence | Implemented in Phases 19-20 |
+| Milestone closeout must archive roadmap, requirements, and audit artifacts before next planning begins | Keeping one active planning surface avoids long-lived milestone drift in root docs | Implemented at v1.4 milestone completion |
 
 ## Evolution
 
@@ -129,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after completing Phase 18*
+*Last updated: 2026-04-05 after completing the v1.4 milestone*
