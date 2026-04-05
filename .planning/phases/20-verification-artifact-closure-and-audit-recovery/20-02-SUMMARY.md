@@ -79,7 +79,20 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written, using the direct `audit-milestone.md` fallback explicitly allowed by the plan when no single wrapper command is available.
+### Auto-fixed Issues
+
+**1. [Rule 3 - Blocking] Manually reconciled roadmap/state phase status after helper output stopped short of the truthful end state**
+- **Found during:** Closeout bookkeeping after Task 2
+- **Issue:** `roadmap update-plan-progress 20` refused to advance because Phase 20 has no passed `20-VERIFICATION.md` yet, while the generated state frontmatter also overcounted completed phases as `7/7` even though Phase 20 is only ready for verification.
+- **Fix:** Manually updated `.planning/ROADMAP.md` to `2/2 | Ready for Verification` and corrected `.planning/STATE.md` to keep Phase 20 in verifying state with `6/7` completed phases.
+- **Files modified:** `.planning/ROADMAP.md`, `.planning/STATE.md`, `.planning/phases/20-verification-artifact-closure-and-audit-recovery/20-02-SUMMARY.md`
+- **Verification:** Re-read both files and confirmed the roadmap/status lines now match the actual artifact state: all plans complete, phase verification still pending.
+- **Committed in:** final docs closeout commit(s)
+
+---
+
+**Total deviations:** 1 auto-fixed (1 blocking)
+**Impact on plan:** The deviation only corrected planning metadata and summary accuracy. It did not widen product scope or change the validation/audit evidence basis.
 
 ## Issues Encountered
 
@@ -92,7 +105,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 - Milestone v1.4 now has a passed audit artifact with no remaining verification or Nyquist blockers in scope.
-- Phase 20 only needs normal summary/state/roadmap closeout to finish cleanly.
+- Phase 20 plan execution is complete; the phase itself is now ready for its own verification pass when that workflow runs.
 
 ## Self-Check: PASSED
 
