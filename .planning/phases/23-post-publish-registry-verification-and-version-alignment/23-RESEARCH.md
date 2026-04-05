@@ -259,7 +259,7 @@ Use the same pattern for Phase 23 registry smoke evidence instead of hardcoding 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
 | Phase 13-specific post-publish smoke hardcoded to `1.1.2` and `13-REGISTRY-SMOKE.*`. [VERIFIED: `docs/RELEASE.md`; VERIFIED: `scripts/verify-docs.sh`; VERIFIED: `scripts/smoke/verify-registry-install.sh`] | Phase 23 should verify the already-shipped `1.1.3` release and write Phase 23-owned evidence. [VERIFIED: `.planning/phases/22-trusted-publish-execution-and-evidence-capture/22-PUBLISH-EVIDENCE.json`; ASSUMED] | Changed by the live Phase 22 publish on 2026-04-05. [VERIFIED: `.planning/phases/22-trusted-publish-execution-and-evidence-capture/22-PUBLISH-EVIDENCE.json`] | Without this update, the runbook proves the wrong release. [VERIFIED: current repo/docs state] |
-| Treat local manifests as the preflight/release truth. [VERIFIED: older phase artifacts] | Treat the recovered release commit and live npm metadata as truth when local source is stale. [VERIFIED: `.planning/phases/22-trusted-publish-execution-and-evidence-capture/22-WORKFLOW-RUN.md`; VERIFIED: `git branch -avv`; VERIFIED: `npm view @legotin/agent-badge version dist-tags.latest --json`] | Changed by the discovered `ahead 21, behind 1` branch state after the trusted publish. [VERIFIED: `git branch -avv`] | Phase 23 can repair alignment without guessing what actually shipped. [VERIFIED: `git show --stat --oneline db3ff4fa76905fac713a3ee7677d143de25e2b2c`] |
+| Treat local manifests as the preflight/release truth. [VERIFIED: `.planning/phases/21-external-release-blocker-audit-and-gate-repair/21-preflight.json`; VERIFIED: `packages/core/package.json`; VERIFIED: `packages/agent-badge/package.json`; VERIFIED: `packages/create-agent-badge/package.json`] | Treat the recovered release commit and live npm metadata as truth when local source is stale. [VERIFIED: `.planning/phases/22-trusted-publish-execution-and-evidence-capture/22-WORKFLOW-RUN.md`; VERIFIED: `git branch -avv`; VERIFIED: `npm view @legotin/agent-badge version dist-tags.latest --json`] | Changed by the discovered `ahead 21, behind 1` branch state after the trusted publish. [VERIFIED: `git branch -avv`] | Phase 23 can repair alignment without guessing what actually shipped. [VERIFIED: `git show --stat --oneline db3ff4fa76905fac713a3ee7677d143de25e2b2c`] |
 | Exact-version initializer proof only. [VERIFIED: `scripts/smoke/verify-registry-install.sh`] | Exact-version proof plus explicit `latest` alias proof. [VERIFIED: `.planning/REQUIREMENTS.md`; CITED: https://docs.npmjs.com/cli/v11/commands/npm-init/; CITED: https://docs.npmjs.com/cli/v8/commands/npm-dist-tag] | Required by the current Phase 23 requirement wording. [VERIFIED: `.planning/REQUIREMENTS.md`] | This closes the last registry-surface gap that the existing smoke script does not yet cover. [VERIFIED: `scripts/smoke/verify-registry-install.sh`; VERIFIED: `.planning/REQUIREMENTS.md`] |
 
 **Deprecated / outdated:**  
@@ -340,8 +340,8 @@ Use the same pattern for Phase 23 registry smoke evidence instead of hardcoding 
 | ASVS Category | Applies | Standard Control |
 |---------------|---------|-----------------|
 | V2 Authentication | no [VERIFIED: phase scope] | Phase 23 is post-publish verification, not user auth. [VERIFIED: `.planning/ROADMAP.md`] |
-| V3 Session Management | no [VERIFIED: phase scope] | Not applicable. |
-| V4 Access Control | no [VERIFIED: phase scope] | Not a product access-control phase. |
+| V3 Session Management | no [VERIFIED: `.planning/ROADMAP.md`] | Not applicable for this post-publish verification scope. [VERIFIED: `.planning/ROADMAP.md`] |
+| V4 Access Control | no [VERIFIED: `.planning/ROADMAP.md`] | Not a product access-control phase. [VERIFIED: `.planning/ROADMAP.md`] |
 | V5 Input Validation | yes [VERIFIED: script and helper code] | Keep strict CLI argument parsing in the smoke script and semver validation in existing release helpers; do not accept loosely parsed version input. [VERIFIED: `scripts/smoke/verify-registry-install.sh`; VERIFIED: `scripts/release/auto-version.ts`] |
 | V6 Cryptography | no [VERIFIED: phase scope] | No crypto changes required here. |
 
@@ -387,4 +387,4 @@ Use the same pattern for Phase 23 registry smoke evidence instead of hardcoding 
 - Pitfalls: HIGH - every listed pitfall is already visible in current code, docs, or requirements. [VERIFIED: current repo state; VERIFIED: `.planning/REQUIREMENTS.md`]  
 
 **Research date:** 2026-04-05 [VERIFIED: system date]  
-**Valid until:** 2026-04-12 because npm registry state, dist-tags, and branch divergence are fast-moving release facts. [VERIFIED: topic volatility]
+**Valid until:** 2026-04-12 because npm registry state, dist-tags, and branch divergence are fast-moving release facts. [ASSUMED]
