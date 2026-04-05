@@ -69,6 +69,68 @@ describe("capture publish evidence", () => {
     execFileMock.mockReset();
   });
 
+  it("parses artifact-prefix and published-git-sha while keeping backward-compatible defaults", () => {
+    expect(
+      captureEvidence.parseEvidenceArgs([
+        "--phase-dir",
+        ".planning/phases/12-production-publish-execution",
+        "--publish-path",
+        "github-actions",
+        "--preflight-json",
+        ".planning/phases/12-production-publish-execution/12-preflight.json",
+        "--workflow-run-url",
+        "https://github.com/example/repo/actions/runs/1",
+        "--workflow-run-id",
+        "1",
+        "--workflow-run-conclusion",
+        "success",
+        "--published-at",
+        "2026-03-31T00:00:00Z",
+        "--artifact-prefix",
+        "22-PUBLISH-EVIDENCE",
+        "--published-git-sha",
+        "db3ff4fa76905fac713a3ee7677d143de25e2b2c"
+      ])
+    ).toEqual({
+      phaseDir: ".planning/phases/12-production-publish-execution",
+      publishPath: "github-actions",
+      preflightJson: ".planning/phases/12-production-publish-execution/12-preflight.json",
+      artifactPrefix: "22-PUBLISH-EVIDENCE",
+      workflowRunUrl: "https://github.com/example/repo/actions/runs/1",
+      workflowRunId: "1",
+      workflowRunConclusion: "success",
+      publishedAt: "2026-03-31T00:00:00Z",
+      publishedGitSha: "db3ff4fa76905fac713a3ee7677d143de25e2b2c",
+      fallbackReason: undefined
+    });
+
+    expect(
+      captureEvidence.parseEvidenceArgs([
+        "--phase-dir",
+        ".planning/phases/12-production-publish-execution",
+        "--publish-path",
+        "local-cli",
+        "--preflight-json",
+        ".planning/phases/12-production-publish-execution/12-preflight.json",
+        "--published-at",
+        "2026-03-31T00:00:00Z",
+        "--fallback-reason",
+        "workflow unavailable"
+      ])
+    ).toEqual({
+      phaseDir: ".planning/phases/12-production-publish-execution",
+      publishPath: "local-cli",
+      preflightJson: ".planning/phases/12-production-publish-execution/12-preflight.json",
+      artifactPrefix: "12-PUBLISH-EVIDENCE",
+      workflowRunUrl: undefined,
+      workflowRunId: undefined,
+      workflowRunConclusion: undefined,
+      publishedAt: "2026-03-31T00:00:00Z",
+      publishedGitSha: undefined,
+      fallbackReason: "workflow unavailable"
+    });
+  });
+
   it("captures workflow evidence with required manifest and workflow fields", async () => {
     mockRegistryAndGitResponses({
       gitSha: "deadbeefcafebabe",
@@ -150,6 +212,40 @@ describe("capture publish evidence", () => {
     expect(markdownText).toContain("Registry results:");
   });
 
+  it("writes phase-owned evidence files and honors explicit published git sha", async () => {
+    mockRegistryAndGitResponses({
+      gitSha: "should-not-be-read",
+      registry: [
+        { packageName: "@legotin/agent-badge-core", payload: { version: "1.1.3", "dist-tags.latest": "1.1.3" } },
+        { packageName: "@legotin/agent-badge", payload: { version: "1.1.3", "dist-tags.latest": "1.1.3" } },
+        { packageName: "create-agent-badge", payload: { version: "1.1.3", "dist-tags": { latest: "1.1.3" } } }
+      ]
+    });
+
+    const phaseDir = await buildTempDir();
+    const preflightPath = await writeFixturePreflight(phaseDir, "blocked");
+
+    const evidence = await captureEvidence.runCaptureEvidence({
+      phaseDir,
+      publishPath: "github-actions",
+      preflightJson: preflightPath,
+      artifactPrefix: "22-PUBLISH-EVIDENCE",
+      workflowRunUrl: "https://github.com/example/repo/actions/runs/24005943027",
+      workflowRunId: "24005943027",
+      workflowRunConclusion: "success",
+      publishedAt: "2026-04-05T16:46:35Z",
+      publishedGitSha: "db3ff4fa76905fac713a3ee7677d143de25e2b2c"
+    }, process.cwd());
+
+    const jsonPath = resolve(phaseDir, "22-PUBLISH-EVIDENCE.json");
+    const mdPath = resolve(phaseDir, "22-PUBLISH-EVIDENCE.md");
+
+    expect(evidence.gitSha).toBe("db3ff4fa76905fac713a3ee7677d143de25e2b2c");
+    expect(await readFile(jsonPath, "utf8")).toContain("\"gitSha\": \"db3ff4fa76905fac713a3ee7677d143de25e2b2c\"");
+    expect(await readFile(mdPath, "utf8")).toContain("Published commit: db3ff4fa76905fac713a3ee7677d143de25e2b2c");
+    expect(execFileAsyncMock.mock.calls.filter(([command]) => command === "git")).toHaveLength(0);
+  });
+
   it("writes fallback evidence with fallback reason and omits workflow fields", async () => {
     mockRegistryAndGitResponses({
       gitSha: "beadfeed",
@@ -167,6 +263,7 @@ describe("capture publish evidence", () => {
       phaseDir,
       publishPath: "local-cli",
       preflightJson: preflightPath,
+      artifactPrefix: "12-PUBLISH-EVIDENCE",
       fallbackReason: "workflow_dispatch unavailable",
       publishedAt: "2026-03-31T00:00:00Z"
     }, process.cwd());

@@ -21,10 +21,12 @@ export interface CaptureEvidenceArgs {
   readonly phaseDir: string;
   readonly publishPath: PublishPath;
   readonly preflightJson: string;
+  readonly artifactPrefix?: string;
   readonly workflowRunUrl?: string;
   readonly workflowRunId?: string;
   readonly workflowRunConclusion?: string;
   readonly publishedAt: string;
+  readonly publishedGitSha?: string;
   readonly fallbackReason?: string;
 }
 
@@ -89,6 +91,7 @@ export function parseEvidenceArgs(argv: readonly string[]): CaptureEvidenceArgs 
   const publishPath = entries.get("publish-path") as PublishPath | undefined;
   const preflightJson = entries.get("preflight-json");
   const publishedAt = entries.get("published-at");
+  const artifactPrefix = firstNonEmpty(entries.get("artifact-prefix")) ?? "12-PUBLISH-EVIDENCE";
 
   if (!phaseDir) throw new Error("--phase-dir is required.");
   if (!publishPath) throw new Error("--publish-path is required.");
@@ -102,6 +105,7 @@ export function parseEvidenceArgs(argv: readonly string[]): CaptureEvidenceArgs 
   const workflowRunUrl = entries.get("workflow-run-url");
   const workflowRunId = entries.get("workflow-run-id");
   const workflowRunConclusion = entries.get("workflow-run-conclusion");
+  const publishedGitSha = firstNonEmpty(entries.get("published-git-sha")) ?? undefined;
   const fallbackReason = entries.get("fallback-reason");
 
   if (publishPath === "github-actions") {
@@ -124,10 +128,12 @@ export function parseEvidenceArgs(argv: readonly string[]): CaptureEvidenceArgs 
     phaseDir,
     publishPath,
     preflightJson,
+    artifactPrefix,
     workflowRunUrl,
     workflowRunId,
     workflowRunConclusion,
     publishedAt,
+    publishedGitSha,
     fallbackReason
   };
 }
@@ -230,7 +236,11 @@ async function readRegistryState(packageName: string, repoRoot: string): Promise
   }
 }
 
-async function getGitSha(repoRoot: string): Promise<string> {
+async function getGitSha(repoRoot: string, explicitGitSha?: string): Promise<string> {
+  if (explicitGitSha) {
+    return explicitGitSha;
+  }
+
   const gitSha = (await runGitCommand(repoRoot, ["rev-parse", "HEAD"])).trim(); // git rev-parse
 
   if (!gitSha) {
@@ -276,7 +286,7 @@ export async function runCaptureEvidence(
 
   JSON.parse(preflightContent);
 
-  const gitSha = await getGitSha(repoRoot);
+  const gitSha = await getGitSha(repoRoot, args.publishedGitSha);
   const registryResults = await Promise.all(
     manifestInventory.map((manifest) => readRegistryState(manifest.name, repoRoot))
   );
@@ -301,8 +311,10 @@ export async function runCaptureEvidence(
 
   const phaseDir = resolve(repoRoot, args.phaseDir);
   await mkdir(phaseDir, { recursive: true });
-  await writeFile(resolve(phaseDir, "12-PUBLISH-EVIDENCE.json"), JSON.stringify(evidence, null, 2));
-  await writeFile(resolve(phaseDir, "12-PUBLISH-EVIDENCE.md"), buildEvidenceMarkdown(evidence));
+  const artifactPrefix = args.artifactPrefix ?? "12-PUBLISH-EVIDENCE";
+
+  await writeFile(resolve(phaseDir, `${artifactPrefix}.json`), JSON.stringify(evidence, null, 2));
+  await writeFile(resolve(phaseDir, `${artifactPrefix}.md`), buildEvidenceMarkdown(evidence));
 
   return evidence;
 }

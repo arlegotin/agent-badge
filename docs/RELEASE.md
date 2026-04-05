@@ -100,13 +100,30 @@ npm run release:evidence \
   -- --phase-dir .planning/phases/12-production-publish-execution \
   --publish-path github-actions \
   --preflight-json .planning/phases/12-production-publish-execution/12-preflight.json \
+  --artifact-prefix 12-PUBLISH-EVIDENCE \
   --workflow-run-url <workflow-url> \
   --workflow-run-id <workflow-run-id> \
   --workflow-run-conclusion success \
+  --published-git-sha <released-commit-sha> \
   --published-at <ISO8601>
 ```
 
 `12-PUBLISH-EVIDENCE.md` and `12-PUBLISH-EVIDENCE.json` are the required evidence artifacts for this path.
+
+When the current checkout has moved past the released commit, capture evidence from a clean checkout of the released source and keep the artifacts phase-owned with the same command shape. For Phase 22, that means using the Phase 22 paths and artifact prefix:
+
+```bash
+npm run release:evidence \
+  -- --phase-dir .planning/phases/22-trusted-publish-execution-and-evidence-capture \
+  --publish-path github-actions \
+  --preflight-json .planning/phases/22-trusted-publish-execution-and-evidence-capture/22-preflight.json \
+  --artifact-prefix 22-PUBLISH-EVIDENCE \
+  --workflow-run-url <workflow-url> \
+  --workflow-run-id <workflow-run-id> \
+  --workflow-run-conclusion success \
+  --published-git-sha <released-commit-sha> \
+  --published-at <ISO8601>
+```
 
 ## 5. Post-publish registry smoke
 
