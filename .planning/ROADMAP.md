@@ -26,7 +26,7 @@ Next workflow entrypoint:
 ### v1.5 Production Readiness Closure
 
 - [x] **Phase 21: External Release Blocker Audit And Gate Repair** - Turn the remaining live preflight blockers into explicit repo-owned requirements, diagnostics, and remediation.
-- [ ] **Phase 22: Trusted Publish Execution And Evidence Capture** - Publish the current source through the canonical GitHub Actions trusted-publishing path and capture exact release evidence.
+- [x] **Phase 22: Trusted Publish Execution And Evidence Capture** - Publish the current source through the canonical GitHub Actions trusted-publishing path and capture exact release evidence.
 - [ ] **Phase 23: Post-Publish Registry Verification And Version Alignment** - Prove the released npm artifacts and initializer from a clean install path and reconcile any version drift or doc mismatch.
 - [ ] **Phase 24: Production Ready Exit Criteria And Closeout** - Define the explicit go or no-go bar for “100% production ready” and close the milestone only when evidence meets it.
 
