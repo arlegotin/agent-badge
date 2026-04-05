@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows. (completed 2026-04-02)
 - [x] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows. (completed 2026-04-05)
 - [x] **Phase 19: Recovery Paths And Production Reliability Verification** - Prove the stale-badge recovery path and lock the operator runbooks to real failure modes. (completed 2026-04-05)
+- [ ] **Phase 20: Verification Artifact Closure And Audit Recovery** - Close the remaining milestone audit blockers by producing the missing verification artifacts and validation follow-up.
 
 ## Phase Details
 
@@ -111,6 +112,21 @@ Plans:
 - [x] 19-01: Implement supported recovery flows for publish error and stale shared state
 - [x] 19-02: Add production reliability verification and operational runbooks for stale badge recovery
 
+### Phase 20: Verification Artifact Closure And Audit Recovery
+**Goal**: Close the remaining v1.4 audit blockers by formalizing missing phase verification evidence, reattaching orphaned requirements to verification, and reconciling validation follow-up debt before re-auditing the milestone.
+**Depends on**: Phase 19
+**Requirements**: [CTRL-02, CTRL-03]
+**Gap Closure**: Closes gaps from `.planning/v1.4-MILESTONE-AUDIT.md`
+**Success Criteria** (what must be TRUE):
+  1. Phase 15 and Phase 19 each have a formal `*-VERIFICATION.md` report grounded in their existing summary, validation, UAT, and live evidence artifacts.
+  2. `CTRL-02` and `CTRL-03` are satisfied through a phase verification report instead of only traceability, UAT, and evidence files.
+  3. The remaining validation debt called out by the milestone audit for Phases 15 and 17 is closed or intentionally reconciled so the next milestone audit can pass cleanly.
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01: Create formal verification reports for Phases 15 and 19 and reattach orphaned requirements
+- [ ] 20-02: Resolve remaining validation debt and rerun the milestone audit
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -121,3 +137,4 @@ Plans:
 | 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
 | 18. Auth, Hook, And Publish Readiness Hardening | 4/4 | Complete    | 2026-04-05 |
 | 19. Recovery Paths And Production Reliability Verification | 2/2 | Complete | 2026-04-05 |
+| 20. Verification Artifact Closure And Audit Recovery | 0/2 | Not Started | |
