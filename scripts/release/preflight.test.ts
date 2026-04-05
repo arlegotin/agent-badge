@@ -100,6 +100,14 @@ describe("release preflight", () => {
       "create-agent-badge"
     ]);
     expect(report.packages.every((entry: { status: string }) => entry.status === "safe")).toBe(true);
+    expect(report.checks.find((entry: { id: string }) => entry.id === "package-ownership")).toMatchObject({
+      id: "package-ownership",
+      status: "safe"
+    });
+    expect(report.checks.find((entry: { id: string }) => entry.id === "trusted-publisher")).toMatchObject({
+      id: "trusted-publisher",
+      status: "safe"
+    });
   });
 
   it("returns overall blocked when a publish target already exposes the intended version", async () => {
@@ -121,6 +129,7 @@ describe("release preflight", () => {
     expect(report.overallStatus).toBe("blocked");
     expect(blockedEntry?.status).toBe("blocked");
     expect(blockedEntry?.summary).toContain(currentRuntimeVersion);
+    expect(blockedEntry?.blockers).toContain("same version already published");
   });
 
   it("returns overall warn when the registry metadata is partial or ambiguous", async () => {
@@ -140,6 +149,45 @@ describe("release preflight", () => {
     expect(report.overallStatus).toBe("warn");
     expect(warnEntry?.status).toBe("warn");
     expect(warnEntry?.summary).toContain("partial metadata");
+  });
+
+  it("returns explicit version drift and manual confirmation warnings when npm is ahead of source", async () => {
+    mockMissingPackage("@legotin/agent-badge-core");
+    mockRegistryJson({
+      name: "@legotin/agent-badge",
+      version: "1.1.3",
+      "dist-tags.latest": "1.1.3"
+    });
+    mockMissingPackage("create-agent-badge");
+    mockNpmPing();
+    mockNpmWhoami();
+
+    const report = await preflight.runReleasePreflight(process.cwd());
+    const driftEntry = report.packages.find(
+      (entry: { packageName: string }) => entry.packageName === "@legotin/agent-badge"
+    );
+    const ownershipCheck = report.checks.find(
+      (entry: { id: string }) => entry.id === "package-ownership"
+    );
+    const trustedPublisherCheck = report.checks.find(
+      (entry: { id: string }) => entry.id === "trusted-publisher"
+    );
+
+    expect(report.overallStatus).toBe("warn");
+    expect(driftEntry?.status).toBe("warn");
+    expect(driftEntry?.summary).toContain("version drift");
+    expect(driftEntry?.blockers).toContain("version drift");
+    expect(driftEntry?.blockers).toContain("package ownership");
+    expect(ownershipCheck).toMatchObject({
+      id: "package-ownership",
+      status: "warn"
+    });
+    expect(ownershipCheck?.blockers).toContain("package ownership");
+    expect(trustedPublisherCheck).toMatchObject({
+      id: "trusted-publisher",
+      status: "warn"
+    });
+    expect(trustedPublisherCheck?.blockers).toContain("trusted-publisher");
   });
 
   it("loads the exact manifest-derived publishable package inventory", async () => {
@@ -167,6 +215,7 @@ describe("release preflight", () => {
       id: "npm-auth",
       status: "blocked"
     });
+    expect(authCheck?.blockers).toContain("npm auth");
   });
 
   it("blocks when the workflow-contract check loses required release markers", () => {
