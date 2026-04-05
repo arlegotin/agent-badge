@@ -51,9 +51,10 @@ require_fixed "12-preflight.json" docs/RELEASE.md
 require_fixed "12-PUBLISH-EVIDENCE.md" docs/RELEASE.md
 require_fixed "npm run release:evidence" docs/RELEASE.md
 require_fixed "npm run release:preflight" docs/RELEASE.md
-require_fixed "13-REGISTRY-SMOKE.json" docs/RELEASE.md
-require_fixed "13-REGISTRY-SMOKE.md" docs/RELEASE.md
-require_fixed "verify-registry-install.sh --version 1.1.2 --check-initializer --write-evidence" docs/RELEASE.md
+require_fixed "23-REGISTRY-SMOKE.json" docs/RELEASE.md
+require_fixed "23-REGISTRY-SMOKE.md" docs/RELEASE.md
+require_fixed "23-LATEST-RESOLUTION.md" docs/RELEASE.md
+require_fixed "verify-registry-install.sh --version 1.1.3 --check-initializer --write-evidence --phase-dir .planning/phases/23-post-publish-registry-verification-and-version-alignment --artifact-prefix 23-REGISTRY-SMOKE" docs/RELEASE.md
 require_fixed '"status": "passed"' docs/RELEASE.md
 require_fixed "workflow_dispatch" docs/RELEASE.md
 require_fixed ".github/workflows/release.yml" docs/RELEASE.md
@@ -65,6 +66,7 @@ require_fixed "npm view create-agent-badge" docs/RELEASE.md
 require_fixed "npm view @legotin/agent-badge-core" docs/RELEASE.md
 require_fixed "npm_config_cache" docs/RELEASE.md
 require_fixed "/tmp" docs/RELEASE.md
+require_fixed "Phase 23 is only complete when" docs/RELEASE.md
 require_fixed "npm init agent-badge@latest" docs/QUICKSTART.md
 require_fixed "exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override" docs/ATTRIBUTION.md
 require_fixed "migrate existing single-writer repos" README.md

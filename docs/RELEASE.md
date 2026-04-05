@@ -127,18 +127,21 @@ npm run release:evidence \
 
 ## 5. Post-publish registry smoke
 
-After Phase 12 publish evidence is captured, prove the live registry artifacts still work from a clean temp directory:
+After the release evidence is captured, prove the live registry artifacts still work from a clean temp directory against the released `1.1.3` surface:
 
 ```bash
-bash scripts/smoke/verify-registry-install.sh --version 1.1.2 --check-initializer --write-evidence --phase-dir .planning/phases/13-post-publish-registry-verification-and-final-operations
+bash scripts/smoke/verify-registry-install.sh --version 1.1.3 --check-initializer --write-evidence --phase-dir .planning/phases/23-post-publish-registry-verification-and-version-alignment --artifact-prefix 23-REGISTRY-SMOKE
 ```
 
 This writes:
 
-- `.planning/phases/13-post-publish-registry-verification-and-final-operations/13-REGISTRY-SMOKE.json`
-- `.planning/phases/13-post-publish-registry-verification-and-final-operations/13-REGISTRY-SMOKE.md`
+- `.planning/phases/23-post-publish-registry-verification-and-version-alignment/23-REGISTRY-SMOKE.json`
+- `.planning/phases/23-post-publish-registry-verification-and-version-alignment/23-REGISTRY-SMOKE.md`
+- `.planning/phases/23-post-publish-registry-verification-and-version-alignment/23-LATEST-RESOLUTION.md`
 
-Phase 13 is only complete when `13-REGISTRY-SMOKE.json` reports `"status": "passed"`. If the smoke is blocked, publish the repair release through `.github/workflows/release.yml`, refresh the Phase 12 publish evidence, and rerun the same smoke against the repaired published version.
+Phase 23 is only complete when `23-REGISTRY-SMOKE.json` reports `"status": "passed"` and `23-LATEST-RESOLUTION.md` confirms that `npm init agent-badge@latest` still resolves to the released `1.1.3` initializer surface.
+
+If the exact-version smoke or latest-alias verification is blocked, preserve the Phase 23 artifacts, prepare a repair release explicitly, refresh the publish evidence after that repair ships, and rerun the same smoke against the repaired published version.
 
 ## 6. Troubleshooting notes
 
