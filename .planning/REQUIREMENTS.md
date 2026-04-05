@@ -21,8 +21,8 @@ This milestone closes the gap between a locally green release rehearsal and an e
 
 ### Registry Verification
 
-- [ ] **REG-01**: A clean temp-directory smoke check passes against the live npm registry for the exact released version, including the runtime packages and `npm init agent-badge@latest`.
-- [ ] **REG-02**: Published versions, dist-tags, internal dependency references, and operator docs all align with the version visible in npm immediately after release.
+- [x] **REG-01**: A clean temp-directory smoke check passes against the live npm registry for the exact released version, including the runtime packages and `npm init agent-badge@latest`.
+- [x] **REG-02**: Published versions, dist-tags, internal dependency references, and operator docs all align with the version visible in npm immediately after release.
 
 ### Production Ready Exit Criteria
 
@@ -57,8 +57,8 @@ This milestone closes the gap between a locally green release rehearsal and an e
 | REL-02 | Phase 21 | Complete |
 | PUB-01 | Phase 22 | Planned |
 | PUB-02 | Phase 22 | Planned |
-| REG-01 | Phase 23 | Planned |
-| REG-02 | Phase 23 | Planned |
+| REG-01 | Phase 23 | Complete |
+| REG-02 | Phase 23 | Complete |
 | READY-01 | Phase 24 | Planned |
 | READY-02 | Phase 24 | Planned |
 
