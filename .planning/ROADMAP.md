@@ -124,7 +124,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 20-01: Create formal verification reports for Phases 15 and 19 and reattach orphaned requirements
+- [x] 20-01: Create formal verification reports for Phases 15 and 19 and reattach orphaned requirements
 - [ ] 20-02: Resolve remaining validation debt and rerun the milestone audit
 
 ## Progress
@@ -137,4 +137,4 @@ Plans:
 | 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
 | 18. Auth, Hook, And Publish Readiness Hardening | 4/4 | Complete    | 2026-04-05 |
 | 19. Recovery Paths And Production Reliability Verification | 2/2 | Complete | 2026-04-05 |
-| 20. Verification Artifact Closure And Audit Recovery | 0/2 | Not Started | |
+| 20. Verification Artifact Closure And Audit Recovery | 1/2 | In Progress | |

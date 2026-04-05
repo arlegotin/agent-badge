@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: milestone
-status: completed
-stopped_at: Completed 19-02-PLAN.md
-last_updated: "2026-04-05T13:46:52.000Z"
+status: executing
+stopped_at: Completed 20-01-PLAN.md
+last_updated: "2026-04-05T14:57:31.029Z"
 last_activity: 2026-04-05
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 6
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 18
+  completed_plans: 17
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Milestone v1.4 complete; awaiting next milestone planning.
+**Current focus:** Phase 20 — verification-artifact-closure-and-audit-recovery
 
 ## Current Position
 
-Phase: 19 (recovery-paths-and-production-reliability-verification) — COMPLETE
+Phase: 20 (verification-artifact-closure-and-audit-recovery) — EXECUTING
 Plan: 2 of 2
-Status: Completed
+Status: Ready to execute
 Last activity: 2026-04-05
 
-Progress: [██████████] 6/6 phases complete in milestone v1.4
+Progress: [█████████░] 6/7 phases complete in milestone v1.4
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [██████████] 6/6 phases complete in milestone v1.4
 | Phase 17 P03 | 9 min | 2 tasks | 7 files |
 | Phase 18-auth-hook-and-publish-readiness-hardening P03 | 4 min | 1 tasks | 1 files |
 | Phase 19 P01 | 7m | 2 tasks | 11 files |
+| Phase 20-verification-artifact-closure-and-audit-recovery P01 | 15m | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ Recent decisions affecting current work:
 - [Phase 18-auth-hook-and-publish-readiness-hardening]: Kept the regression strong by asserting the exact three-call gist write sequence: badge payload first, local contributor snapshot second, overrides snapshot third.
 - [Phase 19]: Recovery routing now lives in one core helper consumed by status, doctor, refresh, and init. — This keeps publish readiness, trust, and shared-health as separate facts while giving operators one consistent supported recovery path.
 - [Phase 19]: `docs/RECOVERY.md` is now the canonical operator runbook, and the repo-owned `verify-recovery-flow.sh` harness records whichever supported command the current status output advertises into phase evidence artifacts.
+- [Phase 20-verification-artifact-closure-and-audit-recovery]: Phase 19 verification was only closed after the phase-owned recovery artifacts were refreshed to show a healthy post-recovery publish state.
+- [Phase 20-verification-artifact-closure-and-audit-recovery]: CTRL-02 and CTRL-03 are reattached through Phase 19's formal verification report instead of a Phase 20-only bookkeeping workaround.
 
 ### Pending Todos
 
@@ -166,6 +169,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-05T13:23:53.608Z
-Stopped at: Completed 19-01-PLAN.md
+Last session: 2026-04-05T14:57:31.026Z
+Stopped at: Completed 20-01-PLAN.md
 Resume file: None
