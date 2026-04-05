@@ -64,4 +64,4 @@ This milestone makes the live badge operationally trustworthy under local-first,
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-02 for milestone v1.4*
+*Last updated: 2026-04-05 for milestone v1.4*

@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: milestone
-status: executing
-stopped_at: Completed 18-04-PLAN.md
-last_updated: "2026-04-02T11:11:27Z"
-last_activity: 2026-04-02 -- Completed gap-closure Plan 18-04; live publish and refresh UAT rerun pending
+status: ready
+stopped_at: Completed Phase 18 verification and live UAT
+last_updated: "2026-04-05T12:26:11.065Z"
+last_activity: 2026-04-05 -- Completed Phase 18 and advanced focus to Phase 19
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
   completed_plans: 14
 ---
@@ -17,19 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-02)
+See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 18 — auth-hook-and-publish-readiness-hardening
+**Current focus:** Phase 19 — recovery-paths-and-production-reliability-verification
 
 ## Current Position
 
-Phase: 18 (auth-hook-and-publish-readiness-hardening) — EXECUTION COMPLETE
-Plan: 4 of 4 complete
-Status: Gap closure implemented; live publish and refresh UAT rerun pending
-Last activity: 2026-04-02 -- Completed gap-closure Plan 18-04; live publish and refresh UAT rerun pending
+Phase: 19
+Plan: Not started
+Status: Ready to discuss or plan Phase 19
+Last activity: 2026-04-05 -- Completed Phase 18 and advanced focus to Phase 19
 
-Progress: [██████████] 4/4 plans complete in Phase 18
+Progress: [████████░░] 5/6 phases complete in milestone v1.4
 
 ## Performance Metrics
 
@@ -144,7 +144,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Rerun the failed live Phase 18 publish and normal-refresh UAT checks.
+- Plan and execute Phase 19 recovery paths and production reliability verification.
 
 ### Blockers/Concerns
 

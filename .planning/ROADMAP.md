@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 15: Cross-Publisher Deduplication And Publish Semantics** - Merge contributor state deterministically by stable session identity so shared totals converge without double counting.
 - [x] **Phase 16: Migration, Diagnostics, And Team Operator UX** - Migrate existing single-writer repos safely and expose clear operator flows for shared badge state. (completed 2026-04-02)
 - [x] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows. (completed 2026-04-02)
-- [ ] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows. (plans complete; verification pending)
+- [x] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows. (completed 2026-04-05)
 - [ ] **Phase 19: Recovery Paths And Production Reliability Verification** - Prove the stale-badge recovery path and lock the operator runbooks to real failure modes.
 
 ## Phase Details
@@ -119,5 +119,5 @@ Plans:
 | 15. Cross-Publisher Deduplication And Publish Semantics | 2/2 | Complete | 2026-04-02 |
 | 16. Migration, Diagnostics, And Team Operator UX | 2/2 | Complete    | 2026-04-02 |
 | 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
-| 18. Auth, Hook, And Publish Readiness Hardening | 4/4 | Verification pending | — |
+| 18. Auth, Hook, And Publish Readiness Hardening | 4/4 | Complete    | 2026-04-05 |
 | 19. Recovery Paths And Production Reliability Verification | 0/2 | Pending | — |
