@@ -28,4 +28,6 @@ Historical machine-specific publish blockers do not override later shipped-relea
 
 ## Verdict
 
-Verdict pending evidence map.
+Production ready for the shipped 1.1.3 surface
+
+The evidence map resolves to `go` because the canonical Phase 22 trusted-publish record, the passed Phase 23 exact-version smoke and latest-alias proof, and the aligned root release runbook all exist without a saved failed or blocked outcome for the shipped release surface.
