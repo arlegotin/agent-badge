@@ -4,6 +4,8 @@ Use this flow when automatic gist creation is unavailable or you want to reuse a
 
 Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
 
+For the full supported recovery matrix, including stale after failed publish and shared-state repair, use [RECOVERY.md](RECOVERY.md) as the canonical runbook.
+
 ## Reconnect with an Existing Gist
 
 1. Create or choose a public gist in your GitHub account.
@@ -34,6 +36,8 @@ agent-badge doctor
 ```
 
 `agent-badge status` should show the shared mode summary, and `agent-badge doctor` should confirm that `shared-mode` and `shared-health` are not blocked.
+
+If either command still shows a `Recovery path`, return to [RECOVERY.md](RECOVERY.md) and follow the exact supported command it surfaces.
 
 ## Expected Badge URL Format
 

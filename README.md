@@ -19,6 +19,8 @@ If you already have GitHub auth configured in your shell through `GH_TOKEN`, `GI
 
 Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens and rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
 
+For stale after failed publish, gist repair, shared metadata repair, and team-coordination recovery states, use the canonical runbook in [docs/RECOVERY.md](docs/RECOVERY.md).
+
 
 ## How it works
 
@@ -71,6 +73,7 @@ What init sets up:
 Read more:
 
 - [Quickstart](docs/QUICKSTART.md)
+- [Recovery Runbook](docs/RECOVERY.md)
 - [How It Works](docs/HOW-IT-WORKS.md)
 - [Attribution Model](docs/ATTRIBUTION.md)
 - [Privacy Model](docs/PRIVACY.md)
@@ -114,6 +117,7 @@ Read the full supported config surface in [Configuration](docs/CONFIGURATION.md)
 - [Quickstart](docs/QUICKSTART.md)
 - [How It Works](docs/HOW-IT-WORKS.md)
 - [Configuration](docs/CONFIGURATION.md)
+- [Recovery Runbook](docs/RECOVERY.md)
 - [Attribution Model](docs/ATTRIBUTION.md)
 - [Privacy Model](docs/PRIVACY.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)

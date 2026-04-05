@@ -40,6 +40,8 @@ Then verify the result:
 agent-badge status
 ```
 
+For stale after failed publish, missing local contributors, partial shared metadata, or gist reconnect flows, use [RECOVERY.md](RECOVERY.md) as the canonical runbook.
+
 ## Everyday Commands
 
 Check current state:
@@ -66,6 +68,8 @@ Inspect setup, provider detection, gist wiring, README badge markers, and hook h
 agent-badge doctor
 ```
 
+If either command surfaces a `Recovery path` or `- Recovery:` line, follow the exact command in [RECOVERY.md](RECOVERY.md).
+
 ## Manual Install Instead Of The Initializer
 
 If you want the runtime without `npm init`, install it directly and run init yourself:
@@ -79,6 +83,7 @@ npx --no-install agent-badge init
 
 - [How It Works](HOW-IT-WORKS.md)
 - [Configuration](CONFIGURATION.md)
+- [Recovery](RECOVERY.md)
 - [Attribution Model](ATTRIBUTION.md)
 - [Privacy Model](PRIVACY.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
