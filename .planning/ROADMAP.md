@@ -70,7 +70,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 22-01: Execute the trusted-publishing release path for the current source
+- [x] 22-01: Execute the trusted-publishing release path for the current source
 - [ ] 22-02: Capture and verify production publish evidence
 
 ### Phase 23: Post-Publish Registry Verification And Version Alignment
