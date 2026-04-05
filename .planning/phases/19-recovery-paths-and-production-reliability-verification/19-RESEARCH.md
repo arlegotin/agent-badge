@@ -1,33 +1,33 @@
 # Phase 19: Recovery Paths And Production Reliability Verification - Research
 
 **Researched:** 2026-04-05
-**Domain:** supported recovery flows for stale publish error state, shared publish repair, and live production verification of the failure-and-recovery path
+**Domain:** supported recovery flows for publish error state, shared publish repair guidance, and production failure-and-recovery verification
 **Confidence:** MEDIUM
 
 <user_constraints>
 ## User Constraints
 
-No phase `CONTEXT.md` exists for Phase 19. Planner must treat the following as the active constraints derived from `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, Phase 17 and 18 artifacts, the current codebase, and the live repo state.
+No phase `CONTEXT.md` exists for Phase 19. Planner must treat the following as the active constraints derived from `ROADMAP.md`, `REQUIREMENTS.md`, `STATE.md`, Phase 17/18 artifacts, current docs, and the current codebase.
 
 ### Locked Decisions
-- Goal: give operators supported recovery flows for publish error state and verify the real production failure-and-recovery path end to end.
+- Goal: give operators supported recovery flows for publish error state and verify the real stale-badge failure-and-recovery path end to end.
 - Must satisfy `CTRL-02` and `CTRL-03`.
-- Repos in publish error state must recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits.
-- Production-readiness verification must prove the stale-badge failure path, recovery path, and operator-facing messaging against live repo state.
-- Docs and checklists must match the actual failure signals and recovery workflow used by the CLI.
-- Preserve the product boundary: local-first, aggregate-only, stable gist-backed badge URL, failure-soft by default, idempotent init, and no leaking prompts, transcript text, local paths, or raw provider session ids.
+- Recovery must happen through supported CLI flows without manual `.agent-badge/state.json` edits.
+- Keep the existing local-first, aggregate-only, stable-gist-url, idempotent-init, and failure-soft-by-default constraints intact.
+- Keep `doctor` primarily diagnostic and read-only by default. Phase 18 already established `--probe-write` as the explicit mutating exception for validation.
+- Production-readiness proof must use real repo state and real operator messaging, not only mocked unit coverage.
 
 ### Claude's Discretion
-- Choose whether recovery remains a documented composition of existing commands or gains a dedicated CLI surface.
-- Choose the exact operator flow for reconnecting publish targets versus retrying a healthy target after auth returns.
-- Choose where recovery guidance is rendered, as long as `status`, `doctor`, docs, and live verification stay aligned.
-- Choose the exact artifact shape for production reliability evidence and live-UAT capture.
+- Choose whether recovery is surfaced as a new helper plus existing commands, or as a new top-level CLI command, as long as the end state is explicit, supported, and idempotent.
+- Choose the exact recovery-state vocabulary and command output shape, as long as it is machine-readable in core and operator-readable in CLI output.
+- Choose how production evidence is captured, as long as the repo ends with a durable artifact that proves the stale badge failure path, recovery path, and runbook wording against real state.
+- Choose which docs become the canonical recovery runbook, as long as Quickstart/Troubleshooting/README do not drift.
 
 ### Deferred Ideas (OUT OF SCOPE)
-- Hosted scheduling, background daemons, or backend-driven badge repair.
-- New provider integrations or broader team analytics.
-- Any workflow that requires manual JSON surgery in `.agent-badge/state.json`.
-- Any diagnostic or verification flow that publishes raw private artifacts.
+- Hosted schedulers, background daemons, or backend-side self-healing.
+- Destructive remote reset flows that delete contributor history or shared override state without explicit operator intent.
+- New provider integrations or richer analytics surfaces.
+- Editing publish state JSON by hand as an official recovery method.
 </user_constraints>
 
 <phase_requirements>
@@ -35,8 +35,8 @@ No phase `CONTEXT.md` exists for Phase 19. Planner must treat the following as t
 
 | ID | Description | Research Support |
 |----|-------------|------------------|
-| CTRL-02 | Repos in publish error state can recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits. | Reuse existing `init`, `refresh`, `publish`, `status`, and `doctor` state transitions; do not introduce manual state reset as the recovery primitive. |
-| CTRL-03 | Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging. | Use the current repo's real stale/auth-missing state as the live starting point, add phase-specific automated regressions around the same flows, and record human UAT evidence before and after recovery. |
+| CTRL-02 | Repos in publish error state can recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits. | The repo needs one canonical recovery contract that maps publish-readiness, publish-trust, and shared-health states to exact supported commands and safe repair behavior. |
+| CTRL-03 | Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging. | The repo needs both automated regression coverage and a live evidence path that captures failure symptoms, recovery actions, and post-recovery healthy state using real repo wiring. |
 </phase_requirements>
 
 ## Project Constraints (from AGENTS.md)
@@ -44,391 +44,296 @@ No phase `CONTEXT.md` exists for Phase 19. Planner must treat the following as t
 - Keep the product local-first and serverless.
 - Preserve the aggregate-only public boundary.
 - Preserve the initializer-first npm UX and stable gist + Shields URL model.
-- Keep incremental refresh and `pre-push` fast and failure-soft by default, even though this repo currently uses `strict`.
+- Keep incremental refresh and `pre-push` fast and failure-soft by default.
 - Keep `init` idempotent and safe on reruns.
+
+## Repo Reality
+
+### What already exists
+- The current local repo state is already the exact stale failed-publish scenario Phase 19 needs to prove: `.agent-badge/state.json` currently has `publish.status = "error"`, `lastAttemptOutcome = "failed"`, `lastAttemptChangedBadge = "yes"`, `lastFailureCode = "auth-missing"`, `publish.mode = "shared"`, and `refresh.lastPublishDecision = "failed"` while `.agent-badge/config.json` still points at the configured shared gist. That means the repo can use a real stale-badge recovery path instead of a synthetic fixture for final proof.
+- `init` already reconnects or recreates publish targets safely through `agent-badge init` and `agent-badge init --gist-id <id>`. It is idempotent and already doubles as the shared-mode migration/repair entrypoint. [`packages/agent-badge/src/commands/init.ts`](../../../packages/agent-badge/src/commands/init.ts)
+- `refresh` already rebuilds local totals, retries publish, and can recreate the local contributor record when shared mode reports `missing-local-contributor`. [`packages/agent-badge/src/commands/refresh.ts`](../../../packages/agent-badge/src/commands/refresh.ts)
+- Phase 17 established `publish-trust` as a dedicated stale/unchanged/current/not-attempted contract. [`packages/core/src/publish/publish-trust.ts`](../../../packages/core/src/publish/publish-trust.ts)
+- Phase 18 established `publish-readiness` as a separate contract that classifies auth and gist-target failures and already carries remediation text. [`packages/core/src/publish/publish-readiness.ts`](../../../packages/core/src/publish/publish-readiness.ts)
+- Shared remote state already has its own health model: `healthy`, `stale`, `conflict`, `partial`, and `orphaned`. [`packages/core/src/publish/shared-health.ts`](../../../packages/core/src/publish/shared-health.ts)
+- `doctor` already renders separate `publish-trust`, `shared-mode`, and `shared-health` checks with fix lines, so the repo already has a natural home for canonical recovery guidance. [`packages/core/src/diagnostics/doctor.ts`](../../../packages/core/src/diagnostics/doctor.ts)
+- `status` already exposes the same shared-health vocabulary and live-badge trust summary, but it does not yet collapse those states into one operator-visible recovery plan. [`packages/agent-badge/src/commands/status.ts`](../../../packages/agent-badge/src/commands/status.ts)
+- Troubleshooting and setup docs already contain symptom-level recovery advice for deferred publish, stale badge, partially migrated shared mode, conflicts, and orphaned local publishers. [`docs/TROUBLESHOOTING.md`](../../../docs/TROUBLESHOOTING.md), [`docs/QUICKSTART.md`](../../../docs/QUICKSTART.md), [`docs/MANUAL-GIST.md`](../../../docs/MANUAL-GIST.md)
+- There is already precedent for live operational evidence artifacts and smoke scripts in earlier release phases. [`scripts/release/capture-publish-evidence.ts`](../../../scripts/release/capture-publish-evidence.ts), [`scripts/smoke/verify-registry-install.sh`](../../../scripts/smoke/verify-registry-install.sh)
+
+### Gaps Phase 19 must close
+- Recovery guidance is currently distributed across three different concepts:
+  - publish readiness (`auth missing`, `gist unreachable`, `remote write failed`, etc.)
+  - live badge trust (`stale after failed publish`, `failed but unchanged`, etc.)
+  - shared remote health (`stale`, `conflict`, `partial`, `orphaned`)
+- Those concepts are technically correct, but no single helper turns them into one supported recovery path such as:
+  - rerun `agent-badge refresh`
+  - rerun `agent-badge init --gist-id <id>`
+  - rerun `agent-badge init` on the original publisher machine
+  - ask stale contributors to rerun `agent-badge refresh`
+- The repo has symptom-based remediation text, but not yet a canonical recovery-plan contract that `status`, `doctor`, `refresh`, and docs all share.
+- There is no first-class machine-readable representation of "recoverable state" versus "diagnostic state". That makes it harder to test exact recovery routing and easier for command copy to drift again.
+- Production-readiness proof is still fragmented. Phase 18 closed live UAT for readiness and hook behavior, but Phase 19 specifically needs evidence for the stale-badge failure path, operator recovery path, and return to healthy shared state.
+- Current docs still leave operators to infer which command is the supported repair path for each failure mode. That is acceptable for troubleshooting notes, but not strong enough for `CTRL-02` and `CTRL-03`.
 
 ## Summary
 
-Phase 19 should not start by inventing a new state-reset command. The repo already has the right recovery primitives in code: `refresh` is the canonical republish path, `init --gist-id <id>` is the publish-target repair path, `doctor` already classifies readiness, trust, and shared-health separately, and successful publish attempts automatically clear stale error state through existing state helpers. The unsupported part today is operator experience and proof, not the low-level state transition model.
+The repo already has the right primitives. Phase 19 should not invent a second diagnostics model. It should add one layer above the existing three:
 
-The strongest planning input is the current live repo state. On 2026-04-05, `npm run dev:agent-badge -- status` in this repo reported `Publish: error`, `Live badge trust: stale after failed publish`, `Shared mode: shared | health=healthy`, and `doctor` confirmed the real blocker is `publish-auth: warn` with missing GitHub auth, not shared-state corruption. That means the primary supported recovery lane for Phase 19 should be: diagnose with `status` and `doctor`, restore auth or reconnect the gist only when wiring is actually broken, rerun `refresh` as the canonical repair, then verify `status` and `doctor` return to a healthy trust/readiness state.
+1. `publish-readiness` answers whether the repo can publish.
+2. `publish-trust` answers whether the live badge is current.
+3. `shared-health` answers whether the shared remote model is coherent.
+4. Phase 19 should add a canonical **recovery-plan** contract that translates those facts into exact supported operator actions.
 
-**Primary recommendation:** plan Phase 19 around one supported recovery workflow built from existing commands, not manual state edits: `doctor` to classify, `init --gist-id <id>` only when target wiring is broken, `refresh` as the normal recovery executor, and `status` plus `doctor` as the success gate. Prove that flow end to end on this repo's real stale/auth-missing state and update docs to match the exact CLI wording.
+The most pragmatic delivery shape is to keep mutating repair behavior in the existing commands that already own it:
+
+- `agent-badge refresh` for retrying publish and recreating the local contributor record
+- `agent-badge init` / `agent-badge init --gist-id <id>` for reconnecting publish targets and repairing shared metadata
+- `agent-badge doctor` and `agent-badge status` as the non-mutating places that print the exact recovery path
+
+That approach preserves the existing CLI mental model, keeps `doctor` read-only, and avoids adding a destructive or ambiguous "repair everything" command. The missing piece is explicit orchestration and proof, not another low-level primitive.
+
+**Primary recommendation:** split Phase 19 into two plans:
+1. Add a canonical recovery-plan contract plus operator-visible supported recovery flows across `status`, `doctor`, and the command paths that already repair state.
+2. Add production reliability verification artifacts and a single runbook that proves the stale-badge failure path, recovery path, and final healthy state against real repo wiring.
 
 ## Standard Stack
 
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| Node.js | local runtime `v22.14.0` | CLI execution, live operator verification, and test runtime | Already installed and used by the repo's dev/test scripts. |
-| TypeScript | installed `5.9.3` | Typed recovery/report contracts across core and command surfaces | Existing repo line; no upgrade is required for this phase. Latest registry release is `6.0.2` published `2026-03-23`. |
-| `zod` | installed `4.3.6` | Validate any additive recovery/report schema changes safely | Existing persisted state and config contracts already depend on it. Latest registry release is `4.3.6` published `2026-01-22`. |
+| Node.js | repo runtime (`>=20`, developed on 24.x) | recovery orchestration, CLI output, and evidence capture scripts | Existing runtime and sufficient for all recovery/reporting work. |
+| TypeScript | repo line (`5.x`) | typed recovery-plan contract and CLI/report surfaces | Existing repo standard and needed to keep state/report boundaries precise. |
+| `zod` | repo standard | validate any new persisted or machine-readable recovery metadata if introduced | Keep new recovery structures additive and safe. |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `vitest` | installed `3.2.4` | Command and core regression coverage for recovery and live-trust behavior | Reuse for all Phase 19 automated recovery scenarios. Latest registry release is `4.1.2` published `2026-03-26`; do not upgrade in this phase. |
-| `commander` | installed `14.0.3` | Existing CLI surface for any recovery-related command or option changes | Reuse if Phase 19 adds an explicit operator surface. Latest registry release is `14.0.3` published `2026-01-31`. |
-| `octokit` | installed `5.0.5` | GitHub Gist read/write path used by publish and verification flows | Already powers publish and gist inspection; no second GitHub client should be introduced. Latest registry release is `5.0.5` published `2025-10-31`. |
+| `vitest` | repo standard | recovery-plan, command-surface, and evidence-script regression tests | Use for all new recovery-state and runbook assertions. |
+| Existing gist client and doctor/publish helpers | repo code | inspect real gist state and classify repair paths | Reuse existing publish and diagnostics seams instead of inventing a second remote inspection layer. |
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| Supported recovery flow built from existing commands | New bespoke `recover` or `reset-publish-state` command | Faster to explain in one command, but risks duplicating trust/readiness logic and encouraging command-local state mutation. |
-| Clearing stale error state by performing a real successful publish attempt | Manual edits to `.agent-badge/state.json` | Faster locally, but guarantees drift between persisted facts and remote badge state. |
-| Reusing existing command tests plus live repo UAT | New custom verification harness or background simulator | More machinery with less confidence; Phase 19 needs proof against the real repo state. |
+| Canonical recovery-plan helper on top of existing readiness/trust/shared-health models | Ad-hoc fix lines per command | Faster to patch once, but guarantees wording and routing drift again. |
+| Reuse `init` and `refresh` as repair commands | Add a broad `agent-badge recover` command immediately | More explicit, but introduces a new surface before the repo has stabilized the recovery-state model. |
+| Durable repo-owned evidence artifact plus human UAT checklist | Only unit tests and command snapshots | Easier, but does not satisfy `CTRL-03`, which explicitly requires the real failure-and-recovery path. |
 
 **Installation:**
 ```bash
-# No new packages are required for Phase 19.
-# Reuse the existing workspace dependencies and scripts.
+# No new dependencies are required for Phase 19.
+# Reuse the existing workspace dependencies, smoke-script patterns, and Vitest suites.
 ```
-
-## Repo Reality
-
-### What already exists
-- Canonical publish-attempt persistence already exists. [`packages/core/src/state/state-schema.ts`](../../../packages/core/src/state/state-schema.ts) and [`packages/core/src/publish/publish-state.ts`](../../../packages/core/src/publish/publish-state.ts) track `lastAttemptedAt`, `lastAttemptOutcome`, `lastSuccessfulSyncAt`, `lastAttemptCandidateHash`, `lastAttemptChangedBadge`, and `lastFailureCode`.
-- Successful publish attempts already clear publish error state naturally. [`packages/core/src/publish/publish-state.ts`](../../../packages/core/src/publish/publish-state.ts) resets `lastFailureCode` to `null` and updates trust facts through `applySuccessfulPublishAttempt()`. This is the correct repair primitive.
-- `refresh` is already the canonical recovery executor. [`packages/agent-badge/src/commands/refresh.ts`](../../../packages/agent-badge/src/commands/refresh.ts) writes local refresh state before remote work, retries shared publish with the current cache, persists failures with typed codes, and prints trust/readiness/policy output on both success and failure paths.
-- `publish` is available as a full-rescan republish path, but it is not the normal automated recovery surface. [`packages/agent-badge/src/commands/publish.ts`](../../../packages/agent-badge/src/commands/publish.ts)
-- `init --gist-id <id>` is already the supported target repair/reconnect surface. [`packages/agent-badge/src/commands/init.ts`](../../../packages/agent-badge/src/commands/init.ts), [`docs/MANUAL-GIST.md`](../../../docs/MANUAL-GIST.md)
-- `doctor` already separates three distinct concepts:
-  - publish readiness (`publish-auth`, `publish-write`, `publish-shields`)
-  - live badge trust (`publish-trust`)
-  - shared contributor health (`shared-mode`, `shared-health`)
-  [`packages/core/src/diagnostics/doctor.ts`](../../../packages/core/src/diagnostics/doctor.ts)
-- `shared-health` is already a typed report with `healthy`, `stale`, `conflict`, `partial`, and `orphaned` states. [`packages/core/src/publish/shared-health.ts`](../../../packages/core/src/publish/shared-health.ts)
-- There is no dedicated recovery command in the CLI. [`packages/agent-badge/src/cli/main.ts`](../../../packages/agent-badge/src/cli/main.ts) exposes `init`, `publish`, `refresh`, `status`, `doctor`, `config`, `scan`, and `uninstall`, but nothing like `recover` or `repair`.
-
-### Current live repo state
-- The repo is already in a real stale failed-publish state:
-  - [`status`](../../../packages/agent-badge/src/commands/status.ts) output on 2026-04-05: `Publish: error`, `Pre-push policy: strict`, `Live badge trust: stale after failed publish`, `Shared mode: shared | health=healthy | contributors=1`.
-  - [`doctor`](../../../packages/core/src/diagnostics/doctor.ts) output on 2026-04-05: `publish-auth: warn`, `publish-write: pass`, `publish-shields: pass`, `publish-trust: fail`, `shared-health: pass`.
-- The persisted state confirms the exact semantics:
-  - [`.agent-badge/state.json`](../../../.agent-badge/state.json) has `publish.status = "error"`, `lastFailureCode = "auth-missing"`, `lastAttemptOutcome = "failed"`, `lastAttemptChangedBadge = "yes"`, and `lastAttemptCandidateHash != lastPublishedHash`.
-  - That means the live badge is stale because the attempted badge value would have changed, but the publish attempt failed before sync.
-- The shared model is healthy right now. The current failure is not a shared-state repair problem. It is an auth restoration plus republish problem.
-
-### What is missing
-- There is no first-class operator runbook that connects the existing surfaces into one supported recovery lane for `CTRL-02`.
-- Current docs cover deferred setup, migration repair, stale shared contributors, and conflict repair, but they do not cover the real stale publish-error recovery path now visible in this repo:
-  - `README.md` and [`docs/QUICKSTART.md`](../../../docs/QUICKSTART.md) cover deferred setup only.
-  - [`docs/TROUBLESHOOTING.md`](../../../docs/TROUBLESHOOTING.md) has no section for `publish.status=error` plus `Live badge trust: stale after failed publish`.
-  - The "badge looks stale after a push" section currently says rerun `refresh` and remember Shields caching; it does not mention typed publish failure state, auth restoration, or `doctor`.
-- Phase 18 live UAT proved failure-path messaging, not recovery back to healthy state. [`18-HUMAN-UAT.md`](../18-auth-hook-and-publish-readiness-hardening/18-HUMAN-UAT.md)
-- No existing automated test proves the full stale-error -> auth restored -> successful shared publish -> healthy trust transition as one supported operator flow.
 
 ## Architecture Patterns
 
-### Recommended Project Structure
-```text
-packages/
-├── core/src/publish/       # publish state transitions, readiness, trust, shared health
-├── core/src/diagnostics/   # doctor checks and recovery fix text
-├── core/src/init/          # idempotent reconnect/repair flows
-├── agent-badge/src/commands/ # operator-facing recovery UX
-└── testkit/                # fixture helpers for command-level integration tests
-docs/
-├── QUICKSTART.md
-├── MANUAL-GIST.md
-├── TROUBLESHOOTING.md
-└── RELEASE.md
-.planning/phases/19-.../    # live-UAT, validation, verification, and research artifacts
-```
+### Pattern 1: Introduce a canonical recovery-plan contract
+**What:** Add a core helper that consumes config/state/current gist inspection and returns exact supported recovery actions.
 
-### Pattern 1: Use real publish success to clear error state
-**What:** Recovery must be defined as a successful `refresh` or `publish` attempt, not as a state reset.
+**Why:** The repo already has precise diagnostics, but not one answer to "what should the operator do next?"
 
-**When to use:** For all `CTRL-02` flows where the repo is stale after a failed publish but local state is still present.
+**Recommended shape:**
+- Add a helper such as `deriveRecoveryPlan()` or `inspectPublishRecovery()` under `packages/core/src/publish/`
+- Inputs should include:
+  - parsed config/state
+  - publish-readiness report
+  - publish-trust report
+  - optional shared-health inspection
+- Output should include:
+  - `status`: `healthy` | `recoverable` | `manual-team-action` | `blocked`
+  - `primaryAction`
+  - `secondaryActions`
+  - `reasonCodes`
+  - exact commands to run
 
-**Why:** The repo already encodes the correct state transition in core helpers. A synthetic "clear error" mutation would bypass the exact contract that `status`, `doctor`, and pre-push policy already consume.
+**Important:** keep the action values concrete, for example:
+- `agent-badge refresh`
+- `agent-badge init`
+- `agent-badge init --gist-id <id>`
+- `ask contributors with stale local state to run agent-badge refresh`
 
-**Example:**
-```ts
-// Source: packages/core/src/publish/publish-state.ts
-const nextState = applySuccessfulPublishAttempt({
-  state,
-  at: now,
-  gistId,
-  hash: candidateHash,
-  publisherId,
-  changedBadge
-});
-```
+### Pattern 2: Keep `doctor` diagnostic and reuse existing mutating commands
+**What:** `doctor` and `status` should surface the recovery plan; `refresh` and `init` should remain the commands that actually repair local or shared state.
 
-### Pattern 2: Split recovery into two lanes
-**What:** Recovery should branch on the failure class already exposed by the CLI:
-- target repair lane: `not-configured`, `deferred`, `gist-unreachable`, `gist-not-public`, `gist-missing-owner`
-- republish lane: `auth-missing`, `remote-write-failed`, `remote-readback-failed`, `remote-readback-mismatch`, `remote-state-invalid`
+**Why:** The repo already trained users that `doctor` inspects and `init`/`refresh` mutate. Reversing that now would create avoidable ambiguity.
 
-**When to use:** In `doctor` fix text, troubleshooting docs, and any Phase 19 command UX.
+**Recommended behaviors:**
+- `status` prints a concise recovery line when the repo is not healthy
+- `doctor` prints the same exact recovery commands with slightly more context
+- `refresh` clears recoverable publish error state when a retry succeeds
+- `init` remains the supported repair path for gist reconnection and shared metadata repair
 
-**Recommended operator flow:**
-```bash
-agent-badge doctor
+### Pattern 3: Separate local repairable states from team-coordination states
+**What:** Some recovery states can be repaired locally; others require other contributors or the original publisher machine.
 
-# If publish target is broken or not connected:
-agent-badge init --gist-id <id>
+**Why:** `CTRL-02` is about supported recovery flows, not pretending one machine can silently repair all shared-state scenarios.
 
-# If target is healthy but publish is stale/failed:
-export GH_TOKEN=...
-agent-badge refresh
+**Recommended split:**
+- **Locally recoverable**
+  - auth restored + rerun `agent-badge refresh`
+  - gist reconnected with `agent-badge init --gist-id <id>`
+  - local contributor recreated with `agent-badge refresh`
+  - missing shared overrides repaired with `agent-badge init`
+- **Team-coordination required**
+  - stale contributors
+  - conflicting session observations
+  - legacy migration that must happen on the original publisher machine
 
-agent-badge status
-agent-badge doctor
-```
+That distinction should be explicit in the recovery-plan contract and docs.
 
-**Key rule:** use `init --gist-id <id>` only when the target wiring is broken. Do not tell operators to rerun init for plain missing-auth stale state unless they are also reconnecting a gist.
+### Pattern 4: Centralize the operator runbook
+**What:** Choose one canonical recovery document and make README/Quickstart/Troubleshooting link into it rather than each owning their own full recovery story.
 
-### Pattern 3: Keep shared-health separate from live badge recovery
-**What:** A healthy shared model does not mean the live badge is current.
+**Why:** The repo already has symptom-level guidance scattered across docs. Phase 19 should reduce drift, not add a fourth copy.
 
-**When to use:** In docs, tests, and CLI wording for stale publish recovery.
+**Recommended shape:**
+- Add one recovery/runbook document such as `docs/RECOVERY.md` or a clearly titled recovery section in `docs/TROUBLESHOOTING.md`
+- Keep README and Quickstart short:
+  - symptom
+  - exact command
+  - link to the full runbook
+- Keep manual gist reconnection guidance in `docs/MANUAL-GIST.md`, but point the shared failure/recovery workflow at the canonical runbook
 
-**Why:** The live repo demonstrates the exact case:
-- `publish-trust: stale after failed publish`
-- `shared-health: healthy`
+### Pattern 5: Capture live failure-and-recovery evidence as a first-class artifact
+**What:** Add a repo-owned script and/or evidence format for the real stale-badge failure path.
 
-Planning must not add recovery messaging that treats shared-health as the cause of stale badge trust when auth or gist writes are the real issue.
+**Why:** `CTRL-03` requires proof against real operator flows, not only mocks.
 
-### Pattern 4: Prove recovery with the real repo state, then lock docs to the same wording
-**What:** Phase 19 should use this repository's current `auth-missing` stale state as the human UAT starting point.
+**Recommended shape:**
+- Use a phase artifact such as:
+  - `19-HUMAN-UAT.md`
+  - `19-RECOVERY-EVIDENCE.json`
+  - `19-RECOVERY-EVIDENCE.md`
+- Capture:
+  - failing state (`Publish readiness`, `Live badge trust`, `shared-health`)
+  - exact recovery command used
+  - post-recovery healthy state
+  - any environment assumptions
+- Reuse existing smoke/evidence patterns from Phase 12/13 where possible instead of inventing ad-hoc text files.
 
-**When to use:** For `CTRL-03` live verification and final docs updates.
+## Recommended Delivery Shape
 
-**Recommended artifact flow:**
-- capture pre-recovery `status` and `doctor` evidence from the live repo
-- restore auth in the maintainer environment
-- run `agent-badge refresh`
-- capture post-recovery `status` and `doctor` evidence
-- update docs and checklists so they use the same wording the CLI printed
+### 19-01: Implement supported recovery flows for publish error and stale shared state
+**Goal:** turn the current diagnostics into one supported recovery path that operators can follow without editing local state files.
 
-### Anti-Patterns to Avoid
-- **Manual `state.json` edits:** They can clear error flags without proving the live badge is current.
-- **Using `shared-health` as the recovery gate:** It is a different problem space from live badge freshness.
-- **Treating `init` as the universal fix:** `init` repairs wiring; `refresh` repairs a healthy target after auth returns.
-- **Mock-only production verification:** `CTRL-03` explicitly requires live repo proof, not only unit tests.
+**Recommended scope:**
+- add one canonical recovery-plan helper in core
+- wire that helper into `status` and `doctor`
+- update `refresh` and `init` summaries so successful repairs clear prior error-state ambiguity and echo the same recovery vocabulary
+- make shared-health recovery routing explicit for:
+  - missing local contributor
+  - missing shared overrides / partial shared state
+  - stale contributors
+  - legacy migration from the original publisher machine
+- add regression tests for recovery-plan routing and command output
 
-## Don't Hand-Roll
+### 19-02: Add production reliability verification and operational runbooks for stale badge recovery
+**Goal:** prove the stale-badge failure path and recovery path end to end, and lock the docs to the actual workflow.
 
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| Clearing publish error state | Custom JSON mutation or "reset" command | `refresh` or `publish` followed by existing state helpers | Only a real successful publish attempt can prove the live badge caught up. |
-| Repairing gist wiring | Browser-only gist surgery instructions | `agent-badge init --gist-id <id>` | Existing init flow is idempotent and already preserves README/hook/state wiring safely. |
-| Recovery status inference | New command-local logic | `inspectPublishReadiness()`, `derivePublishTrustReport()`, and `inspectSharedPublishHealth()` | Drift here would break `status`, `doctor`, and hook policy coherence. |
-| Production reliability proof | Custom harness detached from the repo | Existing CLI commands, live repo state, and phase artifacts | The repo already has the real stale/auth-missing state to validate against. |
+**Recommended scope:**
+- add one canonical recovery/runbook document
+- update README/Quickstart/Troubleshooting/Manual Gist references to match the new supported flow
+- add a repo-owned recovery evidence path:
+  - scripted evidence where possible
+  - live human/UAT evidence where real auth/gist state is required
+- verify that the exact wording in docs matches the command surfaces produced by `status`, `doctor`, `refresh`, and `init`
 
-**Key insight:** the repo already has the state machine; Phase 19 should formalize and prove the operator workflow that drives it.
+## Concrete Extension Points
 
-## Common Pitfalls
+### Core recovery routing
+- [`packages/core/src/publish/publish-readiness.ts`](../../../packages/core/src/publish/publish-readiness.ts)
+  - already owns readiness status and fix text
+- [`packages/core/src/publish/publish-trust.ts`](../../../packages/core/src/publish/publish-trust.ts)
+  - already owns live-badge trust classification
+- [`packages/core/src/publish/shared-health.ts`](../../../packages/core/src/publish/shared-health.ts)
+  - already owns remote shared-state health classification
+- **Recommended new file:** `packages/core/src/publish/recovery-plan.ts`
+  - should combine the three into exact recovery actions
 
-### Pitfall 1: Treating auth loss as shared-state corruption
-**What goes wrong:** Planning assumes stale badge recovery needs remote shared-file repair when the real problem is missing auth.
-**Why it happens:** `publish.status=error` and stale trust are easy to conflate with shared publish health.
-**How to avoid:** Always inspect `doctor` readiness/trust/shared-health together and branch recovery based on the failure code.
-**Warning signs:** `shared-health: pass` but `publish-auth: warn` and `publish-trust: fail`.
+### Command surfaces
+- [`packages/core/src/diagnostics/doctor.ts`](../../../packages/core/src/diagnostics/doctor.ts)
+  - best place for detailed operator recovery output
+- [`packages/agent-badge/src/commands/status.ts`](../../../packages/agent-badge/src/commands/status.ts)
+  - best place for concise recovery summaries
+- [`packages/agent-badge/src/commands/refresh.ts`](../../../packages/agent-badge/src/commands/refresh.ts)
+  - should confirm when a recovery retry restored healthy publish state
+- [`packages/agent-badge/src/commands/init.ts`](../../../packages/agent-badge/src/commands/init.ts)
+  - should confirm when gist reconnection or shared metadata repair closed a diagnosed recovery state
+- [`packages/agent-badge/src/cli/main.ts`](../../../packages/agent-badge/src/cli/main.ts)
+  - only needs changes if the phase chooses a new recovery-focused command or option surface
 
-### Pitfall 2: Defining recovery as "clear the error"
-**What goes wrong:** A new repair surface mutates local state but never proves the live gist or Shields badge actually updated.
-**Why it happens:** Local state is easy to edit and the stale badge may still look unchanged after a failed write.
-**How to avoid:** Only successful `refresh` or `publish` should clear stale failed-publish state.
-**Warning signs:** A proposed plan step updates `.agent-badge/state.json` without invoking the real publish path.
-
-### Pitfall 3: Telling operators to rerun `init` for everything
-**What goes wrong:** Docs send users through unnecessary init flows when they only need to restore auth and rerun `refresh`.
-**Why it happens:** `init --gist-id <id>` is the only documented reconnect path today, so it becomes a catch-all recommendation.
-**How to avoid:** Separate target repair from republish recovery in both docs and CLI fixes.
-**Warning signs:** Recovery instructions mention `init --gist-id <id>` even when `publish-write: pass` and the gist is already reachable.
-
-### Pitfall 4: Using only mocked verification for CTRL-03
-**What goes wrong:** Automated tests pass, but docs and checklists are still wrong for the real operator path.
-**Why it happens:** Unit tests already cover many failure classifications, so it is tempting to stop there.
-**How to avoid:** Add live human-UAT evidence against the current repo state and require docs updates to match exact CLI lines.
-**Warning signs:** No artifact shows pre-recovery stale status and post-recovery healthy status on the real repo.
-
-### Pitfall 5: Forgetting Shields caching after successful recovery
-**What goes wrong:** Recovery succeeds, but operators think it failed because the README badge image lags for up to `cacheSeconds=300`.
-**Why it happens:** `status` and `doctor` read truth faster than Shields re-renders.
-**How to avoid:** Make docs explicit that `status` and `doctor` are the immediate trust gate after recovery; the visual badge may lag briefly.
-**Warning signs:** Docs say "badge still old" without instructing operators to trust `status`/`doctor` first.
-
-## Code Examples
-
-Verified patterns from current repo code:
-
-### Canonical readiness + trust summary
-```ts
-// Source: packages/core/src/publish/pre-push-policy.ts
-const readiness = inspectPublishReadiness({ config, state });
-const trust = derivePublishTrustReport({ state, now: new Date().toISOString() });
-
-const degraded =
-  readiness.status !== "ready" ||
-  (trust.status !== "current" && trust.status !== "unchanged");
-```
-
-### Persist failed publish facts without leaking raw details
-```ts
-// Source: packages/agent-badge/src/commands/refresh.ts
-const failedState = applyPublishAttemptFailure({
-  state: persistedState,
-  at: attemptedAt,
-  failureCode: refreshError.failureCode,
-  candidateHash: refreshError.candidateHash,
-  changedBadge: toPublishAttemptChangedBadge(refreshError.changedBadge),
-  gistId: persistedState.publish.gistId
-});
-```
-
-### Supported recovery flow to document and verify
-```bash
-# Diagnose
-agent-badge status
-agent-badge doctor
-
-# Repair only if target wiring is broken
-agent-badge init --gist-id <id>
-
-# Otherwise restore auth and rerun the canonical recovery path
-agent-badge refresh
-
-# Verify
-agent-badge status
-agent-badge doctor
-```
-
-## State of the Art
-
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
-| Generic publish failure with little trust context | Typed `publish.lastFailureCode`, candidate hash, and trust report | Phase 17 on 2026-04-02 | Recovery can now branch on durable facts rather than heuristics. |
-| Coarse readiness/gist failure wording | Canonical readiness classification (`auth-missing`, `gist-unreachable`, `remote-readback-mismatch`, etc.) | Phase 18 on 2026-04-05 | Phase 19 can reuse one recovery vocabulary across CLI and docs. |
-| Shared publish diagnostics without live badge trust separation | Separate `publish-trust` and `shared-health` checks | Phase 17 on 2026-04-02 | Recovery planning must preserve this split. |
-| No live proof of recovery | Live proof of failure path only | Phase 18 on 2026-04-05 | Phase 19 must add the missing recovery-half evidence. |
-
-**Deprecated/outdated:**
-- "Rerun refresh and wait for Shields" as the only stale-badge advice in [`docs/TROUBLESHOOTING.md`](../../../docs/TROUBLESHOOTING.md): now incomplete, because the CLI can distinguish typed publish failure and auth loss.
-- Treating `init` as the general recovery story: still valid for reconnecting targets, but incomplete for `auth-missing` stale publish state on an otherwise healthy gist.
-
-## Open Questions
-
-1. **Should Phase 19 add a dedicated recovery command?**
-   - What we know: existing commands already cover diagnosis, target repair, republish, and verification.
-   - What's unclear: whether the operator experience is still too indirect without a single entrypoint.
-   - Recommendation: default to documenting and polishing the existing recovery lane first; add a new command only if planner finds a recovery case that cannot be expressed cleanly through `doctor`, `init`, and `refresh`.
-
-2. **Should live production verification run against this repo's real gist or a disposable gist?**
-   - What we know: `CTRL-03` explicitly wants proof against live repo state, and this repo is already in a real stale/auth-missing state.
-   - What's unclear: whether maintainers want the primary proof on the canonical gist or a disposable dry-run target first.
-   - Recommendation: use this repo's real gist for the final proof artifact, but keep any destructive experimentation on disposable fixtures before the final run.
-
-3. **Should `refresh` or `publish` be the documented recovery command after auth restoration?**
-   - What we know: `refresh` is the automated path and already rewrites cache, contributor state, and publish attempt facts; `publish` forces a full backfill.
-   - What's unclear: whether operators should ever be told to prefer `publish` during normal recovery.
-   - Recommendation: document `refresh` as the primary repair command and reserve `publish` for explicit full-rescan or troubleshooting scenarios.
-
-## Environment Availability
-
-| Dependency | Required By | Available | Version | Fallback |
-|------------|------------|-----------|---------|----------|
-| Node.js | CLI, tests, live verification | ✓ | `v22.14.0` | — |
-| npm | repo scripts, vitest runs, dev CLI entrypoints | ✓ | `11.6.0` | — |
-| git | repo-aware init/doctor/status behavior | ✓ | `2.49.0` | — |
-| Workspace install (`node_modules`) | `tsx`, vitest, local command execution | ✓ | present | — |
-| GitHub Gist read access | live `status` and `doctor` shared/write checks | ✓ | live HTTP reachable at research time | — |
-| Shields endpoint reachability | live badge verification via `doctor` | ✓ | live HTTP reachable at research time | — |
-| GitHub auth env (`GH_TOKEN` / `GITHUB_TOKEN` / `GITHUB_PAT`) | real publish recovery and end-to-end republish proof | ✗ | — | none |
-
-**Missing dependencies with no fallback:**
-- GitHub auth token in the operator environment. The repo is currently blocked on this for an actual recovery publish. `doctor` confirms auth is the live blocker.
-
-**Missing dependencies with fallback:**
-- None. `agent-badge` does not currently support recovering a stale failed publish through `gh auth` or another credential source; Phase 19 must plan around env-var auth restoration.
+### Docs and evidence
+- [`README.md`](../../../README.md)
+- [`docs/QUICKSTART.md`](../../../docs/QUICKSTART.md)
+- [`docs/TROUBLESHOOTING.md`](../../../docs/TROUBLESHOOTING.md)
+- [`docs/MANUAL-GIST.md`](../../../docs/MANUAL-GIST.md)
+- [`docs/RELEASE.md`](../../../docs/RELEASE.md) if the live recovery proof becomes part of release or post-release operations
+- [`scripts/release/capture-publish-evidence.ts`](../../../scripts/release/capture-publish-evidence.ts) as a pattern reference
+- [`scripts/smoke/`](../../../scripts/smoke/) for repo-owned proof scripts
 
 ## Validation Architecture
 
-### Test Framework
-| Property | Value |
-|----------|-------|
-| Framework | `vitest 3.2.4` |
-| Config file | `vitest.config.ts` |
-| Quick run command | `npm test -- --run packages/agent-badge/src/commands/status.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/core/src/publish/publish-service.test.ts` |
-| Full suite command | `npm test -- --run` |
+Phase 19 should keep fast feedback by testing the recovery-plan helper and command surfaces directly, then reserve live failure/recovery proof for one explicit evidence run.
 
-### Phase Requirements → Test Map
-| Req ID | Behavior | Test Type | Automated Command | File Exists? |
-|--------|----------|-----------|-------------------|-------------|
-| CTRL-02 | Recover stale failed-publish state to healthy shared publish mode without manual state edits | integration | `npm test -- --run packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/status.test.ts packages/core/src/diagnostics/doctor.test.ts packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/init.test.ts` | ✅ |
-| CTRL-03 | Prove live failure path, auth/wiring recovery path, and post-recovery operator messaging against real repo state | manual + docs check | `npm run docs:check` | ✅ |
+### Quick automated loops
+- **Recovery-plan core logic**
+  - `npm test -- --run packages/core/src/publish/publish-readiness.test.ts packages/core/src/publish/publish-trust.test.ts packages/core/src/publish/shared-health.test.ts`
+- **Doctor/status routing**
+  - `npm test -- --run packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/status.test.ts packages/agent-badge/src/commands/doctor.test.ts`
+- **Mutating recovery surfaces**
+  - `npm test -- --run packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/refresh.test.ts`
+- **If a new recovery helper or command is added**
+  - add a focused test file and include it in the quick run set
 
-### Sampling Rate
-- **Per task commit:** `npm test -- --run packages/agent-badge/src/commands/status.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/core/src/publish/publish-service.test.ts`
-- **Per wave merge:** `npm test -- --run`
-- **Phase gate:** Full suite green, `npm run docs:check` green, and a fresh `19-HUMAN-UAT.md` showing stale -> recovered against the live repo before `/gsd:verify-work`
+### Full automated gate
+- `npm test -- --run`
+- `npm run docs:check` after runbook/doc updates
 
-### Wave 0 Gaps
-- [ ] `packages/agent-badge/src/commands/refresh.test.ts` — add the full recovery transition from `auth-missing` stale state to successful shared publish with cleared trust failure.
-- [ ] `packages/core/src/diagnostics/doctor.test.ts` — add post-recovery assertions proving `publish-trust` and `publish-auth` move to pass/warn states correctly after auth restoration and successful refresh.
-- [ ] `packages/agent-badge/src/commands/status.test.ts` — add a recovered-state assertion that status returns to `current` or `unchanged` after the supported repair flow.
-- [ ] `packages/agent-badge/src/commands/init.test.ts` — add target-repair scenarios covering when `init --gist-id <id>` is the correct recovery lane and when it is not.
-- [ ] `.planning/phases/19-recovery-paths-and-production-reliability-verification/19-HUMAN-UAT.md` — capture live pre-recovery and post-recovery evidence from this repo.
+### Live evidence expectations
+- Capture one real stale-badge failure state
+- Capture the exact supported recovery command sequence
+- Capture the healthy post-recovery state from `status` and `doctor`
+- Store that evidence in phase artifacts so Phase 19 verification can cite it directly
 
-## Sources
+## Testing And Verification Targets
 
-### Primary (HIGH confidence)
-- Local repo code:
-  - `packages/core/src/publish/publish-state.ts`
-  - `packages/core/src/publish/publish-readiness.ts`
-  - `packages/core/src/publish/publish-trust.ts`
-  - `packages/core/src/publish/shared-health.ts`
-  - `packages/core/src/publish/publish-service.ts`
-  - `packages/core/src/diagnostics/doctor.ts`
-  - `packages/agent-badge/src/commands/init.ts`
-  - `packages/agent-badge/src/commands/publish.ts`
-  - `packages/agent-badge/src/commands/refresh.ts`
-  - `packages/agent-badge/src/commands/status.ts`
-  - `packages/agent-badge/src/cli/main.ts`
-- Live repo evidence gathered on 2026-04-05:
-  - `npm run dev:agent-badge -- status`
-  - `npm run dev:agent-badge -- doctor`
-  - `.agent-badge/state.json`
-  - `.agent-badge/config.json`
-- Current test infrastructure:
-  - `vitest.config.ts`
-  - `npm test -- --run packages/agent-badge/src/commands/status.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts`
-  - Result: `5` files passed, `61` tests passed
-- npm registry verification:
-  - `npm list vitest typescript commander octokit zod --depth=0`
-  - `npm view vitest version time --json`
-  - `npm view zod version time --json`
-  - `npm view commander version time --json`
-  - `npm view octokit version time --json`
-  - `npm view typescript version time --json`
+### Existing suites likely to expand
+- [`packages/core/src/diagnostics/doctor.test.ts`](../../../packages/core/src/diagnostics/doctor.test.ts)
+- [`packages/agent-badge/src/commands/status.test.ts`](../../../packages/agent-badge/src/commands/status.test.ts)
+- [`packages/agent-badge/src/commands/doctor.test.ts`](../../../packages/agent-badge/src/commands/doctor.test.ts)
+- [`packages/agent-badge/src/commands/refresh.test.ts`](../../../packages/agent-badge/src/commands/refresh.test.ts)
+- [`packages/agent-badge/src/commands/init.test.ts`](../../../packages/agent-badge/src/commands/init.test.ts)
+- [`packages/agent-badge/src/commands/release-readiness-matrix.test.ts`](../../../packages/agent-badge/src/commands/release-readiness-matrix.test.ts) if the repo wants a scenario-style recovery proof harness
 
-### Secondary (MEDIUM confidence)
-- Existing operator docs and prior phase artifacts:
-  - `README.md`
-  - `docs/QUICKSTART.md`
-  - `docs/HOW-IT-WORKS.md`
-  - `docs/MANUAL-GIST.md`
-  - `docs/TROUBLESHOOTING.md`
-  - `docs/RELEASE.md`
-  - `18-HUMAN-UAT.md`
-  - `17-RESEARCH.md`
-  - `18-RESEARCH.md`
+### New tests likely needed
+- `packages/core/src/publish/recovery-plan.test.ts` if a new core helper is added
+- a docs/runbook coherence test only if the repo already has a lightweight pattern for text assertions; otherwise keep doc verification in `npm run docs:check`
 
-### Tertiary (LOW confidence)
-- None.
+## Risks And Anti-Patterns
 
-## Metadata
+- Do not collapse publish-readiness, publish-trust, and shared-health into one overloaded status enum. They solve different problems and Phase 17/18 already invested in that separation.
+- Do not add a destructive "reset remote state" command unless the phase can specify exact safety rules and recovery guarantees. The current roadmap does not require remote deletion semantics.
+- Do not let docs describe recovery paths that the CLI cannot actually confirm. Recovery commands and runbook wording must be sourced from the same canonical contract.
+- Do not treat contributor-coordination scenarios as if one machine can repair them silently. The supported flow may include asking other contributors to rerun `agent-badge refresh`.
 
-**Confidence breakdown:**
-- Standard stack: MEDIUM
-  - Current installed and latest registry versions were verified directly, but no package upgrade evaluation was needed for this phase.
-- Architecture: HIGH
-  - Derived directly from current repo code, current live repo state, and passing phase-relevant tests.
-- Pitfalls: HIGH
-  - Backed by the live repo's current stale/auth-missing state and gaps in existing docs.
+## Recommended Planning Notes
 
-**Research date:** 2026-04-05
-**Valid until:** 2026-04-12
+- Keep the roadmap's two-plan split.
+- Plan 19-01 should own code and tests.
+- Plan 19-02 should own docs, evidence artifacts, and final production proof.
+- Every task should include concrete read paths and exact test commands because this phase is cross-cutting and easy to under-specify.
+
+## Suggested Verification Commands For Planning
+
+```bash
+npm test -- --run packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/status.test.ts packages/agent-badge/src/commands/doctor.test.ts
+npm test -- --run packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/refresh.test.ts
+npm run docs:check
+npm test -- --run
+```
+
+## Research Conclusion
+
+Phase 19 does not need brand-new publish primitives. It needs a canonical recovery layer, operator surfaces that expose exact supported flows, and live evidence that those flows recover the real repo from stale failed publish state back to healthy shared mode.
+
+## RESEARCH COMPLETE
