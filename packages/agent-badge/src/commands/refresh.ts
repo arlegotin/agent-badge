@@ -12,8 +12,10 @@ import {
   derivePrePushPolicyConsequence,
   derivePrePushPolicyReport,
   derivePublishTrustReport,
+  deriveRecoveryPlan,
   formatPrePushPolicyLine,
   formatPublishReadinessStatus,
+  formatRecoveryResult,
   formatPublishTrustStatus,
   formatEstimatedCostUsd,
   inspectPublishReadiness,
@@ -322,7 +324,8 @@ function printRefreshSummary(
   stdout: OutputWriter,
   result: RefreshCommandSuccessResult,
   config: ReturnType<typeof parseAgentBadgeConfig>,
-  hookPolicy: AgentBadgeRefreshMode | undefined
+  hookPolicy: AgentBadgeRefreshMode | undefined,
+  recoveryResult: string | null
 ): {
   readonly degraded: boolean;
   readonly blocking: boolean;
@@ -368,7 +371,54 @@ function printRefreshSummary(
     );
   }
 
+  if (recoveryResult !== null) {
+    writeLine(stdout, `- Recovery result: ${recoveryResult}`);
+  }
+
   return hookOutcome;
+}
+
+function resolveRefreshRecoveryResult(options: {
+  readonly config: ReturnType<typeof parseAgentBadgeConfig>;
+  readonly previousState: AgentBadgeState;
+  readonly nextState: AgentBadgeState;
+  readonly publishResult: PublishBadgeIfChangedResult | null;
+}): string | null {
+  if (options.publishResult === null) {
+    return null;
+  }
+
+  const beforeRecoveryPlan = deriveRecoveryPlan({
+    readiness: inspectPublishReadiness({
+      config: options.config,
+      state: options.previousState
+    }),
+    trust: derivePublishTrustReport({
+      state: options.previousState,
+      now: new Date().toISOString()
+    }),
+    sharedHealth: options.publishResult.healthBeforePublish
+  });
+
+  if (beforeRecoveryPlan.command !== "agent-badge refresh") {
+    return null;
+  }
+
+  const afterRecoveryPlan = deriveRecoveryPlan({
+    readiness: inspectPublishReadiness({
+      config: options.config,
+      state: options.nextState
+    }),
+    trust: derivePublishTrustReport({
+      state: options.nextState,
+      now: new Date().toISOString()
+    }),
+    sharedHealth: options.publishResult.healthAfterPublish
+  });
+
+  return afterRecoveryPlan.status === "healthy"
+    ? formatRecoveryResult("agent-badge refresh")
+    : null;
 }
 
 function printSoftFailure(
@@ -578,7 +628,18 @@ export async function runRefreshCommand(
       publishResult
     };
 
-    const hookOutcome = printRefreshSummary(stdout, result, config, hookPolicy);
+    const hookOutcome = printRefreshSummary(
+      stdout,
+      result,
+      config,
+      hookPolicy,
+      resolveRefreshRecoveryResult({
+        config,
+        previousState,
+        nextState: persistedState,
+        publishResult
+      })
+    );
     await appendAgentBadgeLog({
       cwd,
       entry: buildLogEntry({

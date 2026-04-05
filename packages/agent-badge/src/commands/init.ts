@@ -11,9 +11,14 @@ import {
   buildReadmeBadgeMarkdown,
   buildReadmeBadgeSnippet,
   createGitHubGistClient,
+  derivePublishTrustReport,
+  deriveRecoveryPlan,
   estimateSessionCostsUsdMicrosByKey,
   initializeGitRepository,
   ensurePublishTarget,
+  formatRecoveryResult,
+  inspectPublishReadiness,
+  inspectSharedPublishHealth,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
@@ -31,6 +36,7 @@ import {
   type PublishTargetResult,
   type PublishBadgeToGistResult,
   type RepoLocalRuntimeWiringResult,
+  type SharedPublishHealthReport,
   type SharedContributorObservationMap,
   type AgentBadgeState
 } from "@legotin/agent-badge-core";
@@ -210,6 +216,73 @@ function writeSharedPublishSummary(
       publishResult.migrationPerformed ? "legacy -> shared" : "none"
     }`
   ]);
+}
+
+async function inspectSharedHealthForRecovery(options: {
+  readonly config: AgentBadgeConfig;
+  readonly state: AgentBadgeState;
+  readonly gistClient: GitHubGistClient;
+}): Promise<SharedPublishHealthReport | null> {
+  if (
+    options.config.publish.gistId === null ||
+    options.config.publish.badgeUrl === null
+  ) {
+    return null;
+  }
+
+  try {
+    const gist = await options.gistClient.getGist(options.config.publish.gistId);
+
+    return inspectSharedPublishHealth({
+      gist,
+      state: options.state,
+      now: new Date().toISOString()
+    });
+  } catch {
+    return null;
+  }
+}
+
+function resolveInitRecoveryResult(options: {
+  readonly beforeConfig: AgentBadgeConfig;
+  readonly beforeState: AgentBadgeState;
+  readonly beforeSharedHealth: SharedPublishHealthReport | null;
+  readonly afterConfig: AgentBadgeConfig;
+  readonly afterState: AgentBadgeState;
+  readonly afterSharedHealth: SharedPublishHealthReport;
+  readonly command: "agent-badge init" | "agent-badge init --gist-id <id>";
+}): string | null {
+  const beforeRecoveryPlan = deriveRecoveryPlan({
+    readiness: inspectPublishReadiness({
+      config: options.beforeConfig,
+      state: options.beforeState
+    }),
+    trust: derivePublishTrustReport({
+      state: options.beforeState,
+      now: new Date().toISOString()
+    }),
+    sharedHealth: options.beforeSharedHealth
+  });
+
+  if (beforeRecoveryPlan.command !== options.command) {
+    return null;
+  }
+
+  const afterRecoveryPlan = deriveRecoveryPlan({
+    readiness: inspectPublishReadiness({
+      config: options.afterConfig,
+      state: options.afterState
+    }),
+    trust: derivePublishTrustReport({
+      state: options.afterState,
+      now: new Date().toISOString()
+    }),
+    sharedHealth: options.afterSharedHealth
+  });
+
+  return afterRecoveryPlan.status === "healthy"
+    ? formatRecoveryResult(options.command)
+    : null;
 }
 
 function buildPublishFailureMessage(error: unknown): string {
@@ -490,6 +563,14 @@ export async function runInitCommand(
     createGitHubGistClient({
       authToken: resolveGitHubAuthToken(env)
     });
+  const beforeSharedHealth =
+    typeof options.gistId === "undefined" && state.publish.mode === "shared"
+      ? await inspectSharedHealthForRecovery({
+          config,
+          state,
+          gistClient
+        })
+      : null;
   const publishTarget = await ensurePublishTarget({
     config,
     state,
@@ -566,6 +647,22 @@ export async function runInitCommand(
 
     await writePersistedState(preflight.cwd, nextPublishState.config, publishedState);
     writeSharedPublishSummary(stdout, publishResult);
+    const recoveryResult = resolveInitRecoveryResult({
+      beforeConfig: config,
+      beforeState: state,
+      beforeSharedHealth,
+      afterConfig: nextPublishState.config,
+      afterState: publishedState,
+      afterSharedHealth: publishResult.healthAfterPublish,
+      command:
+        typeof options.gistId === "string"
+          ? "agent-badge init --gist-id <id>"
+          : "agent-badge init"
+    });
+
+    if (recoveryResult !== null) {
+      writeLines(stdout, [`- Recovery result: ${recoveryResult}`]);
+    }
     await writeReadmeBadgeOutput({
       cwd: preflight.cwd,
       preflight,

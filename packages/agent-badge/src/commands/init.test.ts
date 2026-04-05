@@ -410,6 +410,9 @@ describe("runInitCommand", () => {
         (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash
       ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: connected existing gist");
+      expect(output.read()).toContain(
+        "- Recovery result: healthy after agent-badge init --gist-id <id>"
+      );
       expect(readmeContent).toContain("<!-- agent-badge:start -->");
       expect(readmeContent).toContain("<!-- agent-badge:end -->");
       expect(readmeContent).toContain(
@@ -695,6 +698,108 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("- Publish mode: shared");
       expect(output.read()).toContain("- Migration: legacy -> shared");
       expect(output.read()).toContain("Publish mode: shared");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("reports healthy after agent-badge init when shared metadata is repaired", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const output = createOutputCapture();
+    const gistClient = createMutableGistClient({
+      id: "gist_shared_repair",
+      files: {
+        [AGENT_BADGE_GIST_FILE]: {
+          content: `{
+  "schemaVersion": 1,
+  "label": "Vibe budget",
+  "message": "9 tokens",
+  "color": "blue"
+}
+`
+        },
+        [buildContributorGistFileName("publisher-local")]: {
+          content: `{
+  "schemaVersion": 2,
+  "publisherId": "publisher-local",
+  "updatedAt": "2026-03-30T19:00:00.000Z",
+  "observations": {}
+}
+`
+        }
+      }
+    });
+
+    try {
+      await mkdir(join(repo.root, ".agent-badge"), { recursive: true });
+      await writeFile(
+        join(repo.root, ".agent-badge/config.json"),
+        `${JSON.stringify(
+          {
+            ...defaultAgentBadgeConfig,
+            publish: {
+              ...defaultAgentBadgeConfig.publish,
+              gistId: "gist_shared_repair",
+              badgeUrl:
+                "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_shared_repair%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+            }
+          },
+          null,
+          2
+        )}\n`,
+        "utf8"
+      );
+      await writeFile(
+        join(repo.root, ".agent-badge/state.json"),
+        `${JSON.stringify(
+          {
+            ...defaultAgentBadgeState,
+            init: {
+              ...defaultAgentBadgeState.init,
+              initialized: true,
+              scaffoldVersion: 1,
+              lastInitializedAt: "2026-03-30T19:00:00.000Z"
+            },
+            publish: {
+              ...defaultAgentBadgeState.publish,
+              status: "published",
+              gistId: "gist_shared_repair",
+              lastPublishedHash: "hash_shared_repair",
+              lastPublishedAt: "2026-03-30T19:00:00.000Z",
+              lastAttemptedAt: "2026-03-30T19:00:00.000Z",
+              lastAttemptOutcome: "published",
+              lastSuccessfulSyncAt: "2026-03-30T19:00:00.000Z",
+              lastAttemptCandidateHash: "hash_shared_repair",
+              lastAttemptChangedBadge: "yes",
+              lastFailureCode: null,
+              publisherId: "publisher-local",
+              mode: "shared"
+            }
+          },
+          null,
+          2
+        )}\n`,
+        "utf8"
+      );
+
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        stdout: output.writer,
+        env: {
+          GH_TOKEN: "token"
+        },
+        gistClient
+      });
+
+      expect(output.read()).toContain(
+        "- Recovery result: healthy after agent-badge init"
+      );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }

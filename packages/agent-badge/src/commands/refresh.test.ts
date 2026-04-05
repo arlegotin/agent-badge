@@ -1192,6 +1192,100 @@ describe("runRefreshCommand", () => {
     }
   });
 
+  it("reports healthy after agent-badge refresh when stale failed publish is repaired", async () => {
+    const configuredConfig = {
+      ...defaultAgentBadgeConfig,
+      publish: {
+        ...defaultAgentBadgeConfig.publish,
+        gistId: "gist_refresh_repair",
+        badgeUrl:
+          "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_refresh_repair%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+      }
+    };
+    const fixture = await createFixture({
+      config: configuredConfig,
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          status: "error",
+          gistId: "gist_refresh_repair",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-03-29T19:00:00.000Z",
+          lastAttemptedAt: "2026-03-30T18:59:00.000Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-03-29T19:00:00.000Z",
+          lastAttemptCandidateHash: "hash_next",
+          lastAttemptChangedBadge: "yes",
+          lastFailureCode: "auth-missing",
+          publisherId: "publisher-local",
+          mode: "shared"
+        },
+        refresh: {
+          ...defaultAgentBadgeState.refresh,
+          lastRefreshedAt: "2026-03-30T18:59:00.000Z",
+          lastScanMode: "incremental",
+          lastPublishDecision: "failed"
+        }
+      }
+    });
+    const output = createOutputCapture();
+    const refreshResult = {
+      scanMode: "incremental" as const,
+      summary: {
+        includedSessions: 2,
+        includedTokens: 140,
+        includedEstimatedCostUsdMicros: null,
+        ambiguousSessions: 0,
+        excludedSessions: 0
+      },
+      providerCursors: {
+        codex: "codex-repair",
+        claude: "claude-repair"
+      },
+      cache: {
+        version: 2 as const,
+        entries: {}
+      }
+    };
+
+    runIncrementalRefreshMock.mockResolvedValueOnce(refreshResult);
+    publishBadgeIfChangedMock.mockResolvedValueOnce(
+      createPublishIfChangedResult(
+        {
+          ...defaultAgentBadgeState,
+          publish: {
+            ...defaultAgentBadgeState.publish,
+            status: "published" as const,
+            gistId: "gist_refresh_repair",
+            lastPublishedHash: "hash_next",
+            lastPublishedAt: "2026-03-30T19:00:00.000Z",
+            publisherId: "publisher-local",
+            mode: "shared" as const
+          }
+        },
+        "published"
+      )
+    );
+
+    try {
+      await runRefreshCommand({
+        cwd: fixture.repoRoot,
+        homeRoot: fixture.homeRoot,
+        env: {
+          GH_TOKEN: "token"
+        },
+        stdout: output.writer
+      });
+
+      expect(output.read()).toContain(
+        "- Recovery result: healthy after agent-badge refresh"
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("swallows hook errors in fail-soft mode", async () => {
     const configuredConfig = {
       ...defaultAgentBadgeConfig,
