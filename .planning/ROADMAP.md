@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 17: Publish Failure Visibility And State Trust** - Make stale or failed badge publish state obvious in normal operator workflows. (completed 2026-04-02)
 - [x] **Phase 18: Auth, Hook, And Publish Readiness Hardening** - Tighten auth detection, readiness checks, and automation controls around local publish flows. (completed 2026-04-05)
 - [x] **Phase 19: Recovery Paths And Production Reliability Verification** - Prove the stale-badge recovery path and lock the operator runbooks to real failure modes. (completed 2026-04-05)
-- [ ] **Phase 20: Verification Artifact Closure And Audit Recovery** - Close the remaining milestone audit blockers by producing the missing verification artifacts and validation follow-up.
+- [ ] **Phase 20: Verification Artifact Closure And Audit Recovery** - Close the remaining milestone audit blockers by producing the missing verification artifacts and validation follow-up. (plans complete 2026-04-05; verification pending)
 
 ## Phase Details
 
@@ -125,7 +125,7 @@ Plans:
 
 Plans:
 - [x] 20-01: Create formal verification reports for Phases 15 and 19 and reattach orphaned requirements
-- [ ] 20-02: Resolve remaining validation debt and rerun the milestone audit
+- [x] 20-02: Resolve remaining validation debt and rerun the milestone audit
 
 ## Progress
 
@@ -137,4 +137,4 @@ Plans:
 | 17. Publish Failure Visibility And State Trust | 3/3 | Complete   | 2026-04-02 |
 | 18. Auth, Hook, And Publish Readiness Hardening | 4/4 | Complete    | 2026-04-05 |
 | 19. Recovery Paths And Production Reliability Verification | 2/2 | Complete | 2026-04-05 |
-| 20. Verification Artifact Closure And Audit Recovery | 1/2 | In Progress | |
+| 20. Verification Artifact Closure And Audit Recovery | 2/2 | Ready for Verification | |
