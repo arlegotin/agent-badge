@@ -160,8 +160,10 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- Live release preflight from the current maintainer environment is still blocked by unauthorized `npm whoami` and visible registry version drift ahead of the checked-in manifests.
-- The repo has strong local release evidence, but it still needs refreshed public release and registry proof before a “100% production ready” claim is defensible.
+- `npm auth` is blocked in the current maintainer environment because `npm whoami` is unauthorized.
+- `version drift` is visible across all three publishable packages: npm exposes `1.1.3` while the checked-in manifests still declare `1.1.2`.
+- `package ownership` is still a manual confirmation for the already-published npm packages.
+- `trusted-publisher` is still a manual confirmation because local preflight can validate workflow markers but cannot prove remote npm trust settings.
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
 - Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
 - Local-first fail-soft refresh can still let the live badge drift stale when GitHub auth or gist writes fail in the push environment.

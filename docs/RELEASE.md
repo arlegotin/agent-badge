@@ -27,6 +27,8 @@ npm run release:preflight
 
 `npm run release:preflight` is the required publish gate immediately before the production workflow run. It performs the live registry checks, runs `npm ping` and `npm whoami`, validates release-input coherence from the workspace manifests and `.changeset/config.json`, and confirms the checked-in GitHub Actions workflow still references the expected trusted-publishing contract.
 
+Passing these local gates means the checkout is **locally green**. It does not mean the release is externally ready.
+
 If the packed-install step fails and you only need to rerun that proof after fixing it, use:
 
 ```bash
@@ -45,6 +47,19 @@ Use the silent npm form when redirecting to a file. Plain `npm run` prepends the
 
 If `12-preflight.json` reports `OVERALL: blocked`, stop and resolve the blocker before publishing.
 
+Interpret the preflight result in two layers:
+
+- `locally green`: local rehearsal succeeded (`typecheck`, tests, docs, clean-checkout, and the preflight command itself ran).
+- `externally blocked`: a live external condition still prevents a truthful production-ready claim or publish attempt.
+
+The repo-owned preflight contract now names the exact external blocker categories that matter for release decisions:
+
+- `npm auth`
+- `same version already published`
+- `version drift`
+- `package ownership`
+- `trusted-publisher`
+
 This command wraps live registry checks for the three publishable packages:
 
 ```bash
@@ -55,7 +70,15 @@ npm view @legotin/agent-badge-core version dist-tags.latest --json
 
 It also runs `npm ping` and `npm whoami` from the maintainer environment. If `npm run release:preflight` reports `OVERALL: blocked`, stop and resolve the reported blocker before publishing.
 
-The local preflight cannot prove GitHub Actions trusted-publisher state remotely. Before publish, confirm each npm package trusts the `arlegotin/agent-badge` repository with workflow file `release.yml`, and keep `.github/workflows/release.yml` on the OIDC path (`permissions.id-token: write`). `npm whoami` is still useful for local operator sanity checks, but it is not the production publish credential.
+Use the categories this way:
+
+- `npm auth`: the maintainer environment cannot prove a valid npm publisher identity. Fix this before treating the machine as publish-ready.
+- `same version already published`: the exact intended version is already visible in npm. Do not republish blindly.
+- `version drift`: npm and the checked-in manifests disagree about the publishable version. Resolve the drift before claiming the source is externally ready.
+- `package ownership`: local tooling can see that the packages exist, but it cannot prove the intended publisher account has owner permissions. Treat this as a manual confirmation.
+- `trusted-publisher`: local tooling can verify the checked-in workflow markers, but it cannot prove the remote npm package settings trust the `arlegotin/agent-badge` repository and `release.yml` workflow. Treat this as a manual confirmation unless external evidence says otherwise.
+
+The local preflight cannot prove GitHub Actions trusted-publisher state remotely. Before publish, confirm each npm package trusts the `arlegotin/agent-badge` repository with workflow file `release.yml`, and keep `.github/workflows/release.yml` on the OIDC path (`permissions.id-token: write`). `npm whoami` is still useful for local operator sanity checks, but it is not the production publish credential. A release can be locally green while still being externally blocked.
 
 ## 4. Publish via workflow (automatic main-branch path)
 
