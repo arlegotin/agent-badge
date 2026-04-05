@@ -1,10 +1,11 @@
 ---
 phase: 17
 slug: publish-failure-visibility-and-state-trust
-status: draft
+status: complete
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-04-02
+updated: 2026-04-05
 ---
 
 # Phase 17 — Validation Strategy
@@ -40,11 +41,11 @@ created: 2026-04-02
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 17-01-01 | 01 | 1 | OPER-01 | core trust derivation unit | `npm test -- --run packages/core/src/publish/publish-trust.test.ts` | ✅ | ⬜ pending |
-| 17-01-02 | 01 | 1 | OPER-01 | command-surface integration | `npm test -- --run packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/status.test.ts` | ✅ | ⬜ pending |
-| 17-02-01 | 02 | 2 | OPER-01, OPER-02 | state + publish persistence integration | `npm test -- --run packages/core/src/state/state-schema.test.ts packages/core/src/init/scaffold.test.ts packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/publish.test.ts packages/agent-badge/src/commands/refresh.test.ts` | ✅ | ⬜ pending |
-| 17-03-01 | 03 | 3 | OPER-01, OPER-02 | canonical trust derivation unit | `npm test -- --run packages/core/src/publish/publish-trust.test.ts` | ✅ | ⬜ pending |
-| 17-03-02 | 03 | 3 | OPER-01, OPER-02 | doctor + shared trust vocabulary integration | `npm test -- --run packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/status.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/doctor.test.ts` | ✅ | ⬜ pending |
+| 17-01-01 | 01 | 1 | OPER-01 | core trust derivation unit | `npm test -- --run packages/core/src/publish/publish-trust.test.ts` | ✅ | ✅ green |
+| 17-01-02 | 01 | 1 | OPER-01 | command-surface integration | `npm test -- --run packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/status.test.ts` | ✅ | ✅ green |
+| 17-02-01 | 02 | 2 | OPER-01, OPER-02 | state + publish persistence integration | `npm test -- --run packages/core/src/state/state-schema.test.ts packages/core/src/init/scaffold.test.ts packages/core/src/publish/publish-service.test.ts packages/agent-badge/src/commands/publish.test.ts packages/agent-badge/src/commands/refresh.test.ts` | ✅ | ✅ green |
+| 17-03-01 | 03 | 3 | OPER-01, OPER-02 | canonical trust derivation unit | `npm test -- --run packages/core/src/publish/publish-trust.test.ts` | ✅ | ✅ green |
+| 17-03-02 | 03 | 3 | OPER-01, OPER-02 | doctor + shared trust vocabulary integration | `npm test -- --run packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/status.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/doctor.test.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,12 +53,12 @@ created: 2026-04-02
 
 ## Wave 0 Requirements
 
-- [ ] Add `publish-trust` fixtures for no publish attempt, unchanged sync, current badge, stale after failed publish, and failed-but-unchanged candidate badge
-- [ ] Extend `packages/core/src/state/state-schema.test.ts` for all new additive publish diagnostic defaults and privacy-safe failure-code parsing
-- [ ] Extend `packages/core/src/init/scaffold.test.ts` so init reruns preserve every Phase 17 publish diagnostic field
-- [ ] Extend `packages/core/src/publish/publish-service.test.ts` for pre-write candidate-hash derivation and unchanged-vs-changed badge semantics
-- [ ] Extend `packages/agent-badge/src/commands/publish.test.ts` and `packages/agent-badge/src/commands/refresh.test.ts` so both write paths persist the same canonical publish-attempt contract
-- [ ] Extend `packages/core/src/diagnostics/doctor.test.ts`, `packages/agent-badge/src/commands/status.test.ts`, and `packages/agent-badge/src/commands/doctor.test.ts` so live-badge trust vocabulary stays aligned while shared-health remains separate
+- [x] Add `publish-trust` fixtures for no publish attempt, unchanged sync, current badge, stale after failed publish, and failed-but-unchanged candidate badge
+- [x] Extend `packages/core/src/state/state-schema.test.ts` for all new additive publish diagnostic defaults and privacy-safe failure-code parsing
+- [x] Extend `packages/core/src/init/scaffold.test.ts` so init reruns preserve every Phase 17 publish diagnostic field
+- [x] Extend `packages/core/src/publish/publish-service.test.ts` for pre-write candidate-hash derivation and unchanged-vs-changed badge semantics
+- [x] Extend `packages/agent-badge/src/commands/publish.test.ts` and `packages/agent-badge/src/commands/refresh.test.ts` so both write paths persist the same canonical publish-attempt contract
+- [x] Extend `packages/core/src/diagnostics/doctor.test.ts`, `packages/agent-badge/src/commands/status.test.ts`, and `packages/agent-badge/src/commands/doctor.test.ts` so live-badge trust vocabulary stays aligned while shared-health remains separate
 
 ---
 
@@ -76,4 +77,10 @@ All phase behaviors should have automated verification. No manual-only checks ar
 - [x] Feedback latency < 60s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
+
+Closure evidence refreshed on 2026-04-05:
+
+- Focused rerun passed: `npm test -- --run packages/core/src/state/state-schema.test.ts packages/core/src/init/scaffold.test.ts packages/core/src/publish/publish-service.test.ts packages/core/src/publish/publish-trust.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/publish.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/status.test.ts packages/agent-badge/src/commands/doctor.test.ts`
+- Verification remains passed in `.planning/phases/17-publish-failure-visibility-and-state-trust/17-VERIFICATION.md`
+- Supporting execution evidence remains in `.planning/phases/17-publish-failure-visibility-and-state-trust/17-VERIFICATION.md` and the phase summaries/UAT already consumed by that verification report
