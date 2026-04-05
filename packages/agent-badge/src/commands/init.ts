@@ -23,6 +23,7 @@ import {
   parseAgentBadgeState,
   publishBadgeToGist,
   resolveRepoFingerprint,
+  resolveGitHubAuthToken,
   resolvePricingCatalog,
   runInitPreflight,
   runFullBackfillScan,
@@ -32,6 +33,7 @@ import {
   type DetectGitHubAuthOptions,
   type DetectProviderAvailabilityOptions,
   type GitHubGistClient,
+  type GhCliTokenResolver,
   type InitPreflightResult,
   type PublishTargetResult,
   type PublishBadgeToGistResult,
@@ -55,6 +57,7 @@ export interface RunInitCommandOptions
   readonly cwd?: string;
   readonly allowGitInit?: boolean;
   readonly gistId?: string;
+  readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
 }
@@ -67,7 +70,6 @@ export interface InitCommandResult {
 
 const publishableSemverPattern =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const githubTokenEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
 const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
 
@@ -374,18 +376,6 @@ async function writePersistedState(
   );
 }
 
-function resolveGitHubAuthToken(env: NodeJS.ProcessEnv | undefined): string | undefined {
-  for (const envVar of githubTokenEnvVars) {
-    const value = env?.[envVar];
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
-    }
-  }
-
-  return undefined;
-}
-
 function buildSessionKey(session: {
   readonly provider: string;
   readonly providerSessionId: string;
@@ -492,7 +482,8 @@ export async function runInitCommand(
     allowGitInit: options.allowGitInit,
     homeRoot,
     env,
-    checker: options.checker
+    checker: options.checker,
+    ghCliTokenResolver: options.ghCliTokenResolver
   };
   const initialPreflight = await runInitPreflight(preflightOptions);
 
@@ -561,7 +552,13 @@ export async function runInitCommand(
   const gistClient =
     options.gistClient ??
     createGitHubGistClient({
-      authToken: resolveGitHubAuthToken(env)
+      authToken:
+        (
+          await resolveGitHubAuthToken({
+            env,
+            ghCliTokenResolver: options.ghCliTokenResolver
+          })
+        ).token
     });
   const beforeSharedHealth =
     typeof options.gistId === "undefined" && state.publish.mode === "shared"

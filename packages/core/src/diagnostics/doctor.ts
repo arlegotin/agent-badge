@@ -31,6 +31,8 @@ import {
   agentBadgeHookEndMarker,
   agentBadgeHookStartMarker
 } from "../init/runtime-wiring.js";
+import { resolveGitHubAuthToken } from "../init/github-auth.js";
+import type { GhCliTokenResolver } from "../init/github-auth.js";
 import { runInitPreflight, type InitPreflightResult } from "../init/preflight.js";
 import { parseAgentBadgeState, type AgentBadgeState } from "../state/state-schema.js";
 
@@ -65,6 +67,7 @@ export interface RunDoctorChecksOptions {
   readonly cwd?: string;
   readonly homeRoot?: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
   readonly runProbeWrite?: boolean;
 }
@@ -91,7 +94,6 @@ const CHECK_IDS = [
   "readme-badge",
   "pre-push-hook"
 ] as const;
-const authEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
 
 function buildFix(messages: string[]): readonly string[] {
   return [...messages];
@@ -110,20 +112,6 @@ function gistHasFile(
   fileName: string
 ): boolean {
   return Array.isArray(files) ? files.includes(fileName) : fileName in files;
-}
-
-function resolveAuthToken(env?: NodeJS.ProcessEnv): string | undefined {
-  const activeEnv = env ?? process.env;
-
-  for (const envVar of authEnvVars) {
-    const value = activeEnv?.[envVar];
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
-    }
-  }
-
-  return undefined;
 }
 
 function buildMissingPublishTargetFix(): readonly string[] {
@@ -1099,10 +1087,14 @@ export async function runDoctorChecks(
   });
   const persisted = await readPersistedConfig(cwd);
   const persistedState = await readPersistedState(cwd);
+  const resolvedAuth = await resolveGitHubAuthToken({
+    env: options.env,
+    ghCliTokenResolver: options.ghCliTokenResolver
+  });
   const gistClient =
     options.gistClient ??
     createGitHubGistClient({
-      authToken: resolveAuthToken(options.env)
+      authToken: resolvedAuth.token
     });
 
   const checks: DoctorCheck[] = [];

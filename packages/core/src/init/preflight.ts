@@ -113,7 +113,8 @@ export async function runInitPreflight(
     getReadmeStatus(cwd),
     detectGitHubAuth({
       env: options.env,
-      checker: options.checker
+      checker: options.checker,
+      ghCliTokenResolver: options.ghCliTokenResolver
     })
   ]);
 

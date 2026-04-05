@@ -15,12 +15,14 @@ import {
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
+  resolveGitHubAuthToken,
   resolvePricingCatalog,
   toPublishAttemptChangedBadge,
   runFullBackfillScan,
   appendAgentBadgeLog,
   buildLogEntry,
   PublishBadgeError,
+  type GhCliTokenResolver,
   type AgentBadgeState,
   type AttributeBackfillSessionsResult,
   type GitHubGistClient,
@@ -40,6 +42,7 @@ export interface RunPublishCommandOptions {
   readonly cwd?: string;
   readonly homeRoot?: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
 }
@@ -52,7 +55,6 @@ export interface PublishCommandResult {
 
 const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
-const githubTokenEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
 const PUBLISH_NOT_CONFIGURED_ERROR =
   "Publish is not configured. Run `agent-badge init` or re-run init with `--gist-id <id>` first.";
 const GITHUB_AUTH_MISSING_ERROR_MESSAGE =
@@ -125,20 +127,6 @@ function writeSharedPublishSummary(stdout: OutputWriter, options: {
     stdout,
     `- Migration: ${options.migrationPerformed ? "legacy -> shared" : "none"}`
   );
-}
-
-function resolveGitHubAuthToken(
-  env: NodeJS.ProcessEnv | undefined
-): string | undefined {
-  for (const envVar of githubTokenEnvVars) {
-    const value = env?.[envVar];
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
-    }
-  }
-
-  return undefined;
 }
 
 function buildSessionKey(session: {
@@ -247,7 +235,13 @@ export async function runPublishCommand(
       client:
         options.gistClient ??
         createGitHubGistClient({
-          authToken: resolveGitHubAuthToken(env)
+          authToken:
+            (
+              await resolveGitHubAuthToken({
+                env,
+                ghCliTokenResolver: options.ghCliTokenResolver
+              })
+            ).token
         })
     });
     const nextState = publishResult.state;

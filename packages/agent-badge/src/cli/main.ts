@@ -3,7 +3,10 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
-import type { AgentBadgeRefreshMode } from "@legotin/agent-badge-core";
+import {
+  resolveGitHubCliToken,
+  type AgentBadgeRefreshMode
+} from "@legotin/agent-badge-core";
 
 import { runConfigCommand } from "../commands/config.js";
 import { runInitCommand } from "../commands/init.js";
@@ -61,7 +64,8 @@ export function buildProgram(): Command {
     .option("--gist-id <id>", "Connect an existing public GitHub Gist id.")
     .action(async (options: { gistId?: string }) => {
       await runInitCommand({
-        gistId: options.gistId
+        gistId: options.gistId,
+        ghCliTokenResolver: resolveGitHubCliToken
       });
     });
 
@@ -96,7 +100,9 @@ export function buildProgram(): Command {
     .command("publish")
     .description("Publish aggregate badge JSON to the configured remote target.")
     .action(async () => {
-      await runPublishCommand();
+      await runPublishCommand({
+        ghCliTokenResolver: resolveGitHubCliToken
+      });
     });
 
   program
@@ -127,7 +133,8 @@ export function buildProgram(): Command {
         await runRefreshCommand({
           hook: parseRefreshHook(options.hook),
           hookPolicy: hookPolicy ?? (options.failSoft ? "fail-soft" : undefined),
-          forceFull: options.forceFull ?? false
+          forceFull: options.forceFull ?? false,
+          ghCliTokenResolver: resolveGitHubCliToken
         });
       }
     );
@@ -147,7 +154,8 @@ export function buildProgram(): Command {
     .action(async (options: { json?: boolean; probeWrite?: boolean }) => {
       await runDoctorCommand({
         json: options.json ?? false,
-        probeWrite: options.probeWrite ?? false
+        probeWrite: options.probeWrite ?? false,
+        ghCliTokenResolver: resolveGitHubCliToken
       });
     });
 
@@ -175,7 +183,8 @@ export function buildProgram(): Command {
           purgeState: options.purgeState ?? false,
           purgeLogs: options.purgeLogs ?? true,
           purgeCaches: options.purgeCache ?? true,
-          force: options.force ?? false
+          force: options.force ?? false,
+          ghCliTokenResolver: resolveGitHubCliToken
         });
       }
     );

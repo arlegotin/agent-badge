@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { homedir } from "node:os";
 
 import {
+  type GhCliTokenResolver,
   type RunDoctorChecksOptions,
   type RunDoctorChecksResult,
   runDoctorChecks
@@ -16,6 +17,7 @@ export interface RunDoctorCommandOptions {
   readonly cwd?: string;
   readonly homeRoot?: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly json?: boolean;
   readonly probeWrite?: boolean;
   readonly gistClient?: GitHubGistClient;
@@ -50,6 +52,7 @@ function asRunDoctorChecksOptions(
     cwd: options.cwd,
     homeRoot: options.homeRoot,
     env: options.env,
+    ghCliTokenResolver: options.ghCliTokenResolver,
     gistClient: options.gistClient,
     runProbeWrite: options.probeWrite
   };

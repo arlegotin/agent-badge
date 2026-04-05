@@ -23,12 +23,14 @@ import {
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeIfChanged,
+  resolveGitHubAuthToken,
   runIncrementalRefresh,
   toPublishAttemptChangedBadge,
   writeRefreshCache,
   appendAgentBadgeLog,
   buildLogEntry,
   PublishBadgeError,
+  type GhCliTokenResolver,
   type AgentBadgeRefreshMode,
   type AgentBadgeRefreshPublishDecision,
   type AgentBadgeState,
@@ -51,6 +53,7 @@ export interface RunRefreshCommandOptions {
   readonly cwd?: string;
   readonly homeRoot?: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
   readonly hook?: "pre-push";
@@ -79,7 +82,6 @@ export type RefreshCommandResult =
 
 const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
-const githubTokenEnvVars = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
 const GITHUB_AUTH_MISSING_ERROR_MESSAGE =
   "GitHub authentication missing or invalid.";
 
@@ -139,20 +141,6 @@ function normalizePublishSurfaceError(error: Error): Error {
     candidateHash: error.candidateHash,
     changedBadge: error.changedBadge
   });
-}
-
-function resolveGitHubAuthToken(
-  env: NodeJS.ProcessEnv | undefined
-): string | undefined {
-  for (const envVar of githubTokenEnvVars) {
-    const value = env?.[envVar];
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
-    }
-  }
-
-  return undefined;
 }
 
 function getConfiguredProviders(
@@ -601,10 +589,16 @@ export async function runRefreshCommand(
           refresh.cache
         ),
         client:
-          options.gistClient ??
-          createGitHubGistClient({
-            authToken: resolveGitHubAuthToken(env)
-          }),
+        options.gistClient ??
+        createGitHubGistClient({
+          authToken:
+            (
+              await resolveGitHubAuthToken({
+                env,
+                ghCliTokenResolver: options.ghCliTokenResolver
+              })
+            ).token
+        }),
         now,
         skipIfUnchanged: true
       });

@@ -7,6 +7,8 @@ import {
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   removeRepoLocalRuntimeWiring,
+  resolveGitHubAuthToken,
+  type GhCliTokenResolver,
   type AgentBadgeConfig,
   type AgentBadgeState,
   type DeletePublishTargetResult,
@@ -27,6 +29,7 @@ export interface RunUninstallCommandOptions {
   readonly purgeCaches?: boolean;
   readonly force?: boolean;
   readonly env?: NodeJS.ProcessEnv;
+  readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
   readonly stdout?: OutputWriter;
 }
@@ -42,22 +45,9 @@ const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
 const CACHE_PATH = ".agent-badge/cache";
 const LOGS_PATH = ".agent-badge/logs";
-const GITHUB_TOKEN_ENV_VARS = ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_PAT"] as const;
 
 function writeLine(stdout: OutputWriter, line: string): void {
   stdout.write(`${line}\n`);
-}
-
-function resolveGitHubAuthToken(env: NodeJS.ProcessEnv | undefined): string | undefined {
-  for (const envVar of GITHUB_TOKEN_ENV_VARS) {
-    const value = env?.[envVar];
-
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value;
-    }
-  }
-
-  return undefined;
 }
 
 function markRemoved(removed: string[], reportLines: string[], item: string): void {
@@ -257,7 +247,13 @@ export async function runUninstallCommand(
         client:
           options.gistClient ??
           createGitHubGistClient({
-            authToken: resolveGitHubAuthToken(env)
+            authToken:
+              (
+                await resolveGitHubAuthToken({
+                  env,
+                  ghCliTokenResolver: options.ghCliTokenResolver
+                })
+              ).token
           })
       });
 

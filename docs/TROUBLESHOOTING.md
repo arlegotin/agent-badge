@@ -31,7 +31,7 @@ Symptom: publish target creation is deferred because authentication is unavailab
 
 Recovery:
 
-1. Export one of `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`.
+1. Export one of `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or authenticate with `gh auth login` so `gh auth token` works in the same environment.
 2. Rerun `agent-badge init`, or connect a public gist with `agent-badge init --gist-id <id>`.
 
 ## deferred publish target

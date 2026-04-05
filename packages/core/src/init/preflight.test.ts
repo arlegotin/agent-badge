@@ -170,4 +170,23 @@ describe("runInitPreflight", () => {
       await repo.cleanup();
     }
   });
+
+  it("detects GitHub auth from the injected gh CLI resolver when env auth is absent", async () => {
+    const repo = await createRepoFixture();
+
+    try {
+      const preflight = await runInitPreflight({
+        cwd: repo.root,
+        env: {},
+        ghCliTokenResolver: () => "gh-cli-token"
+      });
+
+      expect(preflight.githubAuth).toEqual({
+        available: true,
+        source: "gh-cli"
+      });
+    } finally {
+      await repo.cleanup();
+    }
+  });
 });
