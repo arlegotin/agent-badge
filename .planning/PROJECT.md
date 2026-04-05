@@ -42,11 +42,11 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 - [x] Existing single-writer repos can migrate to the shared model safely without losing badge continuity or privacy guarantees. Validated in Phase 16.
 - [x] Operators can immediately tell when the live badge is stale, unchanged, or not attempted from the normal CLI surfaces they already use. Validated in Phase 17.
 - [x] `status`, `refresh`, and `doctor` expose one coherent live-badge trust view with last successful publish state and recovery guidance. Validated in Phase 17.
+- [x] Refresh and publish validate GitHub auth and publish readiness with canonical remediation before or during live publish flows. Validated in Phase 18.
+- [x] Repos can choose explicit fail-soft versus strict pre-push publish behavior instead of inheriting a hidden default. Validated in Phase 18.
 
 ### Active
 
-- [ ] Refresh and pre-push flows can verify GitHub auth and publish readiness before silently leaving badge state behind.
-- [ ] Repos can choose explicit strictness and recovery behavior for publish failures instead of one hidden fail-soft default.
 - [ ] Shared-mode repos can recover from publish error state without manual local-state edits.
 
 ### Out of Scope
@@ -66,7 +66,9 @@ As of 2026-04-02 after Phases 14-16, shared publish correctness is in place: con
 
 The new sharp gap is operational trust. The product is still intentionally local-first and failure-soft on developer machines. That means a repo can keep scanning locally while the live badge quietly stops updating if GitHub auth disappears, gist writes fail, or refresh degrades without the operator noticing.
 
-The next milestone is not a new capability layer; it is a production-hardening pass over the existing publish path. It needs visible publish failure states, better auth/readiness checks, stale badge detection, and explicit recovery flows so the live badge remains trustworthy under normal local developer workflows.
+As of 2026-04-05 after Phase 18, the live CLI now classifies missing auth and gist readiness problems with canonical remediation, normal refresh failures print both readiness and trust lines, and managed pre-push automation encodes explicit `fail-soft` versus `strict` behavior.
+
+The remaining milestone gap is supported recovery after publish error state and production-proof verification of the stale-badge failure-and-recovery path. The next work should harden those recovery flows without weakening the local-first, aggregate-only model.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -106,6 +108,8 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Cross-publisher deduplication should use stable provider session identity rather than publisher-local totals | Team correctness requires set-union semantics, not sum-of-summaries | Implemented in Phase 15 |
 | Shared ambiguous-session outcomes must become repo-level state rather than machine-local overrides | Team badge correctness breaks when different users resolve the same ambiguous session differently | Implemented in Phase 15 |
 | Local-first publish automation must make remote failure visible instead of silently letting the badge drift stale | A trustworthy badge cannot depend on operators noticing hidden fail-soft background failures | Active for v1.4 |
+| Publish readiness must use one canonical auth/gist failure vocabulary across init, publish, refresh, and doctor | Operators need consistent remediation text instead of command-local error wording | Implemented in Phase 18 |
+| Managed pre-push hooks must encode `fail-soft` or `strict` explicitly in the generated command | Badge automation policy should be inspectable and deliberate, not inferred from shell fallthrough | Implemented in Phase 18 |
 
 ## Evolution
 
@@ -125,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after completing Phase 17*
+*Last updated: 2026-04-05 after completing Phase 18*
