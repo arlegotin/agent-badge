@@ -21,7 +21,7 @@ This milestone makes the live badge operationally trustworthy under local-first,
 ### Recovery And Controls
 
 - [x] **CTRL-01**: Repos can choose explicit automation strictness for badge publish failures rather than inheriting one hidden failure-soft default.
-- [ ] **CTRL-02**: Repos in publish error state can recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits.
+- [x] **CTRL-02**: Repos in publish error state can recover to a healthy shared publish state through supported CLI flows without manual `.agent-badge/state.json` edits.
 - [ ] **CTRL-03**: Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging.
 
 ## Future Requirements
@@ -54,7 +54,7 @@ This milestone makes the live badge operationally trustworthy under local-first,
 | AUTH-01 | Phase 18 | Complete |
 | AUTH-02 | Phase 18 | Complete |
 | CTRL-01 | Phase 18 | Complete |
-| CTRL-02 | Phase 19 | Pending |
+| CTRL-02 | Phase 19 | Complete |
 | CTRL-03 | Phase 19 | Pending |
 
 **Coverage:**
