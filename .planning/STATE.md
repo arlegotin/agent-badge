@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Publish Reliability Hardening
-status: planning_next_milestone
-stopped_at: Archived milestone v1.4
-last_updated: "2026-04-05T16:40:00.000Z"
+milestone: v1.5
+milestone_name: Production Readiness Closure
+status: executing
+stopped_at: Completed 21-01-PLAN.md
+last_updated: "2026-04-05T17:08:28.252Z"
 last_activity: 2026-04-05
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 2
+  completed_plans: 1
+  percent: 50
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-05)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Planning the next milestone from the shipped v1.4 baseline.
+**Current focus:** Phase 21 — external-release-blocker-audit-and-gate-repair
 
 ## Current Position
 
-Phase: Archived (v1.4 complete)
-Plan: -
-Status: Planning next milestone
+Phase: 21 (external-release-blocker-audit-and-gate-repair) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-05
 
-Progress: [██████████] v1.4 archived; awaiting next milestone definition
+Progress: [----------] Milestone defined; requirements and phase plans pending
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [██████████] v1.4 archived; awaiting next mileston
 | Phase 19 P01 | 7m | 2 tasks | 11 files |
 | Phase 20-verification-artifact-closure-and-audit-recovery P01 | 15m | 3 tasks | 8 files |
 | Phase 20 P02 | 7m 32s | 2 tasks | 7 files |
+| Phase 21 P01 | 4 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,8 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- Live release preflight from the current maintainer environment is still blocked by unauthorized `npm whoami` and visible registry version drift ahead of the checked-in manifests.
+- The repo has strong local release evidence, but it still needs refreshed public release and registry proof before a “100% production ready” claim is defensible.
 - `/Volumes/git` still has too little free space for a normal local `npm install`, so verification on this machine relies on temporary `/tmp` work directories.
 - Sandboxed `tsx` entrypoints can still hit IPC permission issues; repo-owned release tooling passed once rerun outside the sandbox when needed.
 - Local-first fail-soft refresh can still let the live badge drift stale when GitHub auth or gist writes fail in the push environment.
@@ -174,6 +177,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-05T15:08:54.243Z
-Stopped at: Completed 20-02-PLAN.md
+Last session: 2026-04-05T17:08:28.249Z
+Stopped at: Completed 21-01-PLAN.md
 Resume file: None
