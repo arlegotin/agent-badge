@@ -53,8 +53,8 @@ This milestone closes the gap between a locally green release rehearsal and an e
 
 | Requirement | Planned Phase | Status |
 |-------------|---------------|--------|
-| REL-01 | Phase 21 | Planned |
-| REL-02 | Phase 21 | Planned |
+| REL-01 | Phase 21 | Complete |
+| REL-02 | Phase 21 | Complete |
 | PUB-01 | Phase 22 | Planned |
 | PUB-02 | Phase 22 | Planned |
 | REG-01 | Phase 23 | Planned |
