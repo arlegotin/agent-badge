@@ -14,6 +14,7 @@ import {
 } from "@agent-badge/testkit";
 import { runConfigCommand } from "./config.js";
 import { runInitCommand } from "./init.js";
+import { runStatusCommand } from "./status.js";
 
 const execFileAsync = promisify(execFile);
 const readmeStartMarker = "<!-- agent-badge:start -->";
@@ -425,6 +426,129 @@ describe("release readiness scenario matrix", () => {
       expect(hookContent).not.toContain("|| true");
     } finally {
       await Promise.all([repo.cleanup(), providerFixture.cleanup()]);
+    }
+  });
+
+  it("stale failed publish recovery", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        ".agent-badge/config.json": `${JSON.stringify(
+          {
+            version: 1,
+            providers: {
+              codex: { enabled: true },
+              claude: { enabled: true }
+            },
+            repo: {
+              aliases: {
+                remotes: [],
+                slugs: []
+              }
+            },
+            badge: {
+              label: "Vibe budget",
+              mode: "combined"
+            },
+            publish: {
+              provider: "github-gist",
+              gistId: "gist_recovery_matrix",
+              badgeUrl:
+                "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_recovery_matrix%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+            },
+            refresh: {
+              prePush: {
+                enabled: true,
+                mode: "strict"
+              }
+            },
+            privacy: {
+              aggregateOnly: true,
+              output: "standard"
+            }
+          },
+          null,
+          2
+        )}\n`,
+        ".agent-badge/state.json": `${JSON.stringify(
+          {
+            version: 1,
+            init: {
+              initialized: true,
+              scaffoldVersion: 1,
+              lastInitializedAt: "2026-04-05T12:19:48.949Z"
+            },
+            checkpoints: {
+              codex: {
+                cursor: null,
+                lastScannedAt: "2026-04-05T12:19:48.949Z"
+              },
+              claude: {
+                cursor: null,
+                lastScannedAt: "2026-04-05T12:19:48.949Z"
+              }
+            },
+            publish: {
+              status: "error",
+              gistId: "gist_recovery_matrix",
+              lastPublishedHash: "hash_live",
+              lastPublishedAt: "2026-04-02T11:44:53.548Z",
+              lastAttemptedAt: "2026-04-05T12:19:48.949Z",
+              lastAttemptOutcome: "failed",
+              lastSuccessfulSyncAt: "2026-04-02T11:44:53.548Z",
+              lastAttemptCandidateHash: "hash_next",
+              lastAttemptChangedBadge: "yes",
+              lastFailureCode: "auth-missing",
+              publisherId: "publisher-local",
+              mode: "shared"
+            },
+            refresh: {
+              lastRefreshedAt: "2026-04-05T12:19:48.949Z",
+              lastScanMode: "incremental",
+              lastPublishDecision: "failed",
+              summary: {
+                includedSessions: 2,
+                includedTokens: 140,
+                includedEstimatedCostUsdMicros: null,
+                ambiguousSessions: 0,
+                excludedSessions: 0
+              }
+            },
+            overrides: {
+              ambiguousSessions: {}
+            }
+          },
+          null,
+          2
+        )}\n`,
+        "package-lock.json": "{}"
+      }
+    });
+
+    try {
+      const result = await runStatusCommand({
+        cwd: repo.root,
+        gistClient: {
+          getGist: async () => {
+            throw new Error("skip shared health lookup in matrix recovery check");
+          },
+          createPublicGist: async () => {
+            throw new Error("createPublicGist should not run");
+          },
+          updateGistFile: async () => {
+            throw new Error("updateGistFile should not run");
+          },
+          deleteGist: async () => {
+            throw new Error("deleteGist should not run");
+          }
+        }
+      });
+
+      expect(result.report).toContain("Live badge trust: stale after failed publish");
+      expect(result.report).toContain(
+        "- Recovery: Restore GitHub auth, then run `agent-badge refresh`."
+      );
+    } finally {
+      await repo.cleanup();
     }
   });
 });
