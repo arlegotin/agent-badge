@@ -9,11 +9,12 @@ VERSION=""
 CHECK_INITIALIZER=false
 WRITE_EVIDENCE=false
 PHASE_DIR="${DEFAULT_PHASE_DIR}"
+ARTIFACT_PREFIX="13-REGISTRY-SMOKE"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/smoke/verify-registry-install.sh --version <semver> [--check-initializer] [--write-evidence] [--phase-dir <path>]
+  bash scripts/smoke/verify-registry-install.sh --version <semver> [--check-initializer] [--write-evidence] [--phase-dir <path>] [--artifact-prefix <name>]
 
 Example:
   bash scripts/smoke/verify-registry-install.sh --version 1.1.1 --check-initializer --write-evidence
@@ -43,6 +44,11 @@ while [[ $# -gt 0 ]]; do
     --phase-dir)
       [[ $# -ge 2 ]] || fail "--phase-dir requires a value"
       PHASE_DIR=$2
+      shift 2
+      ;;
+    --artifact-prefix)
+      [[ $# -ge 2 ]] || fail "--artifact-prefix requires a value"
+      ARTIFACT_PREFIX=$2
       shift 2
       ;;
     --help)
@@ -151,8 +157,8 @@ check_import() {
 }
 
 write_evidence() {
-  local json_path="${PHASE_DIR}/13-REGISTRY-SMOKE.json"
-  local markdown_path="${PHASE_DIR}/13-REGISTRY-SMOKE.md"
+  local json_path="${PHASE_DIR}/${ARTIFACT_PREFIX}.json"
+  local markdown_path="${PHASE_DIR}/${ARTIFACT_PREFIX}.md"
   local package_lines
 
   mkdir -p "${PHASE_DIR}"
