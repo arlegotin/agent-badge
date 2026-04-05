@@ -12,7 +12,8 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 ## Current State
 
-**Latest shipped milestone:** v1.4 Publish Reliability Hardening (2026-04-05)
+**Latest shipped milestone:** v1.5 Production Readiness Closure (2026-04-05)
+**Production verdict:** Production ready for the shipped 1.1.3 surface
 
 The current released planning state covers:
 - merge-safe shared contributor publishing and repo-level ambiguous-session decisions
@@ -20,11 +21,21 @@ The current released planning state covers:
 - migration and shared-health operator flows for legacy repos
 - explicit badge-trust, readiness, and pre-push policy reporting
 - supported recovery flows plus live proof artifacts for returning degraded repos to healthy shared mode
+- explicit production-ready evidence proving the shipped `1.1.3` surface through the canonical trusted-publishing path and live registry smoke
+- one canonical go/no-go standard that classifies earlier Phase 21 blockers as historical once later shipped proof supersedes them
 
-## Next Milestone Goals
+## Current Milestone: none active
 
-- Decide which post-v1.4 expansion matters most: faster local freshness, richer history surfaces, or broader publish targets.
-- Start a fresh milestone with newly scoped requirements instead of carrying archived v1.4 planning context forward.
+**Status:** Production ready for the shipped 1.1.3 surface
+
+**Latest closed milestone:** v1.5 Production Readiness Closure
+
+**Archive:**
+- `.planning/milestones/v1.5-ROADMAP.md`
+- `.planning/milestones/v1.5-REQUIREMENTS.md`
+- `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
+
+**Next planning step:** Start the next milestone from the archived production-ready baseline rather than keeping v1.5 open in the root planning files.
 
 <details>
 <summary>Archived Milestone Focus: v1.4 Publish Reliability Hardening</summary>
@@ -65,12 +76,14 @@ The current released planning state covers:
 - [x] Repos can choose explicit fail-soft versus strict pre-push publish behavior instead of inheriting a hidden default. Validated in Phase 18.
 - [x] Shared-mode repos can recover from publish error state without manual local-state edits. Validated in Phase 19.
 - [x] Production-readiness verification covers the real stale-badge failure path, recovery path, and operator-facing messaging. Validated in Phase 19.
+- [x] `REL-01` and `REL-02`: The repo distinguishes locally green release rehearsal from externally blocked production publish state, with explicit blocker taxonomy and remediation guidance. Validated in Phase 21 and closed in milestone v1.5.
+- [x] `PUB-01` and `PUB-02`: The canonical GitHub Actions trusted-publishing path published the shipped `1.1.3` source and recorded exact release evidence for all three packages. Validated in Phase 22 and closed in milestone v1.5.
+- [x] `REG-01` and `REG-02`: The released `1.1.3` registry artifacts, including `npm init agent-badge@latest`, passed from a clean temp install path and aligned with source plus docs. Validated in Phase 23 and closed in milestone v1.5.
+- [x] `READY-01` and `READY-02`: The repo now has one explicit production-ready standard, one evidence map, and a final verdict of `Production ready for the shipped 1.1.3 surface`. Validated in Phase 24 and closed in milestone v1.5.
 
 ### Active
 
-- [ ] Evaluate Codex hook integration for lower-latency local freshness after the current shared/reliability baseline.
-- [ ] Decide whether richer history views should ship as badge-adjacent outputs or remain future product expansion.
-- [ ] Reassess whether additional publish backends materially improve the local-first story over the current public Gist model.
+- None. Start the next milestone from the archived v1.5 baseline when new scoped work is ready.
 
 ### Out of Scope
 
@@ -80,6 +93,7 @@ The current released planning state covers:
 - GitHub Actions-based collection from `~/.codex` or `~/.claude` - repository CI cannot access the local-first data sources reliably.
 - Cross-provider identity stitching beyond stable provider session identity - useful later, but not required for correct shared totals in the current supported providers.
 - Replacing the local-first publish model with a hosted backend - this milestone hardens the current operational model instead of changing the product architecture.
+- Net-new product expansion such as richer history surfaces, alternative publish backends, or hook-based live telemetry - defer until the repo has fresh end-to-end production proof.
 
 ## Context
 
@@ -89,7 +103,7 @@ As of 2026-04-05 after milestone v1.4, shared publish correctness and publish re
 
 The live CLI now classifies missing auth and gist readiness problems with canonical remediation, normal refresh failures print both readiness and trust lines, managed pre-push automation encodes explicit `fail-soft` versus `strict` behavior, and supported recovery flows can return degraded repos to healthy shared publish mode without manual state surgery.
 
-The next product decisions are expansion choices, not missing baseline trust work. Any next milestone should be scoped from the shipped local-first shared/reliability baseline rather than reopening the v1.4 verification set.
+Milestone v1.5 closed the remaining external-proof gap. Phase 21 preserved the historical blocker taxonomy, Phase 22 recovered and recorded the successful canonical GitHub Actions trusted publish for `1.1.3`, Phase 23 verified the exact live registry and `npm init agent-badge@latest` surface, and Phase 24 turned that proof into one explicit go/no-go standard with the final verdict `Production ready for the shipped 1.1.3 surface`.
 
 The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The intended onboarding is one command that leaves the repository fully configured: README badge inserted once, historical usage backfilled immediately, public Gist created or connected, first badge JSON published, and lightweight refresh installed for future pushes.
 
@@ -133,6 +147,8 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Managed pre-push hooks must encode `fail-soft` or `strict` explicitly in the generated command | Badge automation policy should be inspectable and deliberate, not inferred from shell fallthrough | Implemented in Phase 18 |
 | Supported recovery must be phase-owned proof, not only operator docs or traceability | Recovery trust is only credible when the owning phase verification cites refreshed live evidence | Implemented in Phases 19-20 |
 | Milestone closeout must archive roadmap, requirements, and audit artifacts before next planning begins | Keeping one active planning surface avoids long-lived milestone drift in root docs | Implemented at v1.4 milestone completion |
+| Do not claim the repo is 100% production ready until live preflight, trusted publishing, and post-publish registry smoke all succeed for the current source | Local tests and packed-install proof are necessary but not sufficient for an external readiness claim | Implemented across Phases 21-24 |
+| Historical blocker artifacts must be preserved but explicitly superseded once later shipped-release evidence proves the current surface | Old blocker snapshots should not override a later successful shipped release verdict | Implemented in Phase 24 |
 
 ## Evolution
 
@@ -152,4 +168,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-05 after completing the v1.4 milestone*
+*Last updated: 2026-04-05 after closing milestone v1.5 Production Readiness Closure*

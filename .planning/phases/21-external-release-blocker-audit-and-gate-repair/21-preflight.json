@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-05T17:05:26.955Z",
+  "generatedAt": "2026-04-05T17:31:08.432Z",
   "overallStatus": "blocked",
   "packages": [
     {
@@ -7,7 +7,11 @@
       "packageName": "@legotin/agent-badge-core",
       "intendedVersion": "1.1.2",
       "status": "warn",
-      "summary": "Package already exists in the registry at a different visible version; confirm ownership and publish intent.",
+      "summary": "Visible version drift: registry exposes 1.1.3 while source intends 1.1.2; confirm package ownership and publish intent.",
+      "blockers": [
+        "version drift",
+        "package ownership"
+      ],
       "registry": {
         "kind": "package",
         "observedName": "@legotin/agent-badge-core",
@@ -21,7 +25,11 @@
       "packageName": "@legotin/agent-badge",
       "intendedVersion": "1.1.2",
       "status": "warn",
-      "summary": "Package already exists in the registry at a different visible version; confirm ownership and publish intent.",
+      "summary": "Visible version drift: registry exposes 1.1.3 while source intends 1.1.2; confirm package ownership and publish intent.",
+      "blockers": [
+        "version drift",
+        "package ownership"
+      ],
       "registry": {
         "kind": "package",
         "observedName": "@legotin/agent-badge",
@@ -35,7 +43,11 @@
       "packageName": "create-agent-badge",
       "intendedVersion": "1.1.2",
       "status": "warn",
-      "summary": "Package already exists in the registry at a different visible version; confirm ownership and publish intent.",
+      "summary": "Visible version drift: registry exposes 1.1.3 while source intends 1.1.2; confirm package ownership and publish intent.",
+      "blockers": [
+        "version drift",
+        "package ownership"
+      ],
       "registry": {
         "kind": "package",
         "observedName": "create-agent-badge",
@@ -51,6 +63,9 @@
       "label": "npm auth",
       "status": "blocked",
       "summary": "npm whoami failed, so the maintainer identity is not ready for publish.",
+      "blockers": [
+        "npm auth"
+      ],
       "details": [
         "Command failed: npm whoami"
       ]
@@ -60,6 +75,7 @@
       "label": "release inputs",
       "status": "safe",
       "summary": "Changesets access is public and all publishable workspaces agree on version 1.1.2.",
+      "blockers": [],
       "details": [
         "Publishable inventory: @legotin/agent-badge-core, @legotin/agent-badge, create-agent-badge",
         "Root release contract: changeset publish",
@@ -71,10 +87,37 @@
       "label": "workflow contract",
       "status": "safe",
       "summary": ".github/workflows/release.yml still references the expected trusted-publishing release workflow contract.",
+      "blockers": [],
       "details": [
         "Local preflight validates workflow markers only.",
         "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token.",
         "The production workflow is expected to auto-bump and publish qualifying main-branch changes."
+      ]
+    },
+    {
+      "id": "package-ownership",
+      "label": "package ownership",
+      "status": "warn",
+      "summary": "Manual package ownership confirmation is still required for @legotin/agent-badge-core, @legotin/agent-badge, create-agent-badge.",
+      "blockers": [
+        "package ownership"
+      ],
+      "details": [
+        "Local preflight can see registry visibility and version drift, but it cannot prove publisher/owner permissions.",
+        "Confirm that the intended npm publisher owns every already-visible package before treating the release as externally ready."
+      ]
+    },
+    {
+      "id": "trusted-publisher",
+      "label": "trusted-publisher",
+      "status": "warn",
+      "summary": "Trusted-publisher confirmation is still manual because local preflight can validate workflow markers but cannot prove remote npm package trust settings.",
+      "blockers": [
+        "trusted-publisher"
+      ],
+      "details": [
+        "Confirm that each package trusts the arlegotin/agent-badge repository and the production release workflow file.",
+        "Keep the checked-in workflow on the OIDC path (`permissions.id-token: write`) so the local and remote contracts stay aligned."
       ]
     }
   ]
