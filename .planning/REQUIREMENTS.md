@@ -54,8 +54,8 @@ This milestone makes the live badge operationally trustworthy under local-first,
 | AUTH-01 | Phase 18 | Complete |
 | AUTH-02 | Phase 18 | Complete |
 | CTRL-01 | Phase 18 | Complete |
-| CTRL-02 | Phase 20 | Complete |
-| CTRL-03 | Phase 20 | Complete |
+| CTRL-02 | Phase 19 | Complete |
+| CTRL-03 | Phase 19 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 8 total
@@ -64,4 +64,4 @@ This milestone makes the live badge operationally trustworthy under local-first,
 
 ---
 *Requirements defined: 2026-04-02*
-*Last updated: 2026-04-05 for milestone v1.4 audit follow-up*
+*Last updated: 2026-04-05 after milestone v1.4 audit recovery rerun*
