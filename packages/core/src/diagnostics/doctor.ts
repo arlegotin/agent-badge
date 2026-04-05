@@ -8,6 +8,7 @@ import { buildEndpointBadgePayload } from "../publish/badge-payload.js";
 import {
   derivePrePushPolicyConsequence,
   derivePrePushPolicyReport,
+  deriveRecoveryPlan,
   formatPrePushPolicyLine,
   derivePublishTrustReport,
   formatPublishTrustStatus
@@ -330,41 +331,26 @@ function checkPublishAuth(preflight: InitPreflightResult): DoctorCheck {
   };
 }
 
-function buildPublishTrustFix(options: {
-  readonly config: AgentBadgeConfig | null;
-  readonly state: AgentBadgeState;
-  readonly status:
-    | "current"
-    | "failed-but-unchanged"
-    | "unchanged"
-    | "not-attempted"
-    | "stale-failed-publish"
-    | "unknown";
+function appendRecoveryPath(detail: string, primaryAction: string | null): string {
+  if (primaryAction === null) {
+    return detail;
+  }
+
+  return `${detail} | Recovery path: ${primaryAction}`;
+}
+
+function buildRecoveryFixes(input: {
+  readonly primaryAction: string | null;
+  readonly secondaryActions: readonly string[];
 }): readonly string[] {
   const fixes = new Set<string>();
-  const publishTargetMissing =
-    options.config === null ||
-    options.config.publish.gistId === null ||
-    options.config.publish.badgeUrl === null;
 
-  if (publishTargetMissing || options.status === "not-attempted") {
-    fixes.add("Run `agent-badge init --gist-id <id>` to reconnect publish targets.");
+  if (input.primaryAction !== null) {
+    fixes.add(input.primaryAction);
   }
 
-  if (
-    options.status === "stale-failed-publish" ||
-    options.status === "failed-but-unchanged" ||
-    options.status === "unknown"
-  ) {
-    fixes.add(
-      "Retry publish from the machine with the latest local state by rerunning `agent-badge refresh`."
-    );
-  }
-
-  if (options.status === "stale-failed-publish") {
-    fixes.add(
-      "If publish still fails, reconnect the gist target and rerun `agent-badge refresh`."
-    );
+  for (const action of input.secondaryActions) {
+    fixes.add(action);
   }
 
   return [...fixes];
@@ -375,6 +361,7 @@ function checkPublishTrust(options: {
   readonly state: AgentBadgeState | null;
   readonly stateMissing: boolean;
   readonly stateInvalid: boolean;
+  readonly sharedHealth: SharedPublishHealthReport | null;
 }): DoctorCheck {
   if (options.stateMissing) {
     return {
@@ -400,6 +387,14 @@ function checkPublishTrust(options: {
     state: options.state,
     now: new Date().toISOString()
   });
+  const recoveryPlan = deriveRecoveryPlan({
+    readiness: inspectPublishReadiness({
+      config: options.config,
+      state: options.state
+    }),
+    trust: report,
+    sharedHealth: options.sharedHealth
+  });
   const detailParts = [
     `Last refresh=${options.state.refresh.lastRefreshedAt ?? "unavailable"}`,
     `last published=${options.state.publish.lastPublishedAt ?? "unavailable"}`
@@ -421,15 +416,14 @@ function checkPublishTrust(options: {
     id: "publish-trust",
     status,
     message: `Live badge trust: ${formatPublishTrustStatus(report.status)}`,
-    detail: detailParts.join(" | "),
+    detail:
+      status === "pass"
+        ? detailParts.join(" | ")
+        : appendRecoveryPath(detailParts.join(" | "), recoveryPlan.primaryAction),
     fix:
       status === "pass"
         ? []
-        : buildPublishTrustFix({
-            config: options.config,
-            state: options.state,
-            status: report.status
-          })
+        : buildRecoveryFixes(recoveryPlan)
   };
 }
 
@@ -789,12 +783,26 @@ function checkSharedMode(inspection: SharedPublishInspection): DoctorCheck {
   }
 
   if (inspection.report.mode === "legacy") {
+    const recoveryPlan = deriveRecoveryPlan({
+      readiness: {
+        status: "ready",
+        summary: "ready",
+        fix: []
+      },
+      trust: {
+        status: "current",
+        lastRefreshedAt: null,
+        lastPublishedAt: null
+      },
+      sharedHealth: inspection.report
+    });
+
     return {
       id: "shared-mode",
       status: "warn",
       message: "Repo is still in legacy publish mode",
-      detail: inspection.detail,
-      fix: inspection.fix
+      detail: appendRecoveryPath(inspection.detail, recoveryPlan.primaryAction),
+      fix: buildRecoveryFixes(recoveryPlan)
     };
   }
 
@@ -838,13 +846,27 @@ function checkSharedHealth(inspection: SharedPublishInspection): DoctorCheck {
     };
   }
 
+  const recoveryPlan = deriveRecoveryPlan({
+    readiness: {
+      status: "ready",
+      summary: "ready",
+      fix: []
+    },
+    trust: {
+      status: "current",
+      lastRefreshedAt: null,
+      lastPublishedAt: null
+    },
+    sharedHealth: inspection.report
+  });
+
   if (inspection.report.status === "stale") {
     return {
       id: "shared-health",
       status: "warn",
       message: "Shared mode is stale",
-      detail: inspection.detail,
-      fix: inspection.fix
+      detail: appendRecoveryPath(inspection.detail, recoveryPlan.primaryAction),
+      fix: buildRecoveryFixes(recoveryPlan)
     };
   }
 
@@ -859,8 +881,8 @@ function checkSharedHealth(inspection: SharedPublishInspection): DoctorCheck {
     id: "shared-health",
     status: "fail",
     message,
-    detail: inspection.detail,
-    fix: inspection.fix
+    detail: appendRecoveryPath(inspection.detail, recoveryPlan.primaryAction),
+    fix: buildRecoveryFixes(recoveryPlan)
   };
 }
 
@@ -1099,14 +1121,6 @@ export async function runDoctorChecks(
   checks.push(
     await checkPublishShields(persisted.config, options.runProbeWrite ?? false)
   );
-  checks.push(
-    checkPublishTrust({
-      config: persisted.config,
-      state: persistedState.state,
-      stateMissing: persistedState.stateMissing,
-      stateInvalid: persistedState.stateInvalid
-    })
-  );
   const sharedInspection = await inspectSharedPublishState({
     config: persisted.config,
     state: persistedState.state,
@@ -1116,6 +1130,15 @@ export async function runDoctorChecks(
     stateInvalid: persistedState.stateInvalid,
     gistClient
   });
+  checks.push(
+    checkPublishTrust({
+      config: persisted.config,
+      state: persistedState.state,
+      stateMissing: persistedState.stateMissing,
+      stateInvalid: persistedState.stateInvalid,
+      sharedHealth: sharedInspection.report
+    })
+  );
   checks.push(checkSharedMode(sharedInspection));
   checks.push(checkSharedHealth(sharedInspection));
   checks.push(await checkReadme(cwd, preflight));

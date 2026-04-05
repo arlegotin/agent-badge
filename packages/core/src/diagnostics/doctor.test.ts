@@ -616,6 +616,121 @@ describe("runDoctorChecks", () => {
     }
   });
 
+  it("auth-missing stale shared publish uses refresh as the supported recovery path", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+      await writeJsonFile(fixture.repo.root, ".agent-badge/state.json", {
+        version: 1,
+        init: {
+          initialized: true,
+          scaffoldVersion: 1,
+          lastInitializedAt: "2026-03-31T00:00:00.000Z"
+        },
+        checkpoints: {
+          codex: {
+            cursor: null,
+            lastScannedAt: "2026-04-05T12:19:48.949Z"
+          },
+          claude: {
+            cursor: null,
+            lastScannedAt: "2026-04-05T12:19:48.949Z"
+          }
+        },
+        publish: {
+          status: "error",
+          gistId: "doctorgist",
+          lastPublishedHash: "hash_live",
+          lastPublishedAt: "2026-04-02T11:44:53.548Z",
+          lastAttemptedAt: "2026-04-05T12:19:48.949Z",
+          lastAttemptOutcome: "failed",
+          lastSuccessfulSyncAt: "2026-04-02T11:44:53.548Z",
+          lastAttemptCandidateHash: "hash_next",
+          lastAttemptChangedBadge: "yes",
+          lastFailureCode: "auth-missing",
+          publisherId: "publisher-local",
+          mode: "shared"
+        },
+        refresh: {
+          lastRefreshedAt: "2026-04-05T12:19:48.949Z",
+          lastScanMode: "incremental",
+          lastPublishDecision: "failed",
+          summary: null
+        },
+        overrides: {
+          ambiguousSessions: {}
+        }
+      });
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {},
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  truncated: false
+                },
+                [buildContributorGistFileName("publisher-local")]: {
+                  filename: buildContributorGistFileName("publisher-local"),
+                  content: createObservationContributorRecord({
+                    publisherId: "publisher-local",
+                    observations: {
+                      [buildSharedOverrideDigest("codex:session-a")]: {
+                        sessionUpdatedAt: "2026-04-05T12:19:48.949Z",
+                        attributionStatus: "included",
+                        overrideDecision: null,
+                        tokens: 42,
+                        estimatedCostUsdMicros: null
+                      }
+                    }
+                  }),
+                  truncated: false
+                },
+                [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+                  filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+                  content: createOverridesRecord(),
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            },
+            deleteGist: async () => {
+              throw new Error("deleteGist should not run");
+            }
+          }
+        })
+      );
+
+      const publishTrust = result.checks.find((check) => check.id === "publish-trust");
+
+      expect(publishTrust?.status).toBe("fail");
+      expect(publishTrust?.detail).toContain("Recovery path:");
+      expect(publishTrust?.detail).toContain("agent-badge refresh");
+      expect(publishTrust?.fix).toContain(
+        "Restore GitHub auth, then run `agent-badge refresh`."
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
   it("reports pre-push policy wording and degraded-mode semantics in hook diagnostics", async () => {
     const fixture = await createRepoFixture();
     const originalFetch = globalThis.fetch;

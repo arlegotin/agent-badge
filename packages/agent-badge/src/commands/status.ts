@@ -6,10 +6,12 @@ import {
   derivePrePushPolicyConsequence,
   derivePrePushPolicyReport,
   derivePublishTrustReport,
+  deriveRecoveryPlan,
   formatPrePushPolicyLine,
   formatPublishTrustStatus,
   formatEstimatedCostUsd,
   inspectSharedPublishHealth,
+  inspectPublishReadiness,
   parseAgentBadgeState,
   type AgentBadgeState,
   type GitHubGistClient,
@@ -93,13 +95,19 @@ function buildSharedIssueCounts(
   return counts.filter(([, count]) => count > 0);
 }
 
-async function buildSharedModeLines(options: {
+async function inspectSharedMode(options: {
   readonly config: StatusCommandConfig;
   readonly state: AgentBadgeState;
   readonly gistClient: GitHubGistClient;
-}): Promise<string[]> {
+}): Promise<{
+  readonly lines: readonly string[];
+  readonly report: SharedPublishHealthReport | null;
+}> {
   if (options.config.publish.gistId === null) {
-    return ["- Shared mode: unavailable (gist not configured)"];
+    return {
+      lines: ["- Shared mode: unavailable (gist not configured)"],
+      report: null
+    };
   }
 
   try {
@@ -122,9 +130,15 @@ async function buildSharedModeLines(options: {
       );
     }
 
-    return lines;
+    return {
+      lines,
+      report: sharedHealth
+    };
   } catch {
-    return ["- Shared mode: unavailable (unable to inspect shared publish state)"];
+    return {
+      lines: ["- Shared mode: unavailable (unable to inspect shared publish state)"],
+      report: null
+    };
   }
 }
 
@@ -351,11 +365,28 @@ export async function runStatusCommand(
     await readJsonFile(join(cwd, CONFIG_PATH))
   );
   const state = parseAgentBadgeState(await readJsonFile(join(cwd, STATE_PATH)));
-  const sharedModeLines = await buildSharedModeLines({
+  const trustReport = derivePublishTrustReport({
+    state,
+    now: new Date().toISOString()
+  });
+  const sharedMode = await inspectSharedMode({
     config,
     state,
     gistClient
   });
+  const recoveryPlan = deriveRecoveryPlan({
+    readiness: inspectPublishReadiness({
+      config,
+      state
+    }),
+    trust: trustReport,
+    sharedHealth: sharedMode.report
+  });
+  const hideLegacyMigrationRecoveryLine =
+    recoveryPlan.reasonCodes.includes("legacy-no-contributors") &&
+    recoveryPlan.reasonCodes.includes("ready") &&
+    (recoveryPlan.reasonCodes.includes("current") ||
+      recoveryPlan.reasonCodes.includes("unchanged"));
   const report = [
     "agent-badge status",
     `- Totals: ${formatTotalsLine(state)}`,
@@ -363,7 +394,12 @@ export async function runStatusCommand(
     `- Publish: ${formatPublishLine(config, state)}`,
     ...buildPrePushPolicyLines(config, state),
     ...buildPublishTrustLines(state),
-    ...sharedModeLines,
+    ...sharedMode.lines,
+    ...(recoveryPlan.status === "healthy" ||
+    recoveryPlan.primaryAction === null ||
+    hideLegacyMigrationRecoveryLine
+      ? []
+      : [`- Recovery: ${recoveryPlan.primaryAction}`]),
     `- Last refresh: ${formatLastRefreshLine(state)}`,
     `- Checkpoints: ${formatCheckpointsLine(state)}`
   ].join("\n");
