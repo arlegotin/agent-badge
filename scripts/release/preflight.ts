@@ -32,10 +32,18 @@ const expectedWorkflowMarkers = [
 
 export type ReleasePreflightStatus = "safe" | "warn" | "blocked";
 export type RegistryLookupKind = "package" | "missing" | "error";
+export type ReleaseBlockerCategory =
+  | "npm auth"
+  | "version drift"
+  | "same version already published"
+  | "package ownership"
+  | "trusted-publisher";
 export type ReleasePreflightCheckId =
   | "npm-auth"
   | "release-inputs"
-  | "workflow-contract";
+  | "workflow-contract"
+  | "package-ownership"
+  | "trusted-publisher";
 
 export interface PublishablePackageManifest {
   readonly manifestPath: string;
@@ -71,6 +79,7 @@ export interface PackagePreflightResult {
   readonly intendedVersion: string;
   readonly status: ReleasePreflightStatus;
   readonly summary: string;
+  readonly blockers: readonly ReleaseBlockerCategory[];
   readonly registry: PackageRegistryState;
 }
 
@@ -102,6 +111,7 @@ export interface ReleasePreflightCheckResult {
   readonly label: string;
   readonly status: ReleasePreflightStatus;
   readonly summary: string;
+  readonly blockers: readonly ReleaseBlockerCategory[];
   readonly details: readonly string[];
 }
 
@@ -308,6 +318,7 @@ export function classifyRegistryResult(
       intendedVersion: manifest.version,
       status: "safe",
       summary: "Package name is available for a first publish.",
+      blockers: [],
       registry: {
         kind: "missing",
         observedName: null,
@@ -325,6 +336,7 @@ export function classifyRegistryResult(
       intendedVersion: manifest.version,
       status: "warn",
       summary: "Registry state could not be confirmed from npm view output.",
+      blockers: [],
       registry: {
         kind: "error",
         observedName: null,
@@ -344,6 +356,7 @@ export function classifyRegistryResult(
       intendedVersion: manifest.version,
       status: "blocked",
       summary: `Registry lookup resolved to ${metadata.name}, not ${manifest.name}.`,
+      blockers: [],
       registry: {
         kind: "package",
         observedName: metadata.name,
@@ -360,7 +373,8 @@ export function classifyRegistryResult(
       packageName: manifest.name,
       intendedVersion: manifest.version,
       status: "blocked",
-      summary: `Intended version ${manifest.version} is already visible in the registry.`,
+      summary: `Same version already published: intended version ${manifest.version} is already visible in the registry.`,
+      blockers: ["same version already published", "package ownership"],
       registry: {
         kind: "package",
         observedName: metadata.name,
@@ -378,6 +392,7 @@ export function classifyRegistryResult(
       intendedVersion: manifest.version,
       status: "warn",
       summary: "Registry returned partial metadata that needs manual review.",
+      blockers: [],
       registry: {
         kind: "package",
         observedName: metadata.name,
@@ -389,16 +404,16 @@ export function classifyRegistryResult(
   }
 
   return {
-    manifestPath: manifest.manifestPath,
-    packageName: manifest.name,
-    intendedVersion: manifest.version,
-    status: "warn",
-    summary:
-      "Package already exists in the registry at a different visible version; confirm ownership and publish intent.",
-    registry: {
-      kind: "package",
-      observedName: metadata.name,
-      observedVersion: metadata.version,
+      manifestPath: manifest.manifestPath,
+      packageName: manifest.name,
+      intendedVersion: manifest.version,
+      status: "warn",
+      summary: `Visible version drift: registry exposes ${metadata.latestTag ?? metadata.version ?? "an existing version"} while source intends ${manifest.version}; confirm package ownership and publish intent.`,
+      blockers: ["version drift", "package ownership"],
+      registry: {
+        kind: "package",
+        observedName: metadata.name,
+        observedVersion: metadata.version,
       latestTag: metadata.latestTag,
       message: lookup.message
     }
@@ -430,6 +445,7 @@ export async function runNpmAuthCheck(
       label: "npm auth",
       status: "blocked",
       summary: "npm ping failed, so registry reachability could not be confirmed.",
+      blockers: ["npm auth"],
       details: [formatCommandError(error)]
     };
   }
@@ -443,6 +459,7 @@ export async function runNpmAuthCheck(
         label: "npm auth",
         status: "blocked",
         summary: "npm whoami succeeded without returning an authenticated npm identity.",
+        blockers: ["npm auth"],
         details: ["Re-run `npm login` and retry the preflight."]
       };
     }
@@ -452,6 +469,7 @@ export async function runNpmAuthCheck(
       label: "npm auth",
       status: "safe",
       summary: `npm ping and npm whoami succeeded for ${identity}.`,
+      blockers: [],
       details: [
         "Registry connectivity is available from this maintainer environment.",
         "Authenticated npm identity is readable before publish."
@@ -463,6 +481,7 @@ export async function runNpmAuthCheck(
       label: "npm auth",
       status: "blocked",
       summary: "npm whoami failed, so the maintainer identity is not ready for publish.",
+      blockers: ["npm auth"],
       details: [formatCommandError(error)]
     };
   }
@@ -532,6 +551,7 @@ export function evaluateReleaseInputs(input: {
       label: "release inputs",
       status: "blocked",
       summary: "Release inputs are inconsistent with the intended public publish path.",
+      blockers: [],
       details: issues
     };
   }
@@ -541,6 +561,7 @@ export function evaluateReleaseInputs(input: {
     label: "release inputs",
     status: "safe",
     summary: `Changesets access is public and all publishable workspaces agree on version ${versions[0]}.`,
+    blockers: [],
     details: [
       `Publishable inventory: ${input.manifests.map((manifest) => manifest.name).join(", ")}`,
       `Root release contract: ${releaseScript}`,
@@ -563,6 +584,7 @@ export function evaluateWorkflowContract(
       label: "workflow contract",
       status: "blocked",
       summary: `${workflowFile} drifted away from the expected production publish contract.`,
+      blockers: [],
       details: missingMarkers.map(
         (marker) => `Missing required workflow marker: ${marker}`
       )
@@ -574,6 +596,7 @@ export function evaluateWorkflowContract(
     label: "workflow contract",
     status: "safe",
     summary: `${workflowFile} still references the expected trusted-publishing release workflow contract.`,
+    blockers: [],
     details: [
       "Local preflight validates workflow markers only.",
       "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token.",
@@ -609,6 +632,81 @@ async function loadWorkflowContractCheck(
   return evaluateWorkflowContract(workflowContent, releaseWorkflowPath);
 }
 
+export function evaluatePackageOwnershipCheck(
+  packageResults: readonly PackagePreflightResult[]
+): ReleasePreflightCheckResult {
+  const existingPackages = packageResults.filter((result) => result.registry.kind === "package");
+
+  if (existingPackages.length === 0) {
+    return {
+      id: "package-ownership",
+      label: "package ownership",
+      status: "safe",
+      summary: "No existing npm packages were detected, so package ownership confirmation is not required for a first publish.",
+      blockers: [],
+      details: ["Package ownership only becomes a manual confirmation when npm already exposes the package name."]
+    };
+  }
+
+  return {
+    id: "package-ownership",
+    label: "package ownership",
+    status: "warn",
+    summary: `Manual package ownership confirmation is still required for ${existingPackages.map((result) => result.packageName).join(", ")}.`,
+    blockers: ["package ownership"],
+    details: [
+      "Local preflight can see registry visibility and version drift, but it cannot prove publisher/owner permissions.",
+      "Confirm that the intended npm publisher owns every already-visible package before treating the release as externally ready."
+    ]
+  };
+}
+
+export function evaluateTrustedPublisherCheck(input: {
+  readonly packageResults: readonly PackagePreflightResult[];
+  readonly workflowContract: ReleasePreflightCheckResult;
+}): ReleasePreflightCheckResult {
+  const existingPackages = input.packageResults.filter(
+    (result) => result.registry.kind === "package"
+  );
+
+  if (input.workflowContract.status === "blocked") {
+    return {
+      id: "trusted-publisher",
+      label: "trusted-publisher",
+      status: "blocked",
+      summary: "Trusted-publisher confirmation is blocked because the checked-in release workflow no longer matches the expected production contract.",
+      blockers: ["trusted-publisher"],
+      details: input.workflowContract.details
+    };
+  }
+
+  if (existingPackages.length === 0) {
+    return {
+      id: "trusted-publisher",
+      label: "trusted-publisher",
+      status: "safe",
+      summary: "No existing npm package settings were observed, so remote trusted-publisher confirmation is not yet required for a first publish.",
+      blockers: [],
+      details: [
+        "The checked-in workflow still uses the expected OIDC release markers.",
+        "Trusted-publisher confirmation becomes a manual external check once the packages already exist in npm."
+      ]
+    };
+  }
+
+  return {
+    id: "trusted-publisher",
+    label: "trusted-publisher",
+    status: "warn",
+    summary: "Trusted-publisher confirmation is still manual because local preflight can validate workflow markers but cannot prove remote npm package trust settings.",
+    blockers: ["trusted-publisher"],
+    details: [
+      "Confirm that each package trusts the arlegotin/agent-badge repository and the production release workflow file.",
+      "Keep the checked-in workflow on the OIDC path (`permissions.id-token: write`) so the local and remote contracts stay aligned."
+    ]
+  };
+}
+
 function formatRegistryObservation(result: PackagePreflightResult): string {
   if (result.registry.kind === "missing") {
     return "missing";
@@ -633,6 +731,7 @@ export function formatHumanReport(report: ReleasePreflightReport): string {
     lines.push(`  intended: ${result.intendedVersion}`);
     lines.push(`  registry: ${formatRegistryObservation(result)}`);
     lines.push(`  decision: ${result.status}`);
+    lines.push(`  blockers: ${result.blockers.length > 0 ? result.blockers.join(", ") : "none"}`);
     lines.push(`  detail: ${result.summary}`);
   }
 
@@ -643,6 +742,7 @@ export function formatHumanReport(report: ReleasePreflightReport): string {
     lines.push("");
     lines.push(`${check.id}`);
     lines.push(`  decision: ${check.status}`);
+    lines.push(`  blockers: ${check.blockers.length > 0 ? check.blockers.join(", ") : "none"}`);
     lines.push(`  detail: ${check.summary}`);
 
     for (const detail of check.details) {
@@ -710,11 +810,21 @@ export async function runReleasePreflight(
       classifyRegistryResult(manifest, await fetchRegistryPackageState(manifest.name, repoRoot))
     )
   );
-  const checks = await Promise.all([
-    runNpmAuthCheck(repoRoot),
-    loadReleaseInputCheck(manifests, repoRoot, releaseInputIssues),
-    loadWorkflowContractCheck(repoRoot)
-  ]);
+  const npmAuthCheck = await runNpmAuthCheck(repoRoot);
+  const releaseInputsCheck = await loadReleaseInputCheck(manifests, repoRoot, releaseInputIssues);
+  const workflowContractCheck = await loadWorkflowContractCheck(repoRoot);
+  const packageOwnershipCheck = evaluatePackageOwnershipCheck(packageResults);
+  const trustedPublisherCheck = evaluateTrustedPublisherCheck({
+    packageResults,
+    workflowContract: workflowContractCheck
+  });
+  const checks = [
+    npmAuthCheck,
+    releaseInputsCheck,
+    workflowContractCheck,
+    packageOwnershipCheck,
+    trustedPublisherCheck
+  ];
 
   return {
     generatedAt: new Date().toISOString(),
