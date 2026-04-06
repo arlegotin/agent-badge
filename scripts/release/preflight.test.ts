@@ -27,6 +27,23 @@ const currentInventory = await preflight.loadPublishablePackageInventory(process
 const currentRuntimeVersion = currentInventory.find(
   (entry: { name: string }) => entry.name === "@legotin/agent-badge"
 )!.version;
+const registryAheadVersion = incrementPatchVersion(currentRuntimeVersion);
+
+function incrementPatchVersion(version: string): string {
+  const parts = version.split(".");
+
+  if (parts.length !== 3) {
+    throw new Error(`Expected a semver version, received ${version}.`);
+  }
+
+  const [major, minor, patch] = parts.map((part) => Number.parseInt(part, 10));
+
+  if ([major, minor, patch].some((part) => Number.isNaN(part))) {
+    throw new Error(`Expected numeric semver parts, received ${version}.`);
+  }
+
+  return `${major}.${minor}.${patch + 1}`;
+}
 
 function missingPackageError(packageName: string): Error & {
   readonly stderr: string;
@@ -155,8 +172,8 @@ describe("release preflight", () => {
     mockMissingPackage("@legotin/agent-badge-core");
     mockRegistryJson({
       name: "@legotin/agent-badge",
-      version: "1.1.3",
-      "dist-tags.latest": "1.1.3"
+      version: registryAheadVersion,
+      "dist-tags.latest": registryAheadVersion
     });
     mockMissingPackage("create-agent-badge");
     mockNpmPing();
