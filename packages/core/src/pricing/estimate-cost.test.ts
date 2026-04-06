@@ -43,10 +43,13 @@ function createPricingCatalog(): PricingCatalog {
 
 describe("estimateIncludedCostUsdMicros", () => {
   it("formats estimated USD with compact badge-friendly suffixes", () => {
-    expect(formatEstimatedCostUsd(12_340_000)).toBe("$12.34");
+    expect(formatEstimatedCostUsd(9_990_000)).toBe("$9.99");
+    expect(formatEstimatedCostUsd(12_340_000)).toBe("$12");
     expect(formatEstimatedCostUsd(1_400_000_000)).toBe("$1.4K");
+    expect(formatEstimatedCostUsd(1_300_000_000_000_000)).toBe("$1.3B");
     expect(formatEstimatedCostUsd(34_700_000_000_000)).toBe("$34.7M");
     expect(formatEstimatedCostUsd(456_300_000_000_000)).toBe("$456M");
+    expect(formatEstimatedCostUsd(999_950_000_000_000)).toBe("$1B");
   });
 
   it("estimates Anthropic session cost from explicit usage buckets", async () => {

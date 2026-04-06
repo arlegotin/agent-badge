@@ -17,7 +17,7 @@ describe("buildEndpointBadgePayload", () => {
     expect(payload).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "120 tokens | $12.34",
+      message: "120 tokens | $12",
       color: "blue"
     });
     expect(Object.keys(payload)).toEqual([
@@ -80,7 +80,7 @@ describe("buildEndpointBadgePayload", () => {
     ).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "$12.34",
+      message: "$12",
       color: "blue"
     });
   });
@@ -156,7 +156,43 @@ describe("buildEndpointBadgePayload", () => {
     ).toEqual({
       schemaVersion: 1,
       label: "AI Usage",
-      message: "42.3M tokens | $57.5",
+      message: "42.3M tokens | $58",
+      color: "blue"
+    });
+  });
+
+  it("formats billion-scale badge payloads with a B suffix", () => {
+    expect(
+      buildEndpointBadgePayload({
+        label: "AI Usage",
+        mode: "tokens",
+        includedTotals: {
+          sessions: 3,
+          tokens: 1_300_000_000,
+          estimatedCostUsdMicros: null
+        }
+      })
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "1.3B tokens",
+      color: "blue"
+    });
+
+    expect(
+      buildEndpointBadgePayload({
+        label: "AI Usage",
+        mode: "cost",
+        includedTotals: {
+          sessions: 3,
+          tokens: 120,
+          estimatedCostUsdMicros: 1_300_000_000_000_000
+        }
+      })
+    ).toEqual({
+      schemaVersion: 1,
+      label: "AI Usage",
+      message: "$1.3B",
       color: "blue"
     });
   });

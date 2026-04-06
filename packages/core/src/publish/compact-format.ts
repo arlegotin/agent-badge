@@ -3,39 +3,51 @@ const rawIntegerFormatter = new Intl.NumberFormat("en-US", {
   useGrouping: false
 });
 
-const rawUsdFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2
-});
-
 const compactUnits = [
   { threshold: 1_000_000_000, suffix: "B" },
   { threshold: 1_000_000, suffix: "M" },
   { threshold: 1_000, suffix: "K" }
 ] as const;
 
+function formatRawUsd(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: Math.abs(value) >= 10 ? 0 : 2
+  }).format(value);
+}
+
+function formatCompactFromIndex(abs: number, index: number): string {
+  const unit = compactUnits[index];
+  const scaled = abs / unit.threshold;
+  const rendered = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: scaled >= 100 ? 0 : 1,
+    useGrouping: false
+  }).format(scaled);
+  const rounded = Number.parseFloat(rendered);
+
+  if (rounded >= 1000 && index > 0) {
+    return formatCompactFromIndex(abs, index - 1);
+  }
+
+  return `${rendered}${unit.suffix}`;
+}
+
 function formatCompactCore(value: number): string {
   const abs = Math.abs(value);
+  const sign = value < 0 ? "-" : "";
 
-  for (const unit of compactUnits) {
-    if (abs < unit.threshold) {
+  for (let index = 0; index < compactUnits.length; index += 1) {
+    if (abs < compactUnits[index].threshold) {
       continue;
     }
 
-    const scaled = abs / unit.threshold;
-    const maximumFractionDigits = abs >= 100_000_000 ? 0 : 1;
-    const rendered = new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits,
-      useGrouping: false
-    }).format(scaled);
-
-    return `${value < 0 ? "-" : ""}${rendered}${unit.suffix}`;
+    return `${sign}${formatCompactFromIndex(abs, index)}`;
   }
 
-  return `${value < 0 ? "-" : ""}${rawIntegerFormatter.format(abs)}`;
+  return `${sign}${rawIntegerFormatter.format(abs)}`;
 }
 
 export function formatCompactInteger(value: number): string {
@@ -44,7 +56,7 @@ export function formatCompactInteger(value: number): string {
 
 export function formatCompactUsd(value: number): string {
   if (Math.abs(value) < 1_000) {
-    return rawUsdFormatter.format(value);
+    return formatRawUsd(value);
   }
 
   const sign = value < 0 ? "-" : "";

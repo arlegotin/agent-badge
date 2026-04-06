@@ -832,7 +832,7 @@ export function formatEstimatedCostUsd(micros: number): string {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2
+      maximumFractionDigits: abs >= 10 ? 0 : 2
     }).format(usd);
   }
 
@@ -847,14 +847,28 @@ export function formatEstimatedCostUsd(micros: number): string {
       continue;
     }
 
-    const scaled = abs / unit.threshold;
-    const rendered = new Intl.NumberFormat("en-US", {
+    let threshold = unit.threshold;
+    let scaled = abs / threshold;
+    let rendered = new Intl.NumberFormat("en-US", {
       minimumFractionDigits: 0,
-      maximumFractionDigits: abs >= 100_000_000 ? 0 : 1,
+      maximumFractionDigits: scaled >= 100 ? 0 : 1,
       useGrouping: false
     }).format(scaled);
 
-    return `${usd < 0 ? "-" : ""}$${rendered}${unit.suffix}`;
+    while (Number.parseFloat(rendered) >= 1000 && threshold < 1_000_000_000) {
+      threshold *= 1000;
+      scaled = abs / threshold;
+      rendered = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: scaled >= 100 ? 0 : 1,
+        useGrouping: false
+      }).format(scaled);
+    }
+
+    const suffix =
+      threshold === 1_000_000_000 ? "B" : threshold === 1_000_000 ? "M" : "K";
+
+    return `${usd < 0 ? "-" : ""}$${rendered}${suffix}`;
   }
 
   return new Intl.NumberFormat("en-US", {
