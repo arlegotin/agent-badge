@@ -401,7 +401,7 @@ describe("publishBadgeToGist", () => {
           content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
-  "message": "42 tokens | $57.5",
+  "message": "42 tokens | $58",
   "color": "blue"
 }
 `
@@ -410,7 +410,7 @@ describe("publishBadgeToGist", () => {
           content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
-  "message": "42 tokens | $57.5",
+  "message": "42 tokens | $58",
   "color": "blue"
 }
 `
@@ -428,7 +428,7 @@ describe("publishBadgeToGist", () => {
           content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
-  "message": "$57.5",
+  "message": "$58",
   "color": "blue"
 }
 `
