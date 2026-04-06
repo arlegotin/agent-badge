@@ -105,6 +105,24 @@ describe("agentBadgeConfigSchema", () => {
     });
   });
 
+  it("fills new badge config fields when reading older configs", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        badge: {
+          label: "Legacy Label",
+          mode: "combined"
+        }
+      }).badge
+    ).toEqual({
+      label: "Legacy Label",
+      mode: "combined",
+      color: "blue",
+      colorZero: "lightgrey",
+      cacheSeconds: 300
+    });
+  });
+
   it("rejects path-like repo aliases", () => {
     expect(() =>
       parseAgentBadgeConfig({

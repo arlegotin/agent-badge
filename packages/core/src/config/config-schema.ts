@@ -37,9 +37,9 @@ export const agentBadgeConfigSchema = z
       .object({
         label: z.string().min(1),
         mode: badgeModeSchema,
-        color: badgeColorSchema,
-        colorZero: badgeColorSchema,
-        cacheSeconds: z.number().int().positive()
+        color: badgeColorSchema.default("blue"),
+        colorZero: badgeColorSchema.default("lightgrey"),
+        cacheSeconds: z.number().int().positive().default(300)
       })
       .strict(),
     publish: z
