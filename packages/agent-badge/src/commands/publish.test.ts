@@ -8,13 +8,17 @@ const {
   appendAgentBadgeLogMock,
   attributeBackfillSessionsMock,
   createGitHubGistClientMock,
+  estimateSessionCostsUsdMicrosByKeyMock,
   publishBadgeToGistMock,
+  resolvePricingCatalogMock,
   runFullBackfillScanMock
 } = vi.hoisted(() => ({
   appendAgentBadgeLogMock: vi.fn(),
   attributeBackfillSessionsMock: vi.fn(),
   createGitHubGistClientMock: vi.fn(),
+  estimateSessionCostsUsdMicrosByKeyMock: vi.fn(),
   publishBadgeToGistMock: vi.fn(),
+  resolvePricingCatalogMock: vi.fn(),
   runFullBackfillScanMock: vi.fn()
 }));
 
@@ -28,7 +32,9 @@ vi.mock("@legotin/agent-badge-core", async () => {
     appendAgentBadgeLog: appendAgentBadgeLogMock,
     attributeBackfillSessions: attributeBackfillSessionsMock,
     createGitHubGistClient: createGitHubGistClientMock,
+    estimateSessionCostsUsdMicrosByKey: estimateSessionCostsUsdMicrosByKeyMock,
     publishBadgeToGist: publishBadgeToGistMock,
+    resolvePricingCatalog: resolvePricingCatalogMock,
     runFullBackfillScan: runFullBackfillScanMock
   };
 });
@@ -318,7 +324,15 @@ beforeEach(() => {
   appendAgentBadgeLogMock.mockResolvedValue("log-path");
   attributeBackfillSessionsMock.mockReset();
   createGitHubGistClientMock.mockReset();
+  estimateSessionCostsUsdMicrosByKeyMock.mockReset();
+  estimateSessionCostsUsdMicrosByKeyMock.mockResolvedValue({});
   publishBadgeToGistMock.mockReset();
+  resolvePricingCatalogMock.mockReset();
+  resolvePricingCatalogMock.mockResolvedValue({
+    fetchedAt: null,
+    sources: {},
+    providers: {}
+  });
   runFullBackfillScanMock.mockReset();
 });
 
