@@ -205,6 +205,32 @@ function writeBadgeSetupDeferred(
   writeLines(stdout, [`- Badge setup deferred: ${message}`]);
 }
 
+function buildInitSetupStatusMessage(options: {
+  readonly publishTarget: PublishTargetResult;
+  readonly publishSucceeded: boolean;
+}): string {
+  if (options.publishSucceeded) {
+    return "complete. Local runtime, pre-push refresh, and live badge publishing are ready.";
+  }
+
+  switch (options.publishTarget.reason) {
+    case "auth-missing":
+      return "local setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.";
+    case "gist-create-failed":
+      return "local setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`.";
+    case "gist-not-public":
+    case "gist-missing-owner":
+    case "gist-unreachable":
+      return "local setup complete, but the configured gist still needs attention before the live badge can publish. Fix the gist target, then rerun `agent-badge init --gist-id <id>`.";
+    default:
+      return "local setup complete, but the live badge is not ready yet. Follow the recovery hint above, then rerun `agent-badge init`.";
+  }
+}
+
+function writeInitSetupStatus(stdout: OutputWriter, message: string): void {
+  writeLines(stdout, [`- Setup: ${message}`]);
+}
+
 function writeSharedPublishSummary(
   stdout: OutputWriter,
   publishResult: Pick<
@@ -593,6 +619,13 @@ export async function runInitCommand(
       stdout,
       buildDeferredBadgeSetupMessage(publishTarget)
     );
+    writeInitSetupStatus(
+      stdout,
+      buildInitSetupStatusMessage({
+        publishTarget,
+        publishSucceeded: false
+      })
+    );
 
     return {
       preflight,
@@ -607,6 +640,13 @@ export async function runInitCommand(
     writeBadgeSetupDeferred(
       stdout,
       "a stable badge URL was not configured. Rerun `agent-badge init` after reconnecting the publish target."
+    );
+    writeInitSetupStatus(
+      stdout,
+      buildInitSetupStatusMessage({
+        publishTarget,
+        publishSucceeded: false
+      })
     );
 
     return {
@@ -666,8 +706,22 @@ export async function runInitCommand(
       config: nextPublishState.config,
       stdout
     });
+    writeInitSetupStatus(
+      stdout,
+      buildInitSetupStatusMessage({
+        publishTarget,
+        publishSucceeded: true
+      })
+    );
   } catch (error) {
     writeBadgeSetupDeferred(stdout, buildPublishFailureMessage(error));
+    writeInitSetupStatus(
+      stdout,
+      buildInitSetupStatusMessage({
+        publishTarget,
+        publishSucceeded: false
+      })
+    );
   }
 
   return {

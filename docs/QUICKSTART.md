@@ -12,6 +12,11 @@ npm init agent-badge@latest
 
 That initializer runs `agent-badge init` in the current directory and sets up the repo-local runtime.
 
+At the end of init, look for the final `- Setup:` line:
+
+- `- Setup: complete...` means the local runtime and live badge publishing are ready.
+- `- Setup: local setup complete, but GitHub auth is still required...` means install succeeded, but you still need GitHub auth before the gist-backed badge can publish.
+
 What it usually handles for you:
 
 - installs `@legotin/agent-badge` locally in the repo

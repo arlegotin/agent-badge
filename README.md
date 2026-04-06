@@ -55,6 +55,8 @@ npm init agent-badge@latest
 
 That initializer sets up the local runtime, creates `.agent-badge/` state, configures a failure-soft `pre-push` refresh hook, and inserts or prints the badge snippet.
 
+At the end of init, check the final `- Setup:` line. `complete` means the live badge is ready; `local setup complete, but GitHub auth is still required` means install succeeded but gist publishing still needs auth.
+
 If GitHub auth is already available through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that one command also creates or reuses a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
 Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens and rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.

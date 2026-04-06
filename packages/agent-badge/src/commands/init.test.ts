@@ -358,9 +358,15 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("GitHub auth: env:GITHUB_TOKEN");
       expect(output.read()).toContain("- Publish target: deferred");
       expect(output.read()).toContain("- Badge setup deferred:");
+      expect(output.read()).toContain(
+        "- Setup: local setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`."
+      );
       expect(secondOutput.read()).toContain("agent-badge init runtime wiring");
       expect(secondOutput.read()).toContain("- Publish target: deferred");
       expect(secondOutput.read()).toContain("- Badge setup deferred:");
+      expect(secondOutput.read()).toContain(
+        "- Setup: local setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`."
+      );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
@@ -547,6 +553,9 @@ describe("runInitCommand", () => {
         (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash
       ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: created public gist");
+      expect(output.read()).toContain(
+        "- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready."
+      );
       expect(readmeContent).toContain("<!-- agent-badge:start -->");
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -1049,6 +1058,9 @@ describe("runInitCommand", () => {
       expect(readmeContent).not.toContain("https://img.shields.io/endpoint");
       expect(output.read()).toContain("- Publish target: deferred");
       expect(output.read()).toContain("- Badge setup deferred:");
+      expect(output.read()).toContain(
+        "- Setup: local setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`."
+      );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
