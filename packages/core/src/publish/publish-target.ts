@@ -9,8 +9,6 @@ import {
 } from "./github-gist-client.js";
 
 const AGENT_BADGE_GIST_DESCRIPTION = "agent-badge publish target";
-const PENDING_BADGE_JSON =
-  '{"schemaVersion":1,"label":"Vibe budget","message":"pending","color":"lightgrey"}';
 
 export type PublishTargetStatus =
   | "created"
@@ -56,7 +54,8 @@ function normalizeGistId(value: string | null | undefined): string | undefined {
 
 function buildPublishTargetResult(
   status: Exclude<PublishTargetStatus, "deferred">,
-  gist: GitHubGist
+  gist: GitHubGist,
+  config: AgentBadgeConfig
 ): PublishTargetResult {
   if (!gist.public) {
     return {
@@ -81,9 +80,19 @@ function buildPublishTargetResult(
     gistId: gist.id,
     badgeUrl: buildStableBadgeUrl({
       ownerLogin: gist.ownerLogin,
-      gistId: gist.id
+      gistId: gist.id,
+      cacheSeconds: config.badge.cacheSeconds
     })
   };
+}
+
+function buildPendingBadgeJson(config: AgentBadgeConfig): string {
+  return JSON.stringify({
+    schemaVersion: 1,
+    label: config.badge.label,
+    message: "pending",
+    color: config.badge.colorZero
+  });
 }
 
 function buildDeferredResult(
@@ -100,11 +109,12 @@ function buildDeferredResult(
 async function loadExistingGistTarget(
   gistId: string,
   status: Extract<PublishTargetStatus, "connected" | "reused">,
+  config: AgentBadgeConfig,
   client: GitHubGistClient
 ): Promise<PublishTargetResult> {
   try {
     const gist = await client.getGist(gistId);
-    return buildPublishTargetResult(status, gist);
+    return buildPublishTargetResult(status, gist, config);
   } catch {
     return buildDeferredResult("gist-unreachable");
   }
@@ -123,11 +133,11 @@ export async function ensurePublishTarget(
   const client = options.client ?? createGitHubGistClient();
 
   if (explicitGistId) {
-    return loadExistingGistTarget(explicitGistId, "connected", client);
+    return loadExistingGistTarget(explicitGistId, "connected", options.config, client);
   }
 
   if (configuredGistId) {
-    return loadExistingGistTarget(configuredGistId, "reused", client);
+    return loadExistingGistTarget(configuredGistId, "reused", options.config, client);
   }
 
   try {
@@ -135,12 +145,12 @@ export async function ensurePublishTarget(
       description: AGENT_BADGE_GIST_DESCRIPTION,
       files: {
         [AGENT_BADGE_GIST_FILE]: {
-          content: PENDING_BADGE_JSON
+          content: buildPendingBadgeJson(options.config)
         }
       }
     });
 
-    return buildPublishTargetResult("created", gist);
+    return buildPublishTargetResult("created", gist, options.config);
   } catch {
     return buildDeferredResult("gist-create-failed");
   }

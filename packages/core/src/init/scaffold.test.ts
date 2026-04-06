@@ -116,6 +116,9 @@ describe("applyAgentBadgeScaffold", () => {
       expect(config.providers.codex.enabled).toBe(true);
       expect(config.providers.claude.enabled).toBe(false);
       expect(config.badge.mode).toBe("combined");
+      expect(config.badge.color).toBe("blue");
+      expect(config.badge.colorZero).toBe("lightgrey");
+      expect(config.badge.cacheSeconds).toBe(300);
       expect(state.init.initialized).toBe(true);
       expect(state.init.lastInitializedAt).toBe(initializedAt);
     } finally {
@@ -190,7 +193,10 @@ describe("applyAgentBadgeScaffold", () => {
           {
             version: 1,
             badge: {
-              label: "Custom Label"
+              label: "Custom Label",
+              color: "orange",
+              colorZero: "silver",
+              cacheSeconds: 900
             },
             privacy: {
               output: "minimal"
@@ -249,6 +255,9 @@ describe("applyAgentBadgeScaffold", () => {
 
       expect(result.warnings).toHaveLength(2);
       expect(config.badge.label).toBe("Custom Label");
+      expect(config.badge.color).toBe("orange");
+      expect(config.badge.colorZero).toBe("silver");
+      expect(config.badge.cacheSeconds).toBe(900);
       expect(config.providers.claude.enabled).toBe(false);
       expect(config.privacy.output).toBe("minimal");
       expect(config.repo.aliases).toEqual({

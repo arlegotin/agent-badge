@@ -233,11 +233,15 @@ export async function collectIncludedTotals(
 function buildSerializedBadgePayload(options: {
   readonly label: string;
   readonly mode: AgentBadgeConfig["badge"]["mode"];
+  readonly color: string;
+  readonly colorZero: string;
   readonly includedTotals: IncludedTotals;
 }): string {
   const payload = buildEndpointBadgePayload({
     label: options.label,
     mode: options.mode,
+    color: options.color,
+    colorZero: options.colorZero,
     includedTotals: options.includedTotals
   });
 
@@ -255,6 +259,8 @@ function buildSerializedBadgeFiles(
       content: buildSerializedBadgePayload({
         label: options.config.badge.label,
         mode: options.config.badge.mode,
+        color: options.config.badge.color,
+        colorZero: options.config.badge.colorZero,
         includedTotals: options.includedTotals
       })
     }
@@ -268,6 +274,8 @@ function buildSerializedBadgeFiles(
     content: buildSerializedBadgePayload({
       label: options.config.badge.label,
       mode: "combined",
+      color: options.config.badge.color,
+      colorZero: options.config.badge.colorZero,
       includedTotals: options.includedTotals
     })
   };
@@ -275,6 +283,8 @@ function buildSerializedBadgeFiles(
     content: buildSerializedBadgePayload({
       label: options.config.badge.label,
       mode: "tokens",
+      color: options.config.badge.color,
+      colorZero: options.config.badge.colorZero,
       includedTotals: options.includedTotals
     })
   };
@@ -282,6 +292,8 @@ function buildSerializedBadgeFiles(
     content: buildSerializedBadgePayload({
       label: options.config.badge.label,
       mode: "cost",
+      color: options.config.badge.color,
+      colorZero: options.config.badge.colorZero,
       includedTotals: options.includedTotals
     })
   };

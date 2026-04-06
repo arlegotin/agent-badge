@@ -82,7 +82,7 @@ Recovery:
 
 1. Run `agent-badge status` and confirm a recent refresh happened.
 2. If `status` says `stale after failed publish`, follow the `agent-badge refresh` recovery path in [RECOVERY.md](RECOVERY.md).
-3. Remember the Shields endpoint uses `cacheSeconds=300`, so a short delay is expected.
+3. Remember the Shields endpoint is cached. By default the badge URL uses `cacheSeconds=300`, but your repo may use a different value if `badge.cacheSeconds` was customized.
 
 ## shared mode is stale
 

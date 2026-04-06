@@ -105,6 +105,9 @@ describe("runConfigCommand", () => {
       expect(output.read()).toContain("- providers.claude.enabled=true");
       expect(output.read()).toContain("- badge.label=Vibe budget");
       expect(output.read()).toContain("- badge.mode=combined");
+      expect(output.read()).toContain("- badge.color=blue");
+      expect(output.read()).toContain("- badge.colorZero=lightgrey");
+      expect(output.read()).toContain("- badge.cacheSeconds=300");
       expect(output.read()).toContain("- refresh.prePush.enabled=true");
       expect(output.read()).toContain("- refresh.prePush.mode=fail-soft");
       expect(output.read()).toContain("- Pre-push policy: fail-soft");
@@ -152,6 +155,27 @@ describe("runConfigCommand", () => {
         cwd: fixture.repoRoot,
         stdout: output.writer,
         action: "set",
+        key: "badge.color",
+        value: "orange"
+      });
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer,
+        action: "set",
+        key: "badge.colorZero",
+        value: "silver"
+      });
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer,
+        action: "set",
+        key: "badge.cacheSeconds",
+        value: "900"
+      });
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer,
+        action: "set",
         key: "refresh.prePush.enabled",
         value: "false"
       });
@@ -176,6 +200,9 @@ describe("runConfigCommand", () => {
       expect(config.providers.claude.enabled).toBe(false);
       expect(config.badge.label).toBe("Agent Sessions");
       expect(config.badge.mode).toBe("tokens");
+      expect(config.badge.color).toBe("orange");
+      expect(config.badge.colorZero).toBe("silver");
+      expect(config.badge.cacheSeconds).toBe(900);
       expect(config.refresh.prePush.enabled).toBe(false);
       expect(config.refresh.prePush.mode).toBe("strict");
       expect(config.privacy.aggregateOnly).toBe(true);
@@ -329,6 +356,38 @@ describe("runConfigCommand", () => {
           value: "gist_123"
         })
       ).rejects.toThrow("Unsupported config key: publish.gistId");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("rewrites the stored badge URL when cacheSeconds changes", async () => {
+    const fixture = await createFixture();
+
+    try {
+      await writeJsonFile(fixture.repoRoot, ".agent-badge/config.json", {
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "gist_123",
+          badgeUrl:
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+        }
+      });
+
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        action: "set",
+        key: "badge.cacheSeconds",
+        value: "900"
+      });
+
+      const config = await readConfigFile(fixture.configPath);
+
+      expect(config.badge.cacheSeconds).toBe(900);
+      expect(config.publish.badgeUrl).toBe(
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=900"
+      );
     } finally {
       await fixture.cleanup();
     }

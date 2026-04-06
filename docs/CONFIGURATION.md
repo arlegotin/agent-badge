@@ -14,6 +14,9 @@ Use `agent-badge config` or `agent-badge config get` to inspect current values, 
 | `providers.claude.enabled` | `true`, `false` | `true` | Include or ignore Claude data during scan and refresh. |
 | `badge.label` | any non-empty string | `Vibe budget` | Changes the left-side badge label. |
 | `badge.mode` | `combined`, `tokens`, `cost` | `combined` | Changes what the badge message displays. |
+| `badge.color` | any non-empty Shields color string | `blue` | Changes the badge color when the selected total is non-zero. |
+| `badge.colorZero` | any non-empty Shields color string | `lightgrey` | Changes the badge color when the selected total is zero. |
+| `badge.cacheSeconds` | positive integer | `300` | Changes the Shields cache hint embedded in the stable badge URL. |
 | `refresh.prePush.enabled` | `true`, `false` | `true` | Enables or removes the managed `pre-push` refresh hook block. |
 | `refresh.prePush.mode` | `fail-soft`, `strict` | `fail-soft` | Controls whether hook refresh failures are tolerated or fail the push. |
 | `privacy.output` | `standard`, `minimal` | `standard` | Controls how much publish detail CLI commands print locally. |
@@ -56,6 +59,23 @@ agent-badge config set badge.label "Vibe budget"
 ```bash
 agent-badge config set badge.label "AI Receipt"
 ```
+
+### Change the badge colors
+
+```bash
+agent-badge config set badge.color orange
+agent-badge config set badge.colorZero silver
+```
+
+These values are passed through to Shields-compatible badge colors. The new color appears after the next successful publish or refresh.
+
+### Change the Shields cache time
+
+```bash
+agent-badge config set badge.cacheSeconds 900
+```
+
+This updates the stored badge URL to use a different `cacheSeconds` value. The default is `300`.
 
 ### Codex-only or Claude-only tracking
 

@@ -36,6 +36,18 @@ describe("buildStableBadgeUrl", () => {
       "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300"
     );
   });
+
+  it("derives the Shields endpoint with a custom cacheSeconds value", () => {
+    expect(
+      buildStableBadgeUrl({
+        ownerLogin: "octocat",
+        gistId: "gist_123",
+        cacheSeconds: 900
+      })
+    ).toBe(
+      "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=900"
+    );
+  });
 });
 
 describe("applyPublishTargetResult", () => {
@@ -191,6 +203,10 @@ describe("ensurePublishTarget", () => {
       ensurePublishTarget({
         config: {
           ...defaultAgentBadgeConfig,
+          badge: {
+            ...defaultAgentBadgeConfig.badge,
+            cacheSeconds: 900
+          },
           publish: {
             ...defaultAgentBadgeConfig.publish,
             gistId: "gist_existing"
@@ -211,7 +227,7 @@ describe("ensurePublishTarget", () => {
       status: "reused",
       gistId: "gist_existing",
       badgeUrl:
-        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=900"
     });
     expect(createPublicGist).not.toHaveBeenCalled();
   });
@@ -250,6 +266,46 @@ describe("ensurePublishTarget", () => {
         "agent-badge.json": {
           content:
             '{"schemaVersion":1,"label":"Vibe budget","message":"pending","color":"lightgrey"}'
+        }
+      }
+    });
+  });
+
+  it("uses configured zero color in the initial pending gist payload", async () => {
+    const createPublicGist = vi.fn().mockResolvedValue({
+      id: "gist_created",
+      ownerLogin: "octocat",
+      public: true,
+      files: [AGENT_BADGE_GIST_FILE]
+    });
+
+    await ensurePublishTarget({
+      config: {
+        ...defaultAgentBadgeConfig,
+        badge: {
+          ...defaultAgentBadgeConfig.badge,
+          label: "AI Receipt",
+          colorZero: "silver"
+        }
+      },
+      state: defaultAgentBadgeState,
+      githubAuth: {
+        available: true,
+        source: "env:GH_TOKEN"
+      },
+      client: {
+        getGist: vi.fn(),
+        createPublicGist,
+        updateGistFile: vi.fn()
+      }
+    });
+
+    expect(createPublicGist).toHaveBeenCalledWith({
+      description: "agent-badge publish target",
+      files: {
+        "agent-badge.json": {
+          content:
+            '{"schemaVersion":1,"label":"AI Receipt","message":"pending","color":"silver"}'
         }
       }
     });

@@ -101,6 +101,9 @@ The CLI exposes a small configuration surface on purpose. The product is not try
 | Show tokens only | `agent-badge config set badge.mode tokens` |
 | Show estimated cost only | `agent-badge config set badge.mode cost` |
 | Set label to `AI Receipt` | `agent-badge config set badge.label "AI Receipt"` |
+| Set the active badge color | `agent-badge config set badge.color orange` |
+| Set the zero-state badge color | `agent-badge config set badge.colorZero silver` |
+| Change Shields cache time | `agent-badge config set badge.cacheSeconds 900` |
 | Ignore Codex data | `agent-badge config set providers.codex.enabled false` |
 | Ignore Claude data | `agent-badge config set providers.claude.enabled false` |
 | Disable auto-refresh on push | `agent-badge config set refresh.prePush.enabled false` |
@@ -108,6 +111,8 @@ The CLI exposes a small configuration surface on purpose. The product is not try
 | Hide extra publish details from CLI output | `agent-badge config set privacy.output minimal` |
 
 `privacy.aggregateOnly` is intentionally fixed to `true`. `agent-badge` does not have a mode that publishes raw prompts, transcripts, filenames, or local paths.
+
+Badge appearance stays intentionally small in scope: you can change the label, the active color, the zero-state color, and the Shields cache hint. The default cache time is `300` seconds.
 
 Read the full supported config surface in [Configuration](docs/CONFIGURATION.md).
 

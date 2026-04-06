@@ -7,6 +7,8 @@ describe("buildEndpointBadgePayload", () => {
     const payload = buildEndpointBadgePayload({
       label: "AI Usage",
       mode: "combined",
+      color: "blue",
+      colorZero: "lightgrey",
       includedTotals: {
         sessions: 3,
         tokens: 120,
@@ -33,6 +35,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "Token Usage",
         mode: "tokens",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 17_600,
@@ -52,6 +56,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "combined",
+        color: "orange",
+        colorZero: "silver",
         includedTotals: {
           sessions: 0,
           tokens: 0,
@@ -62,7 +68,7 @@ describe("buildEndpointBadgePayload", () => {
       schemaVersion: 1,
       label: "AI Usage",
       message: "0 tokens | $0",
-      color: "lightgrey"
+      color: "silver"
     });
   });
 
@@ -71,6 +77,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "cost",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 120,
@@ -90,6 +98,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "cost",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 120,
@@ -109,6 +119,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "tokens",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 456_300_000,
@@ -128,6 +140,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "cost",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 120,
@@ -147,6 +161,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "combined",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 42_300_000,
@@ -166,6 +182,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "tokens",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 1_300_000_000,
@@ -183,6 +201,8 @@ describe("buildEndpointBadgePayload", () => {
       buildEndpointBadgePayload({
         label: "AI Usage",
         mode: "cost",
+        color: "blue",
+        colorZero: "lightgrey",
         includedTotals: {
           sessions: 3,
           tokens: 120,

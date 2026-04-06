@@ -13,6 +13,8 @@ export interface IncludedTotals {
 export interface BuildEndpointBadgePayloadOptions {
   readonly label: string;
   readonly mode: AgentBadgeBadgeMode;
+  readonly color: string;
+  readonly colorZero: string;
   readonly includedTotals: IncludedTotals;
 }
 
@@ -20,7 +22,7 @@ export interface EndpointBadgePayload {
   readonly schemaVersion: 1;
   readonly label: string;
   readonly message: string;
-  readonly color: "blue" | "lightgrey";
+  readonly color: string;
 }
 
 const COST_MODE_ERROR =
@@ -69,6 +71,8 @@ function resolveBadgeValue(
 export function buildEndpointBadgePayload({
   label,
   mode,
+  color,
+  colorZero,
   includedTotals
 }: BuildEndpointBadgePayloadOptions): EndpointBadgePayload {
   const { total, message } = resolveBadgeValue(mode, includedTotals);
@@ -77,6 +81,6 @@ export function buildEndpointBadgePayload({
     schemaVersion: 1,
     label,
     message,
-    color: total > 0 ? "blue" : "lightgrey"
+    color: total > 0 ? color : colorZero
   };
 }

@@ -39,6 +39,7 @@ export interface AgentBadgeScaffoldResult {
 const scaffoldVersion = 1;
 const invalidJsonMarker = Symbol("invalid-json");
 const badgeModes: AgentBadgeBadgeMode[] = ["combined", "tokens", "cost"];
+const defaultBadgeCacheSeconds = createDefaultAgentBadgeConfig().badge.cacheSeconds;
 const refreshModes: AgentBadgeRefreshMode[] = ["fail-soft", "strict"];
 const privacyOutputs: AgentBadgePrivacyOutput[] = ["standard", "minimal"];
 const publishStatuses: AgentBadgePublishStatus[] = [
@@ -222,7 +223,12 @@ function reconcileConfig(
         badge: {
           label: readString(badge.label) ?? defaults.badge.label,
           mode:
-            readEnumValue(badge.mode, badgeModes) ?? defaults.badge.mode
+            readEnumValue(badge.mode, badgeModes) ?? defaults.badge.mode,
+          color: readString(badge.color) ?? defaults.badge.color,
+          colorZero:
+            readString(badge.colorZero) ?? defaults.badge.colorZero,
+          cacheSeconds:
+            readPositiveInteger(badge.cacheSeconds) ?? defaultBadgeCacheSeconds
         },
         publish: {
           provider: defaults.publish.provider,

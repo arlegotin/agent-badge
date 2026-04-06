@@ -10,6 +10,7 @@ const badgeModeSchema = z.preprocess(
   (input) => (input === "sessions" ? "tokens" : input),
   z.enum(["combined", "tokens", "cost"])
 );
+const badgeColorSchema = z.string().min(1);
 const publishProviderSchema = z.enum(["github-gist"]);
 const refreshModeSchema = z.enum(["fail-soft", "strict"]);
 
@@ -35,7 +36,10 @@ export const agentBadgeConfigSchema = z
     badge: z
       .object({
         label: z.string().min(1),
-        mode: badgeModeSchema
+        mode: badgeModeSchema,
+        color: badgeColorSchema,
+        colorZero: badgeColorSchema,
+        cacheSeconds: z.number().int().positive()
       })
       .strict(),
     publish: z
@@ -88,7 +92,10 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
   },
   badge: {
     label: "Vibe budget",
-    mode: "combined"
+    mode: "combined",
+    color: "blue",
+    colorZero: "lightgrey",
+    cacheSeconds: 300
   },
   publish: {
     provider: "github-gist",

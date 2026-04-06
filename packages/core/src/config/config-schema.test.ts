@@ -16,6 +16,9 @@ describe("agentBadgeConfigSchema", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
     expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
     expect(defaultAgentBadgeConfig.badge.mode).toBe("combined");
+    expect(defaultAgentBadgeConfig.badge.color).toBe("blue");
+    expect(defaultAgentBadgeConfig.badge.colorZero).toBe("lightgrey");
+    expect(defaultAgentBadgeConfig.badge.cacheSeconds).toBe(300);
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
     expect(defaultAgentBadgeConfig.publish.badgeUrl).toBeNull();
     expect(defaultAgentBadgeConfig.repo.aliases).toEqual({
@@ -82,6 +85,24 @@ describe("agentBadgeConfigSchema", () => {
         }
       }).badge.mode
     ).toBe("tokens");
+  });
+
+  it("allows badge colors and cacheSeconds to be configured", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        badge: {
+          ...defaultAgentBadgeConfig.badge,
+          color: "orange",
+          colorZero: "#cccccc",
+          cacheSeconds: 900
+        }
+      }).badge
+    ).toMatchObject({
+      color: "orange",
+      colorZero: "#cccccc",
+      cacheSeconds: 900
+    });
   });
 
   it("rejects path-like repo aliases", () => {

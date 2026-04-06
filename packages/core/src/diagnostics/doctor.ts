@@ -430,6 +430,8 @@ function defaultEndpointPayload(): string {
     buildEndpointBadgePayload({
       label: "Vibe budget",
       mode: "combined",
+      color: "blue",
+      colorZero: "lightgrey",
       includedTotals: {
         sessions: 0,
         tokens: 0,
