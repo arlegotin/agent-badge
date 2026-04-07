@@ -63,7 +63,7 @@ agent-badge config set badge.label "AI Receipt"
 ### Change the badge colors
 
 ```bash
-agent-badge config set badge.color "#D9A520"
+agent-badge config set badge.color orange
 agent-badge config set badge.colorZero silver
 ```
 
