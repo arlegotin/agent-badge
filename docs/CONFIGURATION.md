@@ -14,7 +14,8 @@ Use `agent-badge config` or `agent-badge config get` to inspect current values, 
 | `providers.claude.enabled` | `true`, `false` | `true` | Include or ignore Claude data during scan and refresh. |
 | `badge.label` | any non-empty string | `AI budget` | Changes the left-side badge label. |
 | `badge.mode` | `combined`, `tokens`, `cost` | `combined` | Changes what the badge message displays. |
-| `badge.color` | any non-empty Shields color string | `#D9A520` | Changes the badge color when the selected total is non-zero. |
+| `badge.style` | `flat`, `flat-square`, `plastic`, `for-the-badge`, `social` | `flat` | Changes the Shields badge style embedded in the stable badge URL. |
+| `badge.color` | any non-empty Shields color string | `#E8A515` | Changes the badge color when the selected total is non-zero. |
 | `badge.colorZero` | any non-empty Shields color string | `lightgrey` | Changes the badge color when the selected total is zero. |
 | `badge.cacheSeconds` | positive integer | `300` | Changes the Shields cache hint embedded in the stable badge URL. |
 | `refresh.prePush.enabled` | `true`, `false` | `true` | Enables or removes the managed `pre-push` refresh hook block. |
@@ -59,6 +60,14 @@ agent-badge config set badge.label "AI budget"
 ```bash
 agent-badge config set badge.label "AI Receipt"
 ```
+
+### Change the badge style
+
+```bash
+agent-badge config set badge.style for-the-badge
+```
+
+Supported values: `flat`, `flat-square`, `plastic`, `for-the-badge`, `social`.
 
 ### Change the badge colors
 

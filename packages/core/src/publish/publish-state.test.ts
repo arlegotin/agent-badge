@@ -48,6 +48,18 @@ describe("buildStableBadgeUrl", () => {
       "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=900"
     );
   });
+
+  it("derives the Shields endpoint with a custom style value", () => {
+    expect(
+      buildStableBadgeUrl({
+        ownerLogin: "octocat",
+        gistId: "gist_123",
+        style: "for-the-badge"
+      })
+    ).toBe(
+      "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300&style=for-the-badge"
+    );
+  });
 });
 
 describe("applyPublishTargetResult", () => {
@@ -230,6 +242,46 @@ describe("ensurePublishTarget", () => {
         "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_existing%2Fraw%2Fagent-badge.json&cacheSeconds=900"
     });
     expect(createPublicGist).not.toHaveBeenCalled();
+  });
+
+  it("builds style-aware badge URLs for configured publish targets", async () => {
+    const getGist = vi.fn().mockResolvedValue({
+      id: "gist_styled",
+      ownerLogin: "octocat",
+      public: true,
+      files: [AGENT_BADGE_GIST_FILE]
+    });
+
+    await expect(
+      ensurePublishTarget({
+        config: {
+          ...defaultAgentBadgeConfig,
+          badge: {
+            ...defaultAgentBadgeConfig.badge,
+            style: "plastic"
+          },
+          publish: {
+            ...defaultAgentBadgeConfig.publish,
+            gistId: "gist_styled"
+          }
+        },
+        state: defaultAgentBadgeState,
+        githubAuth: {
+          available: true,
+          source: "checker"
+        },
+        client: {
+          getGist,
+          createPublicGist: vi.fn(),
+          updateGistFile: vi.fn()
+        }
+      })
+    ).resolves.toEqual({
+      status: "reused",
+      gistId: "gist_styled",
+      badgeUrl:
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_styled%2Fraw%2Fagent-badge.json&cacheSeconds=300&style=plastic"
+    });
   });
 
   it("creates one public gist with the deterministic pending payload", async () => {

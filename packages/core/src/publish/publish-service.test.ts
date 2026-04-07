@@ -282,7 +282,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `;
 
@@ -402,7 +402,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $58",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },
@@ -411,7 +411,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $58",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },
@@ -420,7 +420,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },
@@ -429,7 +429,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "$58",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }
@@ -567,7 +567,7 @@ describe("publishBadgeToGist", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "50 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }
@@ -888,7 +888,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "9 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
           }
@@ -904,7 +904,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "9 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
           }
@@ -976,7 +976,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "9 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
           }
@@ -1036,7 +1036,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }
@@ -1203,7 +1203,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $0",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },
@@ -1212,7 +1212,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $0",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },
@@ -1221,7 +1221,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },
@@ -1431,7 +1431,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "12 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }
@@ -1444,7 +1444,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `;
     const existingHash = createHash("sha256")
@@ -1647,7 +1647,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
             )
@@ -1684,7 +1684,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `;
     const publisherId = "publisher-local";
@@ -1767,7 +1767,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "Agent Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }
@@ -2038,7 +2038,7 @@ describe("publishBadgeIfChanged", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }

@@ -189,7 +189,7 @@ describe("runDoctorCommand", () => {
       globalThis.fetch = async (input: RequestInfo | URL) => {
         if (String(input).includes(AGENT_BADGE_GIST_FILE)) {
           return new Response(
-            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
+            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#E8A515"}',
             { status: 200 }
           );
         }
@@ -208,7 +208,7 @@ describe("runDoctorCommand", () => {
           [AGENT_BADGE_GIST_FILE]: {
             filename: AGENT_BADGE_GIST_FILE,
             content:
-              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#E8A515"}',
             truncated: false
           },
           [buildContributorGistFileName("publisher-a")]: {
@@ -279,7 +279,7 @@ describe("runDoctorCommand", () => {
           [AGENT_BADGE_GIST_FILE]: {
             filename: AGENT_BADGE_GIST_FILE,
             content:
-              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#E8A515"}',
             truncated: false
           }
         }),
@@ -332,7 +332,7 @@ describe("runDoctorCommand", () => {
           [AGENT_BADGE_GIST_FILE]: {
             filename: AGENT_BADGE_GIST_FILE,
             content:
-              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#E8A515"}',
             truncated: false
           },
           [buildContributorGistFileName("publisher-remote")]: {
@@ -410,7 +410,7 @@ describe("runDoctorCommand", () => {
           [AGENT_BADGE_GIST_FILE]: {
             filename: AGENT_BADGE_GIST_FILE,
             content:
-              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
+              '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#E8A515"}',
             truncated: false
           },
           [buildContributorGistFileName("publisher-a")]: {

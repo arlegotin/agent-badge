@@ -117,7 +117,8 @@ describe("applyAgentBadgeScaffold", () => {
       expect(config.providers.claude.enabled).toBe(false);
       expect(config.badge.label).toBe("AI budget");
       expect(config.badge.mode).toBe("combined");
-      expect(config.badge.color).toBe("#D9A520");
+      expect(config.badge.style).toBe("flat");
+      expect(config.badge.color).toBe("#E8A515");
       expect(config.badge.colorZero).toBe("lightgrey");
       expect(config.badge.cacheSeconds).toBe(300);
       expect(state.init.initialized).toBe(true);

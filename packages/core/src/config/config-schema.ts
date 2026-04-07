@@ -10,6 +10,13 @@ const badgeModeSchema = z.preprocess(
   (input) => (input === "sessions" ? "tokens" : input),
   z.enum(["combined", "tokens", "cost"])
 );
+const badgeStyleSchema = z.enum([
+  "flat",
+  "flat-square",
+  "plastic",
+  "for-the-badge",
+  "social"
+]);
 const badgeColorSchema = z.string().min(1);
 const publishProviderSchema = z.enum(["github-gist"]);
 const refreshModeSchema = z.enum(["fail-soft", "strict"]);
@@ -37,7 +44,8 @@ export const agentBadgeConfigSchema = z
       .object({
         label: z.string().min(1),
         mode: badgeModeSchema,
-        color: badgeColorSchema.default("#D9A520"),
+        style: badgeStyleSchema.default("flat"),
+        color: badgeColorSchema.default("#E8A515"),
         colorZero: badgeColorSchema.default("lightgrey"),
         cacheSeconds: z.number().int().positive().default(300)
       })
@@ -70,6 +78,7 @@ export const agentBadgeConfigSchema = z
 
 export type AgentBadgeConfig = z.infer<typeof agentBadgeConfigSchema>;
 export type AgentBadgeBadgeMode = z.infer<typeof badgeModeSchema>;
+export type AgentBadgeBadgeStyle = z.infer<typeof badgeStyleSchema>;
 export type AgentBadgePublishProvider = z.infer<typeof publishProviderSchema>;
 export type AgentBadgeRefreshMode = z.infer<typeof refreshModeSchema>;
 export type AgentBadgePrivacyOutput = AgentBadgeConfig["privacy"]["output"];
@@ -93,7 +102,8 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
   badge: {
     label: "AI budget",
     mode: "combined",
-    color: "#D9A520",
+    style: "flat",
+    color: "#E8A515",
     colorZero: "lightgrey",
     cacheSeconds: 300
   },

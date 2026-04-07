@@ -43,6 +43,6 @@ If either command still shows a `Recovery path`, return to [RECOVERY.md](RECOVER
 
 After a successful connection, badge URLs should follow this pattern:
 
-`https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2F<owner>%2F<gist-id>%2Fraw%2Fagent-badge.json&cacheSeconds=<cache-seconds>`
+`https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2F<owner>%2F<gist-id>%2Fraw%2Fagent-badge.json&cacheSeconds=<cache-seconds>[&style=<badge-style>]`
 
-By default `cache-seconds` is `300`, but it follows your configured `badge.cacheSeconds` value.
+By default `cache-seconds` is `300`, but it follows your configured `badge.cacheSeconds` value. `style` is omitted for the default `flat` style and appears only when you configure another supported Shields style.

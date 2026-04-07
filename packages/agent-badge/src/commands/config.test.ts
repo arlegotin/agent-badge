@@ -105,7 +105,8 @@ describe("runConfigCommand", () => {
       expect(output.read()).toContain("- providers.claude.enabled=true");
       expect(output.read()).toContain("- badge.label=AI budget");
       expect(output.read()).toContain("- badge.mode=combined");
-      expect(output.read()).toContain("- badge.color=#D9A520");
+      expect(output.read()).toContain("- badge.style=flat");
+      expect(output.read()).toContain("- badge.color=#E8A515");
       expect(output.read()).toContain("- badge.colorZero=lightgrey");
       expect(output.read()).toContain("- badge.cacheSeconds=300");
       expect(output.read()).toContain("- refresh.prePush.enabled=true");
@@ -150,6 +151,13 @@ describe("runConfigCommand", () => {
         action: "set",
         key: "badge.mode",
         value: "tokens"
+      });
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        stdout: output.writer,
+        action: "set",
+        key: "badge.style",
+        value: "for-the-badge"
       });
       await runConfigCommand({
         cwd: fixture.repoRoot,
@@ -200,6 +208,7 @@ describe("runConfigCommand", () => {
       expect(config.providers.claude.enabled).toBe(false);
       expect(config.badge.label).toBe("Agent Sessions");
       expect(config.badge.mode).toBe("tokens");
+      expect(config.badge.style).toBe("for-the-badge");
       expect(config.badge.color).toBe("orange");
       expect(config.badge.colorZero).toBe("silver");
       expect(config.badge.cacheSeconds).toBe(900);
@@ -387,6 +396,74 @@ describe("runConfigCommand", () => {
       expect(config.badge.cacheSeconds).toBe(900);
       expect(config.publish.badgeUrl).toBe(
         "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=900"
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("rewrites the stored badge URL when style changes", async () => {
+    const fixture = await createFixture();
+
+    try {
+      await writeJsonFile(fixture.repoRoot, ".agent-badge/config.json", {
+        ...defaultAgentBadgeConfig,
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "gist_123",
+          badgeUrl:
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
+        }
+      });
+
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        action: "set",
+        key: "badge.style",
+        value: "flat-square"
+      });
+
+      const config = await readConfigFile(fixture.configPath);
+
+      expect(config.badge.style).toBe("flat-square");
+      expect(config.publish.badgeUrl).toBe(
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300&style=flat-square"
+      );
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("removes the style query when returning to flat", async () => {
+    const fixture = await createFixture();
+
+    try {
+      await writeJsonFile(fixture.repoRoot, ".agent-badge/config.json", {
+        ...defaultAgentBadgeConfig,
+        badge: {
+          ...defaultAgentBadgeConfig.badge,
+          style: "plastic"
+        },
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "gist_123",
+          badgeUrl:
+            "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300&style=plastic"
+        }
+      });
+
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        action: "set",
+        key: "badge.style",
+        value: "flat"
+      });
+
+      const config = await readConfigFile(fixture.configPath);
+
+      expect(config.badge.style).toBe("flat");
+      expect(config.publish.badgeUrl).toBe(
+        "https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_123%2Fraw%2Fagent-badge.json&cacheSeconds=300"
       );
     } finally {
       await fixture.cleanup();

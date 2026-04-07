@@ -17,7 +17,8 @@
   "badge": {
     "label": "AI budget",
     "mode": "combined",
-    "color": "#D9A520"
+    "style": "flat",
+    "color": "#E8A515"
   },
   "publish": {
     "provider": "github-gist",

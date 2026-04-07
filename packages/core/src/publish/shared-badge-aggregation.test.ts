@@ -143,7 +143,7 @@ function expectSharedPublishSequence(options: {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "${options.expectedBadgeTokens} tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
       }

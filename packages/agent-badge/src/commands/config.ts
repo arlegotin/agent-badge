@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 
 import {
   applyRepoLocalRuntimeWiring,
+  type AgentBadgeBadgeStyle,
   detectPackageManager,
   parseAgentBadgeConfig,
   type AgentBadgeBadgeMode,
@@ -22,6 +23,7 @@ type SupportedConfigKey =
   | "providers.claude.enabled"
   | "badge.label"
   | "badge.mode"
+  | "badge.style"
   | "badge.color"
   | "badge.colorZero"
   | "badge.cacheSeconds"
@@ -56,6 +58,7 @@ const supportedConfigKeys = [
   "providers.claude.enabled",
   "badge.label",
   "badge.mode",
+  "badge.style",
   "badge.color",
   "badge.colorZero",
   "badge.cacheSeconds",
@@ -120,6 +123,20 @@ function parseBadgeModeValue(value: string): AgentBadgeBadgeMode {
   throw new Error(`Invalid badge mode: ${value}`);
 }
 
+function parseBadgeStyleValue(value: string): AgentBadgeBadgeStyle {
+  if (
+    value === "flat" ||
+    value === "flat-square" ||
+    value === "plastic" ||
+    value === "for-the-badge" ||
+    value === "social"
+  ) {
+    return value;
+  }
+
+  throw new Error(`Invalid badge style: ${value}`);
+}
+
 function parseBadgeCacheSecondsValue(value: string): number {
   const parsed = Number.parseInt(value, 10);
 
@@ -166,6 +183,8 @@ function readConfigValue(config: AgentBadgeConfig, key: SupportedConfigKey): str
       return config.badge.label;
     case "badge.mode":
       return config.badge.mode;
+    case "badge.style":
+      return config.badge.style;
     case "badge.color":
       return config.badge.color;
     case "badge.colorZero":
@@ -206,16 +225,31 @@ function keyRequiresRuntimeWiring(key: SupportedConfigKey): boolean {
   return key === "refresh.prePush.enabled" || key === "refresh.prePush.mode";
 }
 
-function updateBadgeUrlCacheSeconds(
+function updateBadgeUrlOptions(
   badgeUrl: string | null,
-  cacheSeconds: number
+  options: {
+    readonly cacheSeconds?: number;
+    readonly style?: AgentBadgeBadgeStyle;
+  }
 ): string | null {
   if (badgeUrl === null) {
     return null;
   }
 
   const parsed = new URL(badgeUrl);
-  parsed.searchParams.set("cacheSeconds", String(cacheSeconds));
+
+  if (typeof options.cacheSeconds !== "undefined") {
+    parsed.searchParams.set("cacheSeconds", String(options.cacheSeconds));
+  }
+
+  if (typeof options.style !== "undefined") {
+    if (options.style === "flat") {
+      parsed.searchParams.delete("style");
+    } else {
+      parsed.searchParams.set("style", options.style);
+    }
+  }
+
   return parsed.toString();
 }
 
@@ -261,6 +295,23 @@ function applyConfigMutation(
           mode: parseBadgeModeValue(value)
         }
       });
+    case "badge.style": {
+      const style = parseBadgeStyleValue(value);
+
+      return parseAgentBadgeConfig({
+        ...config,
+        badge: {
+          ...config.badge,
+          style
+        },
+        publish: {
+          ...config.publish,
+          badgeUrl: updateBadgeUrlOptions(config.publish.badgeUrl, {
+            style
+          })
+        }
+      });
+    }
     case "badge.color":
       return parseAgentBadgeConfig({
         ...config,
@@ -288,10 +339,9 @@ function applyConfigMutation(
         },
         publish: {
           ...config.publish,
-          badgeUrl: updateBadgeUrlCacheSeconds(
-            config.publish.badgeUrl,
+          badgeUrl: updateBadgeUrlOptions(config.publish.badgeUrl, {
             cacheSeconds
-          )
+          })
         }
       });
     }

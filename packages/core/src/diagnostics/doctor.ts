@@ -430,7 +430,7 @@ function defaultEndpointPayload(): string {
     buildEndpointBadgePayload({
       label: "AI budget",
       mode: "combined",
-      color: "#D9A520",
+      color: "#E8A515",
       colorZero: "lightgrey",
       includedTotals: {
         sessions: 0,

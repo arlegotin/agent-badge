@@ -663,7 +663,7 @@ describe("runInitCommand", () => {
   "schemaVersion": 1,
   "label": "AI budget",
   "message": "9 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         }
@@ -728,7 +728,7 @@ describe("runInitCommand", () => {
   "schemaVersion": 1,
   "label": "AI budget",
   "message": "9 tokens",
-  "color": "#D9A520"
+  "color": "#E8A515"
 }
 `
         },

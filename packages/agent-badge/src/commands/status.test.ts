@@ -202,7 +202,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "#D9A520"
+              color: "#E8A515"
             },
             null,
             2
@@ -307,7 +307,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "#D9A520"
+              color: "#E8A515"
             },
             null,
             2
@@ -377,7 +377,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "#D9A520"
+              color: "#E8A515"
             },
             null,
             2
@@ -438,7 +438,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "#D9A520"
+              color: "#E8A515"
             },
             null,
             2
@@ -548,7 +548,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "#D9A520"
+              color: "#E8A515"
             },
             null,
             2

@@ -226,7 +226,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-a")]: {
@@ -312,7 +312,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 }
               }
@@ -436,7 +436,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-remote")]: {
@@ -556,7 +556,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-local")]: {
@@ -677,7 +677,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-local")]: {
@@ -824,7 +824,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 }
               }
@@ -884,7 +884,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
                   truncated: false
                 }
               }
@@ -926,7 +926,7 @@ describe("runDoctorChecks", () => {
       globalThis.fetch = async (input: RequestInfo | URL) => {
         if (String(input).includes("agent-badge.json")) {
           return new Response(
-            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
+            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#E8A515"}',
             { status: 200 }
           );
         }

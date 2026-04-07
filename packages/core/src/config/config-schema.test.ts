@@ -17,7 +17,8 @@ describe("agentBadgeConfigSchema", () => {
     expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
     expect(defaultAgentBadgeConfig.badge.label).toBe("AI budget");
     expect(defaultAgentBadgeConfig.badge.mode).toBe("combined");
-    expect(defaultAgentBadgeConfig.badge.color).toBe("#D9A520");
+    expect(defaultAgentBadgeConfig.badge.style).toBe("flat");
+    expect(defaultAgentBadgeConfig.badge.color).toBe("#E8A515");
     expect(defaultAgentBadgeConfig.badge.colorZero).toBe("lightgrey");
     expect(defaultAgentBadgeConfig.badge.cacheSeconds).toBe(300);
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
@@ -106,6 +107,18 @@ describe("agentBadgeConfigSchema", () => {
     });
   });
 
+  it("allows badge style to be configured", () => {
+    expect(
+      parseAgentBadgeConfig({
+        ...defaultAgentBadgeConfig,
+        badge: {
+          ...defaultAgentBadgeConfig.badge,
+          style: "for-the-badge"
+        }
+      }).badge.style
+    ).toBe("for-the-badge");
+  });
+
   it("fills new badge config fields when reading older configs", () => {
     expect(
       parseAgentBadgeConfig({
@@ -118,7 +131,8 @@ describe("agentBadgeConfigSchema", () => {
     ).toEqual({
       label: "Legacy Label",
       mode: "combined",
-      color: "#D9A520",
+      style: "flat",
+      color: "#E8A515",
       colorZero: "lightgrey",
       cacheSeconds: 300
     });

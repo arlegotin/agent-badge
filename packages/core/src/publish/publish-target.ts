@@ -81,7 +81,8 @@ function buildPublishTargetResult(
     badgeUrl: buildStableBadgeUrl({
       ownerLogin: gist.ownerLogin,
       gistId: gist.id,
-      cacheSeconds: config.badge.cacheSeconds
+      cacheSeconds: config.badge.cacheSeconds,
+      style: config.badge.style
     })
   };
 }

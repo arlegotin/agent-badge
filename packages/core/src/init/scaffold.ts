@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   parseAgentBadgeConfig,
   type AgentBadgeBadgeMode,
+  type AgentBadgeBadgeStyle,
   type AgentBadgeConfig,
   type AgentBadgePrivacyOutput,
   type AgentBadgeRefreshMode
@@ -39,6 +40,13 @@ export interface AgentBadgeScaffoldResult {
 const scaffoldVersion = 1;
 const invalidJsonMarker = Symbol("invalid-json");
 const badgeModes: AgentBadgeBadgeMode[] = ["combined", "tokens", "cost"];
+const badgeStyles: AgentBadgeBadgeStyle[] = [
+  "flat",
+  "flat-square",
+  "plastic",
+  "for-the-badge",
+  "social"
+];
 const defaultBadgeCacheSeconds = createDefaultAgentBadgeConfig().badge.cacheSeconds;
 const refreshModes: AgentBadgeRefreshMode[] = ["fail-soft", "strict"];
 const privacyOutputs: AgentBadgePrivacyOutput[] = ["standard", "minimal"];
@@ -224,6 +232,8 @@ function reconcileConfig(
           label: readString(badge.label) ?? defaults.badge.label,
           mode:
             readEnumValue(badge.mode, badgeModes) ?? defaults.badge.mode,
+          style:
+            readEnumValue(badge.style, badgeStyles) ?? defaults.badge.style,
           color: readString(badge.color) ?? defaults.badge.color,
           colorZero:
             readString(badge.colorZero) ?? defaults.badge.colorZero,
