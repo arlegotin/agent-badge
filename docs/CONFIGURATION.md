@@ -77,6 +77,7 @@ agent-badge config set badge.colorZero silver
 ```
 
 These values are passed through to Shields-compatible badge colors. The new color appears after the next successful publish or refresh.
+Examples: `orange`, `teal`, `royalblue`, `#ff69b4`, `#2ea44f`.
 
 ### Change the Shields cache time
 

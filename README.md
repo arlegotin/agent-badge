@@ -90,14 +90,14 @@ The badge at the top of this README is live. The gallery below shows how mode, s
 | ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300) | `agent-badge config set badge.mode combined` |
 | ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300) | `agent-badge config set badge.mode tokens` |
 | ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300) | `agent-badge config set badge.mode cost` |
-| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-E8A515?style=flat-square) | `agent-badge config set badge.style flat-square` |
-| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-E8A515?style=plastic) | `agent-badge config set badge.style plastic` |
-| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-E8A515?style=for-the-badge) | `agent-badge config set badge.style for-the-badge` |
-| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-E8A515?style=social) | `agent-badge config set badge.style social` |
+| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-teal?style=flat-square) | `agent-badge config set badge.style flat-square`<br>`agent-badge config set badge.color teal` |
+| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-royalblue?style=plastic) | `agent-badge config set badge.style plastic`<br>`agent-badge config set badge.color royalblue` |
+| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-ff69b4?style=for-the-badge) | `agent-badge config set badge.style for-the-badge`<br>`agent-badge config set badge.color "#ff69b4"` |
+| ![AI budget](https://img.shields.io/badge/AI%20budget-42%20tokens%20%7C%20%2458-2ea44f?style=social) | `agent-badge config set badge.style social`<br>`agent-badge config set badge.color "#2ea44f"` |
 | ![AI receipt](https://img.shields.io/badge/AI%20receipt-%2458-orange) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color orange` |
 | ![Ship budget](https://img.shields.io/badge/Ship%20budget-42%20tokens%20%7C%20%2458-red?style=for-the-badge) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "Ship budget"`<br>`agent-badge config set badge.color red`<br>`agent-badge config set badge.style for-the-badge` |
 
-The first three rows are live endpoint examples from this repo. The next four isolate the supported Shields styles on the same payload. The last two show label and color customization without adding extra noise.
+The first three rows are live endpoint examples from this repo. The next four isolate the supported Shields styles while showing a wider color range. The last two show label and color customization without adding extra noise.
 
 `cost` is an estimate. It uses the local usage buckets available from Claude and Codex, combines them with current official OpenAI and Anthropic API pricing when pricing fetch succeeds, and falls back to bundled official rates when it cannot refresh pricing live. That number is useful for directional tracking, but it can differ from your actual bill, plan discounts, or non-API product pricing.
 
