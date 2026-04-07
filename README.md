@@ -3,7 +3,7 @@
 A local-first README badge for repos that ship with AI:
 
 <!-- agent-badge:start -->
-[![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)
+[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)
 <!-- agent-badge:end -->
 
 Some people want transparency.<br>
@@ -83,20 +83,20 @@ Read more:
 
 ## Badge Modes
 
-The badge at the top of this README is live. The gallery below shows the kinds of looks you can get by mixing mode, label, and color settings.
+The badge at the top of this README is live. The gallery below shows the kinds of looks you can get by mixing mode and label settings while keeping the default gold badge color.
 
 | Badge | Command |
 | --- | --- |
-| ![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300) | `agent-badge config set badge.mode combined` |
-| ![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300) | `agent-badge config set badge.mode tokens` |
-| ![Vibe budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300) | `agent-badge config set badge.mode cost` |
-| ![Tokens burned](https://img.shields.io/badge/Tokens%20burned-42%20tokens-1f7a8c) | `agent-badge config set badge.mode tokens`<br>`agent-badge config set badge.label "Tokens burned"`<br>`agent-badge config set badge.color 1f7a8c` |
-| ![AI receipt](https://img.shields.io/badge/AI%20receipt-%2458-orange) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color orange` |
-| ![Ship budget](https://img.shields.io/badge/Ship%20budget-42%20tokens%20%7C%20%2458-red) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "Ship budget"`<br>`agent-badge config set badge.color red` |
-| ![Quiet repo](https://img.shields.io/badge/Quiet%20repo-0%20tokens-silver) | `agent-badge config set badge.mode tokens`<br>`agent-badge config set badge.label "Quiet repo"`<br>`agent-badge config set badge.colorZero silver` |
-| ![AI receipt](https://img.shields.io/badge/AI%20receipt-42%20tokens%20%7C%20%2458-2ea44f) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color 2ea44f` |
+| ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300) | `agent-badge config set badge.mode combined` |
+| ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300) | `agent-badge config set badge.mode tokens` |
+| ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300) | `agent-badge config set badge.mode cost` |
+| ![Tokens burned](https://img.shields.io/badge/Tokens%20burned-42%20tokens-D9A520) | `agent-badge config set badge.mode tokens`<br>`agent-badge config set badge.label "Tokens burned"`<br>`agent-badge config set badge.color "#D9A520"` |
+| ![AI receipt](https://img.shields.io/badge/AI%20receipt-%2458-D9A520) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color "#D9A520"` |
+| ![Ship budget](https://img.shields.io/badge/Ship%20budget-42%20tokens%20%7C%20%2458-D9A520) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "Ship budget"`<br>`agent-badge config set badge.color "#D9A520"` |
+| ![Quiet repo](https://img.shields.io/badge/Quiet%20repo-0%20tokens-D9A520) | `agent-badge config set badge.mode tokens`<br>`agent-badge config set badge.label "Quiet repo"`<br>`agent-badge config set badge.colorZero "#D9A520"` |
+| ![AI receipt](https://img.shields.io/badge/AI%20receipt-42%20tokens%20%7C%20%2458-D9A520) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color "#D9A520"` |
 
-The first three rows are live endpoint examples from this repo. The rest are style previews showing what your badge can look like after config changes.
+The first three rows are live endpoint examples from this repo. The rest are style previews showing label and mode variations using the same gold palette.
 
 `cost` is an estimate. It uses the local usage buckets available from Claude and Codex, combines them with current official OpenAI and Anthropic API pricing when pricing fetch succeeds, and falls back to bundled official rates when it cannot refresh pricing live. That number is useful for directional tracking, but it can differ from your actual bill, plan discounts, or non-API product pricing.
 
@@ -110,7 +110,7 @@ The CLI exposes a small configuration surface on purpose. The product is not try
 | Show tokens only | `agent-badge config set badge.mode tokens` |
 | Show estimated cost only | `agent-badge config set badge.mode cost` |
 | Set label to `AI Receipt` | `agent-badge config set badge.label "AI Receipt"` |
-| Set the active badge color | `agent-badge config set badge.color orange` |
+| Set the active badge color | `agent-badge config set badge.color "#D9A520"` |
 | Set the zero-state badge color | `agent-badge config set badge.colorZero silver` |
 | Change Shields cache time | `agent-badge config set badge.cacheSeconds 900` |
 | Ignore Codex data | `agent-badge config set providers.codex.enabled false` |

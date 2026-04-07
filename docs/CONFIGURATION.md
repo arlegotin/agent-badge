@@ -12,9 +12,9 @@ Use `agent-badge config` or `agent-badge config get` to inspect current values, 
 | --- | --- | --- | --- |
 | `providers.codex.enabled` | `true`, `false` | `true` | Include or ignore Codex data during scan and refresh. |
 | `providers.claude.enabled` | `true`, `false` | `true` | Include or ignore Claude data during scan and refresh. |
-| `badge.label` | any non-empty string | `Vibe budget` | Changes the left-side badge label. |
+| `badge.label` | any non-empty string | `AI budget` | Changes the left-side badge label. |
 | `badge.mode` | `combined`, `tokens`, `cost` | `combined` | Changes what the badge message displays. |
-| `badge.color` | any non-empty Shields color string | `blue` | Changes the badge color when the selected total is non-zero. |
+| `badge.color` | any non-empty Shields color string | `#D9A520` | Changes the badge color when the selected total is non-zero. |
 | `badge.colorZero` | any non-empty Shields color string | `lightgrey` | Changes the badge color when the selected total is zero. |
 | `badge.cacheSeconds` | positive integer | `300` | Changes the Shields cache hint embedded in the stable badge URL. |
 | `refresh.prePush.enabled` | `true`, `false` | `true` | Enables or removes the managed `pre-push` refresh hook block. |
@@ -51,7 +51,7 @@ Useful when the headline is "what did this repo consume?"
 ### Keep the default label
 
 ```bash
-agent-badge config set badge.label "Vibe budget"
+agent-badge config set badge.label "AI budget"
 ```
 
 ### Set the label to AI Receipt
@@ -63,7 +63,7 @@ agent-badge config set badge.label "AI Receipt"
 ### Change the badge colors
 
 ```bash
-agent-badge config set badge.color orange
+agent-badge config set badge.color "#D9A520"
 agent-badge config set badge.colorZero silver
 ```
 

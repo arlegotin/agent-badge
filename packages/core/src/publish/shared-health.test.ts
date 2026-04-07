@@ -71,7 +71,7 @@ describe("inspectSharedPublishHealth", () => {
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
-  "color": "blue"
+  "color": "#D9A520"
 }
 `
           }

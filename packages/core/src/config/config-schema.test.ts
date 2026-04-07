@@ -15,8 +15,9 @@ describe("agentBadgeConfigSchema", () => {
   it("ships privacy-safe defaults", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
     expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
+    expect(defaultAgentBadgeConfig.badge.label).toBe("AI budget");
     expect(defaultAgentBadgeConfig.badge.mode).toBe("combined");
-    expect(defaultAgentBadgeConfig.badge.color).toBe("blue");
+    expect(defaultAgentBadgeConfig.badge.color).toBe("#D9A520");
     expect(defaultAgentBadgeConfig.badge.colorZero).toBe("lightgrey");
     expect(defaultAgentBadgeConfig.badge.cacheSeconds).toBe(300);
     expect(defaultAgentBadgeConfig.publish.gistId).toBeNull();
@@ -117,7 +118,7 @@ describe("agentBadgeConfigSchema", () => {
     ).toEqual({
       label: "Legacy Label",
       mode: "combined",
-      color: "blue",
+      color: "#D9A520",
       colorZero: "lightgrey",
       cacheSeconds: 300
     });

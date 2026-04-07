@@ -446,7 +446,7 @@ describe("release readiness scenario matrix", () => {
               }
             },
             badge: {
-              label: "Vibe budget",
+              label: "AI budget",
               mode: "combined"
             },
             publish: {

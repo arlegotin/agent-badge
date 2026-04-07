@@ -37,7 +37,7 @@ export const agentBadgeConfigSchema = z
       .object({
         label: z.string().min(1),
         mode: badgeModeSchema,
-        color: badgeColorSchema.default("blue"),
+        color: badgeColorSchema.default("#D9A520"),
         colorZero: badgeColorSchema.default("lightgrey"),
         cacheSeconds: z.number().int().positive().default(300)
       })
@@ -91,9 +91,9 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
     }
   },
   badge: {
-    label: "Vibe budget",
+    label: "AI budget",
     mode: "combined",
-    color: "blue",
+    color: "#D9A520",
     colorZero: "lightgrey",
     cacheSeconds: 300
   },

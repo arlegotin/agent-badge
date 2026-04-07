@@ -15,8 +15,9 @@
     }
   },
   "badge": {
-    "label": "Vibe budget",
-    "mode": "combined"
+    "label": "AI budget",
+    "mode": "combined",
+    "color": "#D9A520"
   },
   "publish": {
     "provider": "github-gist",

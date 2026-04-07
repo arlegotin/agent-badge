@@ -265,7 +265,7 @@ describe("ensurePublishTarget", () => {
       files: {
         "agent-badge.json": {
           content:
-            '{"schemaVersion":1,"label":"Vibe budget","message":"pending","color":"lightgrey"}'
+            '{"schemaVersion":1,"label":"AI budget","message":"pending","color":"lightgrey"}'
         }
       }
     });

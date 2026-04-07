@@ -43,7 +43,7 @@ function createObservationContributorRecord(options: {
     {
       schemaVersion: 2,
       publisherId: options.publisherId,
-      updatedAt: options.updatedAt ?? "2026-03-31T00:00:00.000Z",
+      updatedAt: options.updatedAt ?? "2099-01-01T00:00:00.000Z",
       observations: options.observations
     },
     null,
@@ -226,7 +226,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-a")]: {
@@ -312,7 +312,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 }
               }
@@ -436,7 +436,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-remote")]: {
@@ -556,7 +556,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-local")]: {
@@ -677,7 +677,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 },
                 [buildContributorGistFileName("publisher-local")]: {
@@ -824,7 +824,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 }
               }
@@ -884,7 +884,7 @@ describe("runDoctorChecks", () => {
               files: {
                 [AGENT_BADGE_GIST_FILE]: {
                   filename: AGENT_BADGE_GIST_FILE,
-                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"blue"}`,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#D9A520"}`,
                   truncated: false
                 }
               }
@@ -926,7 +926,7 @@ describe("runDoctorChecks", () => {
       globalThis.fetch = async (input: RequestInfo | URL) => {
         if (String(input).includes("agent-badge.json")) {
           return new Response(
-            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"blue"}',
+            '{"schemaVersion":1,"label":"AI Usage","message":"42 tokens | $12.34","color":"#D9A520"}',
             { status: 200 }
           );
         }

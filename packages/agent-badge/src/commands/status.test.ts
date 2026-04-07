@@ -89,7 +89,7 @@ function createObservationContributorRecord(options: {
     {
       schemaVersion: 2,
       publisherId: options.publisherId,
-      updatedAt: options.updatedAt ?? "2026-03-30T19:00:00.000Z",
+      updatedAt: options.updatedAt ?? "2099-01-01T00:00:00.000Z",
       observations: options.observations
     },
     null,
@@ -202,7 +202,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "blue"
+              color: "#D9A520"
             },
             null,
             2
@@ -307,7 +307,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "blue"
+              color: "#D9A520"
             },
             null,
             2
@@ -377,7 +377,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "blue"
+              color: "#D9A520"
             },
             null,
             2
@@ -438,7 +438,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "blue"
+              color: "#D9A520"
             },
             null,
             2
@@ -548,7 +548,7 @@ describe("runStatusCommand", () => {
               schemaVersion: 1,
               label: "AI Usage",
               message: "610 tokens",
-              color: "blue"
+              color: "#D9A520"
             },
             null,
             2

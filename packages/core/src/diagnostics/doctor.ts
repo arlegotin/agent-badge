@@ -428,9 +428,9 @@ function normalizeBadgeUrl(badgeUrl: string): string | null {
 function defaultEndpointPayload(): string {
   return `${JSON.stringify(
     buildEndpointBadgePayload({
-      label: "Vibe budget",
+      label: "AI budget",
       mode: "combined",
-      color: "blue",
+      color: "#D9A520",
       colorZero: "lightgrey",
       includedTotals: {
         sessions: 0,
