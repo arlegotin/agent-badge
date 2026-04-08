@@ -6,6 +6,18 @@ All notable package releases are tracked here.
 
 - No unreleased notes yet.
 
+## 1.1.8 - 2026-04-08
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.8`.
+- Fixed `npm init agent-badge@latest` so the initializer reuses `gh auth token` when shell token env vars are absent.
+- Fixed the initializer to install the repo-local `@legotin/agent-badge` runtime so `npx --no-install agent-badge ...` works immediately after setup.
+- Release commit: `23aceeb`.
+
+## 1.1.7 - 2026-04-08
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.7`.
+- Release commit: `9c0116f`.
+
 ## 1.1.6 - 2026-04-07
 
 - Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.6`.
