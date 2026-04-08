@@ -7,6 +7,7 @@ function createTransportClient(overrides: Partial<{
   create: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
   remove: ReturnType<typeof vi.fn>;
+  fetchImpl: typeof fetch;
 }> = {}) {
   return createGitHubGistClient({
     octokit: {
@@ -18,7 +19,8 @@ function createTransportClient(overrides: Partial<{
           remove: overrides.remove ?? vi.fn()
         }
       }
-    }
+    },
+    fetchImpl: overrides.fetchImpl
   });
 }
 
@@ -67,6 +69,47 @@ describe("createGitHubGistClient", () => {
     expect(get).toHaveBeenCalledWith({
       gist_id: "gist_123"
     });
+  });
+
+  it("loads truncated gist file content from raw_url", async () => {
+    const get = vi.fn().mockResolvedValue({
+      data: {
+        id: "gist_123",
+        public: true,
+        owner: {
+          login: "octocat"
+        },
+        files: {
+          "agent-badge-state.json": {
+            filename: "agent-badge-state.json",
+            content: '{"partial":true}',
+            truncated: true,
+            raw_url: "https://gist.githubusercontent.com/octocat/gist_123/raw/agent-badge-state.json"
+          }
+        }
+      }
+    });
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => '{"full":true}\n'
+    } satisfies Pick<Response, "ok" | "text">);
+    const client = createTransportClient({ get, fetchImpl: fetchImpl as typeof fetch });
+
+    await expect(client.getGist("gist_123")).resolves.toEqual({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {
+        "agent-badge-state.json": {
+          filename: "agent-badge-state.json",
+          content: '{"full":true}\n',
+          truncated: false
+        }
+      }
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://gist.githubusercontent.com/octocat/gist_123/raw/agent-badge-state.json"
+    );
   });
 
   it("creates public gists through the transport seam", async () => {

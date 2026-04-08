@@ -41,6 +41,7 @@ interface OctokitGistPayload {
           readonly filename?: string | null;
           readonly content?: string | null;
           readonly truncated?: boolean | null;
+          readonly raw_url?: string | null;
         } | null
       >
     | null;
@@ -87,6 +88,7 @@ interface OctokitConstructor {
 export interface CreateGitHubGistClientOptions {
   readonly authToken?: string;
   readonly octokit?: OctokitLike;
+  readonly fetchImpl?: typeof fetch;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -146,7 +148,32 @@ function adaptOctokit(octokit: LoadedOctokitLike): OctokitLike {
   };
 }
 
-function normalizeGist(payload: unknown): GitHubGist {
+async function loadRawGistFileContent(
+  filename: string,
+  rawUrl: string,
+  fetchImpl: typeof fetch | undefined
+): Promise<string> {
+  if (typeof fetchImpl !== "function") {
+    throw new Error(
+      `Global fetch is not available to load raw gist file ${filename}.`
+    );
+  }
+
+  const response = await fetchImpl(rawUrl);
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to load raw gist file ${filename}: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.text();
+}
+
+async function normalizeGist(
+  payload: unknown,
+  fetchImpl?: typeof fetch
+): Promise<GitHubGist> {
   if (!isRecord(payload)) {
     throw new Error("GitHub Gist response was not an object.");
   }
@@ -157,24 +184,37 @@ function normalizeGist(payload: unknown): GitHubGist {
     throw new Error("GitHub Gist response did not include an id.");
   }
 
-  const files = isRecord(gistPayload.files)
-    ? Object.values(gistPayload.files).reduce<Record<string, GitHubGistFile>>(
-        (accumulator, entry) => {
-          if (!entry || typeof entry.filename !== "string") {
-            return accumulator;
-          }
+  const files: Record<string, GitHubGistFile> = {};
 
-          accumulator[entry.filename] = {
-            filename: entry.filename,
-            content: typeof entry.content === "string" ? entry.content : null,
-            truncated: entry.truncated === true
-          };
+  if (isRecord(gistPayload.files)) {
+    for (const entry of Object.values(gistPayload.files)) {
+      if (!entry || typeof entry.filename !== "string") {
+        continue;
+      }
 
-          return accumulator;
-        },
-        {}
-      )
-    : {};
+      let content = typeof entry.content === "string" ? entry.content : null;
+      let truncated = entry.truncated === true;
+      const rawUrl =
+        typeof entry.raw_url === "string" && entry.raw_url.length > 0
+          ? entry.raw_url
+          : null;
+
+      if ((truncated || content === null) && rawUrl !== null) {
+        content = await loadRawGistFileContent(
+          entry.filename,
+          rawUrl,
+          fetchImpl
+        );
+        truncated = false;
+      }
+
+      files[entry.filename] = {
+        filename: entry.filename,
+        content,
+        truncated
+      };
+    }
+  }
 
   return {
     id: gistPayload.id,
@@ -217,7 +257,7 @@ export function createGitHubGistClient(
         gist_id: gistId
       });
 
-      return normalizeGist(response.data);
+      return normalizeGist(response.data, options.fetchImpl ?? globalThis.fetch);
     },
     async createPublicGist(input) {
       const octokit = await getOctokit();
@@ -227,7 +267,7 @@ export function createGitHubGistClient(
         files: input.files
       });
 
-      return normalizeGist(response.data);
+      return normalizeGist(response.data, options.fetchImpl ?? globalThis.fetch);
     },
     async updateGistFile(input) {
       const octokit = await getOctokit();
@@ -236,7 +276,7 @@ export function createGitHubGistClient(
         files: input.files
       });
 
-      return normalizeGist(response.data);
+      return normalizeGist(response.data, options.fetchImpl ?? globalThis.fetch);
     },
     async deleteGist(input) {
       const octokit = await getOctokit();
