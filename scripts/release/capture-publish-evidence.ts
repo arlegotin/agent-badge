@@ -91,7 +91,7 @@ export function parseEvidenceArgs(argv: readonly string[]): CaptureEvidenceArgs 
   const publishPath = entries.get("publish-path") as PublishPath | undefined;
   const preflightJson = entries.get("preflight-json");
   const publishedAt = entries.get("published-at");
-  const artifactPrefix = firstNonEmpty(entries.get("artifact-prefix")) ?? "12-PUBLISH-EVIDENCE";
+  const artifactPrefix = firstNonEmpty(entries.get("artifact-prefix")) ?? "PUBLISH-EVIDENCE";
 
   if (!phaseDir) throw new Error("--phase-dir is required.");
   if (!publishPath) throw new Error("--publish-path is required.");
@@ -311,7 +311,7 @@ export async function runCaptureEvidence(
 
   const phaseDir = resolve(repoRoot, args.phaseDir);
   await mkdir(phaseDir, { recursive: true });
-  const artifactPrefix = args.artifactPrefix ?? "12-PUBLISH-EVIDENCE";
+  const artifactPrefix = args.artifactPrefix ?? "PUBLISH-EVIDENCE";
 
   await writeFile(resolve(phaseDir, `${artifactPrefix}.json`), JSON.stringify(evidence, null, 2));
   await writeFile(resolve(phaseDir, `${artifactPrefix}.md`), buildEvidenceMarkdown(evidence));

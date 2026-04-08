@@ -259,6 +259,8 @@ jobs:
       - run: npm run release:publish-impact
       - run: npm run release:auto-version
       - run: npm run release
+      - run: git tag -a "v1.2.3" -m "Release v1.2.3"
+      - run: gh release create "v1.2.3" --generate-notes
 `);
 
     expect(workflowContract).toMatchObject({
@@ -273,21 +275,31 @@ jobs:
         {
           manifestPath: "packages/core/package.json",
           name: "@legotin/agent-badge-core",
-          version: "1.1.1"
+          version: "1.1.1",
+          packageManager: "npm@11.6.0",
+          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
         },
         {
           manifestPath: "packages/agent-badge/package.json",
           name: "@legotin/agent-badge",
-          version: "1.2.1"
+          version: "1.2.1",
+          packageManager: "npm@11.6.0",
+          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
         },
         {
           manifestPath: "packages/create-agent-badge/package.json",
           name: "create-agent-badge",
-          version: "1.1.1"
+          version: "1.1.1",
+          packageManager: "npm@11.6.0",
+          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
         }
       ],
       changesetConfig: { access: "private" },
       rootPackage: {
+        packageManager: "npm@11.6.0",
+        engines: {
+          node: "^20.0.0 || ^22.0.0 || ^24.0.0"
+        },
         scripts: {
           release: "changeset publish",
           "release:preflight": "tsx scripts/release/preflight.ts"
@@ -312,21 +324,31 @@ jobs:
         {
           manifestPath: "packages/core/package.json",
           name: "@legotin/agent-badge-core",
-          version: "1.1.1"
+          version: "1.1.1",
+          packageManager: "npm@11.6.0",
+          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
         },
         {
           manifestPath: "packages/agent-badge/package.json",
           name: "@legotin/agent-badge",
-          version: "1.1.1"
+          version: "1.1.1",
+          packageManager: "npm@11.6.0",
+          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
         },
         {
           manifestPath: "packages/create-agent-badge/package.json",
           name: "create-agent-badge",
-          version: "1.1.1"
+          version: "1.1.1",
+          packageManager: "npm@11.6.0",
+          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
         }
       ],
       changesetConfig: { access: "public", ignore: [] },
       rootPackage: {
+        packageManager: "npm@11.6.0",
+        engines: {
+          node: "^20.0.0 || ^22.0.0 || ^24.0.0"
+        },
         scripts: {
           release: "changeset publish",
           "release:preflight": "tsx scripts/release/preflight.ts"

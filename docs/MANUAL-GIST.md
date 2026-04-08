@@ -22,6 +22,8 @@ agent-badge init --gist-id <id>
 agent-badge status
 ```
 
+The gist must be public and owned by the same authenticated account that the CLI is using. See [AUTH.md](AUTH.md) if you need the exact token requirements.
+
 If the repo already has local `agent-badge` state, rerunning init is safe. The command is designed to reuse existing scaffold and reconnect publish state instead of duplicating badge markers or hook blocks.
 
 If you need to migrate existing single-writer repos, run the reconnecting `agent-badge init --gist-id <id>` command on the original publisher machine first. That preserves the same gist id and badge URL while seeding the first shared contributor publish from the machine that already has the repo's trusted local history.

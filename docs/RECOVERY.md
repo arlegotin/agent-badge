@@ -13,7 +13,7 @@ agent-badge status
 agent-badge doctor
 ```
 
-Look for the exact recovery wording in `- Recovery:` or `Recovery path:`. Phase 19 makes those lines canonical.
+Look for the exact recovery wording in `- Recovery:` or `Recovery path:`.
 
 ## Symptom Map
 
@@ -107,17 +107,3 @@ Recovery path:
 - Run `agent-badge init` on the original publisher machine first.
 
 That preserves the existing gist-backed badge URL while seeding shared contributor state from the machine that already has the trusted local history.
-
-## Proof Harness
-
-Phase 19 adds a repo-owned evidence path for the real recovery flow:
-
-```bash
-bash scripts/smoke/verify-recovery-flow.sh --phase-dir .planning/phases/19-recovery-paths-and-production-reliability-verification
-```
-
-Dry-run mode writes the same artifact shapes without mutating publish state:
-
-```bash
-bash scripts/smoke/verify-recovery-flow.sh --dry-run --phase-dir /tmp/agent-badge-phase19-dry-run
-```

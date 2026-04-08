@@ -103,10 +103,77 @@ jobs:
         run: npm run release
 
       - name: Commit and push released versions
-        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true' && steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'
+        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
+        id: release_commit_push
         run: |
+          if [ "${GITHUB_REF_TYPE}" != "branch" ]; then
+            echo "Release workflow must run from a branch ref."
+            exit 1
+          fi
+
+          TARGET_BRANCH="${GITHUB_REF_NAME}"
+          if [ "${TARGET_BRANCH}" != "main" ]; then
+            echo "Release workflow only publishes from main. Current ref: ${TARGET_BRANCH}"
+            exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json packages/core/package.json packages/agent-badge/package.json packages/create-agent-badge/package.json
-          git commit -m "chore(release): publish ${{ steps.version.outputs.next_version }}"
-          git push origin HEAD:main
+
+          if git diff --cached --quiet; then
+            echo "No version file changes to commit."
+          else
+            git commit -m "chore(release): publish ${{ steps.version.outputs.next_version }}"
+            git push origin HEAD:"${TARGET_BRANCH}"
+          fi
+
+          echo "release_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push release tags
+        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
+        run: |
+          RELEASE_SHA="${{ steps.release_commit_push.outputs.release_commit_sha }}"
+          VERSION="${{ steps.version.outputs.next_version }}"
+          TAGS=(
+            "v${VERSION}"
+            "@legotin/agent-badge-core@${VERSION}"
+            "@legotin/agent-badge@${VERSION}"
+            "create-agent-badge@${VERSION}"
+          )
+          PUSH_TAGS=()
+
+          for tag in "${TAGS[@]}"; do
+            if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+              echo "Remote tag already exists: ${tag}"
+              continue
+            fi
+
+            if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null 2>&1; then
+              git tag -a "${tag}" "${RELEASE_SHA}" -m "Release ${tag}"
+            fi
+
+            PUSH_TAGS+=("${tag}")
+          done
+
+          if [ "${#PUSH_TAGS[@]}" -gt 0 ]; then
+            git push origin "${PUSH_TAGS[@]}"
+          else
+            echo "No new tags to push."
+          fi
+
+      - name: Create GitHub release
+        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.next_version }}"
+          ROOT_TAG="v${VERSION}"
+
+          if gh release view "${ROOT_TAG}" >/dev/null 2>&1; then
+            echo "GitHub release already exists for ${ROOT_TAG}."
+            exit 0
+          fi
+
+          gh release create "${ROOT_TAG}" \
+            --title "${ROOT_TAG}" \
+            --generate-notes

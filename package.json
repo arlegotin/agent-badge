@@ -1,7 +1,12 @@
 {
   "name": "@legotin/agent-badge-workspace",
   "private": true,
+  "description": "Workspace for the local-first agent-badge CLI and npm initializer.",
   "type": "module",
+  "packageManager": "npm@11.6.0",
+  "engines": {
+    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+  },
   "workspaces": [
     "packages/*"
   ],

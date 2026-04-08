@@ -34,6 +34,8 @@ Recovery:
 1. Export one of `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or authenticate with `gh auth login` so `gh auth token` works in the same environment.
 2. Rerun `agent-badge init`, or connect a public gist with `agent-badge init --gist-id <id>`.
 
+Use [AUTH.md](AUTH.md) if you need the exact token requirements.
+
 ## deferred publish target
 
 Symptom: init shows `Publish target: deferred` and badge setup does not complete.
@@ -63,6 +65,8 @@ Recovery:
 1. Check whether `~/.codex` or `~/.claude` exists on this machine.
 2. Disable unavailable providers via `agent-badge config` until data appears.
 3. Run `agent-badge doctor` for targeted remediation guidance.
+
+`agent-badge` only scans those provider directories today. If both are missing, install can still succeed, but the badge will not reflect meaningful usage yet.
 
 ## ambiguous sessions are not counted
 

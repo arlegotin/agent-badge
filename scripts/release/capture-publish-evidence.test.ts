@@ -53,7 +53,7 @@ function mockRegistryAndGitResponses(inputs: {
 }
 
 async function writeFixturePreflight(phaseDir: string, status: string): Promise<string> {
-  const preflightPath = resolve(phaseDir, "12-preflight.json");
+  const preflightPath = resolve(phaseDir, "preflight.json");
   const { writeFile } = await import("node:fs/promises");
   await writeFile(preflightPath, JSON.stringify({ overallStatus: status }));
   return preflightPath;
@@ -73,11 +73,11 @@ describe("capture publish evidence", () => {
     expect(
       captureEvidence.parseEvidenceArgs([
         "--phase-dir",
-        ".planning/phases/12-production-publish-execution",
+        "artifacts/releases/1.1.6",
         "--publish-path",
         "github-actions",
         "--preflight-json",
-        ".planning/phases/12-production-publish-execution/12-preflight.json",
+        "artifacts/releases/1.1.6/preflight.json",
         "--workflow-run-url",
         "https://github.com/example/repo/actions/runs/1",
         "--workflow-run-id",
@@ -87,15 +87,15 @@ describe("capture publish evidence", () => {
         "--published-at",
         "2026-03-31T00:00:00Z",
         "--artifact-prefix",
-        "22-PUBLISH-EVIDENCE",
+        "RELEASE-EVIDENCE",
         "--published-git-sha",
         "db3ff4fa76905fac713a3ee7677d143de25e2b2c"
       ])
     ).toEqual({
-      phaseDir: ".planning/phases/12-production-publish-execution",
+      phaseDir: "artifacts/releases/1.1.6",
       publishPath: "github-actions",
-      preflightJson: ".planning/phases/12-production-publish-execution/12-preflight.json",
-      artifactPrefix: "22-PUBLISH-EVIDENCE",
+      preflightJson: "artifacts/releases/1.1.6/preflight.json",
+      artifactPrefix: "RELEASE-EVIDENCE",
       workflowRunUrl: "https://github.com/example/repo/actions/runs/1",
       workflowRunId: "1",
       workflowRunConclusion: "success",
@@ -107,21 +107,21 @@ describe("capture publish evidence", () => {
     expect(
       captureEvidence.parseEvidenceArgs([
         "--phase-dir",
-        ".planning/phases/12-production-publish-execution",
+        "artifacts/releases/1.1.6",
         "--publish-path",
         "local-cli",
         "--preflight-json",
-        ".planning/phases/12-production-publish-execution/12-preflight.json",
+        "artifacts/releases/1.1.6/preflight.json",
         "--published-at",
         "2026-03-31T00:00:00Z",
         "--fallback-reason",
         "workflow unavailable"
       ])
     ).toEqual({
-      phaseDir: ".planning/phases/12-production-publish-execution",
+      phaseDir: "artifacts/releases/1.1.6",
       publishPath: "local-cli",
-      preflightJson: ".planning/phases/12-production-publish-execution/12-preflight.json",
-      artifactPrefix: "12-PUBLISH-EVIDENCE",
+      preflightJson: "artifacts/releases/1.1.6/preflight.json",
+      artifactPrefix: "PUBLISH-EVIDENCE",
       workflowRunUrl: undefined,
       workflowRunId: undefined,
       workflowRunConclusion: undefined,
@@ -192,8 +192,8 @@ describe("capture publish evidence", () => {
       publishedAt: "2026-03-31T00:00:00Z"
     }, process.cwd());
 
-    const jsonPath = resolve(phaseDir, "12-PUBLISH-EVIDENCE.json");
-    const mdPath = resolve(phaseDir, "12-PUBLISH-EVIDENCE.md");
+    const jsonPath = resolve(phaseDir, "PUBLISH-EVIDENCE.json");
+    const mdPath = resolve(phaseDir, "PUBLISH-EVIDENCE.md");
 
     const jsonText = await readFile(jsonPath, "utf8");
     const markdownText = await readFile(mdPath, "utf8");
@@ -229,7 +229,7 @@ describe("capture publish evidence", () => {
       phaseDir,
       publishPath: "github-actions",
       preflightJson: preflightPath,
-      artifactPrefix: "22-PUBLISH-EVIDENCE",
+      artifactPrefix: "RELEASE-EVIDENCE",
       workflowRunUrl: "https://github.com/example/repo/actions/runs/24005943027",
       workflowRunId: "24005943027",
       workflowRunConclusion: "success",
@@ -237,8 +237,8 @@ describe("capture publish evidence", () => {
       publishedGitSha: "db3ff4fa76905fac713a3ee7677d143de25e2b2c"
     }, process.cwd());
 
-    const jsonPath = resolve(phaseDir, "22-PUBLISH-EVIDENCE.json");
-    const mdPath = resolve(phaseDir, "22-PUBLISH-EVIDENCE.md");
+    const jsonPath = resolve(phaseDir, "RELEASE-EVIDENCE.json");
+    const mdPath = resolve(phaseDir, "RELEASE-EVIDENCE.md");
 
     expect(evidence.gitSha).toBe("db3ff4fa76905fac713a3ee7677d143de25e2b2c");
     expect(await readFile(jsonPath, "utf8")).toContain("\"gitSha\": \"db3ff4fa76905fac713a3ee7677d143de25e2b2c\"");
@@ -263,13 +263,13 @@ describe("capture publish evidence", () => {
       phaseDir,
       publishPath: "local-cli",
       preflightJson: preflightPath,
-      artifactPrefix: "12-PUBLISH-EVIDENCE",
+      artifactPrefix: "PUBLISH-EVIDENCE",
       fallbackReason: "workflow_dispatch unavailable",
       publishedAt: "2026-03-31T00:00:00Z"
     }, process.cwd());
 
     const payload = JSON.parse(
-      await readFile(resolve(phaseDir, "12-PUBLISH-EVIDENCE.json"), "utf8")
+      await readFile(resolve(phaseDir, "PUBLISH-EVIDENCE.json"), "utf8")
     ) as { workflowRunUrl?: string; fallbackReason?: string };
 
     expect(evidence.fallbackReason).toBe("workflow_dispatch unavailable");

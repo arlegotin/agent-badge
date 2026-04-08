@@ -3,13 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
-DEFAULT_PHASE_DIR="${REPO_ROOT}/.planning/phases/13-post-publish-registry-verification-and-final-operations"
+DEFAULT_PHASE_DIR="${REPO_ROOT}/artifacts/releases/registry-smoke"
 
 VERSION=""
 CHECK_INITIALIZER=false
 WRITE_EVIDENCE=false
 PHASE_DIR="${DEFAULT_PHASE_DIR}"
-ARTIFACT_PREFIX="13-REGISTRY-SMOKE"
+ARTIFACT_PREFIX="REGISTRY-SMOKE"
 
 usage() {
   cat <<'EOF'
@@ -17,7 +17,7 @@ Usage:
   bash scripts/smoke/verify-registry-install.sh --version <semver> [--check-initializer] [--write-evidence] [--phase-dir <path>] [--artifact-prefix <name>]
 
 Example:
-  bash scripts/smoke/verify-registry-install.sh --version 1.1.1 --check-initializer --write-evidence
+  bash scripts/smoke/verify-registry-install.sh --version 1.1.6 --check-initializer --write-evidence
 EOF
 }
 

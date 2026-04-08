@@ -27,7 +27,9 @@ const expectedWorkflowMarkers = [
   "id-token: write",
   "npm run release:publish-impact",
   "npm run release:auto-version",
-  "npm run release"
+  "npm run release",
+  "git tag -a",
+  "gh release create"
 ] as const;
 
 export type ReleasePreflightStatus = "safe" | "warn" | "blocked";
@@ -49,6 +51,8 @@ export interface PublishablePackageManifest {
   readonly manifestPath: string;
   readonly name: string;
   readonly version: string;
+  readonly packageManager: string | null;
+  readonly enginesNode: string | null;
 }
 
 export interface RegistryPackageMetadata {
@@ -95,10 +99,14 @@ interface PackageManifestFile {
   readonly version?: unknown;
   readonly private?: unknown;
   readonly publishConfig?: unknown;
+  readonly packageManager?: unknown;
+  readonly engines?: unknown;
 }
 
 interface RootPackageManifestFile {
   readonly scripts?: unknown;
+  readonly packageManager?: unknown;
+  readonly engines?: unknown;
 }
 
 interface ChangesetConfigFile {
@@ -237,7 +245,16 @@ export async function loadPublishablePackageInventory(
       return {
         manifestPath,
         name: parsed.name,
-        version: parsed.version
+        version: parsed.version,
+        packageManager:
+          typeof parsed.packageManager === "string" &&
+          parsed.packageManager.trim().length > 0
+            ? parsed.packageManager
+            : null,
+        enginesNode:
+          isRecord(parsed.engines) && typeof parsed.engines.node === "string"
+            ? parsed.engines.node
+            : null
       };
     })
   );
@@ -505,6 +522,32 @@ export function evaluateReleaseInputs(input: {
   const releaseScript = typeof scriptMap.release === "string" ? scriptMap.release : null;
   const preflightScript =
     typeof scriptMap["release:preflight"] === "string" ? scriptMap["release:preflight"] : null;
+  const rootPackageManager =
+    typeof input.rootPackage.packageManager === "string" &&
+    input.rootPackage.packageManager.trim().length > 0
+      ? input.rootPackage.packageManager
+      : null;
+  const rootEngines = isRecord(input.rootPackage.engines)
+    ? input.rootPackage.engines
+    : {};
+  const rootNodeEngine =
+    typeof rootEngines.node === "string" && rootEngines.node.trim().length > 0
+      ? rootEngines.node
+      : null;
+  const manifestPackageManagers = [
+    ...new Set(
+      input.manifests
+        .map((manifest) => manifest.packageManager)
+        .filter((value): value is string => typeof value === "string")
+    )
+  ];
+  const manifestNodeEngines = [
+    ...new Set(
+      input.manifests
+        .map((manifest) => manifest.enginesNode)
+        .filter((value): value is string => typeof value === "string")
+    )
+  ];
   const corePublishConfig = isRecord(input.coreManifest.publishConfig)
     ? input.coreManifest.publishConfig
     : {};
@@ -525,6 +568,26 @@ export function evaluateReleaseInputs(input: {
 
   if (coreAccess !== "public") {
     issues.push("packages/core/package.json must keep `publishConfig.access` set to `public`.");
+  }
+
+  if (rootPackageManager === null) {
+    issues.push(`${rootPackageManifestPath} must declare a root \`packageManager\`.`);
+  }
+
+  if (rootNodeEngine === null) {
+    issues.push(`${rootPackageManifestPath} must declare \`engines.node\`.`);
+  }
+
+  if (manifestPackageManagers.length !== 1 || manifestPackageManagers[0] !== rootPackageManager) {
+    issues.push(
+      "Publishable package manifests must share the same `packageManager` as the root manifest."
+    );
+  }
+
+  if (manifestNodeEngines.length !== 1 || manifestNodeEngines[0] !== rootNodeEngine) {
+    issues.push(
+      "Publishable package manifests must share the same `engines.node` support policy as the root manifest."
+    );
   }
 
   if (releaseScript !== "changeset publish") {
@@ -564,6 +627,8 @@ export function evaluateReleaseInputs(input: {
     blockers: [],
     details: [
       `Publishable inventory: ${input.manifests.map((manifest) => manifest.name).join(", ")}`,
+      `Support policy: node ${rootNodeEngine}`,
+      `Package manager: ${rootPackageManager}`,
       `Root release contract: ${releaseScript}`,
       `Root preflight contract: ${preflightScript}`
     ]
@@ -600,7 +665,8 @@ export function evaluateWorkflowContract(
     details: [
       "Local preflight validates workflow markers only.",
       "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token.",
-      "The production workflow is expected to auto-bump and publish qualifying main-branch changes."
+      "The production workflow is expected to auto-bump and publish qualifying main-branch changes.",
+      "The production workflow is expected to create Git tags and a GitHub release for the published version."
     ]
   };
 }

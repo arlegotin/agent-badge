@@ -4,6 +4,15 @@
 
 Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
 
+## Applicability
+
+Today the runtime supports only:
+
+- Codex data under `~/.codex`
+- Claude data under `~/.claude`
+
+If one provider is missing, the tool still works and reports partial coverage. If both are missing, install still works, but the badge will not show meaningful usage until provider data appears.
+
 ## The Flow
 
 1. `agent-badge init` scaffolds local state, wires the repo-local runtime, and connects a public gist when GitHub auth is available.
@@ -11,15 +20,6 @@ Commands below are shown as `agent-badge ...` for readability. In an npm-initial
 3. The attribution engine decides which sessions belong to the current repo and excludes ambiguous work by default.
 4. `agent-badge` writes local state under `.agent-badge/` and publishes stable badge payloads plus deterministic shared-state files to a gist you control.
 5. Shields renders that JSON through a stable endpoint URL that can live in your README forever.
-
-## What Gets Scanned
-
-Today the runtime supports:
-
-- Codex data under `~/.codex`
-- Claude data under `~/.claude`
-
-If one provider is missing, the tool still works. It just reports partial coverage.
 
 ## How Attribution Stays Credible
 
