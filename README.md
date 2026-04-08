@@ -87,4 +87,6 @@ The badge at the top of this README is live. The gallery below shows how mode, s
 
 ## Contributing
 
-Install dependencies with `npm ci`, then use `npm run typecheck`, `npm test -- --run`, and `npm run docs:check` before opening a change. The maintainer workflow and support boundary live in [CONTRIBUTING.md](CONTRIBUTING.md).
+If you think AI-assisted work should be visible and measurable, you’re in the right repo.
+
+The maintainer workflow and support boundary live in [CONTRIBUTING.md](CONTRIBUTING.md).
