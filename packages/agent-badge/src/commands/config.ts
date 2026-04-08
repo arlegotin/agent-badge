@@ -2,10 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import {
-  applyRepoLocalRuntimeWiring,
+  applyMinimalRepoScaffold,
   type AgentBadgeBadgeStyle,
   buildSharedRuntimeRemediation,
-  detectPackageManager,
   inspectSharedRuntime,
   parseAgentBadgeConfig,
   type AgentBadgeBadgeMode,
@@ -55,8 +54,6 @@ export interface ConfigCommandResult {
 const CONFIG_PATH = ".agent-badge/config.json";
 const PRIVACY_AGGREGATE_ONLY_ERROR =
   "privacy.aggregateOnly must remain true because agent-badge only publishes aggregate data.";
-const publishableSemverPattern =
-  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const supportedConfigKeys = [
   "providers.codex.enabled",
   "providers.claude.enabled",
@@ -71,10 +68,6 @@ const supportedConfigKeys = [
   "privacy.aggregateOnly",
   "privacy.output"
 ] as const satisfies readonly SupportedConfigKey[];
-
-interface RuntimePackageManifest {
-  readonly version?: unknown;
-}
 
 async function readJsonFile(targetPath: string): Promise<unknown> {
   let rawContent: string;
@@ -443,49 +436,6 @@ function buildReport(
   ].join("\n");
 }
 
-async function readRuntimePackageManifest(): Promise<RuntimePackageManifest> {
-  const runtimePackagePath = new URL("../../package.json", import.meta.url);
-  let rawManifest: unknown;
-
-  try {
-    rawManifest = JSON.parse(
-      await readFile(runtimePackagePath, "utf8")
-    ) as unknown;
-  } catch (error) {
-    const detail = error instanceof Error ? `: ${error.message}` : ".";
-
-    throw new Error(`Unable to read agent-badge runtime package metadata${detail}`);
-  }
-
-  if (
-    typeof rawManifest !== "object" ||
-    rawManifest === null ||
-    Array.isArray(rawManifest)
-  ) {
-    throw new Error("Unable to read agent-badge runtime package metadata.");
-  }
-
-  return rawManifest as RuntimePackageManifest;
-}
-
-function normalizeRuntimeDependencySpecifier(version: unknown): string {
-  if (
-    typeof version !== "string" ||
-    version === "0.0.0" ||
-    !publishableSemverPattern.test(version)
-  ) {
-    return "latest";
-  }
-
-  return `^${version}`;
-}
-
-async function resolveRuntimeDependencySpecifier(): Promise<string> {
-  const runtimePackageManifest = await readRuntimePackageManifest();
-
-  return normalizeRuntimeDependencySpecifier(runtimePackageManifest.version);
-}
-
 export async function runConfigCommand(
   options: RunConfigCommandOptions = {}
 ): Promise<ConfigCommandResult> {
@@ -541,10 +491,10 @@ export async function runConfigCommand(
 
   if (keyRequiresRuntimeWiring(options.key)) {
     try {
-      await applyRepoLocalRuntimeWiring({
+      await applyMinimalRepoScaffold({
         cwd,
-        packageManager: detectPackageManager(cwd),
-        runtimeDependencySpecifier: await resolveRuntimeDependencySpecifier(),
+        // The shared hook contract is package-manager agnostic after Phase 25.
+        packageManager: "npm",
         refresh: nextConfig.refresh
       });
     } catch (error) {
