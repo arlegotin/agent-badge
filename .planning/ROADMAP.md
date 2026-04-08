@@ -14,8 +14,8 @@ Latest shipped milestone:
 - ✅ [`v1.4 Publish Reliability Hardening`](./milestones/v1.4-ROADMAP.md) — shipped 2026-04-05
 
 Next workflow entrypoint:
-- `$gsd-discuss-phase 25`
-- or `$gsd-plan-phase 25`
+- `$gsd-discuss-phase 26`
+- or `$gsd-plan-phase 26`
 
 ## Current Milestone: v2.0 Global Runtime and Minimal Repo Footprint
 
@@ -33,7 +33,7 @@ This milestone removes repo-local runtime installation from initialized reposito
 
 ## Phases
 
-- [ ] **Phase 25: Global Runtime Contract And Command Resolution** - Replace repo-local command assumptions with a shared CLI contract, runtime detection, and migration-safe execution paths.
+- [x] **Phase 25: Global Runtime Contract And Command Resolution** - Replace repo-local command assumptions with a shared CLI contract, runtime detection, and migration-safe execution paths. Completed 2026-04-08.
 - [ ] **Phase 26: Minimal Repo Scaffold And Init Rewire** - Remove repo-local runtime installation from init and leave only repo-owned artifacts with idempotent scaffolding.
 - [ ] **Phase 27: Legacy Migration, Uninstall, And Release Proof** - Migrate existing repos safely and prove docs, uninstall, and smoke verification for the new install model.
 
@@ -63,8 +63,8 @@ This milestone removes repo-local runtime installation from initialized reposito
 **Plans**: 2 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — Establish the shared PATH-based runtime contract and canonical managed hook writer
-- [ ] 25-02-PLAN.md — Propagate the shared runtime contract through operator surfaces and compatibility proof
+- [x] 25-01-PLAN.md — Establish the shared PATH-based runtime contract and canonical managed hook writer
+- [x] 25-02-PLAN.md — Propagate the shared runtime contract through operator surfaces and compatibility proof
 
 ### Phase 26: Minimal Repo Scaffold And Init Rewire
 **Goal**: Make the initializer and scaffold global-first, leaving minimal repo artifacts and no repo-local runtime install by default.
@@ -99,6 +99,6 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 25. Global Runtime Contract And Command Resolution | 0/2 | Not started | - |
+| 25. Global Runtime Contract And Command Resolution | 2/2 | Complete    | 2026-04-08 |
 | 26. Minimal Repo Scaffold And Init Rewire | 0/2 | Not started | - |
 | 27. Legacy Migration, Uninstall, And Release Proof | 0/3 | Not started | - |
