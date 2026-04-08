@@ -128,20 +128,32 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(gitignoreContent).toContain(agentBadgeGitignoreEndMarker);
       expect(hookContent).toContain(agentBadgeHookStartMarker);
       expect(hookContent).toContain(agentBadgeHookEndMarker);
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
       expect(hookContent).toContain(
         "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
       );
       expect(hookStats.mode & 0o111).toBe(0o111);
 
-        await expect(
-          execFileAsync(prePushHookPath, [], {
-            cwd: repo.root
-          })
-        ).resolves.toMatchObject({
-          stdout: expect.any(String),
-          stderr: expect.any(String)
-        });
-      } finally {
+      const hookExecution = await execFileAsync(prePushHookPath, [], {
+        cwd: repo.root,
+        env: {
+          ...process.env,
+          PATH: ""
+        }
+      });
+
+      expect(hookExecution.stdout).toContain(
+        "Shared agent-badge runtime not found on PATH."
+      );
+      expect(hookExecution.stdout).toContain(
+        "npm install -g @legotin/agent-badge"
+      );
+      expect(hookExecution.stdout).toContain(
+        "pnpm add -g @legotin/agent-badge"
+      );
+      expect(hookExecution.stdout).toContain("bun add -g @legotin/agent-badge");
+      expect(hookExecution.stderr).toBe("");
+    } finally {
         await repo.cleanup();
       }
     },
@@ -233,6 +245,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(gitignoreContent.match(/# agent-badge:gitignore:start/gm)).toHaveLength(1);
       expect(gitignoreContent.match(/# agent-badge:gitignore:end/gm)).toHaveLength(1);
       expect(hookContent).toContain("echo custom-check");
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
       expect(hookStats.mode & 0o111).toBe(0o111);
@@ -309,6 +322,7 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --hook-policy strict"
       );
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
       expect(hookContent).toContain(
         "agent-badge refresh --hook pre-push --hook-policy strict"
       );
@@ -520,6 +534,7 @@ describe("removeRepoLocalRuntimeWiring", () => {
           "utf8"
         );
 
+        expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
         expect(hookContent).toContain(
           "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
         );

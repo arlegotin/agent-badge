@@ -324,6 +324,11 @@ describe("runInitCommand", () => {
       expect(readmeContent).toBe("# Fixture Repo\n");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+      );
+      expect(hookContent).not.toContain("npm run --silent agent-badge:refresh");
 
       const secondRun = await runInitCommand({
         cwd: repo.root,
@@ -497,7 +502,11 @@ describe("runInitCommand", () => {
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --hook-policy strict"
       );
-      expect(hookContent).toContain("npm run --silent agent-badge:refresh");
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy strict"
+      );
+      expect(hookContent).not.toContain("npm run --silent agent-badge:refresh");
       expect(hookContent).not.toContain("|| true");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);

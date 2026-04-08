@@ -9,6 +9,7 @@ import {
   getAgentBadgeRefreshScriptCommand,
   getPrePushRefreshCommand
 } from "../runtime/local-cli.js";
+import { buildSharedRuntimeRemediation } from "../runtime/shared-cli.js";
 import type { AgentBadgeConfig } from "../config/config-schema.js";
 import type { PackageManager } from "../runtime/package-manager.js";
 
@@ -139,6 +140,27 @@ function escapeForRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function quoteForSingleQuotedShell(value: string): string {
+  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
+}
+
+function buildSharedRuntimeGuard(mode: AgentBadgeConfig["refresh"]["prePush"]["mode"]): string {
+  const remediationLines = [
+    "Shared agent-badge runtime not found on PATH.",
+    ...buildSharedRuntimeRemediation().split("\n")
+  ];
+  const exitCode = mode === "strict" ? "1" : "0";
+
+  return [
+    "if ! command -v agent-badge >/dev/null 2>&1; then",
+    ...remediationLines.map(
+      (line) => `  printf '%s\\n' ${quoteForSingleQuotedShell(line)}`
+    ),
+    `  exit ${exitCode}`,
+    "fi"
+  ].join("\n");
+}
+
 function createManagedHookBlock(
   packageManager: PackageManager,
   refresh: AgentBadgeConfig["refresh"]
@@ -150,6 +172,7 @@ function createManagedHookBlock(
 
   return [
     agentBadgeHookStartMarker,
+    buildSharedRuntimeGuard(refresh.prePush.mode),
     refresh.prePush.mode === "fail-soft" ? `${command} || true` : command,
     agentBadgeHookEndMarker
   ].join("\n");

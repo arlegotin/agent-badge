@@ -108,7 +108,11 @@ async function createRepoFixture(options: {
     await mkdir(dirname(join(repoRoot, ".git/hooks/pre-push")), { recursive: true });
     const hookBlock = [
       agentBadgeHookStartMarker,
-      "agent-badge refresh --hook pre-push --hook-policy fail-soft",
+      "if ! command -v agent-badge >/dev/null 2>&1; then",
+      "  printf '%s\\n' 'Shared agent-badge runtime not found on PATH.'",
+      "  exit 0",
+      "fi",
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft || true",
       agentBadgeHookEndMarker,
       ""
     ].join("\n");
@@ -802,7 +806,11 @@ describe("runDoctorChecks", () => {
           "#!/bin/sh",
           "",
           agentBadgeHookStartMarker,
-          "npm run --silent agent-badge:refresh",
+          "if ! command -v agent-badge >/dev/null 2>&1; then",
+          "  printf '%s\\n' 'Shared agent-badge runtime not found on PATH.'",
+          "  exit 1",
+          "fi",
+          "agent-badge refresh --hook pre-push --hook-policy strict",
           agentBadgeHookEndMarker,
           ""
         ].join("\n"),
@@ -862,7 +870,11 @@ describe("runDoctorChecks", () => {
           "#!/bin/sh",
           "",
           agentBadgeHookStartMarker,
-          "npm run --silent agent-badge:refresh || true",
+          "if ! command -v agent-badge >/dev/null 2>&1; then",
+          "  printf '%s\\n' 'Shared agent-badge runtime not found on PATH.'",
+          "  exit 0",
+          "fi",
+          "agent-badge refresh --hook pre-push --hook-policy fail-soft || true",
           agentBadgeHookEndMarker,
           ""
         ].join("\n"),
@@ -906,6 +918,120 @@ describe("runDoctorChecks", () => {
       expect(failSoftHook?.detail).toContain(
         "live badge may be stale; push continues because pre-push policy is fail-soft."
       );
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("accepts legacy managed hook blocks during the migration window", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+
+      await writeFile(
+        join(fixture.repo.root, ".git/hooks/pre-push"),
+        [
+          "#!/bin/sh",
+          "",
+          agentBadgeHookStartMarker,
+          "npm run --silent agent-badge:refresh || true",
+          agentBadgeHookEndMarker,
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+      const hookCheck = result.checks.find((check) => check.id === "pre-push-hook");
+
+      expect(hookCheck?.status).toBe("pass");
+      expect(hookCheck?.detail).toContain("Managed hook block is present and invokes refresh.");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("reports shared runtime remediation when the managed hook is missing", async () => {
+    const fixture = await createRepoFixture({
+      withManagedHook: false
+    });
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+      const hookCheck = result.checks.find((check) => check.id === "pre-push-hook");
+
+      expect(hookCheck?.status).toBe("warn");
+      expect(hookCheck?.fix).toContain(
+        "Run `agent-badge init` to install or repair the managed pre-push hook."
+      );
+      expect(hookCheck?.fix).toContain("npm install -g @legotin/agent-badge");
+      expect(hookCheck?.fix).toContain("pnpm add -g @legotin/agent-badge");
+      expect(hookCheck?.fix).toContain("bun add -g @legotin/agent-badge");
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.repo.cleanup();

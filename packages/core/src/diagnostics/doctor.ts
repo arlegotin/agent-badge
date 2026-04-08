@@ -34,6 +34,7 @@ import {
 import { resolveGitHubAuthToken } from "../init/github-auth.js";
 import type { GhCliTokenResolver } from "../init/github-auth.js";
 import { runInitPreflight, type InitPreflightResult } from "../init/preflight.js";
+import { buildSharedRuntimeRemediation } from "../runtime/shared-cli.js";
 import { parseAgentBadgeState, type AgentBadgeState } from "../state/state-schema.js";
 
 export type DoctorCheckStatus = "pass" | "warn" | "fail";
@@ -116,6 +117,15 @@ function gistHasFile(
 
 function buildMissingPublishTargetFix(): readonly string[] {
   return buildFix(["Run `agent-badge init --gist-id <id>` to reconnect publish targets."]);
+}
+
+function buildManagedHookRepairFix(): readonly string[] {
+  return buildFix([
+    "Run `agent-badge init` to install or repair the managed pre-push hook.",
+    ...buildSharedRuntimeRemediation()
+      .split("\n")
+      .map((line) => line.replace(/^- /, ""))
+  ]);
 }
 
 async function readJsonFile<T>(path: string): Promise<ParseOutcome<T>> {
@@ -983,7 +993,7 @@ async function checkHook(
         ? `${policyDetail} | Re-run init to install the managed hook block.`
         : `${policyLine} | pre-push hook was intentionally disabled in configuration.`,
       fix: shouldHaveHook
-        ? buildFix(["Run `agent-badge init` to install the managed pre-push hook."])
+        ? buildManagedHookRepairFix()
         : []
     };
   }
@@ -997,7 +1007,7 @@ async function checkHook(
       status: "fail",
       message: "Managed pre-push hook block is malformed",
       detail: `${policyLine} | Found ${startCount} start marker(s) and ${endCount} end marker(s).`,
-      fix: buildFix(["Run `agent-badge init` to repair managed hook state."])
+      fix: buildManagedHookRepairFix()
     };
   }
 
@@ -1006,9 +1016,11 @@ async function checkHook(
     .split(agentBadgeHookEndMarker)[0]
     .trim();
 
-  const invokesRefresh =
-    managedContent.includes("agent-badge refresh --hook pre-push") ||
-    managedContent.includes("agent-badge:refresh");
+  const invokesDirectRefresh = managedContent.includes(
+    "agent-badge refresh --hook pre-push"
+  );
+  const invokesLegacyRefresh = managedContent.includes("agent-badge:refresh");
+  const invokesRefresh = invokesDirectRefresh || invokesLegacyRefresh;
 
   if (!invokesRefresh) {
     return {
@@ -1016,11 +1028,11 @@ async function checkHook(
       status: "warn",
       message: "Managed pre-push hook exists but is not wired",
       detail: `${policyLine} | Managed block was detected but does not invoke the refresh command.`,
-      fix: buildFix(["Run `agent-badge init` to repair managed hook wiring."])
+      fix: buildManagedHookRepairFix()
     };
   }
 
-  if (config !== null && managedContent.includes("agent-badge:refresh")) {
+  if (config !== null) {
     const expectsFailSoftFallback = config.refresh.prePush.mode === "fail-soft";
     const hasFailSoftFallback = managedContent.includes("|| true");
 
