@@ -6,7 +6,7 @@ import {
   attributeBackfillSessions,
   applyPublishTargetResult,
   applyAgentBadgeScaffold,
-  applyRepoLocalRuntimeWiring,
+  applyMinimalRepoScaffold,
   buildSharedRuntimeRemediation,
   buildSharedOverrideDigest,
   buildReadmeBadgeMarkdown,
@@ -38,9 +38,9 @@ import {
   type GitHubGistClient,
   type GhCliTokenResolver,
   type InitPreflightResult,
+  type MinimalRepoScaffoldResult,
   type PublishTargetResult,
   type PublishBadgeToGistResult,
-  type RepoLocalRuntimeWiringResult,
   type SharedPublishHealthReport,
   type SharedRuntimeInspection,
   type SharedContributorObservationMap,
@@ -49,10 +49,6 @@ import {
 
 interface OutputWriter {
   write(chunk: string): unknown;
-}
-
-interface RuntimePackageManifest {
-  readonly version?: unknown;
 }
 
 export interface RunInitCommandOptions
@@ -71,11 +67,8 @@ export interface RunInitCommandOptions
 export interface InitCommandResult {
   readonly preflight: InitPreflightResult;
   readonly scaffold: AgentBadgeScaffoldResult;
-  readonly runtimeWiring: RepoLocalRuntimeWiringResult;
+  readonly runtimeWiring: MinimalRepoScaffoldResult;
 }
-
-const publishableSemverPattern =
-  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const CONFIG_PATH = ".agent-badge/config.json";
 const STATE_PATH = ".agent-badge/state.json";
 
@@ -146,7 +139,7 @@ function writeScaffoldSummary(
 
 function writeRuntimeWiringSummary(
   stdout: OutputWriter,
-  runtimeWiring: RepoLocalRuntimeWiringResult
+  runtimeWiring: MinimalRepoScaffoldResult
 ): void {
   writeLines(stdout, [
     "agent-badge init runtime wiring",
@@ -495,49 +488,6 @@ async function buildPublisherObservations(options: {
   );
 }
 
-async function readRuntimePackageManifest(): Promise<RuntimePackageManifest> {
-  const runtimePackagePath = new URL("../../package.json", import.meta.url);
-  let rawManifest: unknown;
-
-  try {
-    rawManifest = JSON.parse(
-      await readFile(runtimePackagePath, "utf8")
-    ) as unknown;
-  } catch (error) {
-    const detail = error instanceof Error ? `: ${error.message}` : ".";
-
-    throw new Error(`Unable to read agent-badge runtime package metadata${detail}`);
-  }
-
-  if (
-    typeof rawManifest !== "object" ||
-    rawManifest === null ||
-    Array.isArray(rawManifest)
-  ) {
-    throw new Error("Unable to read agent-badge runtime package metadata.");
-  }
-
-  return rawManifest as RuntimePackageManifest;
-}
-
-function normalizeRuntimeDependencySpecifier(version: unknown): string {
-  if (
-    typeof version !== "string" ||
-    version === "0.0.0" ||
-    !publishableSemverPattern.test(version)
-  ) {
-    return "latest";
-  }
-
-  return `^${version}`;
-}
-
-async function resolveRuntimeDependencySpecifier(): Promise<string> {
-  const runtimePackageManifest = await readRuntimePackageManifest();
-
-  return normalizeRuntimeDependencySpecifier(runtimePackageManifest.version);
-}
-
 export async function runInitCommand(
   options: RunInitCommandOptions = {}
 ): Promise<InitCommandResult> {
@@ -606,10 +556,9 @@ export async function runInitCommand(
 
   writeScaffoldSummary(stdout, scaffold);
 
-  const runtimeWiring = await applyRepoLocalRuntimeWiring({
+  const runtimeWiring = await applyMinimalRepoScaffold({
     cwd: preflight.cwd,
     packageManager: preflight.packageManager.name,
-    runtimeDependencySpecifier: await resolveRuntimeDependencySpecifier(),
     refresh: config.refresh
   });
 

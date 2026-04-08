@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -20,12 +20,20 @@ export interface ApplyRepoLocalRuntimeWiringOptions {
   readonly refresh: AgentBadgeConfig["refresh"];
 }
 
+export interface ApplyMinimalRepoScaffoldOptions {
+  readonly cwd: string;
+  readonly packageManager: PackageManager;
+  readonly refresh: AgentBadgeConfig["refresh"];
+}
+
 export interface RepoLocalRuntimeWiringResult {
   readonly created: string[];
   readonly updated: string[];
   readonly reused: string[];
   readonly warnings: string[];
 }
+
+export type MinimalRepoScaffoldResult = RepoLocalRuntimeWiringResult;
 
 type JsonObject = Record<string, unknown>;
 
@@ -91,6 +99,23 @@ function getOrCreateObject(parent: JsonObject, field: string): JsonObject {
   }
 
   return currentValue;
+}
+
+function getExistingObject(parent: JsonObject, field: string): JsonObject | undefined {
+  const currentValue = parent[field];
+
+  return isRecord(currentValue) ? currentValue : undefined;
+}
+
+function deleteEmptyObjectField(parent: JsonObject, field: string): boolean {
+  const currentValue = parent[field];
+
+  if (!isRecord(currentValue) || Object.keys(currentValue).length > 0) {
+    return false;
+  }
+
+  delete parent[field];
+  return true;
 }
 
 function syncManagedStringValue(options: {
@@ -287,6 +312,17 @@ function isPotentialRuntimeDependency(value: unknown): value is string {
   );
 }
 
+function isManagedInitScript(value: unknown): value is string {
+  return value === getAgentBadgeInitScriptCommand();
+}
+
+function isManagedRefreshScript(value: unknown): value is string {
+  return (
+    value === getAgentBadgeRefreshScriptCommand("fail-soft") ||
+    value === getAgentBadgeRefreshScriptCommand("strict")
+  );
+}
+
 function removeManagedStringValue(options: {
   readonly container: JsonObject;
   readonly key: string;
@@ -334,6 +370,173 @@ async function ensureExecutable(targetPath: string): Promise<boolean> {
   return true;
 }
 
+async function applyRepoOwnedScaffold(options: {
+  readonly cwd: string;
+  readonly packageManager: PackageManager;
+  readonly refresh: AgentBadgeConfig["refresh"];
+  readonly result: RepoLocalRuntimeWiringResult;
+}): Promise<void> {
+  const gitignorePath = join(options.cwd, gitignorePathLabel);
+  const gitDir = join(options.cwd, ".git");
+  const hooksDir = join(gitDir, "hooks");
+  const prePushHookPath = join(hooksDir, "pre-push");
+
+  if (!existsSync(gitDir)) {
+    throw new Error(
+      "Cannot reconcile managed repo scaffold because the repository does not contain a .git directory."
+    );
+  }
+
+  const existingGitignoreContent = existsSync(gitignorePath)
+    ? await readFile(gitignorePath, "utf8")
+    : undefined;
+  const strippedGitignore = stripManagedGitignoreBlock(
+    existingGitignoreContent ?? ""
+  );
+  const nextGitignoreContent = buildGitignoreContent(
+    strippedGitignore.baseContent,
+    buildManagedGitignoreBlock(strippedGitignore.baseContent)
+  );
+
+  if (existingGitignoreContent === undefined) {
+    await writeFile(gitignorePath, nextGitignoreContent, "utf8");
+    options.result.created.push(gitignorePathLabel);
+  } else if (
+    nextGitignoreContent !== existingGitignoreContent.replace(/\r\n/g, "\n")
+  ) {
+    await writeFile(gitignorePath, nextGitignoreContent, "utf8");
+    options.result.updated.push(gitignorePathLabel);
+  } else {
+    options.result.reused.push(gitignorePathLabel);
+  }
+
+  await mkdir(hooksDir, { recursive: true });
+
+  if (!existsSync(prePushHookPath)) {
+    if (!options.refresh.prePush.enabled) {
+      options.result.reused.push(prePushHookPathLabel);
+      return;
+    }
+
+    await writeFile(
+      prePushHookPath,
+      buildHookContent(
+        "",
+        createManagedHookBlock(options.packageManager, options.refresh)
+      ),
+      "utf8"
+    );
+    await chmod(prePushHookPath, 0o755);
+    options.result.created.push(prePushHookPathLabel);
+    return;
+  }
+
+  const existingHookContent = await readFile(prePushHookPath, "utf8");
+  const strippedHook = stripManagedHookBlock(existingHookContent);
+  const nextHookContent = options.refresh.prePush.enabled
+    ? buildHookContent(
+        strippedHook.baseContent,
+        createManagedHookBlock(options.packageManager, options.refresh)
+      )
+    : buildHookContent(strippedHook.baseContent);
+  const hookContentChanged =
+    nextHookContent !== existingHookContent.replace(/\r\n/g, "\n");
+  const hookModeChanged = await ensureExecutable(prePushHookPath);
+
+  if (hookContentChanged) {
+    await writeFile(prePushHookPath, nextHookContent, "utf8");
+  }
+
+  if (hookContentChanged || hookModeChanged) {
+    options.result.updated.push(prePushHookPathLabel);
+  } else {
+    options.result.reused.push(prePushHookPathLabel);
+  }
+}
+
+export async function applyMinimalRepoScaffold(
+  options: ApplyMinimalRepoScaffoldOptions
+): Promise<MinimalRepoScaffoldResult> {
+  const result: RepoLocalRuntimeWiringResult = {
+    created: [],
+    updated: [],
+    reused: [],
+    warnings: []
+  };
+  const packageJsonPath = join(options.cwd, packageJsonPathLabel);
+  const packageJson = await readPackageJson(packageJsonPath);
+  let packageJsonChanged = false;
+
+  if (packageJson !== undefined) {
+    const scripts = getExistingObject(packageJson, "scripts");
+    const devDependencies = getExistingObject(packageJson, "devDependencies");
+
+    if (scripts !== undefined) {
+      const removedInitScript = removeManagedStringValue({
+        container: scripts,
+        key: agentBadgeInitScriptName,
+        label: `package.json#scripts.${agentBadgeInitScriptName}`,
+        condition: isManagedInitScript,
+        result
+      });
+      const removedRefreshScript = removeManagedStringValue({
+        container: scripts,
+        key: agentBadgeRefreshScriptName,
+        label: `package.json#scripts.${agentBadgeRefreshScriptName}`,
+        condition: isManagedRefreshScript,
+        result
+      });
+
+      packageJsonChanged =
+        removedInitScript || removedRefreshScript || packageJsonChanged;
+
+      if (removedInitScript || removedRefreshScript) {
+        packageJsonChanged =
+          deleteEmptyObjectField(packageJson, "scripts") || packageJsonChanged;
+      }
+    }
+
+    if (devDependencies !== undefined) {
+      const removedRuntimeDependency = removeManagedStringValue({
+        container: devDependencies,
+        key: runtimePackageName,
+        label: `package.json#devDependencies.${runtimePackageName}`,
+        condition: isPotentialRuntimeDependency,
+        result
+      });
+
+      packageJsonChanged = removedRuntimeDependency || packageJsonChanged;
+
+      if (removedRuntimeDependency) {
+        packageJsonChanged =
+          deleteEmptyObjectField(packageJson, "devDependencies") ||
+          packageJsonChanged;
+      }
+    }
+
+    if (packageJsonChanged) {
+      if (Object.keys(packageJson).length === 0) {
+        await rm(packageJsonPath, { force: true });
+      } else {
+        await writeJsonFile(packageJsonPath, packageJson);
+      }
+
+      result.updated.push(packageJsonPathLabel);
+    } else {
+      result.reused.push(packageJsonPathLabel);
+    }
+  }
+
+  await applyRepoOwnedScaffold({
+    cwd: options.cwd,
+    packageManager: options.packageManager,
+    refresh: options.refresh,
+    result
+  });
+
+  return result;
+}
+
 export async function applyRepoLocalRuntimeWiring(
   options: ApplyRepoLocalRuntimeWiringOptions
 ): Promise<RepoLocalRuntimeWiringResult> {
@@ -344,19 +547,9 @@ export async function applyRepoLocalRuntimeWiring(
     warnings: []
   };
   const packageJsonPath = join(options.cwd, packageJsonPathLabel);
-  const gitignorePath = join(options.cwd, gitignorePathLabel);
-  const gitDir = join(options.cwd, ".git");
-  const hooksDir = join(gitDir, "hooks");
-  const prePushHookPath = join(hooksDir, "pre-push");
   const existingPackageJson = await readPackageJson(packageJsonPath);
   let packageJsonChanged = false;
   let packageJson = existingPackageJson;
-
-  if (!existsSync(gitDir)) {
-    throw new Error(
-      "Cannot apply repo-local runtime wiring because the repository does not contain a .git directory."
-    );
-  }
 
   if (packageJson === undefined) {
     packageJson = {};
@@ -406,71 +599,12 @@ export async function applyRepoLocalRuntimeWiring(
     result.reused.push(packageJsonPathLabel);
   }
 
-  const existingGitignoreContent = existsSync(gitignorePath)
-    ? await readFile(gitignorePath, "utf8")
-    : undefined;
-  const strippedGitignore = stripManagedGitignoreBlock(
-    existingGitignoreContent ?? ""
-  );
-  const nextGitignoreContent = buildGitignoreContent(
-    strippedGitignore.baseContent,
-    buildManagedGitignoreBlock(strippedGitignore.baseContent)
-  );
-
-  if (existingGitignoreContent === undefined) {
-    await writeFile(gitignorePath, nextGitignoreContent, "utf8");
-    result.created.push(gitignorePathLabel);
-  } else if (
-    nextGitignoreContent !== existingGitignoreContent.replace(/\r\n/g, "\n")
-  ) {
-    await writeFile(gitignorePath, nextGitignoreContent, "utf8");
-    result.updated.push(gitignorePathLabel);
-  } else {
-    result.reused.push(gitignorePathLabel);
-  }
-
-  await mkdir(hooksDir, { recursive: true });
-
-  if (!existsSync(prePushHookPath)) {
-    if (!options.refresh.prePush.enabled) {
-      result.reused.push(prePushHookPathLabel);
-      return result;
-    }
-
-    await writeFile(
-      prePushHookPath,
-      buildHookContent(
-        "",
-        createManagedHookBlock(options.packageManager, options.refresh)
-      ),
-      "utf8"
-    );
-    await chmod(prePushHookPath, 0o755);
-    result.created.push(prePushHookPathLabel);
-    return result;
-  }
-
-  const existingHookContent = await readFile(prePushHookPath, "utf8");
-  const strippedHook = stripManagedHookBlock(existingHookContent);
-  const nextHookContent = options.refresh.prePush.enabled
-    ? buildHookContent(
-        strippedHook.baseContent,
-        createManagedHookBlock(options.packageManager, options.refresh)
-      )
-    : buildHookContent(strippedHook.baseContent);
-  const hookContentChanged =
-    nextHookContent !== existingHookContent.replace(/\r\n/g, "\n");
-  const hookModeChanged = await ensureExecutable(prePushHookPath);
-
-  if (hookContentChanged) {
-    await writeFile(prePushHookPath, nextHookContent, "utf8");
-  }
-
-  if (hookContentChanged || hookModeChanged) {
-    result.updated.push(prePushHookPathLabel);
-  } else {
-    result.reused.push(prePushHookPathLabel);
-  }
+  await applyRepoOwnedScaffold({
+    cwd: options.cwd,
+    packageManager: options.packageManager,
+    refresh: options.refresh,
+    result
+  });
 
   return result;
 }
