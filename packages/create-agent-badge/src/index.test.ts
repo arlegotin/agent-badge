@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +16,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
   vi.doUnmock("@legotin/agent-badge");
-  vi.doUnmock("node:child_process");
   process.argv = [...originalArgv];
   process.exitCode = originalExitCode;
   process.chdir(originalCwd);
@@ -47,7 +46,7 @@ describe("create-agent-badge entrypoint", () => {
     expect(isDirectExecution([process.execPath])).toBe(false);
   });
 
-  it("passes the GitHub CLI token resolver through init and installs the local runtime", async () => {
+  it("delegates to runInitCommand with the GitHub CLI token resolver", async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), "create-agent-badge-run-"));
     const runInitCommand = vi.fn().mockResolvedValue({
       preflight: {
@@ -57,26 +56,8 @@ describe("create-agent-badge entrypoint", () => {
       }
     });
     const resolveGitHubCliToken = vi.fn();
-    const spawnSync = vi.fn().mockReturnValue({
-      status: 0,
-      stdout: "",
-      stderr: ""
-    });
 
     try {
-      await writeFile(
-        join(tempRoot, "package.json"),
-        `${JSON.stringify(
-          {
-            devDependencies: {
-              "@legotin/agent-badge": "^1.2.3"
-            }
-          },
-          null,
-          2
-        )}\n`,
-        "utf8"
-      );
       process.chdir(tempRoot);
       const cwd = process.cwd();
 
@@ -84,79 +65,68 @@ describe("create-agent-badge entrypoint", () => {
         runInitCommand,
         resolveGitHubCliToken
       }));
-      vi.doMock("node:child_process", () => ({
-        spawnSync
-      }));
 
       const module = await import(new URL("./index.ts?run-create-agent-badge", import.meta.url).href);
 
-      await module.runCreateAgentBadge();
+      const result = await module.runCreateAgentBadge({
+        env: {
+          TEST_ENV: "1"
+        }
+      });
 
       expect(runInitCommand).toHaveBeenCalledWith({
         cwd,
+        env: {
+          TEST_ENV: "1"
+        },
         ghCliTokenResolver: resolveGitHubCliToken
       });
-      expect(spawnSync).toHaveBeenCalledWith(
-        "npm",
-        ["install", "-D", "@legotin/agent-badge@^1.2.3"],
-        expect.objectContaining({
-          cwd,
-          encoding: "utf8",
-          stdio: "pipe",
-          windowsHide: true
-        })
-      );
+      expect(result).toEqual({
+        preflight: {
+          packageManager: {
+            name: "npm"
+          }
+        }
+      });
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }
   });
 
-  it("surfaces runtime installation failures after init", async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), "create-agent-badge-install-fail-"));
+  it("does not require a target package.json after initialization", async () => {
+    const tempRoot = await mkdtemp(
+      join(tmpdir(), "create-agent-badge-no-package-json-")
+    );
     const runInitCommand = vi.fn().mockResolvedValue({
       preflight: {
         packageManager: {
-          name: "npm"
+          name: "pnpm"
         }
       }
     });
-    const spawnSync = vi.fn().mockReturnValue({
-      status: 1,
-      stdout: "",
-      stderr: "npm ERR! registry unavailable"
-    });
 
     try {
-      await writeFile(
-        join(tempRoot, "package.json"),
-        `${JSON.stringify(
-          {
-            devDependencies: {
-              "@legotin/agent-badge": "^1.2.3"
-            }
-          },
-          null,
-          2
-        )}\n`,
-        "utf8"
-      );
       process.chdir(tempRoot);
 
       vi.doMock("@legotin/agent-badge", () => ({
         runInitCommand,
         resolveGitHubCliToken: vi.fn()
       }));
-      vi.doMock("node:child_process", () => ({
-        spawnSync
-      }));
 
       const module = await import(
-        new URL("./index.ts?run-create-agent-badge-install-fail", import.meta.url).href
+        new URL(
+          "./index.ts?run-create-agent-badge-no-package-json",
+          import.meta.url
+        ).href
       );
 
-      await expect(module.runCreateAgentBadge()).rejects.toThrow(
-        "Failed to install repo-local @legotin/agent-badge via npm. npm ERR! registry unavailable"
-      );
+      await expect(module.runCreateAgentBadge()).resolves.toEqual({
+        preflight: {
+          packageManager: {
+            name: "pnpm"
+          }
+        }
+      });
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }
