@@ -1,6 +1,6 @@
 {
   "name": "@legotin/agent-badge",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Local-first CLI for publishing privacy-safe AI usage badges to GitHub READMEs.",
   "type": "module",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "dist"
   ],
   "dependencies": {
-    "@legotin/agent-badge-core": "^1.1.8",
+    "@legotin/agent-badge-core": "^1.1.9",
     "commander": "^14.0.0"
   }
 }
