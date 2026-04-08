@@ -128,6 +128,24 @@ function buildManagedHookRepairFix(): readonly string[] {
   ]);
 }
 
+function extractSharedRuntimeGuardBlock(managedContent: string): string | null {
+  const guardMatch = managedContent.match(
+    /if ! command -v agent-badge >\/dev\/null 2>&1; then[\s\S]*?fi/
+  );
+
+  return guardMatch?.[0] ?? null;
+}
+
+function extractGuardExitCode(guardBlock: string): "0" | "1" | null {
+  const exitMatch = guardBlock.match(/\bexit\s+([01])\b/);
+
+  if (exitMatch?.[1] === "0" || exitMatch?.[1] === "1") {
+    return exitMatch[1];
+  }
+
+  return null;
+}
+
 async function readJsonFile<T>(path: string): Promise<ParseOutcome<T>> {
   try {
     const rawContent = await readFile(path, "utf8");
@@ -1030,6 +1048,49 @@ async function checkHook(
       detail: `${policyLine} | Managed block was detected but does not invoke the refresh command.`,
       fix: buildManagedHookRepairFix()
     };
+  }
+
+  const sharedRuntimeGuard = invokesDirectRefresh
+    ? extractSharedRuntimeGuardBlock(managedContent)
+    : null;
+
+  if (invokesDirectRefresh && sharedRuntimeGuard === null) {
+    return {
+      id: "pre-push-hook",
+      status: "warn",
+      message: "Managed pre-push hook is missing shared runtime guard",
+      detail: `${policyLine} | Direct shared-runtime hook is missing the PATH guard that checks \`command -v agent-badge\`.`,
+      fix: buildManagedHookRepairFix()
+    };
+  }
+
+  if (sharedRuntimeGuard !== null) {
+    const guardExitCode = extractGuardExitCode(sharedRuntimeGuard);
+
+    if (guardExitCode === null) {
+      return {
+        id: "pre-push-hook",
+        status: "warn",
+        message: "Managed pre-push hook runtime guard is malformed",
+        detail: `${policyLine} | Shared runtime guard is present but does not contain an explicit \`exit 0\` or \`exit 1\`.`,
+        fix: buildManagedHookRepairFix()
+      };
+    }
+
+    if (config !== null) {
+      const expectedGuardExitCode =
+        config.refresh.prePush.mode === "strict" ? "1" : "0";
+
+      if (guardExitCode !== expectedGuardExitCode) {
+        return {
+          id: "pre-push-hook",
+          status: "warn",
+          message: "Managed pre-push hook runtime guard does not match configuration",
+          detail: `${policyLine} | Shared runtime guard exits ${guardExitCode}, but configuration requires exit ${expectedGuardExitCode}.`,
+          fix: buildManagedHookRepairFix()
+        };
+      }
+    }
   }
 
   if (config !== null) {

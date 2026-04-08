@@ -985,6 +985,144 @@ describe("runDoctorChecks", () => {
     }
   });
 
+  it("warns when direct managed hooks are missing the shared runtime guard or use the wrong guard exit code", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+
+      await writeFile(
+        join(fixture.repo.root, ".git/hooks/pre-push"),
+        [
+          "#!/bin/sh",
+          "",
+          agentBadgeHookStartMarker,
+          "agent-badge refresh --hook pre-push --hook-policy fail-soft || true",
+          agentBadgeHookEndMarker,
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+
+      const missingGuardResult = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+      const missingGuardCheck = missingGuardResult.checks.find(
+        (check) => check.id === "pre-push-hook"
+      );
+
+      expect(missingGuardCheck?.status).toBe("warn");
+      expect(missingGuardCheck?.message).toBe(
+        "Managed pre-push hook is missing shared runtime guard"
+      );
+
+      await writeJsonFile(fixture.repo.root, ".agent-badge/config.json", {
+        ...defaultAgentBadgeConfig,
+        refresh: {
+          ...defaultAgentBadgeConfig.refresh,
+          prePush: {
+            enabled: true,
+            mode: "strict"
+          }
+        },
+        publish: {
+          ...defaultAgentBadgeConfig.publish,
+          gistId: "doctorgist",
+          badgeUrl: buildStableBadgeUrl({
+            ownerLogin: "octocat",
+            gistId: "doctorgist"
+          })
+        }
+      });
+      await writeFile(
+        join(fixture.repo.root, ".git/hooks/pre-push"),
+        [
+          "#!/bin/sh",
+          "",
+          agentBadgeHookStartMarker,
+          "if ! command -v agent-badge >/dev/null 2>&1; then",
+          "  printf '%s\\n' 'Shared agent-badge runtime not found on PATH.'",
+          "  exit 0",
+          "fi",
+          "agent-badge refresh --hook pre-push --hook-policy strict",
+          agentBadgeHookEndMarker,
+          ""
+        ].join("\n"),
+        "utf8"
+      );
+
+      const wrongExitResult = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {
+            GH_TOKEN: "token"
+          },
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+      const wrongExitCheck = wrongExitResult.checks.find(
+        (check) => check.id === "pre-push-hook"
+      );
+
+      expect(wrongExitCheck?.status).toBe("warn");
+      expect(wrongExitCheck?.message).toBe(
+        "Managed pre-push hook runtime guard does not match configuration"
+      );
+      expect(wrongExitCheck?.detail).toContain("configuration requires exit 1");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
   it("reports shared runtime remediation when the managed hook is missing", async () => {
     const fixture = await createRepoFixture({
       withManagedHook: false
