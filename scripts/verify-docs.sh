@@ -93,18 +93,18 @@ for file in "${required_files[@]}"; do
   fi
 done
 
-require_fixed "## Requirements" README.md
-require_fixed "20.x" README.md
-require_fixed "22.x" README.md
-require_fixed "24.x" README.md
+require_fixed "## 60-Second Path" README.md
+require_fixed "npm init agent-badge@latest" README.md
+require_fixed "## What Gets Published" README.md
+require_fixed "## Documentation" README.md
+require_fixed "### User Docs" README.md
+require_fixed "### Maintainer Docs" README.md
 require_fixed "docs/INSTALL.md" README.md
 require_fixed "docs/AUTH.md" README.md
 require_fixed "docs/CLI.md" README.md
 require_fixed "docs/UNINSTALL.md" README.md
 require_fixed "docs/FAQ.md" README.md
 require_fixed "docs/maintainers/RELEASE.md" README.md
-require_fixed "create-agent-badge" README.md
-require_fixed "@legotin/agent-badge" README.md
 
 require_fixed "Node.js" docs/INSTALL.md
 require_fixed "~/.codex" docs/INSTALL.md
