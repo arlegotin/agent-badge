@@ -1,10 +1,11 @@
 ---
 phase: 25
 slug: global-runtime-contract-and-command-resolution
-status: draft
+status: complete
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-04-08
+updated: 2026-04-08
 ---
 
 # Phase 25 — Validation Strategy
@@ -40,10 +41,10 @@ created: 2026-04-08
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 25-01-01 | 01 | 1 | AUTO-01 | runtime contract helper coverage | `npm test -- --run packages/core/src/runtime/local-cli.test.ts packages/core/src/init/runtime-wiring.test.ts` | ⬜ pending | ⬜ pending |
-| 25-01-02 | 01 | 1 | DIST-03 | remediation and resolution precedence | `npm test -- --run packages/core/src/runtime/local-cli.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/init.test.ts` | ⬜ pending | ⬜ pending |
-| 25-02-01 | 02 | 2 | AUTO-01 | managed hook and command rewiring | `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/uninstall.test.ts packages/core/src/diagnostics/doctor.test.ts` | ⬜ pending | ⬜ pending |
-| 25-02-02 | 02 | 2 | DIST-03, AUTO-01 | init compatibility and regression matrix | `npm test -- --run packages/create-agent-badge/src/index.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts && bash -n scripts/smoke/verify-registry-install.sh` | ⬜ pending | ⬜ pending |
+| 25-01-01 | 01 | 1 | AUTO-01 | runtime contract helper coverage | `npm test -- --run packages/core/src/runtime/local-cli.test.ts packages/core/src/init/runtime-wiring.test.ts` | ✅ | ✅ green |
+| 25-01-02 | 01 | 1 | DIST-03 | remediation and resolution precedence | `npm test -- --run packages/core/src/runtime/local-cli.test.ts packages/core/src/diagnostics/doctor.test.ts packages/agent-badge/src/commands/init.test.ts` | ✅ | ✅ green |
+| 25-02-01 | 02 | 2 | AUTO-01 | managed hook and command rewiring | `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/uninstall.test.ts packages/core/src/diagnostics/doctor.test.ts` | ✅ | ✅ green |
+| 25-02-02 | 02 | 2 | DIST-03, AUTO-01 | init compatibility and regression matrix | `npm test -- --run packages/create-agent-badge/src/index.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts && bash -n scripts/smoke/verify-registry-install.sh` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -65,6 +66,12 @@ created: 2026-04-08
 
 ---
 
+## Validation Audit Results
+
+- `2026-04-08`: Re-ran the full Phase 25 validation suite successfully: `npm run typecheck`, the focused `vitest --run` command set from this artifact, and `bash -n scripts/smoke/verify-registry-install.sh` all passed. The focused suite completed with 78 passing tests across 8 files.
+
+---
+
 ## Validation Sign-Off
 
 - [x] All planned Phase 25 tasks have `<automated>` verify or explicit manual-only gates
@@ -74,4 +81,4 @@ created: 2026-04-08
 - [x] Feedback latency < 90s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** complete
