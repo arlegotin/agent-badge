@@ -135,6 +135,40 @@ assert_file() {
   fi
 }
 
+assert_file_contains() {
+  local file_path=$1
+  local needle=$2
+  local issue=$3
+  local scope=$4
+
+  if ! grep -Fq -- "${needle}" "${file_path}"; then
+    if [[ "${scope}" == "runtime" ]]; then
+      RUNTIME_STATUS="blocked"
+    else
+      INITIALIZER_STATUS="blocked"
+    fi
+
+    mark_blocked "${issue}"
+  fi
+}
+
+assert_file_not_contains() {
+  local file_path=$1
+  local needle=$2
+  local issue=$3
+  local scope=$4
+
+  if grep -Fq -- "${needle}" "${file_path}"; then
+    if [[ "${scope}" == "runtime" ]]; then
+      RUNTIME_STATUS="blocked"
+    else
+      INITIALIZER_STATUS="blocked"
+    fi
+
+    mark_blocked "${issue}"
+  fi
+}
+
 assert_log_contains() {
   local log_path=$1
   local needle=$2
@@ -244,6 +278,21 @@ else
   assert_file ".agent-badge/config.json" "runtime missing .agent-badge/config.json" "runtime"
   assert_file ".agent-badge/state.json" "runtime missing .agent-badge/state.json" "runtime"
   assert_file ".git/hooks/pre-push" "runtime missing .git/hooks/pre-push" "runtime"
+  assert_file_contains \
+    ".git/hooks/pre-push" \
+    "command -v agent-badge >/dev/null 2>&1" \
+    "runtime hook missing shared-runtime PATH guard" \
+    "runtime"
+  assert_file_contains \
+    ".git/hooks/pre-push" \
+    "agent-badge refresh --hook pre-push --hook-policy fail-soft || true" \
+    "runtime hook missing direct shared refresh command" \
+    "runtime"
+  assert_file_not_contains \
+    ".git/hooks/pre-push" \
+    "npm run --silent agent-badge:refresh" \
+    "runtime hook still uses npm run wrapper" \
+    "runtime"
   assert_log_contains \
     "${RUNTIME_LOG}" \
     "Badge setup deferred" \
@@ -280,6 +329,21 @@ if [[ "${CHECK_INITIALIZER}" == "true" ]]; then
   assert_file \
     ".git/hooks/pre-push" \
     "initializer missing .git/hooks/pre-push after npm init agent-badge@${VERSION}" \
+    "initializer"
+  assert_file_contains \
+    ".git/hooks/pre-push" \
+    "command -v agent-badge >/dev/null 2>&1" \
+    "initializer hook missing shared-runtime PATH guard" \
+    "initializer"
+  assert_file_contains \
+    ".git/hooks/pre-push" \
+    "agent-badge refresh --hook pre-push --hook-policy fail-soft || true" \
+    "initializer hook missing direct shared refresh command" \
+    "initializer"
+  assert_file_not_contains \
+    ".git/hooks/pre-push" \
+    "npm run --silent agent-badge:refresh" \
+    "initializer hook still uses npm run wrapper" \
     "initializer"
   assert_file \
     "node_modules/.bin/agent-badge" \

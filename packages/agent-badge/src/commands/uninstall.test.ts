@@ -103,9 +103,29 @@ function createGistClient(gistId: string) {
   };
 }
 
+function buildSharedManagedHookBlock(mode: "fail-soft" | "strict" = "fail-soft"): string {
+  const fallback = mode === "fail-soft" ? " || true" : "";
+  const exitCode = mode === "fail-soft" ? "0" : "1";
+
+  return [
+    "#!/bin/sh",
+    "",
+    "echo custom-check",
+    "",
+    "# agent-badge:start",
+    "if ! command -v agent-badge >/dev/null 2>&1; then",
+    "  printf '%s\\n' 'Shared agent-badge runtime not found on PATH.'",
+    `  exit ${exitCode}`,
+    "fi",
+    `agent-badge refresh --hook pre-push --hook-policy ${mode}${fallback}`,
+    "# agent-badge:end",
+    ""
+  ].join("\n");
+}
+
 describe("runUninstallCommand", () => {
   it(
-    "removes managed hook markers while preserving custom pre-push lines",
+    "removes the shared managed hook block while preserving custom pre-push lines",
     async () => {
       const repo = await createRepoFixture({
         files: {
@@ -127,7 +147,7 @@ describe("runUninstallCommand", () => {
       const hookPath = join(repo.root, ".git/hooks/pre-push");
       await writeFile(
         hookPath,
-        "#!/bin/sh\n\necho custom-check\n\n# agent-badge:start\nnpm run --silent agent-badge:refresh || true\n# agent-badge:end\n",
+        buildSharedManagedHookBlock(),
         "utf8"
       );
 
@@ -141,6 +161,52 @@ describe("runUninstallCommand", () => {
       expect(hookContent).not.toContain("# agent-badge:start");
       expect(hookContent).not.toContain("# agent-badge:end");
       expect(result.remote).toBeNull();
+        expect(output.read()).toContain("- uninstall: start");
+        expect(output.read()).toContain("- remote: preserved");
+      } finally {
+        await Promise.all([repo.cleanup(), providers.cleanup()]);
+      }
+    },
+    15_000
+  );
+
+  it(
+    "removes legacy managed hook markers while preserving custom pre-push lines",
+    async () => {
+      const repo = await createRepoFixture({
+        files: {
+          "package-lock.json": "{}"
+        }
+      });
+      const providers = await createProviderHome();
+      const output = createOutputCapture();
+      const gistClient = createGistClient("gist_uninstall_legacy");
+
+      try {
+        await runInitCommand({
+          cwd: repo.root,
+          homeRoot: providers.root,
+          gistId: "gist_uninstall_legacy",
+          gistClient
+        });
+
+        const hookPath = join(repo.root, ".git/hooks/pre-push");
+        await writeFile(
+          hookPath,
+          "#!/bin/sh\n\necho custom-check\n\n# agent-badge:start\nnpm run --silent agent-badge:refresh || true\n# agent-badge:end\n",
+          "utf8"
+        );
+
+        const result = await runUninstallCommand({
+          cwd: repo.root,
+          stdout: output.writer
+        });
+        const hookContent = await readFile(hookPath, "utf8");
+
+        expect(hookContent).toContain("echo custom-check");
+        expect(hookContent).not.toContain("# agent-badge:start");
+        expect(hookContent).not.toContain("# agent-badge:end");
+        expect(result.remote).toBeNull();
         expect(output.read()).toContain("- uninstall: start");
         expect(output.read()).toContain("- remote: preserved");
       } finally {

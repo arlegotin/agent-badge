@@ -19,6 +19,13 @@ import { runStatusCommand } from "./status.js";
 const execFileAsync = promisify(execFile);
 const readmeStartMarker = "<!-- agent-badge:start -->";
 const hookStartMarker = "# agent-badge:start";
+const sharedRuntimeGuard = "command -v agent-badge >/dev/null 2>&1";
+const legacyHookRunners = [
+  "npm run --silent agent-badge:refresh",
+  "pnpm run --silent agent-badge:refresh",
+  "yarn run agent-badge:refresh",
+  "bun run agent-badge:refresh"
+] as const;
 
 interface Scenario {
   readonly name:
@@ -379,6 +386,13 @@ describe("release readiness scenario matrix", () => {
           expect(packageScripts["agent-badge:refresh"]).toBe(
             "agent-badge refresh --hook pre-push --hook-policy fail-soft"
           );
+          expect(hookContent).toContain(sharedRuntimeGuard);
+          expect(hookContent).toContain(
+            "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+          );
+          for (const runner of legacyHookRunners) {
+            expect(hookContent).not.toContain(runner);
+          }
 
           if (scenario.name === "no-auth") {
             expect(gistClient.getGistCalls).toBe(0);
@@ -423,11 +437,68 @@ describe("release readiness scenario matrix", () => {
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --hook-policy strict"
       );
+      expect(hookContent).toContain(sharedRuntimeGuard);
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy strict"
+      );
+      for (const runner of legacyHookRunners) {
+        expect(hookContent).not.toContain(runner);
+      }
       expect(hookContent).not.toContain("|| true");
     } finally {
       await Promise.all([repo.cleanup(), providerFixture.cleanup()]);
     }
   });
+
+  it.each([
+    {
+      packageManager: "npm",
+      lockfile: "package-lock.json"
+    },
+    {
+      packageManager: "pnpm",
+      lockfile: "pnpm-lock.yaml"
+    },
+    {
+      packageManager: "yarn",
+      lockfile: "yarn.lock"
+    },
+    {
+      packageManager: "bun",
+      lockfile: "bun.lock"
+    }
+  ])(
+    "writes the shared managed hook contract for $packageManager repos",
+    async ({ lockfile }) => {
+      const repo = await createRepoFixture({
+        files: { [lockfile]: "{}" }
+      });
+      const providerFixture = await createProviderFixture();
+      const gistClient = createDeterministicGistClient(`gist-${lockfile}`);
+
+      try {
+        await addOrigin(repo.root);
+        await runInitCommand({
+          cwd: repo.root,
+          homeRoot: providerFixture.homeRoot,
+          env: { GITHUB_TOKEN: "matrix-token" },
+          gistClient
+        });
+
+        const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+
+        expect(hookContent).toContain(sharedRuntimeGuard);
+        expect(hookContent).toContain(
+          "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+        );
+        for (const runner of legacyHookRunners) {
+          expect(hookContent).not.toContain(runner);
+        }
+      } finally {
+        await Promise.all([repo.cleanup(), providerFixture.cleanup()]);
+      }
+    }
+  );
 
   it("stale failed publish recovery", async () => {
     const repo = await createRepoFixture({
