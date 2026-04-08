@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Global Runtime and Minimal Repo Footprint
 status: ready_to_plan
-stopped_at: Completed Phase 25 verification and closeout
-last_updated: "2026-04-08T20:52:22Z"
-last_activity: 2026-04-08
+stopped_at: Completed Phase 26 verification and closeout
+last_updated: "2026-04-08T22:24:41.598Z"
+last_activity: 2026-04-08 -- Phase 26 completed, reviewed, verified, and closed out
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 7
-  completed_plans: 2
-  percent: 29
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -21,21 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-08)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 26 — minimal-repo-scaffold-and-init-rewire
+**Current focus:** Phase 27 — Legacy Migration, Uninstall, And Release Proof
 
 ## Current Position
 
-Phase: 2 of 3 (26 — Minimal Repo Scaffold And Init Rewire)
-Plan: 0 of 2 in current phase
+Phase: 3 of 3 (27 — Legacy Migration, Uninstall, And Release Proof)
+Plan: Not planned yet
 Status: Ready to plan
-Last activity: 2026-04-08 — Phase 25 completed, reviewed, verified, and closed out
+Last activity: 2026-04-08 -- Phase 26 completed, reviewed, verified, and closed out
 
-Progress: [###-------] 29%
+Progress: [##########] 100% of currently planned work
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26
+
+- Total plans completed: 28
 - Average duration: 7 min
 - Total execution time: 2.9 hours
 
@@ -46,9 +47,11 @@ Progress: [###-------] 29%
 | 23 | 2 | - | - |
 | 24 | 2 | - | - |
 | 25 | 2 | 7 min | 3.5 min |
+| 26 | 2 | 16 min | 8 min |
 
 **Recent Trend:**
-- Last 5 plans: 25-02 (2 min), 25-01 (5 min), 24-02 (closeout), 24-01 (4 min), 20-02 (7m 32s)
+
+- Last 5 plans: 26-02 (4 min), 26-01 (12 min), 25-02 (2 min), 25-01 (5 min), 24-02 (closeout)
 - Trend: Stable
 
 *Updated after each phase transition*
@@ -63,6 +66,8 @@ Recent decisions affecting current work:
 - [Phase 25]: Runtime discovery and invocation now center on a shared PATH-resolved `agent-badge` contract instead of repo-local wrapper runners.
 - [Phase 25]: Managed pre-push hooks are single-write on the direct shared contract, while diagnostics and uninstall remain migration-safe for legacy hook bodies.
 - [Phase 25]: Operator-facing commands surface one shared runtime remediation vocabulary and no longer claim the setup is fully ready when the shared runtime is unavailable.
+- [Phase 26]: Init and config rewrites now preserve a minimal-artifact model with no default repo-local runtime ownership or generated `package.json`.
+- [Phase 26]: Legacy reruns remove only exact managed agent-badge manifest keys and preserve unrelated user-owned manifest content.
 
 ### Pending Todos
 
@@ -72,10 +77,10 @@ None.
 
 - `.planning/` remains locally managed in this repo, so GSD tracking files need explicit staging when phase artifacts should be committed.
 - `/Volumes/git` still has limited free space for normal local `npm install`, so verification continues to rely on focused Vitest runs and `/tmp`-style isolation where needed.
-- Phase 26 still owns removing repo-local runtime dependency/script mutation by default; Phase 25 only established the shared-runtime contract boundary.
+- Phase 27 now owns legacy migration safety, uninstall/docs alignment, and clean-temp release proof for the new global-first runtime model.
 
 ## Session Continuity
 
 Last session: 2026-04-08T20:52:22Z
-Stopped at: Completed Phase 25 verification and closeout
+Stopped at: Completed Phase 26 verification and closeout
 Resume file: None

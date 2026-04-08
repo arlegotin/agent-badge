@@ -77,8 +77,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 26-01: Remove repo-local runtime install and package manifest mutation from initializer flows
-- [ ] 26-02: Reconcile scaffold, README, gitignore, and idempotency semantics for the minimal-artifact model
+- [x] 26-01: Remove repo-local runtime install and package manifest mutation from initializer flows
+- [x] 26-02: Reconcile scaffold, README, gitignore, and idempotency semantics for the minimal-artifact model
 
 ### Phase 27: Legacy Migration, Uninstall, And Release Proof
 **Goal**: Migrate legacy repo-local installs safely and prove docs, uninstall, and release verification for the new distribution model.
@@ -100,5 +100,5 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 25. Global Runtime Contract And Command Resolution | 2/2 | Complete    | 2026-04-08 |
-| 26. Minimal Repo Scaffold And Init Rewire | 0/2 | Not started | - |
+| 26. Minimal Repo Scaffold And Init Rewire | 2/2 | Complete    | 2026-04-08 |
 | 27. Legacy Migration, Uninstall, And Release Proof | 0/3 | Not started | - |

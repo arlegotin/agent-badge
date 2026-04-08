@@ -11,15 +11,15 @@ This milestone changes the runtime distribution model so repositories can be ini
 
 ### Global Runtime Distribution
 
-- [ ] **DIST-01**: Developer can install `agent-badge` once at global or user scope and reuse that CLI across repositories without adding `@legotin/agent-badge` to each repo's dependencies.
-- [ ] **DIST-02**: `npm init agent-badge@latest` initializes the current repository without creating repo-local `node_modules` or adding the runtime package to the repo manifest or lockfile by default.
+- [x] **DIST-01**: Developer can install `agent-badge` once at global or user scope and reuse that CLI across repositories without adding `@legotin/agent-badge` to each repo's dependencies.
+- [x] **DIST-02**: `npm init agent-badge@latest` initializes the current repository without creating repo-local `node_modules` or adding the runtime package to the repo manifest or lockfile by default.
 - [x] **DIST-03**: Init and normal commands explain how to satisfy the shared CLI prerequisite when a usable global or user-scoped runtime cannot be resolved.
 
 ### Automation And Repo Artifacts
 
 - [x] **AUTO-01**: Managed refresh and other generated repo entrypoints invoke `agent-badge` without relying on repo-local binaries, `npx --no-install`, or package-manager script wiring that exists only to reach a local runtime.
-- [ ] **ART-01**: After init, the repo only contains repo-specific agent-badge artifacts needed for operation: `.agent-badge/` data, README badge markup, gitignore entries, and optional git hook content.
-- [ ] **ART-02**: Re-running init remains idempotent under the new model and does not duplicate hook blocks, README badges, or repo-owned config while keeping the artifact footprint minimal.
+- [x] **ART-01**: After init, the repo only contains repo-specific agent-badge artifacts needed for operation: `.agent-badge/` data, README badge markup, gitignore entries, and optional git hook content.
+- [x] **ART-02**: Re-running init remains idempotent under the new model and does not duplicate hook blocks, README badges, or repo-owned config while keeping the artifact footprint minimal.
 
 ### Migration And Verification
 
@@ -55,12 +55,12 @@ This milestone changes the runtime distribution model so repositories can be ini
 
 | Requirement | Planned Phase | Status |
 |-------------|---------------|--------|
-| DIST-01 | Phase 26 | Pending |
-| DIST-02 | Phase 26 | Pending |
+| DIST-01 | Phase 26 | Complete |
+| DIST-02 | Phase 26 | Complete |
 | DIST-03 | Phase 25 | Complete |
 | AUTO-01 | Phase 25 | Complete |
-| ART-01 | Phase 26 | Pending |
-| ART-02 | Phase 26 | Pending |
+| ART-01 | Phase 26 | Complete |
+| ART-02 | Phase 26 | Complete |
 | MIG-01 | Phase 27 | Pending |
 | MIG-02 | Phase 27 | Pending |
 
@@ -71,4 +71,4 @@ This milestone changes the runtime distribution model so repositories can be ini
 
 ---
 *Requirements defined: 2026-04-08*
-*Last updated: 2026-04-08 after completing Phase 25*
+*Last updated: 2026-04-08 after completing Phase 26*
