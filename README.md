@@ -1,10 +1,21 @@
-# agent-badge
+<h1 align="center">agent-badge</h1>
 
-A local-first README badge for repos that ship with AI:
+<p align="center">
+  <strong>A README badge for repos that ship with AI:</strong>
+</p>
 
-<!-- agent-badge:start -->
-[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)
-<!-- agent-badge:end -->
+<p align="center">
+  <img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300" alt="Last Commit"></a>
+</p>
+
+<p align="center">
+  The badge reflects how many tokens were spent on development.
+</p>
+
+---
+
+
+## Quickstart
 
 Some people want transparency.<br>
 Some people just want to flex how hard they ship with agents.
@@ -15,9 +26,9 @@ Some people just want to flex how hard they ship with agents.
 npm init agent-badge@latest
 ```
 
-If you already have GitHub auth configured in your shell through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that same command will create or reuse a public gist, publish the initial badge payload, and add the badge to `README.md`.
+If you already have GitHub auth configured in your shell through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or `gh auth token` works in that same environment, that same command will create or reuse a public gist, publish the initial badge payload, and add the badge to `README.md`.
 
-Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens and rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
+Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens or authenticate with `gh auth login` so `gh auth token` works, then rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
 
 For stale after failed publish, gist repair, shared metadata repair, and team-coordination recovery states, use the canonical runbook in [docs/RECOVERY.md](docs/RECOVERY.md).
 
@@ -57,9 +68,9 @@ That initializer sets up the local runtime, creates `.agent-badge/` state, confi
 
 At the end of init, check the final `- Setup:` line. `complete` means the live badge is ready; `local setup complete, but GitHub auth is still required` means install succeeded but gist publishing still needs auth.
 
-If GitHub auth is already available through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, that one command also creates or reuses a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
+If GitHub auth is already available through `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or `gh auth token` works in the same environment, that one command also creates or reuses a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
-Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens and rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
+Otherwise, local setup still completes and publishing is deferred. To publish later, export one of those tokens or authenticate with `gh auth login` so `gh auth token` works, then rerun `npx --no-install agent-badge init`, or create a public gist and run `npx --no-install agent-badge init --gist-id <id>`.
 
 To migrate existing single-writer repos, rerun `agent-badge init` on the original publisher machine before other contributors start publishing. That first shared publish keeps the same gist id and stable badge URL while seeding the shared contributor state from the local history that already exists on that machine.
 

@@ -32,7 +32,7 @@ If GitHub auth was not available during init, local setup still completes but gi
 
 You can fix that in either of these ways:
 
-1. Export `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, then rerun `agent-badge init`.
+1. Export `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or authenticate with `gh auth login` so `gh auth token` works in the same environment, then rerun `agent-badge init`.
 2. Create a public gist yourself, then run:
 
 ```bash
