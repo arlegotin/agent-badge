@@ -1,6 +1,7 @@
 node_modules
 dist/
 coverage/
+.planning
 .agent-badge/cache/
 .agent-badge/logs/
 

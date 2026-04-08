@@ -1,7 +1,7 @@
 <h1 align="center">agent-badge</h1>
 
 <p align="center">
-  <strong>A README badge for repos that ship with AI:</strong>
+  A README badge for repos that ship with AI:
 </p>
 
 <p align="center">
