@@ -229,9 +229,17 @@ function writeBadgeSetupDeferred(
 function buildInitSetupStatusMessage(options: {
   readonly publishTarget: PublishTargetResult;
   readonly publishSucceeded: boolean;
+  readonly runtime: SharedRuntimeInspection;
 }): string {
   if (options.publishSucceeded) {
-    return "complete. Shared runtime, pre-push refresh, and live badge publishing are ready.";
+    switch (options.runtime.status) {
+      case "available":
+        return "complete. Shared runtime, pre-push refresh, and live badge publishing are ready.";
+      case "missing":
+        return "repo setup complete and the live badge was published, but the shared runtime is not on PATH yet. Install the shared agent-badge CLI once, then rerun `agent-badge init` or `agent-badge doctor` before relying on pre-push refresh.";
+      case "broken":
+        return "repo setup complete and the live badge was published, but the shared runtime could not be validated. Repair the shared agent-badge CLI, then rerun `agent-badge init` or `agent-badge doctor` before relying on pre-push refresh.";
+    }
   }
 
   switch (options.publishTarget.reason) {
@@ -606,10 +614,9 @@ export async function runInitCommand(
   });
 
   writeRuntimeWiringSummary(stdout, runtimeWiring);
+  const sharedRuntime = inspectSharedRuntime(options.runtimeEnv ?? process.env);
   writeLines(stdout, [
-    formatSharedRuntimeLine(
-      inspectSharedRuntime(options.runtimeEnv ?? process.env)
-    )
+    formatSharedRuntimeLine(sharedRuntime)
   ]);
 
   const state = await loadPersistedState(preflight.cwd);
@@ -661,7 +668,8 @@ export async function runInitCommand(
       stdout,
       buildInitSetupStatusMessage({
         publishTarget,
-        publishSucceeded: false
+        publishSucceeded: false,
+        runtime: sharedRuntime
       })
     );
 
@@ -683,7 +691,8 @@ export async function runInitCommand(
       stdout,
       buildInitSetupStatusMessage({
         publishTarget,
-        publishSucceeded: false
+        publishSucceeded: false,
+        runtime: sharedRuntime
       })
     );
 
@@ -749,7 +758,8 @@ export async function runInitCommand(
       stdout,
       buildInitSetupStatusMessage({
         publishTarget,
-        publishSucceeded: true
+        publishSucceeded: true,
+        runtime: sharedRuntime
       })
     );
   } catch (error) {
@@ -758,7 +768,8 @@ export async function runInitCommand(
       stdout,
       buildInitSetupStatusMessage({
         publishTarget,
-        publishSucceeded: false
+        publishSucceeded: false,
+        runtime: sharedRuntime
       })
     );
   }

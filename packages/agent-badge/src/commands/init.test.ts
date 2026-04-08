@@ -543,6 +543,9 @@ describe("runInitCommand", () => {
         env: {
           GH_TOKEN: "test-token"
         },
+        runtimeEnv: {
+          PATH: ""
+        },
         stdout: output.writer,
         gistClient: {
           getGist: async () => createGistMetadata("unused"),
@@ -572,9 +575,10 @@ describe("runInitCommand", () => {
       expect(
         (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash
       ).toMatch(/^[0-9a-f]{64}$/);
+      expect(output.read()).toContain("- Shared runtime: missing.");
       expect(output.read()).toContain("- Publish target: created public gist");
       expect(output.read()).toContain(
-        "- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready."
+        "- Setup: repo setup complete and the live badge was published, but the shared runtime is not on PATH yet. Install the shared agent-badge CLI once, then rerun `agent-badge init` or `agent-badge doctor` before relying on pre-push refresh."
       );
       expect(readmeContent).toContain("<!-- agent-badge:start -->");
     } finally {
@@ -598,6 +602,9 @@ describe("runInitCommand", () => {
         homeRoot: providers.root,
         env: {
           GH_TOKEN: "test-token"
+        },
+        runtimeEnv: {
+          PATH: ""
         },
         publishRemoteReadbackRetryDelayMs: [0, 0],
         stdout: output.writer,
@@ -657,8 +664,9 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("- Publish mode: shared");
       expect(output.read()).toContain("- Migration: legacy -> shared");
       expect(output.read()).toContain("- README badge: updated README.md");
+      expect(output.read()).toContain("- Shared runtime: missing.");
       expect(output.read()).toContain(
-        "- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready."
+        "- Setup: repo setup complete and the live badge was published, but the shared runtime is not on PATH yet. Install the shared agent-badge CLI once, then rerun `agent-badge init` or `agent-badge doctor` before relying on pre-push refresh."
       );
       expect(output.read()).not.toContain("- Badge setup deferred:");
     } finally {
