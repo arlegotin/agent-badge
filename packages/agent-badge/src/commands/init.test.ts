@@ -18,8 +18,6 @@ import { runInitCommand } from "./init.js";
 import { runUninstallCommand } from "./uninstall.js";
 
 const execFileAsync = promisify(execFile);
-const publishableSemverPattern =
-  /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 interface Fixture {
   readonly root: string;
@@ -200,23 +198,6 @@ function createMutableGistClient(options: {
   };
 }
 
-async function getExpectedRuntimeDependencySpecifier(): Promise<string> {
-  const runtimePackageJson = await readJsonObject(
-    new URL("../../package.json", import.meta.url)
-  );
-  const version = runtimePackageJson.version;
-
-  if (
-    typeof version !== "string" ||
-    version === "0.0.0" ||
-    !publishableSemverPattern.test(version)
-  ) {
-    return "latest";
-  }
-
-  return `^${version}`;
-}
-
 describe("runInitCommand", () => {
   it("creates exactly one managed pre-push block by default", async () => {
     const repo = await createRepoFixture({
@@ -229,7 +210,6 @@ describe("runInitCommand", () => {
     });
     const output = createOutputCapture();
     const secondOutput = createOutputCapture();
-    const packageJsonPath = join(repo.root, "package.json");
     const gitignorePath = join(repo.root, ".gitignore");
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
     const deferredGistClient = {
@@ -245,11 +225,6 @@ describe("runInitCommand", () => {
     };
 
     try {
-      const expectedRuntimeDependencySpecifier =
-        await getExpectedRuntimeDependencySpecifier();
-      const initializerPackageJson = await readJsonObject(
-        new URL("../../../create-agent-badge/package.json", import.meta.url)
-      );
       const result = await runInitCommand({
         cwd: repo.root,
         homeRoot: providers.root,
@@ -272,36 +247,20 @@ describe("runInitCommand", () => {
       );
       expect(result.runtimeWiring.created).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.@legotin/agent-badge",
-          "package.json#scripts.agent-badge:init",
-          "package.json#scripts.agent-badge:refresh",
           ".gitignore",
           ".git/hooks/pre-push"
         ])
       );
       expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
-      expect(existsSync(packageJsonPath)).toBe(true);
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
       expect(existsSync(gitignorePath)).toBe(true);
       expect(existsSync(prePushHookPath)).toBe(true);
 
-      const packageJson = await readJsonObject(packageJsonPath);
       const publishFiles = await readPublishFiles(repo.root);
-      const packageScripts = packageJson.scripts as Record<string, string>;
-      const devDependencies = packageJson.devDependencies as Record<string, string>;
       const gitignoreContent = await readFile(gitignorePath, "utf8");
       const hookContent = await readFile(prePushHookPath, "utf8");
       const readmeContent = await readReadmeContent(repo.root);
 
-      expect(devDependencies["@legotin/agent-badge"]).toBe(expectedRuntimeDependencySpecifier);
-      expect(initializerPackageJson).toMatchObject({
-        dependencies: {
-          "@legotin/agent-badge": expectedRuntimeDependencySpecifier
-        }
-      });
-      expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
-      );
       expect(publishFiles.config.publish).toEqual({
         provider: "github-gist",
         gistId: null,
@@ -350,10 +309,6 @@ describe("runInitCommand", () => {
       expect(secondRun.runtimeWiring.updated).toEqual([]);
       expect(secondRun.runtimeWiring.reused).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.@legotin/agent-badge",
-          "package.json#scripts.agent-badge:init",
-          "package.json#scripts.agent-badge:refresh",
-          "package.json",
           ".gitignore",
           ".git/hooks/pre-push"
         ])
@@ -396,6 +351,7 @@ describe("runInitCommand", () => {
     });
     const providers = await createProviderHome();
     const output = createOutputCapture();
+    const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
       const getGist = async () => createGistMetadata("gist_connected");
@@ -414,9 +370,21 @@ describe("runInitCommand", () => {
           updateGistFile: async () => createGistMetadata("gist_connected")
         }
       });
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_connected",
+        stdout: output.writer,
+        gistClient: {
+          getGist,
+          createPublicGist,
+          updateGistFile: async () => createGistMetadata("gist_connected")
+        }
+      });
 
       const publishFiles = await readPublishFiles(repo.root);
       const readmeContent = await readReadmeContent(repo.root);
+      const hookContent = await readFile(prePushHookPath, "utf8");
 
       expect(publishFiles.config.publish).toEqual({
         provider: "github-gist",
@@ -435,11 +403,13 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain(
         "- Recovery result: healthy after agent-badge init --gist-id <id>"
       );
-      expect(readmeContent).toContain("<!-- agent-badge:start -->");
-      expect(readmeContent).toContain("<!-- agent-badge:end -->");
+      expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
+      expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
       expect(readmeContent).toContain(
         "![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
       );
+      expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
+      expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
@@ -506,13 +476,9 @@ describe("runInitCommand", () => {
         gistClient: deferredGistClient
       });
 
-      const packageJson = await readJsonObject(join(repo.root, "package.json"));
-      const packageScripts = packageJson.scripts as Record<string, string>;
       const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
 
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy strict"
-      );
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
       expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
       expect(hookContent).toContain(
         "agent-badge refresh --hook pre-push --hook-policy strict"
@@ -1192,19 +1158,12 @@ describe("runInitCommand", () => {
 
       const readmeContent = await readReadmeContent(repo.root);
       const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
-      const packageJson = await readJsonObject(join(repo.root, "package.json"));
-      const scripts = packageJson.scripts as Record<string, string>;
-      const devDependencies = packageJson.devDependencies as Record<string, string>;
 
       expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
       expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
-      expect(scripts["agent-badge:init"]).toBe("agent-badge init");
-      expect(scripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
-      );
-      expect(typeof devDependencies["@legotin/agent-badge"]).toBe("string");
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
@@ -1275,14 +1234,13 @@ describe("runInitCommand", () => {
       expect(result.preflight.git.isRepo).toBe(true);
       expect(result.runtimeWiring.created).toEqual(
         expect.arrayContaining([
-          "package.json#devDependencies.@legotin/agent-badge",
           ".gitignore",
           ".git/hooks/pre-push"
         ])
       );
       expect(existsSync(join(repo.root, ".git"))).toBe(true);
       expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
-      expect(existsSync(join(repo.root, "package.json"))).toBe(true);
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
       expect(output.read()).toContain("Git bootstrap: running");
       expect(output.read()).toContain("Git bootstrap: repository initialized");
     } finally {

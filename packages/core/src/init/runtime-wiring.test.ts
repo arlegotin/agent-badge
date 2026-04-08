@@ -20,6 +20,7 @@ import {
   agentBadgeGitignoreStartMarker,
   agentBadgeHookEndMarker,
   agentBadgeHookStartMarker,
+  applyMinimalRepoScaffold,
   applyRepoLocalRuntimeWiring,
   removeRepoLocalRuntimeWiring
 } from "./runtime-wiring.js";
@@ -71,9 +72,9 @@ async function createGitRepoFixture(options: {
   };
 }
 
-describe("applyRepoLocalRuntimeWiring", () => {
+describe("applyMinimalRepoScaffold", () => {
   it(
-    "creates package.json wiring and a runnable first-run pre-push hook",
+    "creates repo-owned scaffold and a runnable first-run pre-push hook without creating package.json",
     async () => {
       const repo = await createGitRepoFixture();
       const packageJsonPath = join(repo.root, "package.json");
@@ -81,86 +82,68 @@ describe("applyRepoLocalRuntimeWiring", () => {
       const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
       try {
-        const result = await applyRepoLocalRuntimeWiring({
+        const result = await applyMinimalRepoScaffold({
           cwd: repo.root,
           packageManager: "npm",
-          runtimeDependencySpecifier: "latest",
           refresh: failSoftRefresh
         });
 
-      expect(result.created).toEqual(
-        expect.arrayContaining([
-          "package.json",
-          "package.json#devDependencies.@legotin/agent-badge",
-          "package.json#scripts.agent-badge:init",
-          "package.json#scripts.agent-badge:refresh",
-          ".gitignore",
-          ".git/hooks/pre-push"
-        ])
-      );
-      expect(result.updated).toEqual([]);
-      expect(result.warnings).toEqual([]);
-      expect(existsSync(packageJsonPath)).toBe(true);
-      expect(existsSync(gitignorePath)).toBe(true);
-      expect(existsSync(prePushHookPath)).toBe(true);
+        expect(result.created).toEqual(
+          expect.arrayContaining([".gitignore", ".git/hooks/pre-push"])
+        );
+        expect(result.updated).toEqual([]);
+        expect(result.warnings).toEqual([]);
+        expect(existsSync(packageJsonPath)).toBe(false);
+        expect(existsSync(gitignorePath)).toBe(true);
+        expect(existsSync(prePushHookPath)).toBe(true);
 
-      const packageJson = JSON.parse(
-        await readFile(packageJsonPath, "utf8")
-      ) as Record<string, unknown>;
-      const packageScripts = packageJson.scripts as Record<string, string>;
-      const devDependencies = packageJson.devDependencies as Record<string, string>;
+        const hookContent = await readFile(prePushHookPath, "utf8");
+        const gitignoreContent = await readFile(gitignorePath, "utf8");
+        const hookStats = await stat(prePushHookPath);
 
-      expect(devDependencies["@legotin/agent-badge"]).toBe("latest");
-      expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
-      );
+        expect(hookContent.startsWith("#!/bin/sh\n")).toBe(true);
+        expect(gitignoreContent).toContain(agentBadgeGitignoreStartMarker);
+        expect(gitignoreContent).toContain(".agent-badge/state.json");
+        expect(gitignoreContent).toContain(".agent-badge/cache/");
+        expect(gitignoreContent).toContain(".agent-badge/logs/");
+        expect(gitignoreContent).toContain(agentBadgeGitignoreEndMarker);
+        expect(hookContent).toContain(agentBadgeHookStartMarker);
+        expect(hookContent).toContain(agentBadgeHookEndMarker);
+        expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
+        expect(hookContent).toContain(
+          "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+        );
+        expect(hookStats.mode & 0o111).toBe(0o111);
 
-      const hookContent = await readFile(prePushHookPath, "utf8");
-      const gitignoreContent = await readFile(gitignorePath, "utf8");
-      const hookStats = await stat(prePushHookPath);
+        const hookExecution = await execFileAsync(prePushHookPath, [], {
+          cwd: repo.root,
+          env: {
+            ...process.env,
+            PATH: ""
+          }
+        });
 
-      expect(hookContent.startsWith("#!/bin/sh\n")).toBe(true);
-      expect(gitignoreContent).toContain(agentBadgeGitignoreStartMarker);
-      expect(gitignoreContent).toContain(".agent-badge/state.json");
-      expect(gitignoreContent).toContain(".agent-badge/cache/");
-      expect(gitignoreContent).toContain(".agent-badge/logs/");
-      expect(gitignoreContent).toContain(agentBadgeGitignoreEndMarker);
-      expect(hookContent).toContain(agentBadgeHookStartMarker);
-      expect(hookContent).toContain(agentBadgeHookEndMarker);
-      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
-      expect(hookContent).toContain(
-        "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
-      );
-      expect(hookStats.mode & 0o111).toBe(0o111);
-
-      const hookExecution = await execFileAsync(prePushHookPath, [], {
-        cwd: repo.root,
-        env: {
-          ...process.env,
-          PATH: ""
-        }
-      });
-
-      expect(hookExecution.stdout).toContain(
-        "Shared agent-badge runtime not found on PATH."
-      );
-      expect(hookExecution.stdout).toContain(
-        "npm install -g @legotin/agent-badge"
-      );
-      expect(hookExecution.stdout).toContain(
-        "pnpm add -g @legotin/agent-badge"
-      );
-      expect(hookExecution.stdout).toContain("bun add -g @legotin/agent-badge");
-      expect(hookExecution.stderr).toBe("");
-    } finally {
+        expect(hookExecution.stdout).toContain(
+          "Shared agent-badge runtime not found on PATH."
+        );
+        expect(hookExecution.stdout).toContain(
+          "npm install -g @legotin/agent-badge"
+        );
+        expect(hookExecution.stdout).toContain(
+          "pnpm add -g @legotin/agent-badge"
+        );
+        expect(hookExecution.stdout).toContain(
+          "bun add -g @legotin/agent-badge"
+        );
+        expect(hookExecution.stderr).toBe("");
+      } finally {
         await repo.cleanup();
       }
     },
     15_000
   );
 
-  it("preserves unrelated content and converges on a single managed hook block across reruns", async () => {
+  it("preserves unrelated manifest content while removing managed legacy runtime entries", async () => {
     const repo = await createGitRepoFixture({
       files: {
         "package.json": JSON.stringify(
@@ -168,9 +151,13 @@ describe("applyRepoLocalRuntimeWiring", () => {
             name: "fixture-repo",
             private: true,
             scripts: {
-              test: "vitest --run"
+              test: "vitest --run",
+              "agent-badge:init": "agent-badge init",
+              "agent-badge:refresh":
+                "agent-badge refresh --hook pre-push --hook-policy fail-soft"
             },
             devDependencies: {
+              "@legotin/agent-badge": "^1.2.3",
               typescript: "^5.0.0"
             }
           },
@@ -188,27 +175,13 @@ describe("applyRepoLocalRuntimeWiring", () => {
     try {
       await chmod(prePushHookPath, 0o644);
 
-      const firstRun = await applyRepoLocalRuntimeWiring({
+      const firstRun = await applyMinimalRepoScaffold({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3",
         refresh: failSoftRefresh
       });
 
       expect(firstRun.updated).toEqual(
-        expect.arrayContaining(["package.json", ".gitignore", ".git/hooks/pre-push"])
-      );
-
-      const secondRun = await applyRepoLocalRuntimeWiring({
-        cwd: repo.root,
-        packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3",
-        refresh: failSoftRefresh
-      });
-
-      expect(secondRun.created).toEqual([]);
-      expect(secondRun.updated).toEqual([]);
-      expect(secondRun.reused).toEqual(
         expect.arrayContaining([
           "package.json#devDependencies.@legotin/agent-badge",
           "package.json#scripts.agent-badge:init",
@@ -217,6 +190,18 @@ describe("applyRepoLocalRuntimeWiring", () => {
           ".gitignore",
           ".git/hooks/pre-push"
         ])
+      );
+
+      const secondRun = await applyMinimalRepoScaffold({
+        cwd: repo.root,
+        packageManager: "npm",
+        refresh: failSoftRefresh
+      });
+
+      expect(secondRun.created).toEqual([]);
+      expect(secondRun.updated).toEqual([]);
+      expect(secondRun.reused).toEqual(
+        expect.arrayContaining(["package.json", ".gitignore", ".git/hooks/pre-push"])
       );
       expect(secondRun.warnings).toEqual([]);
 
@@ -232,12 +217,10 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(packageJson.name).toBe("fixture-repo");
       expect(packageJson.private).toBe(true);
       expect(packageScripts.test).toBe("vitest --run");
-      expect(packageScripts["agent-badge:init"]).toBe("agent-badge init");
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
-      );
+      expect(packageScripts["agent-badge:init"]).toBeUndefined();
+      expect(packageScripts["agent-badge:refresh"]).toBeUndefined();
       expect(devDependencies.typescript).toBe("^5.0.0");
-      expect(devDependencies["@legotin/agent-badge"]).toBe("^1.2.3");
+      expect(devDependencies["@legotin/agent-badge"]).toBeUndefined();
       expect(gitignoreContent).toContain("coverage/");
       expect(gitignoreContent.match(/^\.agent-badge\/cache\/$/gm)).toHaveLength(1);
       expect(gitignoreContent).toContain(".agent-badge/state.json");
@@ -254,6 +237,47 @@ describe("applyRepoLocalRuntimeWiring", () => {
     }
   });
 
+  it("deletes a managed-only legacy package.json after pruning runtime ownership", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        "package.json": JSON.stringify(
+          {
+            scripts: {
+              "agent-badge:init": "agent-badge init",
+              "agent-badge:refresh":
+                "agent-badge refresh --hook pre-push --hook-policy fail-soft"
+            },
+            devDependencies: {
+              "@legotin/agent-badge": "^1.2.3"
+            }
+          },
+          null,
+          2
+        )
+      }
+    });
+
+    try {
+      const result = await applyMinimalRepoScaffold({
+        cwd: repo.root,
+        packageManager: "npm",
+        refresh: failSoftRefresh
+      });
+
+      expect(result.updated).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.@legotin/agent-badge",
+          "package.json#scripts.agent-badge:init",
+          "package.json#scripts.agent-badge:refresh",
+          "package.json"
+        ])
+      );
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
   it("reuses a manual gitignore when all runtime entries are already ignored", async () => {
     const repo = await createGitRepoFixture({
       files: {
@@ -264,10 +288,9 @@ describe("applyRepoLocalRuntimeWiring", () => {
     const gitignorePath = join(repo.root, ".gitignore");
 
     try {
-      const result = await applyRepoLocalRuntimeWiring({
+      const result = await applyMinimalRepoScaffold({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3",
         refresh: failSoftRefresh
       });
 
@@ -287,41 +310,27 @@ describe("applyRepoLocalRuntimeWiring", () => {
 
   it("writes a strict pre-push hook without fail-soft fallback", async () => {
     const repo = await createGitRepoFixture();
-    const packageJsonPath = join(repo.root, "package.json");
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
-      await applyRepoLocalRuntimeWiring({
+      await applyMinimalRepoScaffold({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3",
         refresh: failSoftRefresh
       });
 
-      const result = await applyRepoLocalRuntimeWiring({
+      const result = await applyMinimalRepoScaffold({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3",
         refresh: strictRefresh
       });
 
       expect(result.updated).toEqual(
-        expect.arrayContaining([
-          "package.json#scripts.agent-badge:refresh",
-          "package.json",
-          ".git/hooks/pre-push"
-        ])
+        expect.arrayContaining([".git/hooks/pre-push"])
       );
 
-      const packageJson = JSON.parse(
-        await readFile(packageJsonPath, "utf8")
-      ) as Record<string, unknown>;
-      const packageScripts = packageJson.scripts as Record<string, string>;
       const hookContent = await readFile(prePushHookPath, "utf8");
 
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy strict"
-      );
       expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
       expect(hookContent).toContain(
         "agent-badge refresh --hook pre-push --hook-policy strict"
@@ -342,21 +351,12 @@ describe("applyRepoLocalRuntimeWiring", () => {
     const prePushHookPath = join(repo.root, ".git/hooks/pre-push");
 
     try {
-      const result = await applyRepoLocalRuntimeWiring({
+      const result = await applyMinimalRepoScaffold({
         cwd: repo.root,
         packageManager: "npm",
-        runtimeDependencySpecifier: "^1.2.3",
         refresh: disabledPrePushRefresh
       });
 
-      expect(result.created).toEqual(
-        expect.arrayContaining([
-          "package.json",
-          "package.json#devDependencies.@legotin/agent-badge",
-          "package.json#scripts.agent-badge:init",
-          "package.json#scripts.agent-badge:refresh"
-        ])
-      );
       expect(result.updated).toEqual(
         expect.arrayContaining([".git/hooks/pre-push"])
       );
@@ -372,17 +372,15 @@ describe("applyRepoLocalRuntimeWiring", () => {
       try {
         const managedOnlyHookPath = join(managedOnlyRepo.root, ".git/hooks/pre-push");
 
-        await applyRepoLocalRuntimeWiring({
+        await applyMinimalRepoScaffold({
           cwd: managedOnlyRepo.root,
           packageManager: "npm",
-          runtimeDependencySpecifier: "^1.2.3",
           refresh: failSoftRefresh
         });
 
-        await applyRepoLocalRuntimeWiring({
+        await applyMinimalRepoScaffold({
           cwd: managedOnlyRepo.root,
           packageManager: "npm",
-          runtimeDependencySpecifier: "^1.2.3",
           refresh: disabledPrePushRefresh
         });
 
