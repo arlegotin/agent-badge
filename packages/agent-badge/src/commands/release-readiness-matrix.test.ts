@@ -154,16 +154,31 @@ async function readPublishStatus(repoRoot: string): Promise<"published" | "defer
   return parsed.publish.status;
 }
 
-async function readPackageScripts(
-  repoRoot: string
-): Promise<Record<string, string>> {
-  const parsed = JSON.parse(
-    await readFile(join(repoRoot, "package.json"), "utf8")
-  ) as {
-    scripts?: Record<string, string>;
-  };
+async function readPackageJsonIfPresent(repoRoot: string): Promise<{
+  scripts?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+} | null> {
+  const packageJsonPath = join(repoRoot, "package.json");
 
-  return parsed.scripts ?? {};
+  if (!existsSync(packageJsonPath)) {
+    return null;
+  }
+
+  return JSON.parse(await readFile(packageJsonPath, "utf8")) as {
+    scripts?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+}
+
+function expectNoManagedRuntimeManifestOwnership(
+  packageJson: {
+    scripts?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  } | null
+): void {
+  expect(packageJson?.scripts?.["agent-badge:init"]).toBeUndefined();
+  expect(packageJson?.scripts?.["agent-badge:refresh"]).toBeUndefined();
+  expect(packageJson?.devDependencies?.["@legotin/agent-badge"]).toBeUndefined();
 }
 
 async function addOrigin(repoRoot: string): Promise<void> {
@@ -380,12 +395,17 @@ describe("release readiness scenario matrix", () => {
             join(repo.root, ".git/hooks/pre-push"),
             "utf8"
           );
-          const packageScripts = await readPackageScripts(repo.root);
+          const gitignoreContent = await readFile(join(repo.root, ".gitignore"), "utf8");
+          const packageJson = await readPackageJsonIfPresent(repo.root);
 
+          expect(existsSync(join(repo.root, ".agent-badge/config.json"))).toBe(true);
+          expect(existsSync(join(repo.root, ".agent-badge/state.json"))).toBe(true);
+          expect(packageJson).toBeNull();
+          expectNoManagedRuntimeManifestOwnership(packageJson);
+          expect(gitignoreContent).toContain(".agent-badge/state.json");
+          expect(gitignoreContent).toContain(".agent-badge/cache/");
+          expect(gitignoreContent).toContain(".agent-badge/logs/");
           expect(countOccurrences(hookContent, hookStartMarker)).toBe(1);
-          expect(packageScripts["agent-badge:refresh"]).toBe(
-            "agent-badge refresh --hook pre-push --hook-policy fail-soft"
-          );
           expect(hookContent).toContain(sharedRuntimeGuard);
           expect(hookContent).toContain(
             "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
@@ -431,12 +451,11 @@ describe("release readiness scenario matrix", () => {
         value: "strict"
       });
 
-      const packageScripts = await readPackageScripts(repo.root);
       const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+      const packageJson = await readPackageJsonIfPresent(repo.root);
 
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy strict"
-      );
+      expect(packageJson).toBeNull();
+      expectNoManagedRuntimeManifestOwnership(packageJson);
       expect(hookContent).toContain(sharedRuntimeGuard);
       expect(hookContent).toContain(
         "agent-badge refresh --hook pre-push --hook-policy strict"
@@ -486,7 +505,10 @@ describe("release readiness scenario matrix", () => {
         });
 
         const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+        const packageJson = await readPackageJsonIfPresent(repo.root);
 
+        expect(packageJson).toBeNull();
+        expectNoManagedRuntimeManifestOwnership(packageJson);
         expect(hookContent).toContain(sharedRuntimeGuard);
         expect(hookContent).toContain(
           "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
