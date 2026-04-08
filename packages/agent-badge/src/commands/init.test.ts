@@ -492,6 +492,85 @@ describe("runInitCommand", () => {
     }
   });
 
+  it("converges legacy reruns to one README block and no managed runtime manifest ownership", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}",
+        "package.json": `${JSON.stringify(
+          {
+            name: "fixture-repo",
+            private: true,
+            scripts: {
+              test: "vitest --run",
+              "agent-badge:init": "agent-badge init",
+              "agent-badge:refresh":
+                "agent-badge refresh --hook pre-push --hook-policy fail-soft"
+            },
+            devDependencies: {
+              "@legotin/agent-badge": "^1.2.3",
+              typescript: "^5.0.0"
+            }
+          },
+          null,
+          2
+        )}\n`,
+        ".git/hooks/pre-push":
+          "#!/bin/sh\n\necho custom-check\n\n# agent-badge:start\nnpm run --silent agent-badge:refresh || true\n# agent-badge:end\n",
+        ".gitignore":
+          "coverage/\n# agent-badge:gitignore:start\n.agent-badge/state.json\n.agent-badge/cache/\n.agent-badge/logs/\n# agent-badge:gitignore:end\nnotes/\n"
+      }
+    });
+    const providers = await createProviderHome();
+    const gistClient = {
+      getGist: async () => createGistMetadata("gist_legacy_rerun"),
+      createPublicGist: async () => {
+        throw new Error("create should not run");
+      },
+      updateGistFile: async () => createGistMetadata("gist_legacy_rerun")
+    };
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistId: "gist_legacy_rerun",
+        gistClient
+      });
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        gistClient
+      });
+
+      const packageJson = JSON.parse(
+        await readFile(join(repo.root, "package.json"), "utf8")
+      ) as {
+        scripts?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const readmeContent = await readReadmeContent(repo.root);
+      const hookContent = await readFile(join(repo.root, ".git/hooks/pre-push"), "utf8");
+      const gitignoreContent = await readFile(join(repo.root, ".gitignore"), "utf8");
+
+      expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
+      expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
+      expect(hookContent).toContain("echo custom-check");
+      expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
+      expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
+      expect(gitignoreContent).toContain("coverage/");
+      expect(gitignoreContent).toContain("notes/");
+      expect(gitignoreContent.match(/# agent-badge:gitignore:start/gm)).toHaveLength(1);
+      expect(gitignoreContent.match(/# agent-badge:gitignore:end/gm)).toHaveLength(1);
+      expect(packageJson.scripts?.test).toBe("vitest --run");
+      expect(packageJson.scripts?.["agent-badge:init"]).toBeUndefined();
+      expect(packageJson.scripts?.["agent-badge:refresh"]).toBeUndefined();
+      expect(packageJson.devDependencies?.typescript).toBe("^5.0.0");
+      expect(packageJson.devDependencies?.["@legotin/agent-badge"]).toBeUndefined();
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
   it("creates a public gist automatically when auth is available", async () => {
     const repo = await createRepoFixture({
       files: {

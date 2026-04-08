@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -7,7 +8,6 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import {
-  applyRepoLocalRuntimeWiring,
   defaultAgentBadgeConfig,
   parseAgentBadgeConfig
 } from "@legotin/agent-badge-core";
@@ -30,7 +30,6 @@ interface Fixture {
 }
 
 const execFileAsync = promisify(execFile);
-const runtimeDependencySpecifier = "^1.2.3";
 
 function createOutputCapture(): OutputCapture {
   let output = "";
@@ -86,6 +85,38 @@ async function createFixture(): Promise<Fixture> {
 
 async function readConfigFile(configPath: string) {
   return parseAgentBadgeConfig(JSON.parse(await readFile(configPath, "utf8")));
+}
+
+function buildLegacyManagedHookBlock(mode: "fail-soft" | "strict" = "fail-soft"): string {
+  const fallback = mode === "fail-soft" ? " || true" : "";
+
+  return [
+    "#!/bin/sh",
+    "",
+    "echo custom-check",
+    "",
+    "# agent-badge:start",
+    `npm run --silent agent-badge:refresh${fallback}`,
+    "# agent-badge:end",
+    ""
+  ].join("\n");
+}
+
+async function writeLegacyRuntimeManifest(repoRoot: string): Promise<void> {
+  await writeJsonFile(repoRoot, "package.json", {
+    name: "fixture-repo",
+    private: true,
+    scripts: {
+      test: "vitest --run",
+      "agent-badge:init": "agent-badge init",
+      "agent-badge:refresh":
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft"
+    },
+    devDependencies: {
+      "@legotin/agent-badge": "^1.2.3",
+      typescript: "^5.0.0"
+    }
+  });
 }
 
 describe("runConfigCommand", () => {
@@ -230,18 +261,11 @@ describe("runConfigCommand", () => {
     }
   });
 
-  it("updates the managed hook to strict mode", async () => {
+  it("updates the managed hook to strict mode without creating repo-local runtime manifest ownership", async () => {
     const fixture = await createFixture();
     const output = createOutputCapture();
 
     try {
-      await applyRepoLocalRuntimeWiring({
-        cwd: fixture.repoRoot,
-        packageManager: "npm",
-        runtimeDependencySpecifier,
-        refresh: defaultAgentBadgeConfig.refresh
-      });
-
       await runConfigCommand({
         cwd: fixture.repoRoot,
         runtimeEnv: {
@@ -254,16 +278,10 @@ describe("runConfigCommand", () => {
       });
 
       const config = await readConfigFile(fixture.configPath);
-      const packageJson = JSON.parse(
-        await readFile(fixture.packageJsonPath, "utf8")
-      ) as Record<string, unknown>;
-      const packageScripts = packageJson.scripts as Record<string, string>;
       const hookContent = await readFile(fixture.prePushHookPath, "utf8");
 
       expect(config.refresh.prePush.mode).toBe("strict");
-      expect(packageScripts["agent-badge:refresh"]).toBe(
-        "agent-badge refresh --hook pre-push --hook-policy strict"
-      );
+      expect(existsSync(fixture.packageJsonPath)).toBe(false);
       expect(output.read()).toContain("- Shared runtime: missing.");
       expect(output.read()).toContain("npm install -g @legotin/agent-badge");
       expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
@@ -276,21 +294,58 @@ describe("runConfigCommand", () => {
     }
   });
 
+  it("removes managed runtime manifest ownership when refresh settings rewrite a legacy repo hook", async () => {
+    const fixture = await createFixture();
+
+    try {
+      await writeLegacyRuntimeManifest(fixture.repoRoot);
+      await writeFile(
+        fixture.prePushHookPath,
+        buildLegacyManagedHookBlock(),
+        "utf8"
+      );
+
+      await runConfigCommand({
+        cwd: fixture.repoRoot,
+        action: "set",
+        key: "refresh.prePush.mode",
+        value: "strict"
+      });
+
+      const packageJson = JSON.parse(
+        await readFile(fixture.packageJsonPath, "utf8")
+      ) as {
+        scripts?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const hookContent = await readFile(fixture.prePushHookPath, "utf8");
+
+      expect(packageJson.scripts?.test).toBe("vitest --run");
+      expect(packageJson.scripts?.["agent-badge:init"]).toBeUndefined();
+      expect(packageJson.scripts?.["agent-badge:refresh"]).toBeUndefined();
+      expect(packageJson.devDependencies?.typescript).toBe("^5.0.0");
+      expect(packageJson.devDependencies?.["@legotin/agent-badge"]).toBeUndefined();
+      expect(hookContent).toContain("echo custom-check");
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy strict"
+      );
+      expect(hookContent).not.toContain("npm run --silent agent-badge:refresh");
+      expect(hookContent).not.toContain("|| true");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("removes only the managed block when pre-push is disabled", async () => {
     const fixture = await createFixture();
 
     try {
       await writeFile(
         fixture.prePushHookPath,
-        "#!/bin/sh\n\necho custom-check\n",
+        buildLegacyManagedHookBlock(),
         "utf8"
       );
-      await applyRepoLocalRuntimeWiring({
-        cwd: fixture.repoRoot,
-        packageManager: "npm",
-        runtimeDependencySpecifier,
-        refresh: defaultAgentBadgeConfig.refresh
-      });
 
       await runConfigCommand({
         cwd: fixture.repoRoot,
@@ -306,6 +361,7 @@ describe("runConfigCommand", () => {
       expect(hookContent).toBe("#!/bin/sh\n\necho custom-check\n");
       expect(hookContent).not.toContain("# agent-badge:start");
       expect(hookContent).not.toContain("# agent-badge:end");
+      expect(existsSync(fixture.packageJsonPath)).toBe(false);
     } finally {
       await fixture.cleanup();
     }
@@ -317,15 +373,9 @@ describe("runConfigCommand", () => {
     try {
       await writeFile(
         fixture.prePushHookPath,
-        "#!/bin/sh\n\necho custom-check\n",
+        buildLegacyManagedHookBlock(),
         "utf8"
       );
-      await applyRepoLocalRuntimeWiring({
-        cwd: fixture.repoRoot,
-        packageManager: "npm",
-        runtimeDependencySpecifier,
-        refresh: defaultAgentBadgeConfig.refresh
-      });
 
       await runConfigCommand({
         cwd: fixture.repoRoot,
@@ -349,6 +399,7 @@ describe("runConfigCommand", () => {
       expect(hookContent).toContain(
         "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
       );
+      expect(existsSync(fixture.packageJsonPath)).toBe(false);
     } finally {
       await fixture.cleanup();
     }

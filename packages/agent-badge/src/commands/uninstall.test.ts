@@ -246,14 +246,7 @@ describe("runUninstallCommand", () => {
       expect(existsSync(join(repo.root, ".agent-badge/state.json"))).toBe(true);
       expect(deleteGist).not.toHaveBeenCalled();
 
-      const packageJson = JSON.parse(
-        await readFile(join(repo.root, "package.json"), "utf8")
-      ) as {
-        scripts?: Record<string, string>;
-      };
-
-      expect(packageJson.scripts?.["agent-badge:init"]).toBeUndefined();
-      expect(packageJson.scripts?.["agent-badge:refresh"]).toBeUndefined();
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
