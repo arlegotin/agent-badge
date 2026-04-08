@@ -677,6 +677,8 @@ export async function publishBadgeIfChanged({
     includedTotals: publishableTotals
   });
   const serializedPayload = serializedFiles[AGENT_BADGE_GIST_FILE].content;
+  const serializedContributorRecord = serializeJsonFile(contributorRecord);
+  const serializedOverrides = serializeJsonFile(authoritativeOverrides);
 
   candidateHash = buildPayloadHash(serializedPayload);
   changedBadge = candidateHash !== state.publish.lastPublishedHash;
@@ -694,15 +696,10 @@ export async function publishBadgeIfChanged({
         gistId,
         files: {
           [localContributorFileName]: {
-            content: serializeJsonFile(contributorRecord)
-          }
-        }
-      });
-      await client.updateGistFile({
-        gistId,
-        files: {
+            content: serializedContributorRecord
+          },
           [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-            content: serializeJsonFile(authoritativeOverrides)
+            content: serializedOverrides
           }
         }
       });
@@ -773,31 +770,13 @@ export async function publishBadgeIfChanged({
   try {
     await client.updateGistFile({
       gistId,
-      files: serializedFiles
-    });
-  } catch (error) {
-    throw wrapError(error, "remote-write-failed");
-  }
-
-  try {
-    await client.updateGistFile({
-      gistId,
       files: {
+        ...serializedFiles,
         [localContributorFileName]: {
-          content: serializeJsonFile(contributorRecord)
-        }
-      }
-    });
-  } catch (error) {
-    throw wrapError(error, "remote-write-failed");
-  }
-
-  try {
-    await client.updateGistFile({
-      gistId,
-      files: {
+          content: serializedContributorRecord
+        },
         [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-          content: serializeJsonFile(authoritativeOverrides)
+          content: serializedOverrides
         }
       }
     });

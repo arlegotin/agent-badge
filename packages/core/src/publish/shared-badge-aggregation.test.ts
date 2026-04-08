@@ -127,44 +127,33 @@ function expectSharedPublishSequence(options: {
     options.localPublisherId
   );
 
-  expect(writtenCalls).toHaveLength(3);
-  expect(
-    writtenCalls.map((call) => Object.keys(call.files))
-  ).toEqual([
-    [AGENT_BADGE_GIST_FILE],
-    [localContributorFileName],
-    [AGENT_BADGE_OVERRIDES_GIST_FILE]
-  ]);
-  expect(writtenCalls[0]).toEqual({
-    gistId: options.gistId,
-    files: {
-      [AGENT_BADGE_GIST_FILE]: {
-        content: `{
+  expect(writtenCalls).toHaveLength(1);
+  expect(writtenCalls[0]).toEqual(
+    expect.objectContaining({
+      gistId: options.gistId,
+      files: expect.objectContaining({
+        [AGENT_BADGE_GIST_FILE]: {
+          content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "${options.expectedBadgeTokens} tokens",
   "color": "#E8A515"
 }
 `
-      }
-    }
-  });
-  expect(writtenCalls[1]?.gistId).toBe(options.gistId);
+        },
+        [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+          content: createOverridesRecord()
+        }
+      })
+    })
+  );
   expect(
-    JSON.parse(writtenCalls[1]?.files?.[localContributorFileName]?.content ?? "")
+    JSON.parse(writtenCalls[0]?.files?.[localContributorFileName]?.content ?? "")
   ).toEqual({
     schemaVersion: 2,
     publisherId: options.localPublisherId,
     updatedAt: expect.any(String),
     observations: options.expectedObservations
-  });
-  expect(writtenCalls[2]).toEqual({
-    gistId: options.gistId,
-    files: {
-      [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
-        content: createOverridesRecord()
-      }
-    }
   });
 }
 

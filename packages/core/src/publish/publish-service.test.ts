@@ -286,14 +286,16 @@ describe("publishBadgeToGist", () => {
 }
 `;
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        "agent-badge.json": {
-          content: serializedPayload
-        }
-      }
-    });
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          "agent-badge.json": {
+            content: serializedPayload
+          }
+        })
+      })
+    );
     const parsedPayload = JSON.parse(serializedPayload) as Record<string, unknown>;
     expect(Object.keys(parsedPayload).sort()).toEqual([
       "color",
@@ -394,47 +396,49 @@ describe("publishBadgeToGist", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $58",
   "color": "#E8A515"
 }
 `
-        },
-        [AGENT_BADGE_COMBINED_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_COMBINED_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $58",
   "color": "#E8A515"
 }
 `
-        },
-        [AGENT_BADGE_TOKENS_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_TOKENS_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
   "color": "#E8A515"
 }
 `
-        },
-        [AGENT_BADGE_COST_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_COST_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "$58",
   "color": "#E8A515"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 
   it("fails when a gist target is not configured", async () => {
@@ -559,20 +563,22 @@ describe("publishBadgeToGist", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        "agent-badge.json": {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          "agent-badge.json": {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "50 tokens",
   "color": "#E8A515"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 
   it("replaces the local publisher contribution without deleting another publisher file", async () => {
@@ -691,23 +697,25 @@ describe("publishBadgeToGist", () => {
       }
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [localContributorFile]: {
-          content: createObservationContributorRecord({
-            publisherId,
-            updatedAt: "2026-03-30T12:00:00.000Z",
-            observations: createPublisherObservations({
-              sessionPrefix: "local",
-              sessions: 3,
-              tokens: 30,
-              estimatedCostUsdMicros: null
-            })
-          }) + "\n"
-        }
-      }
-    });
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [localContributorFile]: {
+            content: createObservationContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              observations: createPublisherObservations({
+                sessionPrefix: "local",
+                sessions: 3,
+                tokens: 30,
+                estimatedCostUsdMicros: null
+              })
+            }) + "\n"
+          }
+        })
+      })
+    );
     expect(updateGistFile).not.toHaveBeenCalledWith({
       gistId: "gist_123",
       files: expect.objectContaining({
@@ -1029,20 +1037,22 @@ describe("publishBadgeIfChanged", () => {
     });
 
     expect(result.state.publish.gistId).toBe("gist_123");
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
   "color": "#E8A515"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 
   it("writes the local publisher observation map with schemaVersion 2", async () => {
@@ -1196,47 +1206,49 @@ describe("publishBadgeIfChanged", () => {
       publisherId,
       mode: "shared"
     });
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $0",
   "color": "#E8A515"
 }
 `
-        },
-        [AGENT_BADGE_COMBINED_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_COMBINED_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens | $0",
   "color": "#E8A515"
 }
 `
-        },
-        [AGENT_BADGE_TOKENS_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_TOKENS_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
   "color": "#E8A515"
 }
 `
-        },
-        [AGENT_BADGE_COST_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_COST_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "$0",
   "color": "lightgrey"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 
   it("retries readback verification when shared files are temporarily unreadable", async () => {
@@ -1518,47 +1530,49 @@ describe("publishBadgeIfChanged", () => {
       publisherId,
       mode: "shared"
     });
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "0 tokens | $0",
   "color": "lightgrey"
 }
 `
-        },
-        [AGENT_BADGE_COMBINED_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_COMBINED_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "0 tokens | $0",
   "color": "lightgrey"
 }
 `
-        },
-        [AGENT_BADGE_TOKENS_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_TOKENS_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "0 tokens",
   "color": "lightgrey"
 }
 `
-        },
-        [AGENT_BADGE_COST_GIST_FILE]: {
-          content: `{
+          },
+          [AGENT_BADGE_COST_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "$0",
   "color": "lightgrey"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 
   it("schema-version-1 contributor files are ignored for authoritative totals", async () => {
@@ -1652,20 +1666,22 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: false
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "12 tokens",
   "color": "#E8A515"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 
   it("skips remote update when the payload hash matches", async () => {
@@ -1744,7 +1760,7 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: true
     });
 
-    expect(updateGistFile).toHaveBeenCalledTimes(2);
+    expect(updateGistFile).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({
       decision: "skipped",
       candidateHash: existingHash,
@@ -1829,9 +1845,8 @@ describe("publishBadgeIfChanged", () => {
       candidateHash: expect.any(String),
       changedBadge: true
     });
-    expect(updateGistFile).toHaveBeenCalledTimes(3);
-    expect(updateGistFile).toHaveBeenNthCalledWith(
-      1,
+    expect(updateGistFile).toHaveBeenCalledTimes(1);
+    expect(updateGistFile).toHaveBeenCalledWith(
       expect.objectContaining({
         gistId: "gist_123",
         files: expect.objectContaining({
@@ -1988,20 +2003,22 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: true
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        "agent-badge.json": {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          "agent-badge.json": {
+            content: `{
   "schemaVersion": 1,
   "label": "Agent Usage",
   "message": "42 tokens",
   "color": "#E8A515"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
     expect(result.decision).toBe("published");
     expect(result.state.publish.lastPublishedAt).toBe("2026-03-30T12:05:00Z");
     expect(result.state.publish).toMatchObject({
@@ -2259,19 +2276,21 @@ describe("publishBadgeIfChanged", () => {
       skipIfUnchanged: false
     });
 
-    expect(updateGistFile).toHaveBeenCalledWith({
-      gistId: "gist_123",
-      files: {
-        [AGENT_BADGE_GIST_FILE]: {
-          content: `{
+    expect(updateGistFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gistId: "gist_123",
+        files: expect.objectContaining({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
   "schemaVersion": 1,
   "label": "AI Usage",
   "message": "42 tokens",
   "color": "#E8A515"
 }
 `
-        }
-      }
-    });
+          }
+        })
+      })
+    );
   });
 });
