@@ -281,6 +281,16 @@ if [[ "${CHECK_INITIALIZER}" == "true" ]]; then
     ".git/hooks/pre-push" \
     "initializer missing .git/hooks/pre-push after npm init agent-badge@${VERSION}" \
     "initializer"
+  assert_file \
+    "node_modules/.bin/agent-badge" \
+    "initializer missing repo-local agent-badge binary after npm init agent-badge@${VERSION}" \
+    "initializer"
+
+  if ! npm_config_cache="${NPM_CACHE_DIR}" npx --no-install agent-badge --help >/dev/null 2>&1; then
+    INITIALIZER_STATUS="blocked"
+    mark_blocked \
+      "initializer failed to expose agent-badge through npx --no-install after npm init agent-badge@${VERSION}"
+  fi
   popd >/dev/null
 fi
 

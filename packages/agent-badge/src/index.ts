@@ -1,3 +1,4 @@
+export { resolveGitHubCliToken } from "@legotin/agent-badge-core";
 export { buildProgram, run } from "./cli/main.js";
 export {
   runConfigCommand,
