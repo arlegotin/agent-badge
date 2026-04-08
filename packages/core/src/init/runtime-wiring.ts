@@ -143,7 +143,10 @@ function createManagedHookBlock(
   packageManager: PackageManager,
   refresh: AgentBadgeConfig["refresh"]
 ): string {
-  const command = getPrePushRefreshCommand(packageManager);
+  const command = getPrePushRefreshCommand(
+    packageManager,
+    refresh.prePush.mode
+  );
 
   return [
     agentBadgeHookStartMarker,

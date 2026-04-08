@@ -1,7 +1,14 @@
 import type { SpawnSyncReturns } from "node:child_process";
-import * as childProcess from "node:child_process";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { spawnSyncMock } = vi.hoisted(() => ({
+  spawnSyncMock: vi.fn()
+}));
+
+vi.mock("node:child_process", () => ({
+  spawnSync: spawnSyncMock
+}));
 
 import {
   buildSharedRuntimeRemediation,
@@ -25,17 +32,15 @@ function createSpawnResult(
 
 describe("inspectSharedRuntime", () => {
   afterEach(() => {
-    vi.restoreAllMocks();
+    spawnSyncMock.mockReset();
   });
 
   it("returns available with the reported version when agent-badge resolves on PATH", () => {
-    const spawnSyncMock = vi
-      .spyOn(childProcess, "spawnSync")
-      .mockReturnValue(
-        createSpawnResult({
-          stdout: "1.2.3\n"
-        })
-      );
+    spawnSyncMock.mockReturnValue(
+      createSpawnResult({
+        stdout: "1.2.3\n"
+      })
+    );
 
     expect(inspectSharedRuntime()).toEqual({
       status: "available",
@@ -51,7 +56,7 @@ describe("inspectSharedRuntime", () => {
   });
 
   it("returns missing when the shared runtime is not resolvable on PATH", () => {
-    vi.spyOn(childProcess, "spawnSync").mockReturnValue(
+    spawnSyncMock.mockReturnValue(
       createSpawnResult({
         error: Object.assign(new Error("spawnSync agent-badge ENOENT"), {
           code: "ENOENT"
