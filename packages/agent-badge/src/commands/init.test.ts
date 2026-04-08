@@ -562,6 +562,161 @@ describe("runInitCommand", () => {
     }
   });
 
+  it("recovers when the first gist readback is temporarily unreadable after gist creation", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const output = createOutputCapture();
+    let getCalls = 0;
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        env: {
+          GH_TOKEN: "test-token"
+        },
+        stdout: output.writer,
+        gistClient: {
+          createPublicGist: async () => createGistMetadata("gist_created"),
+          getGist: async () => {
+            getCalls += 1;
+
+            if (getCalls === 1) {
+              return {
+                id: "gist_created",
+                ownerLogin: "octocat",
+                public: true as const,
+                files: {}
+              };
+            }
+
+            if (getCalls === 2) {
+              return {
+                id: "gist_created",
+                ownerLogin: "octocat",
+                public: true as const,
+                files: {
+                  [AGENT_BADGE_GIST_FILE]: {
+                    filename: AGENT_BADGE_GIST_FILE,
+                    content: `{
+  "schemaVersion": 1,
+  "label": "AI budget",
+  "message": "pending",
+  "color": "lightgrey"
+}
+`,
+                    truncated: false
+                  },
+                  [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+                    filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+                    content: null,
+                    truncated: false
+                  }
+                }
+              };
+            }
+
+            return {
+              id: "gist_created",
+              ownerLogin: "octocat",
+              public: true as const,
+              files: {}
+            };
+          },
+          updateGistFile: async () => createGistMetadata("gist_created")
+        }
+      });
+
+      expect(getCalls).toBe(3);
+      expect(output.read()).toContain("- Publish target: created public gist");
+      expect(output.read()).toContain("- Publish mode: shared");
+      expect(output.read()).toContain("- Migration: legacy -> shared");
+      expect(output.read()).toContain("- README badge: updated README.md");
+      expect(output.read()).toContain(
+        "- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready."
+      );
+      expect(output.read()).not.toContain("- Badge setup deferred:");
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
+  it("surfaces a refresh-oriented recovery hint when gist readback stays unreadable after retries", async () => {
+    const repo = await createRepoFixture({
+      files: {
+        "package-lock.json": "{}"
+      }
+    });
+    const providers = await createProviderHome();
+    const output = createOutputCapture();
+    let getCalls = 0;
+
+    try {
+      await runInitCommand({
+        cwd: repo.root,
+        homeRoot: providers.root,
+        env: {
+          GH_TOKEN: "test-token"
+        },
+        stdout: output.writer,
+        gistClient: {
+          createPublicGist: async () => createGistMetadata("gist_created"),
+          getGist: async () => {
+            getCalls += 1;
+
+            if (getCalls === 1) {
+              return {
+                id: "gist_created",
+                ownerLogin: "octocat",
+                public: true as const,
+                files: {}
+              };
+            }
+
+            return {
+              id: "gist_created",
+              ownerLogin: "octocat",
+              public: true as const,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{
+  "schemaVersion": 1,
+  "label": "AI budget",
+  "message": "pending",
+  "color": "lightgrey"
+}
+`,
+                  truncated: false
+                },
+                [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+                  filename: AGENT_BADGE_OVERRIDES_GIST_FILE,
+                  content: null,
+                  truncated: false
+                }
+              }
+            };
+          },
+          updateGistFile: async () => createGistMetadata("gist_created")
+        }
+      });
+
+      expect(getCalls).toBe(4);
+      expect(output.read()).toContain(
+        "- Badge setup deferred: first publish failed (Remote gist contained unreadable shared publish files.). Retry publish from this machine by rerunning `agent-badge refresh` or `agent-badge init`."
+      );
+      expect(output.read()).not.toContain(
+        "Make GH_TOKEN, GITHUB_TOKEN, GITHUB_PAT"
+      );
+    } finally {
+      await Promise.all([repo.cleanup(), providers.cleanup()]);
+    }
+  });
+
   it("reuses an already configured gist on deferred-mode reruns without creating another gist", async () => {
     const repo = await createRepoFixture({
       files: {

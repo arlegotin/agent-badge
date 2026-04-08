@@ -18,6 +18,7 @@ import {
   ensurePublishTarget,
   formatRecoveryResult,
   inspectPublishReadiness,
+  isPublishBadgeError,
   inspectSharedPublishHealth,
   parseAgentBadgeConfig,
   parseAgentBadgeState,
@@ -316,7 +317,19 @@ function resolveInitRecoveryResult(options: {
 function buildPublishFailureMessage(error: unknown): string {
   const detail = error instanceof Error ? error.message : "unknown publish error";
 
-  return `first publish failed (${detail}). Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT so init can publish the live badge JSON, then rerun \`agent-badge init\`.`;
+  if (isPublishBadgeError(error)) {
+    switch (error.failureCode) {
+      case "auth-missing":
+        return `first publish failed (${detail}). Make GH_TOKEN, GITHUB_TOKEN, GITHUB_PAT, or \`gh auth token\` available in this shell, then rerun \`agent-badge init\`.`;
+      case "remote-write-failed":
+      case "remote-readback-failed":
+      case "remote-readback-mismatch":
+      case "remote-state-invalid":
+        return `first publish failed (${detail}). Retry publish from this machine by rerunning \`agent-badge refresh\` or \`agent-badge init\`.`;
+    }
+  }
+
+  return `first publish failed (${detail}). Rerun \`agent-badge init\` after resolving the publish error.`;
 }
 
 function getConfiguredBadgeUrl(config: AgentBadgeConfig): string | null {
