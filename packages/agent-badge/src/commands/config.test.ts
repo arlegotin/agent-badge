@@ -96,6 +96,9 @@ describe("runConfigCommand", () => {
     try {
       const result = await runConfigCommand({
         cwd: fixture.repoRoot,
+        runtimeEnv: {
+          PATH: ""
+        },
         stdout: output.writer
       });
 
@@ -111,6 +114,10 @@ describe("runConfigCommand", () => {
       expect(output.read()).toContain("- badge.cacheSeconds=300");
       expect(output.read()).toContain("- refresh.prePush.enabled=true");
       expect(output.read()).toContain("- refresh.prePush.mode=fail-soft");
+      expect(output.read()).toContain("- Shared runtime: missing.");
+      expect(output.read()).toContain("npm install -g @legotin/agent-badge");
+      expect(output.read()).toContain("pnpm add -g @legotin/agent-badge");
+      expect(output.read()).toContain("bun add -g @legotin/agent-badge");
       expect(output.read()).toContain("- Pre-push policy: fail-soft");
       expect(output.read()).toContain("- privacy.aggregateOnly=true");
       expect(output.read()).toContain("- privacy.output=standard");
@@ -225,6 +232,7 @@ describe("runConfigCommand", () => {
 
   it("updates the managed hook to strict mode", async () => {
     const fixture = await createFixture();
+    const output = createOutputCapture();
 
     try {
       await applyRepoLocalRuntimeWiring({
@@ -236,6 +244,10 @@ describe("runConfigCommand", () => {
 
       await runConfigCommand({
         cwd: fixture.repoRoot,
+        runtimeEnv: {
+          PATH: ""
+        },
+        stdout: output.writer,
         action: "set",
         key: "refresh.prePush.mode",
         value: "strict"
@@ -252,7 +264,12 @@ describe("runConfigCommand", () => {
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --hook-policy strict"
       );
-      expect(hookContent).toContain("npm run --silent agent-badge:refresh");
+      expect(output.read()).toContain("- Shared runtime: missing.");
+      expect(output.read()).toContain("npm install -g @legotin/agent-badge");
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy strict"
+      );
       expect(hookContent).not.toContain("|| true");
     } finally {
       await fixture.cleanup();
@@ -328,7 +345,10 @@ describe("runConfigCommand", () => {
       expect(hookContent).toContain("echo custom-check");
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
-      expect(hookContent).toContain("npm run --silent agent-badge:refresh || true");
+      expect(hookContent).toContain("command -v agent-badge >/dev/null 2>&1");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+      );
     } finally {
       await fixture.cleanup();
     }

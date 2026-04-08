@@ -4,12 +4,15 @@ import { join, resolve } from "node:path";
 import {
   applyRepoLocalRuntimeWiring,
   type AgentBadgeBadgeStyle,
+  buildSharedRuntimeRemediation,
   detectPackageManager,
+  inspectSharedRuntime,
   parseAgentBadgeConfig,
   type AgentBadgeBadgeMode,
   type AgentBadgeConfig,
   type AgentBadgePrivacyOutput,
-  type AgentBadgeRefreshMode
+  type AgentBadgeRefreshMode,
+  type SharedRuntimeInspection
 } from "@legotin/agent-badge-core";
 
 interface OutputWriter {
@@ -34,6 +37,7 @@ type SupportedConfigKey =
 
 export interface RunConfigCommandOptions {
   readonly cwd?: string;
+  readonly runtimeEnv?: NodeJS.ProcessEnv;
   readonly stdout?: OutputWriter;
   readonly action?: ConfigAction;
   readonly key?: string;
@@ -208,17 +212,36 @@ function buildSettingsLines(config: AgentBadgeConfig): string[] {
 
 function buildOperatorLines(
   config: AgentBadgeConfig,
+  runtime: SharedRuntimeInspection,
   key?: SupportedConfigKey
 ): string[] {
+  const lines: string[] = [];
+
   if (
     typeof key === "undefined" ||
     key === "refresh.prePush.enabled" ||
     key === "refresh.prePush.mode"
   ) {
-    return [`Pre-push policy: ${config.refresh.prePush.mode}`];
+    lines.push(formatSharedRuntimeLine(runtime));
+    lines.push(`Pre-push policy: ${config.refresh.prePush.mode}`);
   }
 
-  return [];
+  return lines;
+}
+
+function formatSharedRuntimeLine(
+  inspection: SharedRuntimeInspection
+): string {
+  const remediation = buildSharedRuntimeRemediation().split("\n").join(" | ");
+
+  switch (inspection.status) {
+    case "available":
+      return `Shared runtime: available (${inspection.version})`;
+    case "missing":
+      return `Shared runtime: missing. ${remediation}`;
+    case "broken":
+      return `Shared runtime: unavailable. ${remediation}`;
+  }
 }
 
 function keyRequiresRuntimeWiring(key: SupportedConfigKey): boolean {
@@ -394,6 +417,7 @@ function applyConfigMutation(
 function buildReport(
   action: ConfigAction,
   config: AgentBadgeConfig,
+  runtime: SharedRuntimeInspection,
   key?: SupportedConfigKey
 ): string {
   if (action === "get") {
@@ -401,21 +425,21 @@ function buildReport(
       return [
         "agent-badge config",
         ...buildSettingsLines(config).map((line) => `- ${line}`),
-        ...buildOperatorLines(config).map((line) => `- ${line}`)
+        ...buildOperatorLines(config, runtime).map((line) => `- ${line}`)
       ].join("\n");
     }
 
     return [
       "agent-badge config",
       `- ${key}=${readConfigValue(config, key)}`,
-      ...buildOperatorLines(config, key).map((line) => `- ${line}`)
+      ...buildOperatorLines(config, runtime, key).map((line) => `- ${line}`)
     ].join("\n");
   }
 
   return [
     "agent-badge config",
     `- Updated: ${key}=${readConfigValue(config, key!)}`,
-    ...buildOperatorLines(config, key).map((line) => `- ${line}`)
+    ...buildOperatorLines(config, runtime, key).map((line) => `- ${line}`)
   ].join("\n");
 }
 
@@ -470,6 +494,7 @@ export async function runConfigCommand(
   const action = options.action ?? "get";
   const configPath = join(cwd, CONFIG_PATH);
   const config = parseAgentBadgeConfig(await readJsonFile(configPath));
+  const runtime = inspectSharedRuntime(options.runtimeEnv ?? process.env);
 
   if (action !== "get" && action !== "set") {
     throw new Error(`Unsupported config action: ${action}`);
@@ -480,7 +505,7 @@ export async function runConfigCommand(
       assertSupportedConfigKey(options.key);
     }
 
-    const report = buildReport(action, config, options.key);
+    const report = buildReport(action, config, runtime, options.key);
 
     writeLine(stdout, report);
 
@@ -533,7 +558,7 @@ export async function runConfigCommand(
     }
   }
 
-  const report = buildReport(action, nextConfig, options.key);
+  const report = buildReport(action, nextConfig, runtime, options.key);
 
   writeLine(stdout, report);
 

@@ -7,6 +7,7 @@ import {
   applyPublishTargetResult,
   applyAgentBadgeScaffold,
   applyRepoLocalRuntimeWiring,
+  buildSharedRuntimeRemediation,
   buildSharedOverrideDigest,
   buildReadmeBadgeMarkdown,
   buildReadmeBadgeSnippet,
@@ -18,6 +19,7 @@ import {
   ensurePublishTarget,
   formatRecoveryResult,
   inspectPublishReadiness,
+  inspectSharedRuntime,
   isPublishBadgeError,
   inspectSharedPublishHealth,
   parseAgentBadgeConfig,
@@ -40,6 +42,7 @@ import {
   type PublishBadgeToGistResult,
   type RepoLocalRuntimeWiringResult,
   type SharedPublishHealthReport,
+  type SharedRuntimeInspection,
   type SharedContributorObservationMap,
   type AgentBadgeState
 } from "@legotin/agent-badge-core";
@@ -61,6 +64,7 @@ export interface RunInitCommandOptions
   readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
   readonly publishRemoteReadbackRetryDelayMs?: readonly number[];
+  readonly runtimeEnv?: NodeJS.ProcessEnv;
   readonly stdout?: OutputWriter;
 }
 
@@ -161,6 +165,21 @@ function writeRuntimeWiringSummary(
   }
 }
 
+function formatSharedRuntimeLine(
+  inspection: SharedRuntimeInspection
+): string {
+  const remediation = buildSharedRuntimeRemediation().split("\n").join(" | ");
+
+  switch (inspection.status) {
+    case "available":
+      return `- Shared runtime: available (${inspection.version})`;
+    case "missing":
+      return `- Shared runtime: missing. ${remediation}`;
+    case "broken":
+      return `- Shared runtime: unavailable. ${remediation}`;
+  }
+}
+
 function summarizePublishTarget(target: PublishTargetResult): string {
   switch (target.status) {
     case "created":
@@ -212,20 +231,20 @@ function buildInitSetupStatusMessage(options: {
   readonly publishSucceeded: boolean;
 }): string {
   if (options.publishSucceeded) {
-    return "complete. Local runtime, pre-push refresh, and live badge publishing are ready.";
+    return "complete. Shared runtime, pre-push refresh, and live badge publishing are ready.";
   }
 
   switch (options.publishTarget.reason) {
     case "auth-missing":
-      return "local setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.";
+      return "repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.";
     case "gist-create-failed":
-      return "local setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`.";
+      return "repo setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`.";
     case "gist-not-public":
     case "gist-missing-owner":
     case "gist-unreachable":
-      return "local setup complete, but the configured gist still needs attention before the live badge can publish. Fix the gist target, then rerun `agent-badge init --gist-id <id>`.";
+      return "repo setup complete, but the configured gist still needs attention before the live badge can publish. Fix the gist target, then rerun `agent-badge init --gist-id <id>`.";
     default:
-      return "local setup complete, but the live badge is not ready yet. Follow the recovery hint above, then rerun `agent-badge init`.";
+      return "repo setup complete, but the live badge is not ready yet. Follow the recovery hint above, then rerun `agent-badge init`.";
   }
 }
 
@@ -587,6 +606,11 @@ export async function runInitCommand(
   });
 
   writeRuntimeWiringSummary(stdout, runtimeWiring);
+  writeLines(stdout, [
+    formatSharedRuntimeLine(
+      inspectSharedRuntime(options.runtimeEnv ?? process.env)
+    )
+  ]);
 
   const state = await loadPersistedState(preflight.cwd);
   const gistClient =

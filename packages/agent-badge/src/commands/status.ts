@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import {
+  buildSharedRuntimeRemediation,
   createGitHubGistClient,
   derivePrePushPolicyConsequence,
   derivePrePushPolicyReport,
@@ -10,11 +11,13 @@ import {
   formatPrePushPolicyLine,
   formatPublishTrustStatus,
   formatEstimatedCostUsd,
+  inspectSharedRuntime,
   inspectSharedPublishHealth,
   inspectPublishReadiness,
   parseAgentBadgeState,
   type AgentBadgeState,
   type GitHubGistClient,
+  type SharedRuntimeInspection,
   type SharedPublishHealthReport
 } from "@legotin/agent-badge-core";
 
@@ -52,6 +55,7 @@ interface StatusCommandConfig {
 export interface RunStatusCommandOptions {
   readonly cwd?: string;
   readonly gistClient?: GitHubGistClient;
+  readonly runtimeEnv?: NodeJS.ProcessEnv;
   readonly stdout?: OutputWriter;
 }
 
@@ -269,6 +273,21 @@ function formatProvidersLine(config: StatusCommandConfig): string {
   return `codex=${config.providers.codex.enabled ? "enabled" : "disabled"}, claude=${config.providers.claude.enabled ? "enabled" : "disabled"}`;
 }
 
+function formatSharedRuntimeLine(
+  inspection: SharedRuntimeInspection
+): string {
+  const remediation = buildSharedRuntimeRemediation().split("\n").join(" | ");
+
+  switch (inspection.status) {
+    case "available":
+      return `- Shared runtime: available (${inspection.version})`;
+    case "missing":
+      return `- Shared runtime: missing. ${remediation}`;
+    case "broken":
+      return `- Shared runtime: unavailable. ${remediation}`;
+  }
+}
+
 function formatPublishLine(
   config: StatusCommandConfig,
   state: AgentBadgeState
@@ -365,6 +384,7 @@ export async function runStatusCommand(
     await readJsonFile(join(cwd, CONFIG_PATH))
   );
   const state = parseAgentBadgeState(await readJsonFile(join(cwd, STATE_PATH)));
+  const runtime = inspectSharedRuntime(options.runtimeEnv ?? process.env);
   const trustReport = derivePublishTrustReport({
     state,
     now: new Date().toISOString()
@@ -391,6 +411,7 @@ export async function runStatusCommand(
     "agent-badge status",
     `- Totals: ${formatTotalsLine(state)}`,
     `- Providers: ${formatProvidersLine(config)}`,
+    formatSharedRuntimeLine(runtime),
     `- Publish: ${formatPublishLine(config, state)}`,
     ...buildPrePushPolicyLines(config, state),
     ...buildPublishTrustLines(state),

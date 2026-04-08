@@ -256,6 +256,9 @@ describe("runInitCommand", () => {
         env: {
           GITHUB_TOKEN: "test-token"
         },
+        runtimeEnv: {
+          PATH: ""
+        },
         stdout: output.writer,
         gistClient: deferredGistClient
       });
@@ -336,6 +339,9 @@ describe("runInitCommand", () => {
         env: {
           GITHUB_TOKEN: "test-token"
         },
+        runtimeEnv: {
+          PATH: ""
+        },
         stdout: secondOutput.writer,
         gistClient: deferredGistClient
       });
@@ -361,16 +367,21 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("agent-badge init scaffold");
       expect(output.read()).toContain("agent-badge init runtime wiring");
       expect(output.read()).toContain("GitHub auth: env:GITHUB_TOKEN");
+      expect(output.read()).toContain("- Shared runtime: missing.");
+      expect(output.read()).toContain("npm install -g @legotin/agent-badge");
+      expect(output.read()).toContain("pnpm add -g @legotin/agent-badge");
+      expect(output.read()).toContain("bun add -g @legotin/agent-badge");
       expect(output.read()).toContain("- Publish target: deferred");
       expect(output.read()).toContain("- Badge setup deferred:");
       expect(output.read()).toContain(
-        "- Setup: local setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`."
+        "- Setup: repo setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`."
       );
       expect(secondOutput.read()).toContain("agent-badge init runtime wiring");
+      expect(secondOutput.read()).toContain("- Shared runtime: missing.");
       expect(secondOutput.read()).toContain("- Publish target: deferred");
       expect(secondOutput.read()).toContain("- Badge setup deferred:");
       expect(secondOutput.read()).toContain(
-        "- Setup: local setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`."
+        "- Setup: repo setup complete, but the publish target was not created. Recheck GitHub auth, then rerun `agent-badge init`."
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -563,7 +574,7 @@ describe("runInitCommand", () => {
       ).toMatch(/^[0-9a-f]{64}$/);
       expect(output.read()).toContain("- Publish target: created public gist");
       expect(output.read()).toContain(
-        "- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready."
+        "- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready."
       );
       expect(readmeContent).toContain("<!-- agent-badge:start -->");
     } finally {
@@ -647,7 +658,7 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("- Migration: legacy -> shared");
       expect(output.read()).toContain("- README badge: updated README.md");
       expect(output.read()).toContain(
-        "- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready."
+        "- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready."
       );
       expect(output.read()).not.toContain("- Badge setup deferred:");
     } finally {
@@ -1225,7 +1236,7 @@ describe("runInitCommand", () => {
       expect(output.read()).toContain("- Publish target: deferred");
       expect(output.read()).toContain("- Badge setup deferred:");
       expect(output.read()).toContain(
-        "- Setup: local setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`."
+        "- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`."
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);

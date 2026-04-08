@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   AGENT_BADGE_GIST_FILE,
   AGENT_BADGE_OVERRIDES_GIST_FILE,
+  buildSharedRuntimeRemediation,
   buildContributorGistFileName,
   buildSharedOverrideDigest,
   defaultAgentBadgeConfig,
@@ -193,8 +194,15 @@ describe("runStatusCommand", () => {
     const output = createOutputCapture();
 
     try {
+      const sharedRuntimeLine =
+        `- Shared runtime: missing. ${buildSharedRuntimeRemediation()
+          .split("\n")
+          .join(" | ")}`;
       const result = await runStatusCommand({
         cwd: fixture.repoRoot,
+        runtimeEnv: {
+          PATH: ""
+        },
         stdout: output.writer,
         gistClient: buildGistClient({
           [AGENT_BADGE_GIST_FILE]: JSON.stringify(
@@ -215,6 +223,7 @@ describe("runStatusCommand", () => {
         "agent-badge status",
         "- Totals: 5 sessions, 610 tokens",
         "- Providers: codex=enabled, claude=enabled",
+        sharedRuntimeLine,
         "- Publish: published | gist configured=yes | last published=2026-03-30T19:10:00.000Z | gistId=gist_789 | lastPublishedHash=hash_789",
         "- Pre-push policy: fail-soft",
         "- Live badge trust: current",
