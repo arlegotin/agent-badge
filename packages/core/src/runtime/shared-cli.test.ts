@@ -1,0 +1,94 @@
+import type { SpawnSyncReturns } from "node:child_process";
+import * as childProcess from "node:child_process";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import {
+  buildSharedRuntimeRemediation,
+  getSharedAgentBadgeCommand,
+  inspectSharedRuntime
+} from "./shared-cli.js";
+
+function createSpawnResult(
+  overrides: Partial<SpawnSyncReturns<string>>
+): SpawnSyncReturns<string> {
+  return {
+    output: [null, "", ""],
+    pid: 0,
+    signal: null,
+    status: 0,
+    stdout: "",
+    stderr: "",
+    ...overrides
+  };
+}
+
+describe("inspectSharedRuntime", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns available with the reported version when agent-badge resolves on PATH", () => {
+    const spawnSyncMock = vi
+      .spyOn(childProcess, "spawnSync")
+      .mockReturnValue(
+        createSpawnResult({
+          stdout: "1.2.3\n"
+        })
+      );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "available",
+      version: "1.2.3"
+    });
+    expect(spawnSyncMock).toHaveBeenCalledWith("agent-badge", ["--version"], {
+      encoding: "utf8",
+      env: process.env,
+      shell: false,
+      stdio: "pipe",
+      windowsHide: true
+    });
+  });
+
+  it("returns missing when the shared runtime is not resolvable on PATH", () => {
+    vi.spyOn(childProcess, "spawnSync").mockReturnValue(
+      createSpawnResult({
+        error: Object.assign(new Error("spawnSync agent-badge ENOENT"), {
+          code: "ENOENT"
+        })
+      })
+    );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "missing"
+    });
+  });
+});
+
+describe("buildSharedRuntimeRemediation", () => {
+  it("returns privacy-safe install and PATH guidance", () => {
+    const remediation = buildSharedRuntimeRemediation();
+
+    expect(remediation).toContain("npm install -g @legotin/agent-badge");
+    expect(remediation).toContain("pnpm add -g @legotin/agent-badge");
+    expect(remediation).toContain("bun add -g @legotin/agent-badge");
+    expect(remediation).toContain("ensure the corresponding bin directory is on PATH");
+    expect(remediation).not.toContain("node_modules/.bin");
+  });
+});
+
+describe("getSharedAgentBadgeCommand", () => {
+  it("builds plain agent-badge commands without package-manager wrappers", () => {
+    expect(getSharedAgentBadgeCommand()).toBe("agent-badge");
+    expect(getSharedAgentBadgeCommand("init")).toBe("agent-badge init");
+    expect(
+      getSharedAgentBadgeCommand(
+        "refresh",
+        "--hook",
+        "pre-push",
+        "--hook-policy",
+        "fail-soft"
+      )
+    ).toBe("agent-badge refresh --hook pre-push --hook-policy fail-soft");
+  });
+});

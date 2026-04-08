@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  agentBadgeRefreshScriptName,
   getAgentBadgeInitScriptCommand,
   getAgentBadgeRefreshScriptCommand,
   getLocalAgentBadgeCommand,
-  getPackageScriptRunnerCommand,
   getPrePushRefreshCommand
 } from "./local-cli.js";
 
 describe("getLocalAgentBadgeCommand", () => {
-  it("returns the exact repo-local command for each supported package manager", () => {
-    expect(getLocalAgentBadgeCommand("npm")).toBe("npx --no-install agent-badge");
-    expect(getLocalAgentBadgeCommand("pnpm")).toBe("pnpm exec agent-badge");
-    expect(getLocalAgentBadgeCommand("yarn")).toBe("yarn agent-badge");
-    expect(getLocalAgentBadgeCommand("bun")).toBe("bunx --bun agent-badge");
+  it("returns the shared PATH-based command for each supported package manager context", () => {
+    expect(getLocalAgentBadgeCommand("npm")).toBe("agent-badge");
+    expect(getLocalAgentBadgeCommand("pnpm")).toBe("agent-badge");
+    expect(getLocalAgentBadgeCommand("yarn")).toBe("agent-badge");
+    expect(getLocalAgentBadgeCommand("bun")).toBe("agent-badge");
   });
 
   it("returns stable managed script commands", () => {
@@ -33,33 +31,18 @@ describe("getLocalAgentBadgeCommand", () => {
     );
   });
 
-  it("returns package-manager-specific script runner commands", () => {
-    expect(getPackageScriptRunnerCommand("npm", agentBadgeRefreshScriptName)).toBe(
-      "npm run --silent agent-badge:refresh"
-    );
-    expect(getPackageScriptRunnerCommand("pnpm", agentBadgeRefreshScriptName)).toBe(
-      "pnpm run --silent agent-badge:refresh"
-    );
-    expect(getPackageScriptRunnerCommand("yarn", agentBadgeRefreshScriptName)).toBe(
-      "yarn run agent-badge:refresh"
-    );
-    expect(getPackageScriptRunnerCommand("bun", agentBadgeRefreshScriptName)).toBe(
-      "bun run agent-badge:refresh"
-    );
-  });
-
   it("returns the exact pre-push refresh hook command for each supported package manager", () => {
     expect(getPrePushRefreshCommand("npm")).toBe(
-      "npm run --silent agent-badge:refresh"
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft"
     );
     expect(getPrePushRefreshCommand("pnpm")).toBe(
-      "pnpm run --silent agent-badge:refresh"
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft"
     );
     expect(getPrePushRefreshCommand("yarn")).toBe(
-      "yarn run agent-badge:refresh"
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft"
     );
     expect(getPrePushRefreshCommand("bun")).toBe(
-      "bun run agent-badge:refresh"
+      "agent-badge refresh --hook pre-push --hook-policy fail-soft"
     );
   });
 });

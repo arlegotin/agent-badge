@@ -128,7 +128,9 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(gitignoreContent).toContain(agentBadgeGitignoreEndMarker);
       expect(hookContent).toContain(agentBadgeHookStartMarker);
       expect(hookContent).toContain(agentBadgeHookEndMarker);
-      expect(hookContent).toContain("npm run --silent agent-badge:refresh || true");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+      );
       expect(hookStats.mode & 0o111).toBe(0o111);
 
         await expect(
@@ -307,7 +309,9 @@ describe("applyRepoLocalRuntimeWiring", () => {
       expect(packageScripts["agent-badge:refresh"]).toBe(
         "agent-badge refresh --hook pre-push --hook-policy strict"
       );
-      expect(hookContent).toContain("npm run --silent agent-badge:refresh");
+      expect(hookContent).toContain(
+        "agent-badge refresh --hook pre-push --hook-policy strict"
+      );
       expect(hookContent).not.toContain("|| true");
     } finally {
       await repo.cleanup();
@@ -476,4 +480,56 @@ describe("removeRepoLocalRuntimeWiring", () => {
       await repo.cleanup();
     }
   });
+
+  it.each([
+    {
+      packageManager: "npm" as const,
+      lockfile: "package-lock.json"
+    },
+    {
+      packageManager: "pnpm" as const,
+      lockfile: "pnpm-lock.yaml"
+    },
+    {
+      packageManager: "yarn" as const,
+      lockfile: "yarn.lock"
+    },
+    {
+      packageManager: "bun" as const,
+      lockfile: "bun.lock"
+    }
+  ])(
+    "writes the same shared pre-push contract for $packageManager repos",
+    async ({ lockfile, packageManager }) => {
+      const repo = await createGitRepoFixture({
+        files: {
+          [lockfile]: "fixture-lockfile\n"
+        }
+      });
+
+      try {
+        await applyRepoLocalRuntimeWiring({
+          cwd: repo.root,
+          packageManager,
+          runtimeDependencySpecifier: "^1.2.3",
+          refresh: failSoftRefresh
+        });
+
+        const hookContent = await readFile(
+          join(repo.root, ".git/hooks/pre-push"),
+          "utf8"
+        );
+
+        expect(hookContent).toContain(
+          "agent-badge refresh --hook pre-push --hook-policy fail-soft || true"
+        );
+        expect(hookContent).not.toContain("npx --no-install");
+        expect(hookContent).not.toContain("pnpm exec");
+        expect(hookContent).not.toContain("yarn run");
+        expect(hookContent).not.toContain("bun run");
+      } finally {
+        await repo.cleanup();
+      }
+    }
+  );
 });
