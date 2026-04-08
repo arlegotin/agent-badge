@@ -946,7 +946,8 @@ describe("publishBadgeIfChanged", () => {
         updateGistFile
       },
       now: "2026-03-30T12:00:00.000Z",
-      skipIfUnchanged: false
+      skipIfUnchanged: false,
+      remoteReadbackRetryDelayMs: [0, 0]
     });
 
     expect(result.healthBeforePublish).toMatchObject({
@@ -1338,6 +1339,123 @@ describe("publishBadgeIfChanged", () => {
       },
       now: "2026-03-30T12:00:00.000Z",
       skipIfUnchanged: false
+    });
+
+    expect(getGist).toHaveBeenCalledTimes(3);
+    expect(result.state.publish).toMatchObject({
+      status: "published",
+      gistId: "gist_123",
+      publisherId,
+      mode: "shared"
+    });
+  });
+
+  it("retries readback verification when the remote badge hash is temporarily stale", async () => {
+    const publisherId = "publisher-local";
+    const contributorFileName = buildContributorGistFileName(publisherId);
+    const getGist = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({})
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "41 tokens",
+  "color": "#E8A515"
+}
+`
+          },
+          [contributorFileName]: {
+            content: createObservationContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              observations: createPublisherObservations({
+                sessionPrefix: "retry-hash",
+                sessions: 1,
+                tokens: 42,
+                estimatedCostUsdMicros: null
+              })
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        id: "gist_123",
+        ownerLogin: "octocat",
+        public: true,
+        files: createGistFileMap({
+          [AGENT_BADGE_GIST_FILE]: {
+            content: `{
+  "schemaVersion": 1,
+  "label": "AI Usage",
+  "message": "42 tokens",
+  "color": "#E8A515"
+}
+`
+          },
+          [contributorFileName]: {
+            content: createObservationContributorRecord({
+              publisherId,
+              updatedAt: "2026-03-30T12:00:00.000Z",
+              observations: createPublisherObservations({
+                sessionPrefix: "retry-hash",
+                sessions: 1,
+                tokens: 42,
+                estimatedCostUsdMicros: null
+              })
+            })
+          },
+          [AGENT_BADGE_OVERRIDES_GIST_FILE]: {
+            content: createOverridesRecord()
+          }
+        })
+      });
+    const updateGistFile = vi.fn().mockResolvedValue({
+      id: "gist_123",
+      ownerLogin: "octocat",
+      public: true,
+      files: {}
+    });
+
+    const result = await publishBadgeIfChanged({
+      config: createPublishConfig({
+        label: "AI Usage",
+        mode: "tokens"
+      }),
+      state: {
+        ...defaultAgentBadgeState,
+        publish: {
+          ...defaultAgentBadgeState.publish,
+          publisherId
+        }
+      } as typeof defaultAgentBadgeState,
+      publisherObservations: createPublisherObservations({
+        sessionPrefix: "retry-hash",
+        sessions: 1,
+        tokens: 42,
+        estimatedCostUsdMicros: null
+      }),
+      client: {
+        getGist,
+        createPublicGist: vi.fn(),
+        updateGistFile
+      },
+      now: "2026-03-30T12:00:00.000Z",
+      skipIfUnchanged: false,
+      remoteReadbackRetryDelayMs: [0, 0]
     });
 
     expect(getGist).toHaveBeenCalledTimes(3);

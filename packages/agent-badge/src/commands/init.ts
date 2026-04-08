@@ -60,6 +60,7 @@ export interface RunInitCommandOptions
   readonly gistId?: string;
   readonly ghCliTokenResolver?: GhCliTokenResolver;
   readonly gistClient?: GitHubGistClient;
+  readonly publishRemoteReadbackRetryDelayMs?: readonly number[];
   readonly stdout?: OutputWriter;
 }
 
@@ -691,7 +692,8 @@ export async function runInitCommand(
           nextPublishState.config.badge.mode === "combined" ||
           nextPublishState.config.badge.mode === "cost"
       }),
-      client: gistClient
+      client: gistClient,
+      remoteReadbackRetryDelayMs: options.publishRemoteReadbackRetryDelayMs
     });
     const publishedState = publishResult.state;
 

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 
 import type { AttributeBackfillSessionsResult } from "../attribution/attribution-types.js";
 import type { AgentBadgeConfig } from "../config/config-schema.js";
@@ -51,6 +52,7 @@ export interface PublishBadgeToGistOptions {
   readonly state: AgentBadgeState;
   readonly publisherObservations: SharedContributorObservationMap;
   readonly client: GitHubGistClient;
+  readonly remoteReadbackRetryDelayMs?: readonly number[];
 }
 
 export interface PublishBadgeIfChangedOptions {
@@ -60,6 +62,7 @@ export interface PublishBadgeIfChangedOptions {
   readonly client: GitHubGistClient;
   readonly now: string;
   readonly skipIfUnchanged: boolean;
+  readonly remoteReadbackRetryDelayMs?: readonly number[];
 }
 
 export interface PublishBadgeIfChangedResult {
@@ -116,9 +119,11 @@ const GITHUB_AUTH_MISSING_ERROR_MESSAGE =
   "GitHub authentication missing or invalid.";
 const UNREADABLE_SHARED_PUBLISH_FILES_ERROR_MESSAGE =
   "Remote gist contained unreadable shared publish files.";
+const REMOTE_READBACK_HASH_MISMATCH_ERROR_MESSAGE =
+  "Remote badge payload hash did not match the candidate hash.";
 const REMOTE_READBACK_RETRY_FAILED_ERROR_MESSAGE =
   "Remote gist readback retry failed.";
-const remoteReadbackValidationAttempts = 3;
+const defaultRemoteReadbackRetryDelayMs = [250, 500, 1_000, 2_000, 3_000] as const;
 
 function buildSessionKey(
   session: { readonly provider: string; readonly providerSessionId: string }
@@ -456,6 +461,20 @@ function isUnreadableSharedPublishFilesError(error: unknown): boolean {
   );
 }
 
+function isRemoteReadbackHashMismatchError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message === REMOTE_READBACK_HASH_MISMATCH_ERROR_MESSAGE
+  );
+}
+
+function isRetryableRemoteReadbackError(error: unknown): boolean {
+  return (
+    isUnreadableSharedPublishFilesError(error) ||
+    isRemoteReadbackHashMismatchError(error)
+  );
+}
+
 function resolveVerifiedRemoteState(options: {
   readonly readbackGist: GitHubGist;
   readonly fallbackGist: GitHubGist;
@@ -501,7 +520,7 @@ function resolveVerifiedRemoteState(options: {
     buildPayloadHash(badgeFile.content) !== options.candidateHash &&
     hasLocalContributor
   ) {
-    throw new Error("Remote badge payload hash did not match the candidate hash.");
+    throw new Error(REMOTE_READBACK_HASH_MISMATCH_ERROR_MESSAGE);
   }
 
   if (!hasLocalContributor) {
@@ -517,14 +536,14 @@ async function resolveVerifiedRemoteStateWithRetry(options: {
   readonly candidateHash: string;
   readonly contributorFileName: string;
   readonly reloadGist: () => Promise<GitHubGist>;
+  readonly remoteReadbackRetryDelayMs?: readonly number[];
 }): Promise<GitHubGist> {
   let currentReadbackGist = options.readbackGist;
+  const retryDelayMsByAttempt =
+    options.remoteReadbackRetryDelayMs ?? defaultRemoteReadbackRetryDelayMs;
+  const totalAttempts = retryDelayMsByAttempt.length + 1;
 
-  for (
-    let attempt = 1;
-    attempt <= remoteReadbackValidationAttempts;
-    attempt += 1
-  ) {
+  for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
     try {
       return resolveVerifiedRemoteState({
         readbackGist: currentReadbackGist,
@@ -534,11 +553,17 @@ async function resolveVerifiedRemoteStateWithRetry(options: {
       });
     } catch (error) {
       if (
-        !isUnreadableSharedPublishFilesError(error) ||
-        attempt === remoteReadbackValidationAttempts
+        !isRetryableRemoteReadbackError(error) ||
+        attempt === totalAttempts
       ) {
         throw error;
       }
+    }
+
+    const retryDelayMs = retryDelayMsByAttempt[attempt - 1] ?? 0;
+
+    if (retryDelayMs > 0) {
+      await delay(retryDelayMs);
     }
 
     try {
@@ -561,7 +586,8 @@ export async function publishBadgeIfChanged({
   publisherObservations,
   client,
   now,
-  skipIfUnchanged
+  skipIfUnchanged,
+  remoteReadbackRetryDelayMs
 }: PublishBadgeIfChangedOptions): Promise<PublishBadgeIfChangedResult> {
   if (config.publish.gistId === null) {
     throw new Error("Cannot publish badge JSON without a configured gist id.");
@@ -700,7 +726,8 @@ export async function publishBadgeIfChanged({
         fallbackGist,
         candidateHash,
         contributorFileName: localContributorFileName,
-        reloadGist: () => client.getGist(gistId)
+        reloadGist: () => client.getGist(gistId),
+        remoteReadbackRetryDelayMs
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -794,7 +821,8 @@ export async function publishBadgeIfChanged({
       fallbackGist,
       candidateHash,
       contributorFileName: localContributorFileName,
-      reloadGist: () => client.getGist(gistId)
+      reloadGist: () => client.getGist(gistId),
+      remoteReadbackRetryDelayMs
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -841,7 +869,8 @@ export async function publishBadgeToGist({
   config,
   state,
   publisherObservations,
-  client
+  client,
+  remoteReadbackRetryDelayMs
 }: PublishBadgeToGistOptions): Promise<PublishBadgeToGistResult> {
   return publishBadgeIfChanged({
     config,
@@ -849,6 +878,7 @@ export async function publishBadgeToGist({
     publisherObservations,
     client,
     now: new Date().toISOString(),
-    skipIfUnchanged: false
+    skipIfUnchanged: false,
+    remoteReadbackRetryDelayMs
   });
 }

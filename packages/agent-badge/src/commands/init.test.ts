@@ -579,6 +579,7 @@ describe("runInitCommand", () => {
         env: {
           GH_TOKEN: "test-token"
         },
+        publishRemoteReadbackRetryDelayMs: [0, 0],
         stdout: output.writer,
         gistClient: {
           createPublicGist: async () => createGistMetadata("gist_created"),
@@ -662,6 +663,7 @@ describe("runInitCommand", () => {
         env: {
           GH_TOKEN: "test-token"
         },
+        publishRemoteReadbackRetryDelayMs: [0, 0],
         stdout: output.writer,
         gistClient: {
           createPublicGist: async () => createGistMetadata("gist_created"),
