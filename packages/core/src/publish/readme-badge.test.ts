@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   AGENT_BADGE_README_END_MARKER,
+  AGENT_BADGE_PROJECT_URL,
   AGENT_BADGE_README_START_MARKER,
   buildReadmeBadgeMarkdown,
   buildReadmeBadgeSnippet,
@@ -56,13 +57,13 @@ ${AGENT_BADGE_README_END_MARKER}
     const badgeMarkdown = buildReadmeBadgeMarkdown({
       label: "AI Usage",
       badgeUrl: "https://img.shields.io/endpoint?url=https%3A%2F%2Fexample.com",
-      linkUrl: "https://github.com/octocat/hello-world"
+      linkUrl: AGENT_BADGE_PROJECT_URL
     });
 
     expect(upsertReadmeBadge("# agent-badge\n", badgeMarkdown)).toBe(`${
       AGENT_BADGE_README_START_MARKER
     }
-[![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fexample.com)](https://github.com/octocat/hello-world)
+[![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fexample.com)](${AGENT_BADGE_PROJECT_URL})
 ${AGENT_BADGE_README_END_MARKER}
 
 # agent-badge
@@ -85,10 +86,10 @@ describe("buildReadmeBadgeSnippet", () => {
       buildReadmeBadgeSnippet({
         label: "AI Usage",
         badgeUrl: "https://img.shields.io/endpoint?url=https%3A%2F%2Fexample.com",
-        linkUrl: "https://github.com/octocat/hello-world"
+        linkUrl: AGENT_BADGE_PROJECT_URL
       })
     ).toBe(
-      "[![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fexample.com)](https://github.com/octocat/hello-world)"
+      `[![AI Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fexample.com)](${AGENT_BADGE_PROJECT_URL})`
     );
   });
 });

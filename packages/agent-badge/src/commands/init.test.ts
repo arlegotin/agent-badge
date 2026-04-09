@@ -406,7 +406,7 @@ describe("runInitCommand", () => {
       expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
       expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
       expect(readmeContent).toContain(
-        "![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
+        "[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
@@ -1139,7 +1139,7 @@ describe("runInitCommand", () => {
     }
   });
 
-  it("prints a pasteable snippet when README is missing", async () => {
+  it("prints a linked snippet when README is missing", async () => {
     const repo = await createRepoFixture({
       readme: false,
       files: {
@@ -1166,14 +1166,14 @@ describe("runInitCommand", () => {
 
       expect(existsSync(join(repo.root, "README.md"))).toBe(false);
       expect(output.read()).toContain(
-        "- Badge snippet: ![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)"
+        "- Badge snippet: [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
   });
 
-  it("links the managed README badge to the normalized origin URL when origin is configured", async () => {
+  it("links the managed README badge to the agent-badge project URL when origin is configured", async () => {
     const repo = await createRepoFixture({
       files: {
         "package-lock.json": "{}"
@@ -1200,14 +1200,14 @@ describe("runInitCommand", () => {
       const readmeContent = await readReadmeContent(repo.root);
 
       expect(readmeContent).toContain(
-        "[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/owner/repo)"
+        "[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
   });
 
-  it("prints a linked snippet when README is missing and origin is configured", async () => {
+  it("prints the project-linked snippet when README is missing and origin is configured", async () => {
     const repo = await createRepoFixture({
       readme: false,
       files: {
@@ -1235,7 +1235,7 @@ describe("runInitCommand", () => {
       });
 
       expect(output.read()).toContain(
-        "- Badge snippet: [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/owner/repo)"
+        "- Badge snippet: [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);

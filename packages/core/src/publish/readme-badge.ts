@@ -1,5 +1,7 @@
 export const AGENT_BADGE_README_START_MARKER = "<!-- agent-badge:start -->";
 export const AGENT_BADGE_README_END_MARKER = "<!-- agent-badge:end -->";
+export const AGENT_BADGE_PROJECT_URL =
+  "https://github.com/arlegotin/agent-badge";
 
 export interface ReadmeBadgeMarkupOptions {
   readonly label: string;

@@ -138,11 +138,9 @@ require_fixed "Do this once on each machine" README.md
 require_fixed "Do this in each repo" README.md
 require_fixed "quick install path" README.md
 require_fixed "shared runtime" README.md
-require_fixed "Shared runtime: unavailable" README.md
+require_fixed "https://github.com/arlegotin/agent-badge" README.md
+require_fixed "live repo data everywhere" README.md
 require_fixed "## What Gets Published" README.md
-require_fixed "Badge setup deferred" README.md
-require_fixed "connected existing gist" README.md
-require_fixed "reused existing gist" README.md
 require_fixed "## Documentation" README.md
 require_fixed "### User Docs" README.md
 require_fixed "### Maintainer Docs" README.md
@@ -230,6 +228,8 @@ for file in "${public_docs[@]}"; do
 done
 
 forbid_ere "repo-local runtime|local runtime" README.md docs/INSTALL.md docs/QUICKSTART.md docs/CLI.md docs/HOW-IT-WORKS.md
+forbid_ere "img\\.shields\\.io/badge/" README.md
+forbid_ere '42%20tokens|42 tokens|\$58' README.md
 forbid_ere "Use the repo-local wrapper that matches your package manager" docs/CLI.md
 forbid_ere "which then installs the actual runtime package" docs/FAQ.md
 forbid_ere "npx --no-install agent-badge init" docs/AUTH.md docs/UNINSTALL.md docs/TROUBLESHOOTING.md docs/RECOVERY.md

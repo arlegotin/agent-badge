@@ -6,6 +6,13 @@ All notable package releases are tracked here.
 
 - No unreleased notes yet.
 
+## 1.1.18 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.18`.
+- Made generated README badge markup consistently link to `https://github.com/arlegotin/agent-badge` instead of per-repo origin URLs.
+- Replaced the README gallery's fake static badge counts with live gist-backed badge examples that keep real data visible under mode, style, label, and color previews.
+- Release commit: created by the release workflow after publish.
+
 ## 1.1.17 - 2026-04-09
 
 - Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.17`.

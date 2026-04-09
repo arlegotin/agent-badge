@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 import {
+  AGENT_BADGE_PROJECT_URL,
   applyPublishTargetResult,
   applyAgentBadgeScaffold,
   applyMinimalRepoScaffold,
@@ -22,7 +23,6 @@ import {
   parseAgentBadgeConfig,
   parseAgentBadgeState,
   publishBadgeToGist,
-  resolveRepoFingerprint,
   resolveGitHubAuthToken,
   runInitPreflight,
   runIncrementalRefresh,
@@ -374,13 +374,7 @@ async function writeReadmeBadgeOutput(options: {
     return;
   }
 
-  const repoFingerprint = options.preflight.git.isRepo
-    ? await resolveRepoFingerprint({
-        cwd: options.cwd,
-        config: options.config
-      })
-    : null;
-  const linkUrl = repoFingerprint?.originUrlNormalized ?? null;
+  const linkUrl = AGENT_BADGE_PROJECT_URL;
 
   if (!options.preflight.readme.exists || options.preflight.readme.fileName === null) {
     writeLines(options.stdout, [
