@@ -56,7 +56,11 @@ If you do not want the initializer, install `@legotin/agent-badge` directly and 
 | yarn | `yarn add -D @legotin/agent-badge` | `yarn agent-badge init` |
 | bun | `bun add -d @legotin/agent-badge` | `bunx --bun agent-badge init` |
 
-The runtime detects the repo package manager and writes the managed `pre-push` hook accordingly.
+The managed `pre-push` hook uses the shared command contract directly:
+
+```bash
+agent-badge refresh --hook pre-push --hook-policy fail-soft || true
+```
 
 ## Package Names
 

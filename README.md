@@ -30,7 +30,10 @@ If GitHub auth is already available, init creates a public gist, publishes the f
 If GitHub auth is not available yet, init still completes the repo-owned scaffold and ends with:
 
 - `- Publish target: deferred`
+- `- Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun agent-badge init --gist-id <id> to connect an existing public gist.`
 - `- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun agent-badge init or connect a public gist with agent-badge init --gist-id <id>.`
+
+Other successful `init` runs can end with `- Publish target: connected existing gist` or `- Publish target: reused existing gist`, and when publish succeeds but the shared runtime is unavailable, setup ends with guidance to repair the shared runtime before relying on pre-push refresh.
 
 The default path is shared-runtime/global-first: `npm init agent-badge@latest` writes `.agent-badge/*`, managed `.gitignore` entries, and the direct shared `pre-push` hook, but it does not install repo-local `node_modules`, `agent-badge:init`, or `agent-badge:refresh` by default.
 

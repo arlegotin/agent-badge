@@ -61,6 +61,7 @@ If auth is missing during init:
 
 ```text
 - Publish target: deferred
+- Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
 - Setup: repo setup complete, but GitHub auth is still required before the live badge can publish.
 ```
 

@@ -24,6 +24,7 @@ At the end of init, look for the final `- Setup:` line:
 
 - `- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.` means the shared runtime and live badge flow are ready.
 - `- Setup: repo setup complete, but GitHub auth is still required...` means the minimal repo scaffold is in place, but you still need GitHub auth before the gist-backed badge can publish.
+- `- Setup: repo setup complete and the live badge was published, but the shared runtime is not on PATH yet...` means publish succeeded, but you still need to repair or install the shared runtime before relying on pre-push refresh.
 
 Typical init output starts with the real preflight checks:
 
@@ -43,6 +44,8 @@ When auth is available, the final publish lines look like this:
 - Publish target: created public gist
 - Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
 ```
+
+If you reconnect or reuse an existing gist, the same flow can report `- Publish target: connected existing gist` or `- Publish target: reused existing gist`.
 
 When auth is missing, the final publish lines look like this:
 

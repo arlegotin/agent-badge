@@ -36,8 +36,12 @@ or:
 
 ```text
 - Publish target: deferred
+- Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
 - Setup: repo setup complete, but GitHub auth is still required before the live badge can publish.
 ```
+
+Additional valid `- Publish target:` outcomes are `connected existing gist` and `reused existing gist`.
+When publish succeeds but the shared runtime is missing or broken, `- Setup:` reports that the live badge published but shared runtime repair is still required before relying on pre-push refresh.
 
 ## `scan`
 
@@ -102,7 +106,7 @@ agent-badge refresh [--hook pre-push] [--hook-policy <fail-soft|strict>] [--fail
 Notes:
 
 - `--fail-soft` cannot be combined with `--hook-policy strict`
-- the managed pre-push hook uses `agent-badge refresh --hook pre-push --hook-policy fail-soft` by default
+- the managed pre-push hook uses `agent-badge refresh --hook pre-push --hook-policy fail-soft || true` by default
 
 When a stale publish is repaired successfully, refresh reports:
 

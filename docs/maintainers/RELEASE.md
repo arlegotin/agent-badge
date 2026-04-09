@@ -79,7 +79,6 @@ npm run release:evidence \
 
 The important part is the placeholder contract:
 
-- `--version <release-version>`
 - `artifacts/releases/<release-version>/...`
 - `PUBLISH-EVIDENCE`
 
