@@ -56,6 +56,18 @@ require_fixed() {
   grep -nF -- "${pattern}" "${file}" >/dev/null
 }
 
+has_fixed() {
+  local pattern="$1"
+  local file="$2"
+
+  if command -v rg >/dev/null 2>&1; then
+    rg -n -F -- "${pattern}" "${file}" >/dev/null
+    return $?
+  fi
+
+  grep -nF -- "${pattern}" "${file}" >/dev/null
+}
+
 require_ere() {
   local pattern="$1"
   local file="$2"
@@ -102,7 +114,21 @@ if [[ "${runtime_version}" != "${create_version}" || "${runtime_version}" != "${
   exit 1
 fi
 
-require_fixed "## ${runtime_version} -" CHANGELOG.md
+if ! has_fixed "## ${runtime_version} -" CHANGELOG.md; then
+  IFS='.' read -r major minor patch <<< "${runtime_version}"
+
+  if [[ "${patch}" =~ ^[0-9]+$ && "${patch}" -gt 0 ]]; then
+    previous_version="${major}.${minor}.$((patch - 1))"
+
+    if ! has_fixed "## ${previous_version} -" CHANGELOG.md; then
+      echo "CHANGELOG.md must include release heading for ${runtime_version} (or ${previous_version} immediately after auto-bump publish)." >&2
+      exit 1
+    fi
+  else
+    echo "CHANGELOG.md must include release heading for ${runtime_version}." >&2
+    exit 1
+  fi
+fi
 
 require_fixed "## 60-Second Path" README.md
 require_fixed "npm init agent-badge@latest" README.md

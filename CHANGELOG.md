@@ -6,6 +6,12 @@ All notable package releases are tracked here.
 
 - No unreleased notes yet.
 
+## 1.1.14 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.14`.
+- Fixed shared runtime validation to support backward-compatible probing (`--version` with compatibility fallback), preventing false `shared runtime could not be validated` outcomes when an older global CLI is installed.
+- Release commit: `1a1bd88`.
+
 ## 1.1.13 - 2026-04-09
 
 - Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.13`.
