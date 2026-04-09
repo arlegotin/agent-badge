@@ -60,6 +60,8 @@ The badge at the top of this README is live. The gallery below also uses live re
 | [![AI receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300&label=AI%20receipt&color=orange)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color orange` |
 | [![Ship budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=Ship%20budget&color=red&style=for-the-badge)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "Ship budget"`<br>`agent-badge config set badge.color red`<br>`agent-badge config set badge.style for-the-badge` |
 
+When the configuration changes, run `agent-badge refresh`.
+
 ## Documentation
 
 ### User Docs
