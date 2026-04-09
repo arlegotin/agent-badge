@@ -42,6 +42,13 @@ describe("buildProgram", () => {
     expect(program.name()).toBe("agent-badge");
   });
 
+  it("registers a top-level --version option", () => {
+    const program = buildProgram();
+    const optionFlags = program.options.map((option) => option.flags);
+
+    expect(optionFlags).toContain("--version");
+  });
+
   it("registers the init command", () => {
     const program = buildProgram();
     const commandNames = program.commands.map((command) => command.name());

@@ -55,6 +55,19 @@ describe("inspectSharedRuntime", () => {
     });
   });
 
+  it("trims surrounding whitespace from the reported version", () => {
+    spawnSyncMock.mockReturnValue(
+      createSpawnResult({
+        stdout: "  1.2.3  \n"
+      })
+    );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "available",
+      version: "1.2.3"
+    });
+  });
+
   it("returns missing when the shared runtime is not resolvable on PATH", () => {
     spawnSyncMock.mockReturnValue(
       createSpawnResult({
@@ -66,6 +79,20 @@ describe("inspectSharedRuntime", () => {
 
     expect(inspectSharedRuntime()).toEqual({
       status: "missing"
+    });
+  });
+
+  it("returns broken when the shared runtime exits unsuccessfully", () => {
+    spawnSyncMock.mockReturnValue(
+      createSpawnResult({
+        status: 1,
+        stderr: "error: unknown option '--version'\n"
+      })
+    );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "broken",
+      detail: "error: unknown option '--version'"
     });
   });
 });

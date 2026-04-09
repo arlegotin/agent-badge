@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
@@ -51,12 +52,32 @@ function parseRefreshHookPolicy(
   throw new Error(`Unsupported hook policy: ${value}`);
 }
 
+function resolveCliVersion(): string {
+  const currentFilePath = fileURLToPath(import.meta.url);
+  const packageJsonPath = resolve(dirname(currentFilePath), "..", "..", "package.json");
+
+  try {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      readonly version?: unknown;
+    };
+
+    if (typeof packageJson.version === "string" && packageJson.version.length > 0) {
+      return packageJson.version;
+    }
+  } catch {
+    // Fall back to a stable placeholder when package metadata is unavailable.
+  }
+
+  return "0.0.0";
+}
+
 export function buildProgram(): Command {
   const program = new Command();
 
   program
     .name("agent-badge")
-    .description("Track and publish privacy-safe AI usage badges for repositories.");
+    .description("Track and publish privacy-safe AI usage badges for repositories.")
+    .version(resolveCliVersion(), "--version", "print the installed CLI version");
 
   program
     .command("init")
