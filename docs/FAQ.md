@@ -12,6 +12,10 @@ That is supported. `agent-badge` scans whichever provider directories exist on t
 
 No. Local setup still completes. Live gist publishing is deferred until auth is available.
 
+## Why did init say `Shared runtime: unavailable`?
+
+That means the shared CLI is not currently callable from your shell `PATH`, or the installed binary is broken. Install or upgrade `@legotin/agent-badge` globally, run `hash -r`, verify `agent-badge --version`, then rerun `agent-badge init` or `agent-badge doctor`.
+
 ## What gets uploaded?
 
 Aggregate badge payloads and shared metadata only. No prompt text, transcript text, filenames, or local paths are published.

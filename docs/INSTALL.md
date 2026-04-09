@@ -2,6 +2,8 @@
 
 `agent-badge` is npm-initializer-first. The default path is a shared runtime with minimal repo artifacts, and explicit package installation stays available as an alternative.
 
+If your requirement is "works on the first try without debugging", use only the sequence under **First-Shot Recommended Path**. The one-line initializer path is best-effort and can defer publish or report shared runtime repair guidance.
+
 ## Requirements
 
 | Requirement | Supported | Why it matters |
@@ -74,7 +76,7 @@ If GitHub auth is not available yet, init finishes with:
 - Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.
 ```
 
-If the shared runtime is not on `PATH` yet, install it once globally or user-scoped, or choose the direct package-install path below.
+If the shared runtime is not on `PATH` yet (for example, init reports `Shared runtime: unavailable`), install it once globally or user-scoped, run `hash -r`, verify `agent-badge --version`, then rerun `agent-badge init` or `agent-badge doctor`.
 
 ## Alternative: Direct Runtime Install
 

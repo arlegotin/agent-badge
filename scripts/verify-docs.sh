@@ -131,9 +131,15 @@ if ! has_fixed "## ${runtime_version} -" CHANGELOG.md; then
 fi
 
 require_fixed "## 60-Second Path" README.md
+require_fixed "npm install -g @legotin/agent-badge@latest" README.md
+require_fixed "agent-badge --version" README.md
+require_fixed "gh auth token >/dev/null" README.md
+require_fixed "agent-badge doctor" README.md
+require_fixed "agent-badge status" README.md
 require_fixed "npm init agent-badge@latest" README.md
 require_fixed "shared runtime" README.md
 require_fixed "no-debug path" README.md
+require_fixed "Shared runtime: unavailable" README.md
 require_fixed "## What Gets Published" README.md
 require_fixed "Badge setup deferred" README.md
 require_fixed "connected existing gist" README.md
@@ -191,6 +197,7 @@ require_fixed "shared runtime could not be validated" docs/QUICKSTART.md
 require_fixed "shared runtime" docs/HOW-IT-WORKS.md
 require_fixed "preserves data unless you explicitly ask it to purge more" docs/UNINSTALL.md
 require_fixed "thin initializer entrypoint" docs/FAQ.md
+require_fixed '## Why did init say `Shared runtime: unavailable`?' docs/FAQ.md
 require_fixed "## shared runtime could not be validated" docs/TROUBLESHOOTING.md
 require_fixed "agent-badge --version" docs/TROUBLESHOOTING.md
 

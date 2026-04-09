@@ -19,13 +19,29 @@
 Some people want transparency.<br>
 Some people just want to flex how hard they ship with agents.
 
-`agent-badge` works for both:
+For a strict first-shot setup without debugging, run this exact sequence:
+
+```bash
+npm install -g @legotin/agent-badge@latest
+hash -r
+agent-badge --version
+gh auth token >/dev/null
+npm init agent-badge@latest
+agent-badge doctor
+agent-badge status
+```
+
+That is the no-debug path.
+
+If you want the fastest best-effort path instead, run:
 
 ```bash
 npm init agent-badge@latest
 ```
 
-If you want the strict no-debug path (runtime preinstalled, auth prechecked, and post-init verification commands), use the exact sequence in [docs/INSTALL.md](docs/INSTALL.md#first-shot-recommended-path).
+The one-liner is intentionally best-effort. If runtime setup is not ready yet, init can still finish repo wiring and end with `Shared runtime: unavailable` plus setup guidance to install/repair the shared CLI before relying on pre-push refresh.
+
+For full support details, use [docs/INSTALL.md](docs/INSTALL.md#first-shot-recommended-path) and [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#shared-runtime-could-not-be-validated).
 
 If GitHub auth is already available, init creates a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
