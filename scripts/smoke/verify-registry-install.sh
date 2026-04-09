@@ -180,6 +180,40 @@ assert_log_contains() {
   fi
 }
 
+assert_no_managed_runtime_manifest_ownership() {
+  local package_json_path=$1
+  local issue_prefix=$2
+  local scope=$3
+
+  if [[ ! -f "${package_json_path}" ]]; then
+    return
+  fi
+
+  if ! node --input-type=module -e '
+    import { readFileSync } from "node:fs";
+
+    const packageJson = JSON.parse(readFileSync(process.argv[1], "utf8"));
+    const scripts = packageJson.scripts ?? {};
+    const devDependencies = packageJson.devDependencies ?? {};
+
+    if (
+      scripts["agent-badge:init"] !== undefined ||
+      scripts["agent-badge:refresh"] !== undefined ||
+      devDependencies["@legotin/agent-badge"] !== undefined
+    ) {
+      process.exit(1);
+    }
+  ' "${package_json_path}"; then
+    if [[ "${scope}" == "runtime" ]]; then
+      RUNTIME_STATUS="blocked"
+    else
+      INITIALIZER_STATUS="blocked"
+    fi
+
+    mark_blocked "${issue_prefix}"
+  fi
+}
+
 check_import() {
   local package_name=$1
   local log_path=$2
@@ -270,7 +304,7 @@ else
 
   if ! env -u GH_TOKEN -u GITHUB_TOKEN -u GITHUB_PAT \
     npm_config_cache="${NPM_CACHE_DIR}" \
-    ./node_modules/.bin/agent-badge init >"${RUNTIME_LOG}" 2>&1; then
+    npx agent-badge init >"${RUNTIME_LOG}" 2>&1; then
     RUNTIME_STATUS="blocked"
     record_command_failure "agent-badge init failed during runtime smoke" "${RUNTIME_LOG}"
   fi
@@ -292,6 +326,10 @@ else
     ".git/hooks/pre-push" \
     "npm run --silent agent-badge:refresh" \
     "runtime hook still uses npm run wrapper" \
+    "runtime"
+  assert_no_managed_runtime_manifest_ownership \
+    "package.json" \
+    "runtime left managed agent-badge manifest ownership in package.json" \
     "runtime"
   assert_log_contains \
     "${RUNTIME_LOG}" \
@@ -345,16 +383,10 @@ if [[ "${CHECK_INITIALIZER}" == "true" ]]; then
     "npm run --silent agent-badge:refresh" \
     "initializer hook still uses npm run wrapper" \
     "initializer"
-  assert_file \
-    "node_modules/.bin/agent-badge" \
-    "initializer missing repo-local agent-badge binary after npm init agent-badge@${VERSION}" \
+  assert_no_managed_runtime_manifest_ownership \
+    "package.json" \
+    "initializer created managed agent-badge manifest ownership after npm init agent-badge@${VERSION}" \
     "initializer"
-
-  if ! npm_config_cache="${NPM_CACHE_DIR}" npx --no-install agent-badge --help >/dev/null 2>&1; then
-    INITIALIZER_STATUS="blocked"
-    mark_blocked \
-      "initializer failed to expose agent-badge through npx --no-install after npm init agent-badge@${VERSION}"
-  fi
   popd >/dev/null
 fi
 
