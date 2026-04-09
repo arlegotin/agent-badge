@@ -68,6 +68,60 @@ describe("inspectSharedRuntime", () => {
     });
   });
 
+  it("falls back to refresh help and reports an unknown version when --version is unsupported", () => {
+    spawnSyncMock
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 1,
+          stderr: "error: unknown option '--version'\n"
+        })
+      )
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 0,
+          stdout: "Usage: agent-badge refresh [options]\n"
+        })
+      );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "available",
+      version: "unknown"
+    });
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(
+      2,
+      "agent-badge",
+      ["refresh", "--help"],
+      {
+        encoding: "utf8",
+        env: process.env,
+        shell: false,
+        stdio: "pipe",
+        windowsHide: true
+      }
+    );
+  });
+
+  it("falls back to refresh help when version output is empty", () => {
+    spawnSyncMock
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 0,
+          stdout: "\n"
+        })
+      )
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 0,
+          stdout: "Usage: agent-badge refresh [options]\n"
+        })
+      );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "available",
+      version: "unknown"
+    });
+  });
+
   it("returns missing when the shared runtime is not resolvable on PATH", () => {
     spawnSyncMock.mockReturnValue(
       createSpawnResult({
@@ -82,17 +136,47 @@ describe("inspectSharedRuntime", () => {
     });
   });
 
-  it("returns broken when the shared runtime exits unsuccessfully", () => {
-    spawnSyncMock.mockReturnValue(
-      createSpawnResult({
-        status: 1,
-        stderr: "error: unknown option '--version'\n"
-      })
-    );
+  it("returns broken with both probe details when version and compatibility probes fail", () => {
+    spawnSyncMock
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 1,
+          stderr: "error: unknown option '--version'\n"
+        })
+      )
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 1,
+          stderr: "error: unknown command 'refresh'\n"
+        })
+      );
 
     expect(inspectSharedRuntime()).toEqual({
       status: "broken",
-      detail: "error: unknown option '--version'"
+      detail:
+        "Version probe failed: error: unknown option '--version' | Compatibility probe failed: error: unknown command 'refresh'"
+    });
+  });
+
+  it("returns broken when version output is empty and compatibility probe fails", () => {
+    spawnSyncMock
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 0,
+          stdout: "\n"
+        })
+      )
+      .mockReturnValueOnce(
+        createSpawnResult({
+          status: 1,
+          stderr: "permission denied\n"
+        })
+      );
+
+    expect(inspectSharedRuntime()).toEqual({
+      status: "broken",
+      detail:
+        "Version probe returned empty output. Compatibility probe failed: permission denied"
     });
   });
 });

@@ -229,7 +229,9 @@ function formatSharedRuntimeLine(
 
   switch (inspection.status) {
     case "available":
-      return `Shared runtime: available (${inspection.version})`;
+      return inspection.version === "unknown"
+        ? "Shared runtime: available (version unavailable)"
+        : `Shared runtime: available (${inspection.version})`;
     case "missing":
       return `Shared runtime: missing. ${remediation}`;
     case "broken":

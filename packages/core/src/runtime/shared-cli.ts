@@ -25,10 +25,26 @@ const sharedRuntimeInstallCommands = [
   "bun add -g @legotin/agent-badge"
 ] as const;
 
-export function inspectSharedRuntime(
-  env: NodeJS.ProcessEnv = process.env
-): SharedRuntimeInspection {
-  const result = spawnSync("agent-badge", ["--version"], {
+const unknownSharedRuntimeVersion = "unknown";
+
+type SharedRuntimeProbeResult =
+  | {
+      readonly status: "ok";
+      readonly stdout: string;
+    }
+  | {
+      readonly status: "missing";
+    }
+  | {
+      readonly status: "failed";
+      readonly detail: string;
+    };
+
+function probeSharedRuntimeCommand(
+  args: readonly string[],
+  env: NodeJS.ProcessEnv
+): SharedRuntimeProbeResult {
+  const result = spawnSync("agent-badge", [...args], {
     encoding: "utf8",
     env,
     shell: false,
@@ -42,21 +58,68 @@ export function inspectSharedRuntime(
     }
 
     return {
-      status: "broken",
+      status: "failed",
       detail: result.error.message
     };
   }
 
   if (result.status !== 0) {
+    const commandLabel = ["agent-badge", ...args].join(" ");
+
     return {
-      status: "broken",
-      detail: result.stderr.trim() || result.stdout.trim() || "agent-badge exited unsuccessfully."
+      status: "failed",
+      detail:
+        result.stderr.trim() ||
+        result.stdout.trim() ||
+        `${commandLabel} exited unsuccessfully.`
     };
   }
 
   return {
-    status: "available",
-    version: result.stdout.trim()
+    status: "ok",
+    stdout: result.stdout.trim()
+  };
+}
+
+export function inspectSharedRuntime(
+  env: NodeJS.ProcessEnv = process.env
+): SharedRuntimeInspection {
+  const versionProbe = probeSharedRuntimeCommand(["--version"], env);
+
+  if (versionProbe.status === "missing") {
+    return { status: "missing" };
+  }
+
+  if (versionProbe.status === "ok" && versionProbe.stdout.length > 0) {
+    return {
+      status: "available",
+      version: versionProbe.stdout
+    };
+  }
+
+  const compatibilityProbe = probeSharedRuntimeCommand(["refresh", "--help"], env);
+
+  if (compatibilityProbe.status === "missing") {
+    return { status: "missing" };
+  }
+
+  if (compatibilityProbe.status === "ok") {
+    return {
+      status: "available",
+      version: unknownSharedRuntimeVersion
+    };
+  }
+
+  if (versionProbe.status === "failed") {
+    return {
+      status: "broken",
+      detail: `Version probe failed: ${versionProbe.detail} | Compatibility probe failed: ${compatibilityProbe.detail}`
+    };
+  }
+
+  return {
+    status: "broken",
+    detail: `Version probe returned empty output. Compatibility probe failed: ${compatibilityProbe.detail}`
   };
 }
 
