@@ -31,7 +31,10 @@ import {
   agentBadgeHookEndMarker,
   agentBadgeHookStartMarker
 } from "../init/runtime-wiring.js";
-import { resolveGitHubAuthToken } from "../init/github-auth.js";
+import {
+  resolveGitHubAuthToken,
+  type GitHubAuthStatus
+} from "../init/github-auth.js";
 import type { GhCliTokenResolver } from "../init/github-auth.js";
 import { runInitPreflight, type InitPreflightResult } from "../init/preflight.js";
 import { buildSharedRuntimeRemediation } from "../runtime/shared-cli.js";
@@ -323,9 +326,9 @@ async function checkScanAccess(preflight: InitPreflightResult): Promise<DoctorCh
   };
 }
 
-function checkPublishAuth(preflight: InitPreflightResult): DoctorCheck {
+function checkPublishAuth(githubAuth: GitHubAuthStatus): DoctorCheck {
   const readiness = inspectPublishReadiness({
-    githubAuth: preflight.githubAuth
+    githubAuth
   });
 
   if (readiness.status === "auth-missing") {
@@ -341,7 +344,7 @@ function checkPublishAuth(preflight: InitPreflightResult): DoctorCheck {
   return {
     id: "publish-auth",
     status: "pass",
-    message: `GitHub auth detected (${preflight.githubAuth.source})`,
+    message: `GitHub auth detected (${githubAuth.source})`,
     detail: "GitHub auth token is available for credential checks.",
     fix: []
   };
@@ -1158,7 +1161,8 @@ export async function runDoctorChecks(
   const preflight = await runInitPreflight({
     cwd,
     homeRoot: options.homeRoot,
-    env: options.env
+    env: options.env,
+    ghCliTokenResolver: options.ghCliTokenResolver
   });
   const persisted = await readPersistedConfig(cwd);
   const persistedState = await readPersistedState(cwd);
@@ -1166,6 +1170,13 @@ export async function runDoctorChecks(
     env: options.env,
     ghCliTokenResolver: options.ghCliTokenResolver
   });
+  const githubAuth: GitHubAuthStatus =
+    resolvedAuth.source === "none"
+      ? preflight.githubAuth
+      : {
+          available: true,
+          source: resolvedAuth.source
+        };
   const gistClient =
     options.gistClient ??
     createGitHubGistClient({
@@ -1177,7 +1188,7 @@ export async function runDoctorChecks(
   checks.push(checkGit(preflight));
   checks.push(checkProviders(preflight));
   checks.push(await checkScanAccess(preflight));
-  checks.push(checkPublishAuth(preflight));
+  checks.push(checkPublishAuth(githubAuth));
   checks.push(
     await checkPublishWrite({
       config: persisted.config,

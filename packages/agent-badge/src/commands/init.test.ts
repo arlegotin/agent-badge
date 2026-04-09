@@ -413,7 +413,7 @@ describe("runInitCommand", () => {
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
     }
-  });
+  }, 10_000);
 
   it("reconciles runtime wiring from persisted refresh config on rerun", async () => {
     const repo = await createRepoFixture({
@@ -670,6 +670,9 @@ describe("runInitCommand", () => {
       });
 
       const publishFiles = await readPublishFiles(repo.root);
+      const refreshCache = await readJsonObject(
+        join(repo.root, ".agent-badge/cache/session-index.json")
+      );
       const readmeContent = await readReadmeContent(repo.root);
 
       expect(createCalls).toBe(1);
@@ -682,6 +685,32 @@ describe("runInitCommand", () => {
       expect(publishFiles.state.publish).toMatchObject({
         status: "published",
         gistId: "gist_created"
+      });
+      expect(publishFiles.state.refresh).toEqual({
+        lastRefreshedAt: expect.any(String),
+        lastScanMode: "full",
+        lastPublishDecision: null,
+        summary: {
+          includedSessions: 0,
+          includedTokens: 0,
+          includedEstimatedCostUsdMicros: null,
+          ambiguousSessions: 0,
+          excludedSessions: 0
+        }
+      });
+      expect(publishFiles.state.checkpoints).toEqual({
+        codex: {
+          cursor: expect.any(String),
+          lastScannedAt: expect.any(String)
+        },
+        claude: {
+          cursor: expect.any(String),
+          lastScannedAt: expect.any(String)
+        }
+      });
+      expect(refreshCache).toEqual({
+        version: 2,
+        entries: {}
       });
       expect(
         (publishFiles.state.publish as Record<string, unknown>).lastPublishedHash

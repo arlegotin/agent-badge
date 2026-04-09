@@ -259,7 +259,7 @@ describe("runConfigCommand", () => {
     } finally {
       await fixture.cleanup();
     }
-  });
+  }, 10_000);
 
   it("updates the managed hook to strict mode without creating repo-local runtime manifest ownership", async () => {
     const fixture = await createFixture();

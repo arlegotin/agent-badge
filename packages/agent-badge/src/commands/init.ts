@@ -3,18 +3,15 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 import {
-  attributeBackfillSessions,
   applyPublishTargetResult,
   applyAgentBadgeScaffold,
   applyMinimalRepoScaffold,
   buildSharedRuntimeRemediation,
-  buildSharedOverrideDigest,
   buildReadmeBadgeMarkdown,
   buildReadmeBadgeSnippet,
   createGitHubGistClient,
   derivePublishTrustReport,
   deriveRecoveryPlan,
-  estimateSessionCostsUsdMicrosByKey,
   initializeGitRepository,
   ensurePublishTarget,
   formatRecoveryResult,
@@ -27,10 +24,10 @@ import {
   publishBadgeToGist,
   resolveRepoFingerprint,
   resolveGitHubAuthToken,
-  resolvePricingCatalog,
   runInitPreflight,
-  runFullBackfillScan,
+  runIncrementalRefresh,
   upsertReadmeBadge,
+  writeRefreshCache,
   type AgentBadgeScaffoldResult,
   type AgentBadgeConfig,
   type DetectGitHubAuthOptions,
@@ -43,9 +40,13 @@ import {
   type PublishBadgeToGistResult,
   type SharedPublishHealthReport,
   type SharedRuntimeInspection,
-  type SharedContributorObservationMap,
   type AgentBadgeState
 } from "@legotin/agent-badge-core";
+
+import {
+  applyRefreshResultToState,
+  buildPublisherObservationsFromRefreshCache
+} from "./refresh-state.js";
 
 interface OutputWriter {
   write(chunk: string): unknown;
@@ -438,58 +439,6 @@ async function writePersistedState(
   );
 }
 
-function buildSessionKey(session: {
-  readonly provider: string;
-  readonly providerSessionId: string;
-}): string {
-  return `${session.provider}:${session.providerSessionId}`;
-}
-
-async function buildPublisherObservations(options: {
-  readonly attribution: ReturnType<typeof attributeBackfillSessions>;
-  readonly cwd: string;
-  readonly homeRoot: string;
-  readonly includeEstimatedCost: boolean;
-}): Promise<SharedContributorObservationMap> {
-  const estimatedCostBySessionKey = new Map<string, number>();
-
-  if (options.includeEstimatedCost && options.attribution.sessions.length > 0) {
-    const pricingCatalog = await resolvePricingCatalog({ cwd: options.cwd });
-    const estimatedCosts = await estimateSessionCostsUsdMicrosByKey({
-      sessions: options.attribution.sessions.map(
-        (attributedSession) => attributedSession.session
-      ),
-      homeRoot: options.homeRoot,
-      pricingCatalog
-    });
-
-    for (const [sessionKey, estimatedCostUsdMicros] of Object.entries(
-      estimatedCosts
-    )) {
-      estimatedCostBySessionKey.set(sessionKey, estimatedCostUsdMicros);
-    }
-  }
-
-  return Object.fromEntries(
-    options.attribution.sessions.map((attributedSession) => {
-      const sessionKey = buildSessionKey(attributedSession.session);
-
-      return [
-        buildSharedOverrideDigest(sessionKey),
-        {
-          sessionUpdatedAt: attributedSession.session.updatedAt,
-          attributionStatus: attributedSession.status,
-          overrideDecision: attributedSession.overrideApplied,
-          tokens: attributedSession.session.tokenUsage.total,
-          estimatedCostUsdMicros: options.includeEstimatedCost
-            ? (estimatedCostBySessionKey.get(sessionKey) ?? 0)
-            : null
-        }
-      ];
-    })
-  );
-}
-
 export async function runInitCommand(
   options: RunInitCommandOptions = {}
 ): Promise<InitCommandResult> {
@@ -655,27 +604,34 @@ export async function runInitCommand(
   }
 
   try {
-    const scan = await runFullBackfillScan({
+    const refresh = await runIncrementalRefresh({
       cwd: preflight.cwd,
       homeRoot,
-      config: nextPublishState.config
-    });
-    const attribution = attributeBackfillSessions({
-      repo: scan.repo,
-      sessions: scan.sessions,
-      overrides: nextPublishState.state.overrides.ambiguousSessions
-    });
-    const publishResult = await publishBadgeToGist({
       config: nextPublishState.config,
       state: nextPublishState.state,
-      publisherObservations: await buildPublisherObservations({
-        attribution,
+      forceFull: true
+    });
+    const refreshedState = applyRefreshResultToState({
+      previousState: nextPublishState.state,
+      config: nextPublishState.config,
+      refresh,
+      now: new Date().toISOString()
+    });
+
+    await Promise.all([
+      writePersistedState(preflight.cwd, nextPublishState.config, refreshedState),
+      writeRefreshCache({
         cwd: preflight.cwd,
-        homeRoot,
-        includeEstimatedCost:
-          nextPublishState.config.badge.mode === "combined" ||
-          nextPublishState.config.badge.mode === "cost"
-      }),
+        cache: refresh.cache
+      })
+    ]);
+
+    const publishResult = await publishBadgeToGist({
+      config: nextPublishState.config,
+      state: refreshedState,
+      publisherObservations: buildPublisherObservationsFromRefreshCache(
+        refresh.cache
+      ),
       client: gistClient,
       remoteReadbackRetryDelayMs: options.publishRemoteReadbackRetryDelayMs
     });

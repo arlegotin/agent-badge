@@ -87,7 +87,7 @@ export function buildPublishReadinessFixes(
       return [];
     case "auth-missing":
       return buildFix([
-        "Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT in the environment and rerun the command."
+        "Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT in the environment, or authenticate GitHub CLI so `gh auth token` works, then rerun the command."
       ]);
     case "gist-unreachable":
     case "gist-not-public":

@@ -335,6 +335,56 @@ describe("runDoctorChecks", () => {
 
       expect(publishAuth?.status).toBe("warn");
       expect(publishAuth?.fix[0]).toContain("GH_TOKEN");
+      expect(publishAuth?.fix[0]).toContain("gh auth token");
+    } finally {
+      globalThis.fetch = originalFetch;
+      await fixture.repo.cleanup();
+      await fixture.home.cleanup();
+    }
+  });
+
+  it("accepts GitHub CLI auth when the resolver provides a token", async () => {
+    const fixture = await createRepoFixture();
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => new Response("ok", { status: 200 });
+
+      const result = asRunResult(
+        await runDoctorChecks({
+          cwd: fixture.repo.root,
+          homeRoot: fixture.home.root,
+          env: {},
+          ghCliTokenResolver: () => "gh-cli-token",
+          gistClient: {
+            getGist: async () => ({
+              id: "doctorgist",
+              ownerLogin: "octocat",
+              public: true,
+              files: {
+                [AGENT_BADGE_GIST_FILE]: {
+                  filename: AGENT_BADGE_GIST_FILE,
+                  content: `{"schemaVersion":1,"label":"AI Usage","message":"42 tokens","color":"#E8A515"}`,
+                  truncated: false
+                }
+              }
+            }),
+            createPublicGist: async () => {
+              throw new Error("createPublicGist should not run");
+            },
+            updateGistFile: async () => {
+              throw new Error("updateGistFile should not run");
+            }
+          }
+        })
+      );
+
+      const publishAuth = result.checks.find((check) => check.id === "publish-auth");
+
+      expect(publishAuth).toMatchObject({
+        status: "pass",
+        message: "GitHub auth detected (gh-cli)"
+      });
     } finally {
       globalThis.fetch = originalFetch;
       await fixture.repo.cleanup();

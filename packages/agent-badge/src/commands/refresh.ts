@@ -5,9 +5,6 @@ import { join, resolve } from "node:path";
 import {
   applyPublishAttemptFailure,
   applyPublishAttemptNotAttempted,
-  applyCompletedScanState,
-  buildRefreshCacheKey,
-  buildSharedOverrideDigest,
   createGitHubGistClient,
   derivePrePushPolicyConsequence,
   derivePrePushPolicyReport,
@@ -36,10 +33,13 @@ import {
   type AgentBadgeState,
   type GitHubGistClient,
   type PublishBadgeIfChangedResult,
-  type RefreshCache,
-  type SharedContributorObservationMap,
   type RunIncrementalRefreshResult
 } from "@legotin/agent-badge-core";
+
+import {
+  applyRefreshResultToState,
+  buildPublisherObservationsFromRefreshCache
+} from "./refresh-state.js";
 
 interface OutputWriter {
   write(chunk: string): unknown;
@@ -141,22 +141,6 @@ function normalizePublishSurfaceError(error: Error): Error {
     candidateHash: error.candidateHash,
     changedBadge: error.changedBadge
   });
-}
-
-function getConfiguredProviders(
-  config: ReturnType<typeof parseAgentBadgeConfig>
-): Array<keyof AgentBadgeState["checkpoints"]> {
-  const providers: Array<keyof AgentBadgeState["checkpoints"]> = [];
-
-  if (config.providers.codex.enabled) {
-    providers.push("codex");
-  }
-
-  if (config.providers.claude.enabled) {
-    providers.push("claude");
-  }
-
-  return providers;
 }
 
 function formatTotals(summary: RunIncrementalRefreshResult["summary"]): string {
@@ -483,27 +467,6 @@ function buildRefreshLogStatus(
   return "success";
 }
 
-function buildPublisherObservationsFromRefreshCache(
-  cache: RefreshCache
-): SharedContributorObservationMap {
-  return Object.fromEntries(
-    Object.values(cache.entries).map((entry) => {
-      const sessionKey = buildRefreshCacheKey(entry);
-
-      return [
-        buildSharedOverrideDigest(sessionKey),
-        {
-          sessionUpdatedAt: entry.sessionUpdatedAt,
-          attributionStatus: entry.status,
-          overrideDecision: entry.overrideDecision,
-          tokens: entry.tokens,
-          estimatedCostUsdMicros: entry.estimatedCostUsdMicros
-        }
-      ];
-    })
-  );
-}
-
 export async function runRefreshCommand(
   options: RunRefreshCommandOptions = {}
 ): Promise<RefreshCommandResult> {
@@ -530,28 +493,12 @@ export async function runRefreshCommand(
       forceFull: options.forceFull ?? false
     });
     const now = new Date().toISOString();
-    const scanState = applyCompletedScanState({
+    persistedState = applyRefreshResultToState({
       previousState,
-      scanResult: {
-        scannedProviders: getConfiguredProviders(config),
-        providerCursors: refresh.providerCursors
-      },
+      config,
+      refresh,
       now
     });
-
-    persistedState = {
-      ...scanState,
-      publish: {
-        ...scanState.publish,
-        gistId: config.publish.gistId
-      },
-      refresh: {
-        lastRefreshedAt: now,
-        lastScanMode: refresh.scanMode,
-        lastPublishDecision: null,
-        summary: refresh.summary
-      }
-    };
 
     // Persist the derived .agent-badge/cache/session-index.json cache before remote work.
     await Promise.all([
