@@ -1,6 +1,33 @@
-import Database from "better-sqlite3";
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { join } from "node:path";
+
+const require = createRequire(import.meta.url);
+
+interface SqlJsStatement {
+  bind(values?: readonly unknown[]): boolean;
+  step(): boolean;
+  getAsObject(): Record<string, unknown>;
+  free(): boolean;
+}
+
+interface SqlJsDatabase {
+  prepare(sql: string, params?: readonly unknown[]): SqlJsStatement;
+  close(): void;
+}
+
+interface SqlJsRuntime {
+  Database: new (data?: ArrayLike<number> | null) => SqlJsDatabase;
+}
+
+type InitSqlJs = (config?: {
+  readonly wasmBinary?: Uint8Array;
+}) => Promise<SqlJsRuntime>;
+
+const initSqlJs = require("sql.js") as InitSqlJs;
+const sqlJsWasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
+
+let sqlJsRuntimePromise: Promise<SqlJsRuntime> | null = null;
 
 export interface CodexThreadRow {
   readonly id: string;
@@ -132,12 +159,42 @@ function codexTimestampToUnixSeconds(
   return Math.floor(parsedMilliseconds / 1000);
 }
 
-function readRows<T>(dbPath: string, sql: string, params: readonly unknown[] = []): T[] {
-  const database = new Database(dbPath, { readonly: true });
+async function loadSqlJsRuntime(): Promise<SqlJsRuntime> {
+  if (sqlJsRuntimePromise === null) {
+    sqlJsRuntimePromise = readFile(sqlJsWasmPath).then((wasmBinary) =>
+      initSqlJs({ wasmBinary })
+    );
+  }
+
+  return sqlJsRuntimePromise;
+}
+
+async function readRows<T>(
+  dbPath: string,
+  sql: string,
+  params: readonly unknown[] = []
+): Promise<T[]> {
+  const [runtime, databaseBytes] = await Promise.all([
+    loadSqlJsRuntime(),
+    readFile(dbPath)
+  ]);
+  const database = new runtime.Database(databaseBytes);
+  const statement = database.prepare(sql);
 
   try {
-    return database.prepare(sql).all(...params) as T[];
+    if (params.length > 0) {
+      statement.bind(params);
+    }
+
+    const rows: T[] = [];
+
+    while (statement.step()) {
+      rows.push(statement.getAsObject() as T);
+    }
+
+    return rows;
   } finally {
+    statement.free();
     database.close();
   }
 }
@@ -195,7 +252,7 @@ export async function findLatestCodexStateDatabase(
 export async function loadCodexThreadRows(
   dbPath: string
 ): Promise<CodexThreadRow[]> {
-  const rows = readRows<RawCodexThreadRow>(
+  const rows = await readRows<RawCodexThreadRow>(
     dbPath,
     `
       SELECT id, created_at, updated_at, source, model_provider, cwd, tokens_used,
@@ -265,7 +322,7 @@ export async function loadCodexThreadRowsSince(
       ORDER BY created_at ASC
     `;
 
-  const rows = readRows<RawCodexThreadRow>(dbPath, sql, params);
+  const rows = await readRows<RawCodexThreadRow>(dbPath, sql, params);
 
   return rows.map(mapCodexThreadRow);
 }
@@ -273,7 +330,7 @@ export async function loadCodexThreadRowsSince(
 export async function loadCodexSpawnEdges(
   dbPath: string
 ): Promise<CodexSpawnEdgeRow[]> {
-  const rows = readRows<RawCodexSpawnEdgeRow>(
+  const rows = await readRows<RawCodexSpawnEdgeRow>(
     dbPath,
     `
       SELECT parent_thread_id, child_thread_id
@@ -296,7 +353,7 @@ export async function loadCodexThreadRolloutRowsByIds(
   }
 
   const placeholders = threadIds.map(() => "?").join(", ");
-  const rows = readRows<RawCodexThreadRolloutRow>(
+  const rows = await readRows<RawCodexThreadRolloutRow>(
     dbPath,
     `
       SELECT id, rollout_path

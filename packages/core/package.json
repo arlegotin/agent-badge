@@ -31,8 +31,12 @@
     "access": "public"
   },
   "dependencies": {
-    "better-sqlite3": "^12.8.0",
     "octokit": "^5.0.0",
+    "sql.js": "^1.14.1",
     "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/sql.js": "^1.4.11",
+    "better-sqlite3": "^12.8.0"
   }
 }
