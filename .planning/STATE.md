@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Global Runtime and Minimal Repo Footprint
-status: ready_to_plan
-stopped_at: Completed Phase 26 verification and closeout
-last_updated: "2026-04-08T22:24:41.598Z"
-last_activity: 2026-04-08 -- Phase 26 completed, reviewed, verified, and closed out
+status: complete
+stopped_at: Phase 27 verified and marked complete; milestone closeout pending
+last_updated: "2026-04-09T09:26:43.642Z"
+last_activity: 2026-04-09 -- Phase 27 verified and marked complete
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 3
+  total_plans: 7
+  completed_plans: 7
   percent: 100
 ---
 
@@ -18,17 +18,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-08)
+See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Phase 27 — Legacy Migration, Uninstall, And Release Proof
+**Current focus:** Milestone v2.0 closeout after Phase 27 completion
 
 ## Current Position
 
-Phase: 3 of 3 (27 — Legacy Migration, Uninstall, And Release Proof)
-Plan: Not planned yet
-Status: Ready to plan
-Last activity: 2026-04-08 -- Phase 26 completed, reviewed, verified, and closed out
+Phase: Complete through 27
+Plan: All planned phase artifacts complete
+Status: Phase 27 complete; milestone closeout pending
+Last activity: 2026-04-09 -- Phase 27 verified and marked complete
 
 Progress: [##########] 100% of currently planned work
 
@@ -36,7 +36,7 @@ Progress: [##########] 100% of currently planned work
 
 **Velocity:**
 
-- Total plans completed: 28
+- Total plans completed: 31
 - Average duration: 7 min
 - Total execution time: 2.9 hours
 
@@ -48,6 +48,7 @@ Progress: [##########] 100% of currently planned work
 | 24 | 2 | - | - |
 | 25 | 2 | 7 min | 3.5 min |
 | 26 | 2 | 16 min | 8 min |
+| 27 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -77,10 +78,10 @@ None.
 
 - `.planning/` remains locally managed in this repo, so GSD tracking files need explicit staging when phase artifacts should be committed.
 - `/Volumes/git` still has limited free space for normal local `npm install`, so verification continues to rely on focused Vitest runs and `/tmp`-style isolation where needed.
-- Phase 27 now owns legacy migration safety, uninstall/docs alignment, and clean-temp release proof for the new global-first runtime model.
+- Phase 27 completed legacy migration safety, uninstall/docs alignment, and clean-temp release proof for the new global-first runtime model.
 
 ## Session Continuity
 
 Last session: 2026-04-08T20:52:22Z
-Stopped at: Completed Phase 26 verification and closeout
+Stopped at: Phase 27 verified and marked complete
 Resume file: None

@@ -7,15 +7,15 @@ Milestone v2.0 changes `agent-badge` from repo-local runtime wiring to a global 
 ## Current Planning State
 
 Active milestone:
-- 🔄 **v2.0 Global Runtime and Minimal Repo Footprint** — kickoff complete on 2026-04-08
+- 🔄 **v2.0 Global Runtime and Minimal Repo Footprint** — all planned phases complete on 2026-04-09; milestone closeout pending
 
 Latest shipped milestone:
 - ✅ [`v1.5 Production Readiness Closure`](./milestones/v1.5-ROADMAP.md) — shipped 2026-04-05
 - ✅ [`v1.4 Publish Reliability Hardening`](./milestones/v1.4-ROADMAP.md) — shipped 2026-04-05
 
 Next workflow entrypoint:
-- `$gsd-discuss-phase 26`
-- or `$gsd-plan-phase 26`
+- `$gsd-complete-milestone`
+- or `$gsd-progress`
 
 ## Current Milestone: v2.0 Global Runtime and Minimal Repo Footprint
 
@@ -23,9 +23,9 @@ This milestone removes repo-local runtime installation from initialized reposito
 
 ## Milestones
 
-- 🔄 **v2.0 Global Runtime and Minimal Repo Footprint** — Phases 25-27 (planned)
+- 🔄 **v2.0 Global Runtime and Minimal Repo Footprint** — Phases 25-27 (all phases complete; milestone closeout pending)
   Goal: Remove repo-local runtime installation from initialized repos, switch execution to a global or user-scoped CLI contract, and keep repo artifacts minimal.
-  Status: Milestone initialized on 2026-04-08
+  Status: All planned phases completed on 2026-04-09
 - ✅ **v1.5 Production Readiness Closure** — Phases 21-24 (shipped 2026-04-05)
   Archive: `.planning/milestones/v1.5-ROADMAP.md`
 - ✅ **v1.4 Publish Reliability Hardening** — Phases 14-20 (shipped 2026-04-05)
@@ -34,8 +34,8 @@ This milestone removes repo-local runtime installation from initialized reposito
 ## Phases
 
 - [x] **Phase 25: Global Runtime Contract And Command Resolution** - Replace repo-local command assumptions with a shared CLI contract, runtime detection, and migration-safe execution paths. Completed 2026-04-08.
-- [ ] **Phase 26: Minimal Repo Scaffold And Init Rewire** - Remove repo-local runtime installation from init and leave only repo-owned artifacts with idempotent scaffolding.
-- [ ] **Phase 27: Legacy Migration, Uninstall, And Release Proof** - Migrate existing repos safely and prove docs, uninstall, and smoke verification for the new install model.
+- [x] **Phase 26: Minimal Repo Scaffold And Init Rewire** - Remove repo-local runtime installation from init and leave only repo-owned artifacts with idempotent scaffolding. Completed 2026-04-08.
+- [x] **Phase 27: Legacy Migration, Uninstall, And Release Proof** - Migrate existing repos safely and prove docs, uninstall, and smoke verification for the new install model. Completed 2026-04-09.
 
 <details>
 <summary>✅ v1.4 Publish Reliability Hardening (Phases 14-20) — SHIPPED 2026-04-05</summary>
@@ -91,9 +91,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 27-01: Add migration and uninstall support for legacy repo-local setups
-- [ ] 27-02: Update docs and command help for global-first installation
-- [ ] 27-03: Extend registry and clean-temp smoke coverage for minimal repo artifacts
+- [x] 27-01: Add migration and uninstall support for legacy repo-local setups
+- [x] 27-02: Update docs and command help for global-first installation
+- [x] 27-03: Extend registry and clean-temp smoke coverage for minimal repo artifacts
 
 ## Progress
 
@@ -101,4 +101,4 @@ Plans:
 |-------|----------------|--------|-----------|
 | 25. Global Runtime Contract And Command Resolution | 2/2 | Complete    | 2026-04-08 |
 | 26. Minimal Repo Scaffold And Init Rewire | 2/2 | Complete    | 2026-04-08 |
-| 27. Legacy Migration, Uninstall, And Release Proof | 0/3 | Not started | - |
+| 27. Legacy Migration, Uninstall, And Release Proof | 3/3 | Complete    | 2026-04-09 |

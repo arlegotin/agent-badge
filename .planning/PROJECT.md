@@ -25,6 +25,7 @@ The current released planning state covers:
 - explicit production-ready evidence proving the shipped `1.1.3` surface through the canonical trusted-publishing path and live registry smoke
 - one canonical go/no-go standard that classifies earlier Phase 21 blockers as historical once later shipped proof supersedes them
 - global-first init and config rewrites that keep default repo artifacts to `.agent-badge/`, README badge markup, `.gitignore`, and the managed hook without repo-local runtime ownership
+- completed legacy migration proof, shared-runtime docs alignment, and initializer-versus-direct-runtime release smoke separation for the v2.0 install model
 
 ## Current Milestone: v2.0 Global Runtime and Minimal Repo Footprint
 
@@ -36,7 +37,7 @@ The current released planning state covers:
 - Keep only repo-specific `.agent-badge` state or config, README badge markup, gitignore entries, and optional hook wiring inside the target repository.
 - Migrate existing repo-local runtime setups to the new model without breaking refresh, publish, or badge continuity.
 
-**Planning status:** Phase 26 is complete and verified. Phase 27 remains to cover legacy migration, uninstall/docs alignment, and clean-temp release proof for the global-first install model.
+**Planning status:** Phase 27 is complete and verified. Milestone v2.0 is ready for milestone closeout.
 
 **Latest shipped milestone:** v1.5 Production Readiness Closure
 
@@ -90,10 +91,12 @@ The current released planning state covers:
 - [x] `READY-01` and `READY-02`: The repo now has one explicit production-ready standard, one evidence map, and a final verdict of `Production ready for the shipped 1.1.3 surface`. Validated in Phase 24 and closed in milestone v1.5.
 - [x] `DIST-01` and `DIST-02`: Default init now relies on a shared global or user-scoped runtime contract and no longer installs a repo-local runtime or `node_modules` tree by default. Validated in Phase 26.
 - [x] `ART-01` and `ART-02`: Init and config now preserve a minimal-artifact footprint with idempotent README, gitignore, and managed hook behavior. Validated in Phase 26.
+- [x] `MIG-01`: Legacy repo-local setups now migrate to the shared-runtime model without losing init, refresh, publish, status, doctor, or uninstall behavior. Validated in Phase 27.
+- [x] `MIG-02`: Docs, uninstall flows, and release smoke proof now describe and validate the global-first install model without default repo-local runtime artifacts. Validated in Phase 27.
 
 ### Active
 
-- [ ] Provide migration, diagnostics, docs, and release smoke coverage for repositories created under the old repo-local runtime model.
+- [ ] None. Milestone v2.0 phase scope is complete; ready for milestone closeout.
 
 ### Out of Scope
 
@@ -182,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-08 after completing Phase 26 and preparing Phase 27*
+*Last updated: 2026-04-09 after completing Phase 27*

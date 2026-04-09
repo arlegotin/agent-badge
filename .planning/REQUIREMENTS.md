@@ -2,7 +2,7 @@
 
 **Defined:** 2026-04-08
 **Milestone:** v2.0 Global Runtime and Minimal Repo Footprint
-**Status:** ACTIVE
+**Status:** READY FOR CLOSEOUT
 **Core Value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
 
 ## Current Milestone Requirements
@@ -23,8 +23,8 @@ This milestone changes the runtime distribution model so repositories can be ini
 
 ### Migration And Verification
 
-- [ ] **MIG-01**: Repositories previously initialized with repo-local runtime wiring can migrate to the new model without losing refresh, publish, status, doctor, or uninstall behavior.
-- [ ] **MIG-02**: Docs, help text, uninstall flows, and clean temp verification explicitly cover the global install model and assert the absence of repo-local runtime artifacts by default.
+- [x] **MIG-01**: Repositories previously initialized with repo-local runtime wiring can migrate to the new model without losing refresh, publish, status, doctor, or uninstall behavior.
+- [x] **MIG-02**: Docs, help text, uninstall flows, and clean temp verification explicitly cover the global install model and assert the absence of repo-local runtime artifacts by default.
 
 ## Future Requirements
 
@@ -61,8 +61,8 @@ This milestone changes the runtime distribution model so repositories can be ini
 | AUTO-01 | Phase 25 | Complete |
 | ART-01 | Phase 26 | Complete |
 | ART-02 | Phase 26 | Complete |
-| MIG-01 | Phase 27 | Pending |
-| MIG-02 | Phase 27 | Pending |
+| MIG-01 | Phase 27 | Complete |
+| MIG-02 | Phase 27 | Complete |
 
 **Coverage:**
 - current milestone requirements: 8 total
@@ -71,4 +71,4 @@ This milestone changes the runtime distribution model so repositories can be ini
 
 ---
 *Requirements defined: 2026-04-08*
-*Last updated: 2026-04-08 after completing Phase 26*
+*Last updated: 2026-04-09 after completing Phase 27*
