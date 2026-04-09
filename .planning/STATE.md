@@ -5,7 +5,7 @@ milestone_name: Global Runtime and Minimal Repo Footprint
 status: completed
 stopped_at: Milestone v2.0 archived and tagged
 last_updated: "2026-04-09T12:14:25Z"
-last_activity: 2026-04-09 - Completed quick task 260409-mel: update readme & docs: clear machine-once vs per-repo instructions and simplify quick install guidance
+last_activity: 2026-04-09 - Completed quick task 260409-mth: readme follow-up: add GitHub auth check to per-repo quick instructions
 progress:
   total_phases: 3
   completed_phases: 3
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 Phase: Milestone v2.0 complete through Phase 27
 Plan: Milestone artifacts archived; waiting for next milestone planning
 Status: v2.0 shipped and archived
-Last activity: 2026-04-09 - Completed quick task 260409-mel: update readme & docs: clear machine-once vs per-repo instructions and simplify quick install guidance
+Last activity: 2026-04-09 - Completed quick task 260409-mth: readme follow-up: add GitHub auth check to per-repo quick instructions
 
 Progress: [##########] 100% of currently planned work
 
@@ -88,6 +88,7 @@ None.
 | 260409-jfu | make first-shot setup unambiguous and fix shared-runtime version probe false failure | 2026-04-09 | 1406b95 | [260409-jfu-make-first-shot-setup-unambiguous-and-fi](./quick/260409-jfu-make-first-shot-setup-unambiguous-and-fi/) |
 | 260409-jn2 | harden shared-runtime validation with backward-compatible probe and release | 2026-04-09 | c70ad6d | [260409-jn2-harden-shared-runtime-validation-with-ba](./quick/260409-jn2-harden-shared-runtime-validation-with-ba/) |
 | 260409-mel | update readme & docs: clear machine-once vs per-repo instructions and simplify quick install guidance | 2026-04-09 | ffd0bd7 | [260409-mel-update-readme-docs-clear-machine-once-vs](./quick/260409-mel-update-readme-docs-clear-machine-once-vs/) |
+| 260409-mth | readme follow-up: add GitHub auth check to per-repo quick instructions | 2026-04-09 | 42987c9 | [260409-mth-readme-follow-up-add-github-auth-check-t](./quick/260409-mth-readme-follow-up-add-github-auth-check-t/) |
 
 ## Session Continuity
 
