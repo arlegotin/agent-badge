@@ -6,6 +6,31 @@ All notable package releases are tracked here.
 
 - No unreleased notes yet.
 
+## 1.1.13 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.13`.
+- Release commit: `6c9700b`.
+
+## 1.1.12 - 2026-04-08
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.12`.
+- Release commit: `6020ad9`.
+
+## 1.1.11 - 2026-04-08
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.11`.
+- Release commit: `ae569ba`.
+
+## 1.1.10 - 2026-04-08
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.10`.
+- Release commit: `dc14f15`.
+
+## 1.1.9 - 2026-04-08
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.9`.
+- Release commit: `0bfe4a8`.
+
 ## 1.1.8 - 2026-04-08
 
 - Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.8`.

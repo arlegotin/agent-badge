@@ -93,6 +93,17 @@ for file in "${required_files[@]}"; do
   fi
 done
 
+runtime_version=$(node -e 'const fs=require("node:fs"); const pkg=JSON.parse(fs.readFileSync("packages/agent-badge/package.json","utf8")); process.stdout.write(pkg.version);')
+create_version=$(node -e 'const fs=require("node:fs"); const pkg=JSON.parse(fs.readFileSync("packages/create-agent-badge/package.json","utf8")); process.stdout.write(pkg.version);')
+core_version=$(node -e 'const fs=require("node:fs"); const pkg=JSON.parse(fs.readFileSync("packages/core/package.json","utf8")); process.stdout.write(pkg.version);')
+
+if [[ "${runtime_version}" != "${create_version}" || "${runtime_version}" != "${core_version}" ]]; then
+  echo "Publishable package versions are not aligned: @legotin/agent-badge=${runtime_version}, create-agent-badge=${create_version}, @legotin/agent-badge-core=${core_version}" >&2
+  exit 1
+fi
+
+require_fixed "## ${runtime_version} -" CHANGELOG.md
+
 require_fixed "## 60-Second Path" README.md
 require_fixed "npm init agent-badge@latest" README.md
 require_fixed "shared runtime" README.md
