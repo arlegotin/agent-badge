@@ -237,6 +237,64 @@ describe("applyMinimalRepoScaffold", () => {
     }
   });
 
+  it("preserves a user-owned runtime dependency when managed scripts are absent", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        "package.json": JSON.stringify(
+          {
+            name: "fixture-repo",
+            private: true,
+            scripts: {
+              test: "vitest --run"
+            },
+            devDependencies: {
+              "@legotin/agent-badge": "^1.2.3",
+              typescript: "^5.0.0"
+            }
+          },
+          null,
+          2
+        )
+      }
+    });
+    const packageJsonPath = join(repo.root, "package.json");
+
+    try {
+      const result = await applyMinimalRepoScaffold({
+        cwd: repo.root,
+        packageManager: "npm",
+        refresh: failSoftRefresh
+      });
+      const packageJson = JSON.parse(
+        await readFile(packageJsonPath, "utf8")
+      ) as {
+        scripts: Record<string, string>;
+        devDependencies: Record<string, string>;
+      };
+
+      expect(result.created).toEqual(
+        expect.arrayContaining([".gitignore", ".git/hooks/pre-push"])
+      );
+      expect(result.updated).not.toContain(
+        "package.json#devDependencies.@legotin/agent-badge"
+      );
+      expect(result.reused).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.@legotin/agent-badge",
+          "package.json"
+        ])
+      );
+      expect(result.warnings).toEqual([
+        "Preserved package.json#devDependencies.@legotin/agent-badge because no managed agent-badge scripts proved runtime ownership."
+      ]);
+      expect(packageJson.scripts.test).toBe("vitest --run");
+      expect(packageJson.devDependencies.typescript).toBe("^5.0.0");
+      expect(packageJson.devDependencies["@legotin/agent-badge"]).toBe("^1.2.3");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
   it("deletes a managed-only legacy package.json after pruning runtime ownership", async () => {
     const repo = await createGitRepoFixture({
       files: {
@@ -403,7 +461,10 @@ describe("removeRepoLocalRuntimeWiring", () => {
             name: "fixture-repo",
             private: true,
             scripts: {
-              test: "vitest --run"
+              test: "vitest --run",
+              "agent-badge:init": "agent-badge init",
+              "agent-badge:refresh":
+                "agent-badge refresh --hook pre-push --hook-policy fail-soft"
             },
             devDependencies: {
               "@legotin/agent-badge": "^1.2.3",
@@ -458,6 +519,118 @@ describe("removeRepoLocalRuntimeWiring", () => {
       expect(gitignoreContent).not.toContain("# agent-badge:gitignore:start");
       expect(gitignoreContent).not.toContain("# agent-badge:gitignore:end");
       expect(gitignoreContent).not.toContain(".agent-badge/state.json");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("preserves a user-owned runtime dependency when managed scripts are absent", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        "package.json": JSON.stringify(
+          {
+            name: "fixture-repo",
+            private: true,
+            scripts: {
+              test: "vitest --run"
+            },
+            devDependencies: {
+              "@legotin/agent-badge": "^1.2.3",
+              typescript: "^5.0.0"
+            }
+          },
+          null,
+          2
+        ),
+        ".git/hooks/pre-push":
+          "#!/bin/sh\n\necho custom-check\n\n# agent-badge:start\nnpm run --silent agent-badge:refresh || true\n# agent-badge:end\n",
+        ".gitignore":
+          "coverage/\n# agent-badge:gitignore:start\n.agent-badge/state.json\n.agent-badge/cache/\n.agent-badge/logs/\n# agent-badge:gitignore:end\nnotes/\n"
+      }
+    });
+
+    try {
+      const result = await removeRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm"
+      });
+      const packageJson = JSON.parse(
+        await readFile(join(repo.root, "package.json"), "utf8")
+      ) as {
+        scripts: Record<string, string>;
+        devDependencies: Record<string, string>;
+      };
+      const hookContent = await readFile(
+        join(repo.root, ".git/hooks/pre-push"),
+        "utf8"
+      );
+      const gitignoreContent = await readFile(join(repo.root, ".gitignore"), "utf8");
+
+      expect(result.updated).toEqual(
+        expect.arrayContaining([".gitignore", ".git/hooks/pre-push"])
+      );
+      expect(result.updated).not.toContain(
+        "package.json#devDependencies.@legotin/agent-badge"
+      );
+      expect(result.reused).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.@legotin/agent-badge",
+          "package.json"
+        ])
+      );
+      expect(result.warnings).toEqual([
+        "Preserved package.json#devDependencies.@legotin/agent-badge because no managed agent-badge scripts proved runtime ownership."
+      ]);
+      expect(packageJson.scripts.test).toBe("vitest --run");
+      expect(packageJson.devDependencies.typescript).toBe("^5.0.0");
+      expect(packageJson.devDependencies["@legotin/agent-badge"]).toBe("^1.2.3");
+      expect(hookContent).toContain("echo custom-check");
+      expect(hookContent).not.toContain("# agent-badge:start");
+      expect(hookContent).not.toContain("# agent-badge:end");
+      expect(gitignoreContent).toContain("coverage/");
+      expect(gitignoreContent).toContain("notes/");
+      expect(gitignoreContent).not.toContain("# agent-badge:gitignore:start");
+      expect(gitignoreContent).not.toContain("# agent-badge:gitignore:end");
+    } finally {
+      await repo.cleanup();
+    }
+  });
+
+  it("deletes a managed-only legacy package.json when uninstall removes the last owned entries", async () => {
+    const repo = await createGitRepoFixture({
+      files: {
+        "package.json": JSON.stringify(
+          {
+            scripts: {
+              "agent-badge:init": "agent-badge init",
+              "agent-badge:refresh":
+                "agent-badge refresh --hook pre-push --hook-policy fail-soft"
+            },
+            devDependencies: {
+              "@legotin/agent-badge": "^1.2.3"
+            }
+          },
+          null,
+          2
+        )
+      }
+    });
+
+    try {
+      const result = await removeRepoLocalRuntimeWiring({
+        cwd: repo.root,
+        packageManager: "npm"
+      });
+
+      expect(result.updated).toEqual(
+        expect.arrayContaining([
+          "package.json#devDependencies.@legotin/agent-badge",
+          "package.json#scripts.agent-badge:init",
+          "package.json#scripts.agent-badge:refresh",
+          "package.json"
+        ])
+      );
+      expect(existsSync(join(repo.root, "package.json"))).toBe(false);
     } finally {
       await repo.cleanup();
     }

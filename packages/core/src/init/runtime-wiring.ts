@@ -302,7 +302,7 @@ function buildGitignoreContent(
   return `${baseContent}\n\n${managedBlock}\n`;
 }
 
-function isPotentialRuntimeDependency(value: unknown): value is string {
+function isManagedRuntimeDependencySpecifier(value: unknown): value is string {
   return (
     typeof value === "string" &&
     (value === "latest" ||
@@ -320,6 +320,17 @@ function isManagedRefreshScript(value: unknown): value is string {
   return (
     value === getAgentBadgeRefreshScriptCommand("fail-soft") ||
     value === getAgentBadgeRefreshScriptCommand("strict")
+  );
+}
+
+function hasManagedRuntimeManifestOwnership(scripts: JsonObject | undefined): boolean {
+  if (scripts === undefined) {
+    return false;
+  }
+
+  return (
+    isManagedInitScript(scripts[agentBadgeInitScriptName]) ||
+    isManagedRefreshScript(scripts[agentBadgeRefreshScriptName])
   );
 }
 
@@ -347,6 +358,47 @@ function removeManagedStringValue(options: {
 
   delete options.container[options.key];
   options.result.updated.push(options.label);
+
+  return true;
+}
+
+function removeManagedRuntimeDependency(options: {
+  readonly container: JsonObject | undefined;
+  readonly ownershipConfirmed: boolean;
+  readonly result: RepoLocalRuntimeWiringResult;
+}): boolean {
+  const label = `package.json#devDependencies.${runtimePackageName}`;
+
+  if (options.container === undefined) {
+    options.result.reused.push(label);
+    return false;
+  }
+
+  const currentValue = options.container[runtimePackageName];
+
+  if (currentValue === undefined) {
+    options.result.reused.push(label);
+    return false;
+  }
+
+  if (!isManagedRuntimeDependencySpecifier(currentValue)) {
+    options.result.warnings.push(
+      `Preserved non-managed ${label} so runtime tooling did not remove it.`
+    );
+    options.result.reused.push(label);
+    return false;
+  }
+
+  if (!options.ownershipConfirmed) {
+    options.result.warnings.push(
+      `Preserved ${label} because no managed agent-badge scripts proved runtime ownership.`
+    );
+    options.result.reused.push(label);
+    return false;
+  }
+
+  delete options.container[runtimePackageName];
+  options.result.updated.push(label);
 
   return true;
 }
@@ -470,6 +522,8 @@ export async function applyMinimalRepoScaffold(
   if (packageJson !== undefined) {
     const scripts = getExistingObject(packageJson, "scripts");
     const devDependencies = getExistingObject(packageJson, "devDependencies");
+    const ownsManagedRuntimeDependency =
+      hasManagedRuntimeManifestOwnership(scripts);
 
     if (scripts !== undefined) {
       const removedInitScript = removeManagedStringValue({
@@ -497,11 +551,9 @@ export async function applyMinimalRepoScaffold(
     }
 
     if (devDependencies !== undefined) {
-      const removedRuntimeDependency = removeManagedStringValue({
+      const removedRuntimeDependency = removeManagedRuntimeDependency({
         container: devDependencies,
-        key: runtimePackageName,
-        label: `package.json#devDependencies.${runtimePackageName}`,
-        condition: isPotentialRuntimeDependency,
+        ownershipConfirmed: ownsManagedRuntimeDependency,
         result
       });
 
@@ -631,34 +683,57 @@ export async function removeRepoLocalRuntimeWiring(
   let packageJsonChanged = false;
 
   if (packageJson !== undefined) {
-    const devDependencies = getOrCreateObject(packageJson, "devDependencies");
-    const scripts = getOrCreateObject(packageJson, "scripts");
+    const devDependencies = getExistingObject(packageJson, "devDependencies");
+    const scripts = getExistingObject(packageJson, "scripts");
+    const ownsManagedRuntimeDependency =
+      hasManagedRuntimeManifestOwnership(scripts);
 
-    packageJsonChanged =
-      removeManagedStringValue({
+    if (scripts !== undefined) {
+      const removedInitScript = removeManagedStringValue({
         container: scripts,
         key: agentBadgeInitScriptName,
         label: `package.json#scripts.${agentBadgeInitScriptName}`,
         result
-      }) || packageJsonChanged;
-    packageJsonChanged =
-      removeManagedStringValue({
+      });
+      const removedRefreshScript = removeManagedStringValue({
         container: scripts,
         key: agentBadgeRefreshScriptName,
         label: `package.json#scripts.${agentBadgeRefreshScriptName}`,
         result
-      }) || packageJsonChanged;
-    packageJsonChanged =
-      removeManagedStringValue({
+      });
+
+      packageJsonChanged =
+        removedInitScript || removedRefreshScript || packageJsonChanged;
+
+      if (removedInitScript || removedRefreshScript) {
+        packageJsonChanged =
+          deleteEmptyObjectField(packageJson, "scripts") || packageJsonChanged;
+      }
+    }
+
+    if (devDependencies !== undefined) {
+      const removedRuntimeDependency = removeManagedRuntimeDependency({
         container: devDependencies,
-        key: runtimePackageName,
-        label: `package.json#devDependencies.${runtimePackageName}`,
-        result,
-        condition: isPotentialRuntimeDependency
-      }) || packageJsonChanged;
+        ownershipConfirmed: ownsManagedRuntimeDependency,
+        result
+      });
+
+      packageJsonChanged = removedRuntimeDependency || packageJsonChanged;
+
+      if (removedRuntimeDependency) {
+        packageJsonChanged =
+          deleteEmptyObjectField(packageJson, "devDependencies") ||
+          packageJsonChanged;
+      }
+    }
 
     if (packageJsonChanged) {
-      await writeJsonFile(packageJsonPath, packageJson);
+      if (Object.keys(packageJson).length === 0) {
+        await rm(packageJsonPath, { force: true });
+      } else {
+        await writeJsonFile(packageJsonPath, packageJson);
+      }
+
       result.updated.push(packageJsonPathLabel);
     } else {
       result.reused.push(packageJsonPathLabel);
