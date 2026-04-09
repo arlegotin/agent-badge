@@ -169,15 +169,54 @@ assert_file_not_contains() {
   fi
 }
 
-assert_log_contains() {
+# init can finish in either deferred mode (no GitHub auth) or published mode
+# (auth available via gh-cli in the local environment). Treat both as valid.
+assert_runtime_init_outcome() {
   local log_path=$1
-  local needle=$2
-  local issue=$3
 
-  if ! grep -Fq -- "${needle}" "${log_path}"; then
+  if ! grep -Fq -- "- Publish target:" "${log_path}"; then
     RUNTIME_STATUS="blocked"
-    mark_blocked "${issue}"
+    mark_blocked "runtime init log missing Publish target summary"
+    return
   fi
+
+  if ! grep -Fq -- "- Setup:" "${log_path}"; then
+    RUNTIME_STATUS="blocked"
+    mark_blocked "runtime init log missing Setup summary"
+    return
+  fi
+
+  if grep -Fq -- "- Publish target: deferred" "${log_path}"; then
+    if ! grep -Fq -- "- Badge setup deferred:" "${log_path}"; then
+      RUNTIME_STATUS="blocked"
+      mark_blocked "runtime init log missing Badge setup deferred details"
+      return
+    fi
+
+    if ! grep -Fq -- "GitHub auth is still required before the live badge can publish" "${log_path}"; then
+      RUNTIME_STATUS="blocked"
+      mark_blocked "runtime deferred setup was not caused by missing GitHub auth"
+      return
+    fi
+
+    return
+  fi
+
+  if grep -Fq -- "- Publish target: created public gist" "${log_path}" ||
+    grep -Fq -- "- Publish target: connected existing gist" "${log_path}" ||
+    grep -Fq -- "- Publish target: reused existing gist" "${log_path}"; then
+    if ! grep -Fq -- "live badge was published" "${log_path}" &&
+      ! grep -Fq -- "complete. Shared runtime, pre-push refresh, and live badge publishing are ready." "${log_path}"; then
+      RUNTIME_STATUS="blocked"
+      mark_blocked "runtime publish target succeeded but setup status did not confirm published badge readiness"
+      return
+    fi
+
+    return
+  fi
+
+  RUNTIME_STATUS="blocked"
+  mark_blocked "runtime init log reported unexpected Publish target outcome"
 }
 
 assert_no_managed_runtime_manifest_ownership() {
@@ -331,10 +370,7 @@ else
     "package.json" \
     "runtime left managed agent-badge manifest ownership in package.json" \
     "runtime"
-  assert_log_contains \
-    "${RUNTIME_LOG}" \
-    "Badge setup deferred" \
-    "runtime init log missing Badge setup deferred"
+  assert_runtime_init_outcome "${RUNTIME_LOG}"
 
   check_import "@legotin/agent-badge" "${IMPORT_AGENT_BADGE_LOG}"
   check_import "@legotin/agent-badge-core" "${IMPORT_AGENT_BADGE_CORE_LOG}"
