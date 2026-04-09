@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Global Runtime and Minimal Repo Footprint
-status: complete
-stopped_at: Phase 27 verified and marked complete; milestone closeout pending
-last_updated: "2026-04-09T09:26:43.642Z"
-last_activity: 2026-04-09 -- Phase 27 verified and marked complete
+status: completed
+stopped_at: Milestone v2.0 archived and tagged
+last_updated: "2026-04-09T10:09:39Z"
+last_activity: 2026-04-09 -- Milestone v2.0 archived and tagged
 progress:
   total_phases: 3
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Any repository can display an accurate, privacy-preserving AI usage badge with one setup command and near-zero ongoing maintenance.
-**Current focus:** Milestone v2.0 closeout after Phase 27 completion
+**Current focus:** Define next milestone scope and requirements (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: Complete through 27
-Plan: All planned phase artifacts complete
-Status: Phase 27 complete; milestone closeout pending
-Last activity: 2026-04-09 -- Phase 27 verified and marked complete
+Phase: Milestone v2.0 complete through Phase 27
+Plan: Milestone artifacts archived; waiting for next milestone planning
+Status: v2.0 shipped and archived
+Last activity: 2026-04-09 -- Milestone v2.0 archived and tagged
 
 Progress: [##########] 100% of currently planned work
 

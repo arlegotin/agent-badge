@@ -12,11 +12,11 @@ Any repository can display an accurate, privacy-preserving AI usage badge with o
 
 ## Current State
 
-**Latest shipped milestone:** v1.5 Production Readiness Closure (2026-04-05)
-**Production verdict:** Production ready for the shipped 1.1.3 surface
-**Active planning milestone:** v2.0 Global Runtime and Minimal Repo Footprint (started 2026-04-08)
+**Latest shipped milestone:** v2.0 Global Runtime and Minimal Repo Footprint (2026-04-09)
+**Production verdict:** Production ready for the shipped 1.1.3 surface with global-first runtime onboarding
+**Active planning milestone:** None (next milestone definition pending)
 
-The current released planning state covers:
+The shipped planning state now covers:
 - merge-safe shared contributor publishing and repo-level ambiguous-session decisions
 - deterministic cross-publisher deduplication across publish, refresh, and init
 - migration and shared-health operator flows for legacy repos
@@ -26,8 +26,25 @@ The current released planning state covers:
 - one canonical go/no-go standard that classifies earlier Phase 21 blockers as historical once later shipped proof supersedes them
 - global-first init and config rewrites that keep default repo artifacts to `.agent-badge/`, README badge markup, `.gitignore`, and the managed hook without repo-local runtime ownership
 - completed legacy migration proof, shared-runtime docs alignment, and initializer-versus-direct-runtime release smoke separation for the v2.0 install model
+- archived v2.0 milestone records with roadmap, requirements, and audit snapshots under `.planning/milestones/`
 
-## Current Milestone: v2.0 Global Runtime and Minimal Repo Footprint
+## Next Milestone Goals
+
+- Define v2.1 scope and fresh requirements through `/gsd-new-milestone`.
+- Decide whether optional explicit repo-local install mode (`OPT-01`) should ship as a controlled opt-in without regressing minimal-artifact defaults.
+- Choose one post-v2.0 expansion track for implementation focus (`LIVE-01`/`LIVE-02` or `TEAM-04`/`HIST-01`/`BACK-01`).
+
+## Recently Shipped Milestone: v2.0 Global Runtime and Minimal Repo Footprint
+
+**Outcome:** Shipped 2026-04-09 across Phases 25-27 with 7 plans and 14 tasks.
+
+**Archive:**
+- `.planning/milestones/v2.0-ROADMAP.md`
+- `.planning/milestones/v2.0-REQUIREMENTS.md`
+- `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
+
+<details>
+<summary>Archived Milestone Focus: v2.0 Global Runtime and Minimal Repo Footprint</summary>
 
 **Goal:** Stop installing a repo-local `@legotin/agent-badge` runtime into every initialized repository and reduce repo-local changes to the minimum agent-badge artifacts required for operation.
 
@@ -36,26 +53,6 @@ The current released planning state covers:
 - Route init, refresh, config, uninstall, and managed hook execution through a globally installed or otherwise user-scoped `agent-badge` CLI contract.
 - Keep only repo-specific `.agent-badge` state or config, README badge markup, gitignore entries, and optional hook wiring inside the target repository.
 - Migrate existing repo-local runtime setups to the new model without breaking refresh, publish, or badge continuity.
-
-**Planning status:** Phase 27 is complete and verified. Milestone v2.0 is ready for milestone closeout.
-
-**Latest shipped milestone:** v1.5 Production Readiness Closure
-
-**Archive:**
-- `.planning/milestones/v1.5-ROADMAP.md`
-- `.planning/milestones/v1.5-REQUIREMENTS.md`
-- `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
-
-<details>
-<summary>Archived Milestone Focus: v1.5 Production Readiness Closure</summary>
-
-**Goal:** Close the gap between a locally green release rehearsal and an externally defensible production-ready claim for the shipped `1.1.3` surface.
-
-**Target features:**
-- Preserve the historical external release blocker taxonomy as explicit repo-owned requirements and diagnostics.
-- Capture the successful canonical GitHub Actions trusted publish for all three packages as concrete release evidence.
-- Verify the exact live registry surface, including `npm init agent-badge@latest`, from a clean temp install path.
-- End with one explicit production-ready go or no-go standard and aligned closeout artifacts.
 
 </details>
 
@@ -96,7 +93,9 @@ The current released planning state covers:
 
 ### Active
 
-- [ ] None. Milestone v2.0 phase scope is complete; ready for milestone closeout.
+- [ ] Define the next milestone requirements and roadmap via `/gsd-new-milestone` before starting new phase execution.
+- [ ] Evaluate `OPT-01` (optional explicit repo-local install mode) as a guarded opt-in path.
+- [ ] Select one expansion target for the next milestone (`LIVE-01`, `LIVE-02`, `TEAM-04`, `HIST-01`, or `BACK-01`).
 
 ### Out of Scope
 
@@ -118,7 +117,7 @@ The live CLI now classifies missing auth and gist readiness problems with canoni
 
 Milestone v1.5 closed the remaining external-proof gap. Phase 21 preserved the historical blocker taxonomy, Phase 22 recovered and recorded the successful canonical GitHub Actions trusted publish for `1.1.3`, Phase 23 verified the exact live registry and `npm init agent-badge@latest` surface, and Phase 24 turned that proof into one explicit go/no-go standard with the final verdict `Production ready for the shipped 1.1.3 surface`.
 
-The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. The shipped v1.x onboarding wires that runtime into each initialized repository so package-manager-local commands and managed hooks can invoke it immediately. Milestone v2.0 reopens that assumption: onboarding should stay one-command, but the target repository should not need its own dedicated runtime installation just to use `agent-badge`.
+The initializer package is `create-agent-badge`, enabling `npm init agent-badge@latest`, while `agent-badge` is the runtime CLI if the npm name is available at publish time. Milestone v2.0 completed the transition to a global or user-scoped runtime contract so onboarding stays one-command without default repo-local runtime installation.
 
 The v1 source of truth is the developer machine's local agent directories: `~/.codex/**` and `~/.claude/**`. Scanning must attribute sessions conservatively, prefer cumulative session totals over naive event summing, exclude ambiguous sessions unless the user approves an override, and keep only small derived local state for checkpoints, publish bookkeeping, and attribution overrides.
 
@@ -166,6 +165,7 @@ Publishing follows the standard dynamic-badge model: aggregate totals are normal
 | Stop making target repositories install their own runtime by default | Users want the CLI installed globally or at user scope, and repo-local `node_modules` plus manifest churn now count as onboarding friction | Implemented in Phase 26 |
 | Treat package manifest and lockfile mutation during init as opt-in rather than default behavior | Minimal repository artifacts are part of the new onboarding contract | Implemented in Phase 26 |
 | Refresh-setting rewrites must preserve the minimal-artifact model | Config changes must not silently recreate repo-local runtime ownership after init becomes global-first | Implemented in Phase 26 |
+| Keep initializer contract proof separate from direct-runtime package proof | Registry smoke validates `npm init` behavior while packed-install smoke validates direct runtime installs; mixing them obscures release evidence quality | Implemented in Phase 27 |
 
 ## Evolution
 
@@ -185,4 +185,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-09 after completing Phase 27*
+*Last updated: 2026-04-09 after completing milestone v2.0*
