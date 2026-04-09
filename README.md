@@ -16,19 +16,20 @@
 
 ## 60-Second Path
 
-Some people want transparency.<br>
-Some people just want to flex how hard they ship with agents.
-
-Do this once on each machine:
+Do this once:
 
 ```bash
+# install the package globally
 npm install -g @legotin/agent-badge@latest
 ```
 
 Do this in each repo:
 
 ```bash
+# ensure GitHub authentication:
 gh auth token >/dev/null
+
+# add badge to the repo:
 npm init agent-badge@latest
 ```
 
