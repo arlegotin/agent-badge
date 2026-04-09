@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-04-01T12:39:38.623Z",
+  "overallStatus": "blocked",
+  "packages": [
+    {
+      "manifestPath": "packages/core/package.json",
+      "packageName": "@legotin/agent-badge-core",
+      "intendedVersion": "1.1.2",
+      "status": "blocked",
+      "summary": "Intended version 1.1.2 is already visible in the registry.",
+      "registry": {
+        "kind": "package",
+        "observedName": "@legotin/agent-badge-core",
+        "observedVersion": "1.1.2",
+        "latestTag": "1.1.2",
+        "message": "Observed name=@legotin/agent-badge-core, version=1.1.2, dist-tags.latest=1.1.2."
+      }
+    },
+    {
+      "manifestPath": "packages/agent-badge/package.json",
+      "packageName": "@legotin/agent-badge",
+      "intendedVersion": "1.1.2",
+      "status": "blocked",
+      "summary": "Intended version 1.1.2 is already visible in the registry.",
+      "registry": {
+        "kind": "package",
+        "observedName": "@legotin/agent-badge",
+        "observedVersion": "1.1.2",
+        "latestTag": "1.1.2",
+        "message": "Observed name=@legotin/agent-badge, version=1.1.2, dist-tags.latest=1.1.2."
+      }
+    },
+    {
+      "manifestPath": "packages/create-agent-badge/package.json",
+      "packageName": "create-agent-badge",
+      "intendedVersion": "1.1.2",
+      "status": "blocked",
+      "summary": "Intended version 1.1.2 is already visible in the registry.",
+      "registry": {
+        "kind": "package",
+        "observedName": "create-agent-badge",
+        "observedVersion": "1.1.2",
+        "latestTag": "1.1.2",
+        "message": "Observed name=create-agent-badge, version=1.1.2, dist-tags.latest=1.1.2."
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": "npm-auth",
+      "label": "npm auth",
+      "status": "blocked",
+      "summary": "npm whoami failed, so the maintainer identity is not ready for publish.",
+      "details": [
+        "Command failed: npm whoami"
+      ]
+    },
+    {
+      "id": "release-inputs",
+      "label": "release inputs",
+      "status": "safe",
+      "summary": "Changesets access is public and all publishable workspaces agree on version 1.1.2.",
+      "details": [
+        "Publishable inventory: @legotin/agent-badge-core, @legotin/agent-badge, create-agent-badge",
+        "Root release contract: changeset publish",
+        "Root preflight contract: tsx scripts/release/preflight.ts"
+      ]
+    },
+    {
+      "id": "workflow-contract",
+      "label": "workflow contract",
+      "status": "safe",
+      "summary": ".github/workflows/release.yml still references the expected trusted-publishing release workflow contract.",
+      "details": [
+        "Local preflight validates workflow markers only.",
+        "GitHub Actions publish auth is expected to come from npm trusted publishing via OIDC, not a long-lived npm token."
+      ]
+    }
+  ]
+}
