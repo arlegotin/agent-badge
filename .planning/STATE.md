@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Global Runtime and Minimal Repo Footprint
 status: completed
 stopped_at: Milestone v2.0 archived and tagged
-last_updated: "2026-04-09T10:09:39Z"
-last_activity: 2026-04-09 -- Milestone v2.0 archived and tagged
+last_updated: "2026-04-09T11:12:11Z"
+last_activity: 2026-04-09 - Completed quick task 260409-i0d: fix ALL documentation actual
 progress:
   total_phases: 3
   completed_phases: 3
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 Phase: Milestone v2.0 complete through Phase 27
 Plan: Milestone artifacts archived; waiting for next milestone planning
 Status: v2.0 shipped and archived
-Last activity: 2026-04-09 -- Milestone v2.0 archived and tagged
+Last activity: 2026-04-09 - Completed quick task 260409-i0d: fix ALL documentation actual
 
 Progress: [##########] 100% of currently planned work
 
@@ -79,6 +79,12 @@ None.
 - `.planning/` remains locally managed in this repo, so GSD tracking files need explicit staging when phase artifacts should be committed.
 - `/Volumes/git` still has limited free space for normal local `npm install`, so verification continues to rely on focused Vitest runs and `/tmp`-style isolation where needed.
 - Phase 27 completed legacy migration safety, uninstall/docs alignment, and clean-temp release proof for the new global-first runtime model.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260409-i0d | fix ALL documentation actual | 2026-04-09 | ff65898 | [260409-i0d-fix-all-documentation-actual](./quick/260409-i0d-fix-all-documentation-actual/) |
 
 ## Session Continuity
 
