@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
 
+# This script proves the explicit direct-runtime install path from packed tarballs.
+# It does not prove the default npm initializer contract.
+
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/agent-badge-pack-smoke.XXXXXX")
 PACK_DIR="${WORK_DIR}/packs"
 INSTALL_DIR="${WORK_DIR}/install"
@@ -77,4 +80,4 @@ node --input-type=module -e "import('create-agent-badge').then(() => console.log
 ./node_modules/.bin/create-agent-badge --help >/dev/null
 popd >/dev/null
 
-echo "Packed install smoke check passed."
+echo "Packed install smoke check passed (direct runtime install path)."

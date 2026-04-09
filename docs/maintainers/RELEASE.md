@@ -25,7 +25,7 @@ npm run verify:clean-checkout
 npm run release:preflight
 ```
 
-`npm run verify:clean-checkout` is the full rehearsal. It rebuilds from a clean tree, runs tests, checks tarball contents, and verifies the packed-install path.
+`npm run verify:clean-checkout` is the full local rehearsal. It rebuilds from a clean tree, runs tests, checks tarball contents, and verifies the packed-install path for explicit runtime package installs.
 
 `npm run release:preflight` is the live registry and workflow contract gate. It validates:
 
@@ -102,6 +102,8 @@ That should leave:
 
 - `artifacts/releases/<release-version>/REGISTRY-SMOKE.json`
 - `artifacts/releases/<release-version>/REGISTRY-SMOKE.md`
+
+This is the authoritative initializer proof for the default contract. `verify-registry-install.sh --check-initializer --write-evidence` must show that `npm init agent-badge@latest` leaves minimal repo artifacts, writes `.agent-badge/*`, and installs the direct shared-runtime hook without requiring repo-local `node_modules/.bin/agent-badge`.
 
 The smoke result must report `"status": "passed"` before the release is treated as complete.
 

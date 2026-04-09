@@ -29,6 +29,9 @@ npm test -- --run
 # Tarball integrity gate: only runtime artifacts may ship in the publishable packages.
 npm_config_cache="${NPM_CACHE_DIR}" npm run pack:check
 # Smoke-install gate: install the verified tarballs in a fresh project.
+# This certifies the explicit direct-runtime package path, not the published
+# npm initializer's minimal-artifact contract. That proof lives in
+# scripts/smoke/verify-registry-install.sh --check-initializer.
 npm_config_cache="${NPM_CACHE_DIR}" npm run smoke:pack
 
 popd >/dev/null
