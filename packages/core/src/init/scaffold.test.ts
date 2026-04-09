@@ -115,7 +115,7 @@ describe("applyAgentBadgeScaffold", () => {
 
       expect(config.providers.codex.enabled).toBe(true);
       expect(config.providers.claude.enabled).toBe(false);
-      expect(config.badge.label).toBe("AI budget");
+      expect(config.badge.label).toBe("AI burn");
       expect(config.badge.mode).toBe("combined");
       expect(config.badge.style).toBe("flat");
       expect(config.badge.color).toBe("#E8A515");

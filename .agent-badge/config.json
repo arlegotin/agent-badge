@@ -15,10 +15,12 @@
     }
   },
   "badge": {
-    "label": "AI budget",
+    "label": "AI burn",
     "mode": "combined",
     "style": "flat",
-    "color": "#E8A515"
+    "color": "#E8A515",
+    "colorZero": "lightgrey",
+    "cacheSeconds": 300
   },
   "publish": {
     "provider": "github-gist",

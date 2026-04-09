@@ -459,7 +459,7 @@ function normalizeBadgeUrl(badgeUrl: string): string | null {
 function defaultEndpointPayload(): string {
   return `${JSON.stringify(
     buildEndpointBadgePayload({
-      label: "AI budget",
+      label: "AI burn",
       mode: "combined",
       color: "#E8A515",
       colorZero: "lightgrey",

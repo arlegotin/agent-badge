@@ -406,7 +406,7 @@ describe("runInitCommand", () => {
       expect(readmeContent.match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
       expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
       expect(readmeContent).toContain(
-        "[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
+        "[![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_connected%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
       expect(hookContent.match(/# agent-badge:start/gm)).toHaveLength(1);
       expect(hookContent.match(/# agent-badge:end/gm)).toHaveLength(1);
@@ -772,7 +772,7 @@ describe("runInitCommand", () => {
                     filename: AGENT_BADGE_GIST_FILE,
                     content: `{
   "schemaVersion": 1,
-  "label": "AI budget",
+  "label": "AI burn",
   "message": "pending",
   "color": "lightgrey"
 }
@@ -856,7 +856,7 @@ describe("runInitCommand", () => {
                   filename: AGENT_BADGE_GIST_FILE,
                   content: `{
   "schemaVersion": 1,
-  "label": "AI budget",
+  "label": "AI burn",
   "message": "pending",
   "color": "lightgrey"
 }
@@ -986,7 +986,7 @@ describe("runInitCommand", () => {
         [AGENT_BADGE_GIST_FILE]: {
           content: `{
   "schemaVersion": 1,
-  "label": "AI budget",
+  "label": "AI burn",
   "message": "9 tokens",
   "color": "#E8A515"
 }
@@ -1051,7 +1051,7 @@ describe("runInitCommand", () => {
         [AGENT_BADGE_GIST_FILE]: {
           content: `{
   "schemaVersion": 1,
-  "label": "AI budget",
+  "label": "AI burn",
   "message": "9 tokens",
   "color": "#E8A515"
 }
@@ -1166,7 +1166,7 @@ describe("runInitCommand", () => {
 
       expect(existsSync(join(repo.root, "README.md"))).toBe(false);
       expect(output.read()).toContain(
-        "- Badge snippet: [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
+        "- Badge snippet: [![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -1200,7 +1200,7 @@ describe("runInitCommand", () => {
       const readmeContent = await readReadmeContent(repo.root);
 
       expect(readmeContent).toContain(
-        "[![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
+        "[![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -1235,7 +1235,7 @@ describe("runInitCommand", () => {
       });
 
       expect(output.read()).toContain(
-        "- Badge snippet: [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
+        "- Badge snippet: [![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Foctocat%2Fgist_snippet_linked%2Fraw%2Fagent-badge.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge)"
       );
     } finally {
       await Promise.all([repo.cleanup(), providers.cleanup()]);
@@ -1281,7 +1281,7 @@ describe("runInitCommand", () => {
       expect(readmeContent.match(/<!-- agent-badge:end -->/g)).toHaveLength(1);
       expect(
         readmeContent.match(
-          /!\[AI budget\]\(https:\/\/img\.shields\.io\/endpoint\?url=https%3A%2F%2Fgist\.githubusercontent\.com%2Foctocat%2Fgist_idempotent%2Fraw%2Fagent-badge\.json&cacheSeconds=300\)/g
+          /!\[AI burn\]\(https:\/\/img\.shields\.io\/endpoint\?url=https%3A%2F%2Fgist\.githubusercontent\.com%2Foctocat%2Fgist_idempotent%2Fraw%2Fagent-badge\.json&cacheSeconds=300\)/g
         )
       ).toHaveLength(1);
       expect(secondOutput.read()).toContain("- Publish target: reused existing gist");

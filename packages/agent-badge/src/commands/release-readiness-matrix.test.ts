@@ -539,7 +539,7 @@ describe("release readiness scenario matrix", () => {
               }
             },
             badge: {
-              label: "AI budget",
+              label: "AI burn",
               mode: "combined"
             },
             publish: {

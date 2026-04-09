@@ -15,7 +15,7 @@ describe("agentBadgeConfigSchema", () => {
   it("ships privacy-safe defaults", () => {
     expect(defaultAgentBadgeConfig.privacy.aggregateOnly).toBe(true);
     expect(defaultAgentBadgeConfig.privacy.output).toBe("standard");
-    expect(defaultAgentBadgeConfig.badge.label).toBe("AI budget");
+    expect(defaultAgentBadgeConfig.badge.label).toBe("AI burn");
     expect(defaultAgentBadgeConfig.badge.mode).toBe("combined");
     expect(defaultAgentBadgeConfig.badge.style).toBe("flat");
     expect(defaultAgentBadgeConfig.badge.color).toBe("#E8A515");

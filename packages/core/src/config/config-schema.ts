@@ -100,7 +100,7 @@ export const defaultAgentBadgeConfig: AgentBadgeConfig = {
     }
   },
   badge: {
-    label: "AI budget",
+    label: "AI burn",
     mode: "combined",
     style: "flat",
     color: "#E8A515",

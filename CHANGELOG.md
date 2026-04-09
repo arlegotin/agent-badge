@@ -6,6 +6,13 @@ All notable package releases are tracked here.
 
 - No unreleased notes yet.
 
+## 1.1.19 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.19`.
+- Changed the shipped default badge label from `AI budget` to `AI burn`.
+- Rotated the live README and configuration examples through `AI Receipt`, `AI spent`, `AI Spend`, and `AI Bill`.
+- Release commit: created by the release workflow after publish.
+
 ## 1.1.18 - 2026-04-09
 
 - Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.18`.

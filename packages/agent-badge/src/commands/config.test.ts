@@ -137,7 +137,7 @@ describe("runConfigCommand", () => {
       expect(output.read()).toContain("agent-badge config");
       expect(output.read()).toContain("- providers.codex.enabled=true");
       expect(output.read()).toContain("- providers.claude.enabled=true");
-      expect(output.read()).toContain("- badge.label=AI budget");
+      expect(output.read()).toContain("- badge.label=AI burn");
       expect(output.read()).toContain("- badge.mode=combined");
       expect(output.read()).toContain("- badge.style=flat");
       expect(output.read()).toContain("- badge.color=#E8A515");

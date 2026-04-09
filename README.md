@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/arlegotin/agent-badge">
-    <img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300" alt="AI budget badge">
+    <img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300" alt="AI burn badge">
   </a>
 </p>
 
@@ -18,7 +18,7 @@
 
 ## 60-Second Path
 
-Do this once on each machine:
+Do this once:
 
 ```bash
 # install the package globally:
@@ -51,14 +51,14 @@ The badge at the top of this README is live. The gallery below also uses live re
 
 | Badge | Command |
 | --- | --- |
-| [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined` |
-| [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode tokens` |
-| [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost` |
-| [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&style=flat-square&color=teal)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.style flat-square`<br>`agent-badge config set badge.color teal` |
-| [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&style=plastic&color=royalblue)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.style plastic`<br>`agent-badge config set badge.color royalblue` |
-| [![AI budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&style=for-the-badge&color=%23ff69b4)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.style for-the-badge`<br>`agent-badge config set badge.color "#ff69b4"` |
-| [![AI receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300&label=AI%20receipt&color=orange)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI receipt"`<br>`agent-badge config set badge.color orange` |
-| [![Ship budget](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=Ship%20budget&color=red&style=for-the-badge)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "Ship budget"`<br>`agent-badge config set badge.color red`<br>`agent-badge config set badge.style for-the-badge` |
+| [![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined` |
+| [![AI Receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300&label=AI%20Receipt)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode tokens`<br>`agent-badge config set badge.label "AI Receipt"` |
+| [![AI spent](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300&label=AI%20spent)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI spent"` |
+| [![AI Spend](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Spend&style=flat-square&color=teal)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.label "AI Spend"`<br>`agent-badge config set badge.style flat-square`<br>`agent-badge config set badge.color teal` |
+| [![AI Bill](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Bill&style=plastic&color=royalblue)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.label "AI Bill"`<br>`agent-badge config set badge.style plastic`<br>`agent-badge config set badge.color royalblue` |
+| [![AI Receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Receipt&style=for-the-badge&color=%23ff69b4)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.label "AI Receipt"`<br>`agent-badge config set badge.style for-the-badge`<br>`agent-badge config set badge.color "#ff69b4"` |
+| [![AI spent](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300&label=AI%20spent&color=orange)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI spent"`<br>`agent-badge config set badge.color orange` |
+| [![AI Bill](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Bill&color=red&style=for-the-badge)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "AI Bill"`<br>`agent-badge config set badge.color red`<br>`agent-badge config set badge.style for-the-badge` |
 
 When the configuration changes, run `agent-badge refresh`.
 

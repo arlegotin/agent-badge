@@ -12,7 +12,7 @@ Use `agent-badge config` or `agent-badge config get` to inspect current values, 
 | --- | --- | --- | --- |
 | `providers.codex.enabled` | `true`, `false` | `true` | Include or ignore Codex data during scan and refresh. |
 | `providers.claude.enabled` | `true`, `false` | `true` | Include or ignore Claude data during scan and refresh. |
-| `badge.label` | any non-empty string | `AI budget` | Changes the left-side badge label. |
+| `badge.label` | any non-empty string | `AI burn` | Changes the left-side badge label. |
 | `badge.mode` | `combined`, `tokens`, `cost` | `combined` | Changes what the badge message displays. |
 | `badge.style` | `flat`, `flat-square`, `plastic`, `for-the-badge`, `social` | `flat` | Changes the Shields badge style embedded in the stable badge URL. |
 | `badge.color` | any non-empty Shields color string | `#E8A515` | Changes the badge color when the selected total is non-zero. |
@@ -52,7 +52,7 @@ Useful when the headline is "what did this repo consume?"
 ### Keep the default label
 
 ```bash
-agent-badge config set badge.label "AI budget"
+agent-badge config set badge.label "AI burn"
 ```
 
 ### Set the label to AI Receipt
@@ -60,6 +60,8 @@ agent-badge config set badge.label "AI budget"
 ```bash
 agent-badge config set badge.label "AI Receipt"
 ```
+
+Other gallery examples rotate through `AI spent`, `AI Spend`, and `AI Bill` when you want a more opinionated label.
 
 ### Change the badge style
 

@@ -134,12 +134,18 @@ require_fixed "## 60-Second Path" README.md
 require_fixed "npm install -g @legotin/agent-badge@latest" README.md
 require_fixed "npm init agent-badge@latest" README.md
 require_fixed "gh auth token >/dev/null" README.md
-require_fixed "Do this once on each machine" README.md
+require_fixed "Do this once" README.md
 require_fixed "Do this in each repo" README.md
 require_fixed "quick install path" README.md
 require_fixed "shared runtime" README.md
 require_fixed "https://github.com/arlegotin/agent-badge" README.md
 require_fixed "live repo data everywhere" README.md
+require_fixed 'alt="AI burn badge"' README.md
+require_fixed "AI burn" README.md
+require_fixed "AI Receipt" README.md
+require_fixed "AI spent" README.md
+require_fixed "AI Spend" README.md
+require_fixed "AI Bill" README.md
 require_fixed "## What Gets Published" README.md
 require_fixed "## Documentation" README.md
 require_fixed "### User Docs" README.md
@@ -216,6 +222,12 @@ require_fixed "REGISTRY-SMOKE" docs/maintainers/RELEASE.md
 require_fixed "gh release" docs/maintainers/RELEASE.md
 require_fixed "artifacts/releases/<release-version>" docs/maintainers/RELEASE.md
 require_fixed "agent-badge refresh --hook pre-push --hook-policy fail-soft || true" docs/INSTALL.md
+require_fixed '`AI burn` | Changes the left-side badge label.' docs/CONFIGURATION.md
+require_fixed 'agent-badge config set badge.label "AI burn"' docs/CONFIGURATION.md
+require_fixed "AI Receipt" docs/CONFIGURATION.md
+require_fixed "AI spent" docs/CONFIGURATION.md
+require_fixed "AI Spend" docs/CONFIGURATION.md
+require_fixed "AI Bill" docs/CONFIGURATION.md
 
 require_fixed "## Unreleased" CHANGELOG.md
 require_fixed "## Issues and Support" CONTRIBUTING.md
@@ -230,6 +242,7 @@ done
 forbid_ere "repo-local runtime|local runtime" README.md docs/INSTALL.md docs/QUICKSTART.md docs/CLI.md docs/HOW-IT-WORKS.md
 forbid_ere "img\\.shields\\.io/badge/" README.md
 forbid_ere '42%20tokens|42 tokens|\$58' README.md
+forbid_ere "AI budget" README.md docs/CONFIGURATION.md
 forbid_ere "Use the repo-local wrapper that matches your package manager" docs/CLI.md
 forbid_ere "which then installs the actual runtime package" docs/FAQ.md
 forbid_ere "npx --no-install agent-badge init" docs/AUTH.md docs/UNINSTALL.md docs/TROUBLESHOOTING.md docs/RECOVERY.md
