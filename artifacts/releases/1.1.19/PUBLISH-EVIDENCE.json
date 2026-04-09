@@ -1,0 +1,67 @@
+{
+  "publishPath": "github-actions",
+  "gitSha": "7f40409c550e2965569f85e2e1ed131b43e2a431",
+  "preflightPath": "artifacts/releases/1.1.19/preflight.json",
+  "publishedAt": "2026-04-09T20:00:49Z",
+  "packages": [
+    {
+      "manifestPath": "packages/agent-badge/package.json",
+      "name": "@legotin/agent-badge",
+      "version": "1.1.19"
+    },
+    {
+      "manifestPath": "packages/core/package.json",
+      "name": "@legotin/agent-badge-core",
+      "version": "1.1.19"
+    },
+    {
+      "manifestPath": "packages/create-agent-badge/package.json",
+      "name": "create-agent-badge",
+      "version": "1.1.19"
+    }
+  ],
+  "registryResults": [
+    {
+      "packageName": "@legotin/agent-badge",
+      "command": [
+        "view",
+        "@legotin/agent-badge",
+        "version",
+        "dist-tags.latest",
+        "--json"
+      ],
+      "observedVersion": "1.1.19",
+      "distTagsLatest": "1.1.19",
+      "error": null
+    },
+    {
+      "packageName": "@legotin/agent-badge-core",
+      "command": [
+        "view",
+        "@legotin/agent-badge-core",
+        "version",
+        "dist-tags.latest",
+        "--json"
+      ],
+      "observedVersion": "1.1.19",
+      "distTagsLatest": "1.1.19",
+      "error": null
+    },
+    {
+      "packageName": "create-agent-badge",
+      "command": [
+        "view",
+        "create-agent-badge",
+        "version",
+        "dist-tags.latest",
+        "--json"
+      ],
+      "observedVersion": "1.1.19",
+      "distTagsLatest": "1.1.19",
+      "error": null
+    }
+  ],
+  "workflowRunUrl": "https://github.com/arlegotin/agent-badge/actions/runs/24210552890",
+  "workflowRunId": "24210552890",
+  "workflowRunConclusion": "success"
+}
