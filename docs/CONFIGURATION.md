@@ -2,7 +2,7 @@
 
 `agent-badge` keeps configuration intentionally narrow. The goal is a trustworthy badge, not an analytics maze.
 
-Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
+Commands below are shown as `agent-badge ...` for readability. Use them directly when the shared runtime is on your `PATH`. If you chose the direct package-install alternative, use your package manager's exec wrapper instead.
 
 ## Supported Keys
 
@@ -103,6 +103,7 @@ agent-badge config set refresh.prePush.enabled false
 ```
 
 The runtime stays installed, but the managed hook block is removed.
+The shared runtime stays available; only the managed hook block is removed.
 
 ### Make pushes strict
 

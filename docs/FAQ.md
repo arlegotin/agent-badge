@@ -2,7 +2,7 @@
 
 ## Why does `npm init agent-badge@latest` mention `create-agent-badge`?
 
-Because npm initializers are published as `create-*` packages. `npm init agent-badge@latest` resolves to `create-agent-badge`, which then installs the actual runtime package `@legotin/agent-badge`.
+Because npm initializers are published as `create-*` packages. `npm init agent-badge@latest` resolves to `create-agent-badge`, which is a thin initializer entrypoint that runs `agent-badge init` for the current repo.
 
 ## What if I only use Codex or only use Claude?
 
@@ -18,7 +18,7 @@ Aggregate badge payloads and shared metadata only. No prompt text, transcript te
 
 ## Can I use pnpm, yarn, or bun?
 
-Yes for the runtime. Use npm for the one-step initializer, or install `@legotin/agent-badge` directly and run the local wrapper for your package manager. See [INSTALL.md](INSTALL.md).
+Yes for the runtime. Use npm for the one-step initializer, or install `@legotin/agent-badge` directly and use that package manager's exec form. See [INSTALL.md](INSTALL.md).
 
 ## What if neither `~/.codex` nor `~/.claude` exists?
 

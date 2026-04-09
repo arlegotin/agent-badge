@@ -2,6 +2,8 @@
 
 `agent-badge uninstall` removes repo wiring first and preserves data unless you explicitly ask it to purge more.
 
+Commands below are shown as `agent-badge ...` for readability. Use them directly when the shared runtime is on your `PATH`. If you chose the direct package-install path instead, use the matching package manager exec form from [INSTALL.md](INSTALL.md).
+
 ## Default Behavior
 
 Run:
@@ -51,7 +53,7 @@ Use this carefully. It deletes the gist, not just the local pointer to it.
 To reinstall after a default uninstall:
 
 ```bash
-npx --no-install agent-badge init
+agent-badge init
 ```
 
 To reinstall after a full local purge:

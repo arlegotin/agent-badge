@@ -95,6 +95,7 @@ done
 
 require_fixed "## 60-Second Path" README.md
 require_fixed "npm init agent-badge@latest" README.md
+require_fixed "shared runtime" README.md
 require_fixed "## What Gets Published" README.md
 require_fixed "## Documentation" README.md
 require_fixed "### User Docs" README.md
@@ -109,6 +110,7 @@ require_fixed "docs/maintainers/RELEASE.md" README.md
 require_fixed "Node.js" docs/INSTALL.md
 require_fixed "~/.codex" docs/INSTALL.md
 require_fixed "~/.claude" docs/INSTALL.md
+require_fixed "shared runtime" docs/INSTALL.md
 require_fixed "pnpm exec agent-badge" docs/INSTALL.md
 require_fixed "bunx --bun agent-badge" docs/INSTALL.md
 require_fixed "Package Names" docs/INSTALL.md
@@ -122,10 +124,15 @@ require_fixed "write" docs/AUTH.md
 require_fixed "public" docs/AUTH.md
 
 require_fixed "agent-badge init [--gist-id <id>]" docs/CLI.md
+require_fixed "global or user-scoped" docs/CLI.md
 require_fixed "agent-badge scan [--include-session <provider:sessionId>] [--exclude-session <provider:sessionId>]" docs/CLI.md
 require_fixed "agent-badge refresh [--hook pre-push] [--hook-policy <fail-soft|strict>] [--fail-soft] [--force-full]" docs/CLI.md
 require_fixed "agent-badge doctor [--json] [--probe-write]" docs/CLI.md
 require_fixed "agent-badge uninstall [--purge-remote] [--purge-config] [--purge-state] [--purge-logs] [--purge-cache] [--force]" docs/CLI.md
+require_fixed "shared runtime" docs/QUICKSTART.md
+require_fixed "shared runtime" docs/HOW-IT-WORKS.md
+require_fixed "preserves data unless you explicitly ask it to purge more" docs/UNINSTALL.md
+require_fixed "thin initializer entrypoint" docs/FAQ.md
 
 require_fixed "docs/maintainers/RELEASE.md" docs/RELEASE.md
 require_fixed "<release-version>" docs/maintainers/RELEASE.md
@@ -143,6 +150,11 @@ for file in "${public_docs[@]}"; do
   forbid_ere "\\.planning/" "${file}"
   forbid_ere "Phase [0-9]+" "${file}"
 done
+
+forbid_ere "repo-local runtime|local runtime" README.md docs/INSTALL.md docs/QUICKSTART.md docs/CLI.md docs/HOW-IT-WORKS.md
+forbid_ere "Use the repo-local wrapper that matches your package manager" docs/CLI.md
+forbid_ere "which then installs the actual runtime package" docs/FAQ.md
+forbid_ere "npx --no-install agent-badge init" docs/AUTH.md docs/UNINSTALL.md docs/TROUBLESHOOTING.md docs/RECOVERY.md
 
 forbid_ere "1\\.1\\.3" README.md docs docs/maintainers/RELEASE.md scripts/verify-docs.sh
 

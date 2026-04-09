@@ -2,6 +2,8 @@
 
 `agent-badge` writes badge payloads to a GitHub Gist, so GitHub auth must be able to create, update, and delete gists on your account.
 
+Commands below are shown as `agent-badge ...` for readability. Use them directly when the shared runtime is on your `PATH`. If you chose the direct package-install path instead, use the matching package manager exec form from [INSTALL.md](INSTALL.md).
+
 ## Accepted Auth Sources
 
 The CLI checks auth in this order:
@@ -43,14 +45,14 @@ Use a token from the shell:
 
 ```bash
 export GH_TOKEN=<token>
-npx --no-install agent-badge init
+agent-badge init
 ```
 
 Or authenticate GitHub CLI and let `agent-badge` resolve the token through `gh auth token`:
 
 ```bash
 gh auth login
-npx --no-install agent-badge init
+agent-badge init
 ```
 
 ## Common Messages
@@ -59,7 +61,7 @@ If auth is missing during init:
 
 ```text
 - Publish target: deferred
-- Setup: local setup complete, but GitHub auth is still required before the live badge can publish.
+- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish.
 ```
 
 If a later publish attempt cannot authenticate:

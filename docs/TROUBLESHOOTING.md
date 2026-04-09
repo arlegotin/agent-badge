@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
+Commands below are shown as `agent-badge ...` for readability. Use them directly when the shared runtime is on your `PATH`. If you intentionally chose the direct package-install path, use your package manager's exec wrapper instead.
 
 The canonical supported repair flow lives in [RECOVERY.md](RECOVERY.md). This page stays focused on symptoms and short triage notes.
 
@@ -10,10 +10,9 @@ Symptom: the repo was initialized, but your shell does not recognize `agent-badg
 
 Recovery:
 
-1. For npm projects, run `npx --no-install agent-badge <command>`.
-2. For pnpm, run `pnpm exec agent-badge <command>`.
-3. For yarn, run `yarn agent-badge <command>`.
-4. For bun, run `bunx --bun agent-badge <command>`.
+1. Install or repair the shared runtime so `agent-badge` resolves on `PATH`.
+2. Retry `agent-badge <command>`.
+3. If you intentionally installed `@legotin/agent-badge` inside the repo instead, use `npx --no-install agent-badge <command>`, `pnpm exec agent-badge <command>`, `yarn agent-badge <command>`, or `bunx --bun agent-badge <command>`.
 
 ## git bootstrap blocked
 
