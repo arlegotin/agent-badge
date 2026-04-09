@@ -97,6 +97,9 @@ require_fixed "## 60-Second Path" README.md
 require_fixed "npm init agent-badge@latest" README.md
 require_fixed "shared runtime" README.md
 require_fixed "## What Gets Published" README.md
+require_fixed "Badge setup deferred" README.md
+require_fixed "connected existing gist" README.md
+require_fixed "reused existing gist" README.md
 require_fixed "## Documentation" README.md
 require_fixed "### User Docs" README.md
 require_fixed "### Maintainer Docs" README.md
@@ -122,6 +125,7 @@ require_fixed '`gist` scope' docs/AUTH.md
 require_fixed "Gists" docs/AUTH.md
 require_fixed "write" docs/AUTH.md
 require_fixed "public" docs/AUTH.md
+require_fixed "Badge setup deferred" docs/AUTH.md
 
 require_fixed "agent-badge init [--gist-id <id>]" docs/CLI.md
 require_fixed "global or user-scoped" docs/CLI.md
@@ -129,7 +133,14 @@ require_fixed "agent-badge scan [--include-session <provider:sessionId>] [--excl
 require_fixed "agent-badge refresh [--hook pre-push] [--hook-policy <fail-soft|strict>] [--fail-soft] [--force-full]" docs/CLI.md
 require_fixed "agent-badge doctor [--json] [--probe-write]" docs/CLI.md
 require_fixed "agent-badge uninstall [--purge-remote] [--purge-config] [--purge-state] [--purge-logs] [--purge-cache] [--force]" docs/CLI.md
+require_fixed "Badge setup deferred" docs/CLI.md
+require_fixed "connected existing gist" docs/CLI.md
+require_fixed "reused existing gist" docs/CLI.md
+require_fixed "fail-soft || true" docs/CLI.md
 require_fixed "shared runtime" docs/QUICKSTART.md
+require_fixed "connected existing gist" docs/QUICKSTART.md
+require_fixed "reused existing gist" docs/QUICKSTART.md
+require_fixed "shared runtime is not on PATH yet" docs/QUICKSTART.md
 require_fixed "shared runtime" docs/HOW-IT-WORKS.md
 require_fixed "preserves data unless you explicitly ask it to purge more" docs/UNINSTALL.md
 require_fixed "thin initializer entrypoint" docs/FAQ.md
@@ -140,6 +151,7 @@ require_fixed "PUBLISH-EVIDENCE" docs/maintainers/RELEASE.md
 require_fixed "REGISTRY-SMOKE" docs/maintainers/RELEASE.md
 require_fixed "gh release" docs/maintainers/RELEASE.md
 require_fixed "artifacts/releases/<release-version>" docs/maintainers/RELEASE.md
+require_fixed "agent-badge refresh --hook pre-push --hook-policy fail-soft || true" docs/INSTALL.md
 
 require_fixed "## Unreleased" CHANGELOG.md
 require_fixed "## Issues and Support" CONTRIBUTING.md
@@ -155,6 +167,8 @@ forbid_ere "repo-local runtime|local runtime" README.md docs/INSTALL.md docs/QUI
 forbid_ere "Use the repo-local wrapper that matches your package manager" docs/CLI.md
 forbid_ere "which then installs the actual runtime package" docs/FAQ.md
 forbid_ere "npx --no-install agent-badge init" docs/AUTH.md docs/UNINSTALL.md docs/TROUBLESHOOTING.md docs/RECOVERY.md
+forbid_ere '^- `--version <release-version>`$' docs/maintainers/RELEASE.md
+forbid_ere 'runtime detects the repo package manager and writes the managed `pre-push` hook accordingly' docs/INSTALL.md
 
 forbid_ere "1\\.1\\.3" README.md docs docs/maintainers/RELEASE.md scripts/verify-docs.sh
 
