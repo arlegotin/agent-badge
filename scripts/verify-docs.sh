@@ -132,13 +132,11 @@ fi
 
 require_fixed "## 60-Second Path" README.md
 require_fixed "npm install -g @legotin/agent-badge@latest" README.md
-require_fixed "agent-badge --version" README.md
-require_fixed "gh auth token >/dev/null" README.md
-require_fixed "agent-badge doctor" README.md
-require_fixed "agent-badge status" README.md
 require_fixed "npm init agent-badge@latest" README.md
+require_fixed "Do this once on each machine" README.md
+require_fixed "Do this in each repo" README.md
+require_fixed "quick install path" README.md
 require_fixed "shared runtime" README.md
-require_fixed "no-debug path" README.md
 require_fixed "Shared runtime: unavailable" README.md
 require_fixed "## What Gets Published" README.md
 require_fixed "Badge setup deferred" README.md
@@ -155,6 +153,9 @@ require_fixed "docs/FAQ.md" README.md
 require_fixed "docs/maintainers/RELEASE.md" README.md
 
 require_fixed "Node.js" docs/INSTALL.md
+require_fixed "## Setup Model" docs/INSTALL.md
+require_fixed "Once per machine" docs/INSTALL.md
+require_fixed "In each repo" docs/INSTALL.md
 require_fixed "## First-Shot Recommended Path" docs/INSTALL.md
 require_fixed "agent-badge --version" docs/INSTALL.md
 require_fixed "gh auth token >/dev/null" docs/INSTALL.md
@@ -179,6 +180,8 @@ require_fixed "Badge setup deferred" docs/AUTH.md
 require_fixed "agent-badge init [--gist-id <id>]" docs/CLI.md
 require_fixed "agent-badge --version" docs/CLI.md
 require_fixed "global or user-scoped" docs/CLI.md
+require_fixed "once per machine" docs/CLI.md
+require_fixed "in each repo" docs/CLI.md
 require_fixed "agent-badge scan [--include-session <provider:sessionId>] [--exclude-session <provider:sessionId>]" docs/CLI.md
 require_fixed "agent-badge refresh [--hook pre-push] [--hook-policy <fail-soft|strict>] [--fail-soft] [--force-full]" docs/CLI.md
 require_fixed "agent-badge doctor [--json] [--probe-write]" docs/CLI.md
@@ -188,6 +191,9 @@ require_fixed "connected existing gist" docs/CLI.md
 require_fixed "reused existing gist" docs/CLI.md
 require_fixed "fail-soft || true" docs/CLI.md
 require_fixed "shared runtime" docs/QUICKSTART.md
+require_fixed "## Setup Model" docs/QUICKSTART.md
+require_fixed "Once per machine" docs/QUICKSTART.md
+require_fixed "In each repo" docs/QUICKSTART.md
 require_fixed "## No-Debug First Shot" docs/QUICKSTART.md
 require_fixed "agent-badge --version" docs/QUICKSTART.md
 require_fixed "connected existing gist" docs/QUICKSTART.md
@@ -197,9 +203,12 @@ require_fixed "shared runtime could not be validated" docs/QUICKSTART.md
 require_fixed "shared runtime" docs/HOW-IT-WORKS.md
 require_fixed "preserves data unless you explicitly ask it to purge more" docs/UNINSTALL.md
 require_fixed "thin initializer entrypoint" docs/FAQ.md
+require_fixed "## What do I do once per machine and what do I do per repo?" docs/FAQ.md
 require_fixed '## Why did init say `Shared runtime: unavailable`?' docs/FAQ.md
 require_fixed "## shared runtime could not be validated" docs/TROUBLESHOOTING.md
 require_fixed "agent-badge --version" docs/TROUBLESHOOTING.md
+require_fixed "Machine fix" docs/TROUBLESHOOTING.md
+require_fixed "Repo follow-up" docs/TROUBLESHOOTING.md
 
 require_fixed "docs/maintainers/RELEASE.md" docs/RELEASE.md
 require_fixed "<release-version>" docs/maintainers/RELEASE.md

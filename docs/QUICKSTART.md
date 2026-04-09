@@ -12,16 +12,29 @@ Before you start:
 
 For the complete support matrix, see [INSTALL.md](INSTALL.md).
 
+## Setup Model
+
+- Once per machine: install the shared runtime so `agent-badge` exists on `PATH`.
+- In each repo: run `npm init agent-badge@latest`.
+- Before live publishing: have GitHub auth available in the current shell, or expect publish to be deferred until you rerun `agent-badge init`.
+
 ## No-Debug First Shot
 
 If your goal is "run once, done", use this exact sequence:
 
 ```bash
+# once on this machine
 npm install -g @legotin/agent-badge@latest
 hash -r
 agent-badge --version
+
+# in this shell before live publish
 gh auth token >/dev/null
+
+# in this repo
 npm init agent-badge@latest
+
+# verify repo wiring and publish readiness
 agent-badge doctor
 agent-badge status
 ```
@@ -30,9 +43,19 @@ This pre-installs and validates the shared runtime before `init`, so the managed
 
 ## Fastest Path
 
+Once on this machine:
+
+```bash
+npm install -g @legotin/agent-badge@latest
+```
+
+In each repo:
+
 ```bash
 npm init agent-badge@latest
 ```
+
+That is the short setup path. It leaves out the extra validation commands on purpose.
 
 That initializer runs `agent-badge init` in the current directory, writes the repo-owned scaffold, and assumes a shared runtime/global or user-scoped CLI path for later commands.
 

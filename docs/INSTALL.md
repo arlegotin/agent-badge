@@ -4,6 +4,14 @@
 
 If your requirement is "works on the first try without debugging", use only the sequence under **First-Shot Recommended Path**. The one-line initializer path is best-effort and can defer publish or report shared runtime repair guidance.
 
+## Setup Model
+
+There are only two setup actions to remember:
+
+- Once per machine: install the shared runtime so `agent-badge` is callable on `PATH`.
+- In each repo: run `npm init agent-badge@latest` to write `.agent-badge/*`, the managed `.gitignore` entries, the `pre-push` hook, and the README badge wiring.
+- Before live publishing: make GitHub auth available in the shell. That is machine or shell state, not repo-owned setup.
+
 ## Requirements
 
 | Requirement | Supported | Why it matters |
@@ -49,9 +57,21 @@ Expected `init` ending for a fully ready first shot:
 
 ## Fastest Path
 
+If you already understand the setup model and want the short version, use:
+
+Once on this machine:
+
+```bash
+npm install -g @legotin/agent-badge@latest
+```
+
+In each repo:
+
 ```bash
 npm init agent-badge@latest
 ```
+
+This path keeps the quick instructions short. It skips the explicit validation and diagnostic steps from **First-Shot Recommended Path**.
 
 That initializer:
 
@@ -60,6 +80,8 @@ That initializer:
 - wires a failure-soft `pre-push` refresh hook
 - inserts the badge into `README.md` once a stable badge URL is available
 - does not install repo-local `@legotin/agent-badge`, managed `agent-badge:init` / `agent-badge:refresh` scripts, or repo-local `node_modules` by default
+
+If GitHub auth is already available in the shell, init can create and publish the gist on the same run. If auth is not available yet, local repo setup still completes and publish is deferred until you rerun `agent-badge init` after auth is ready.
 
 When GitHub auth is available and the shared runtime is already on `PATH`, init can finish with:
 

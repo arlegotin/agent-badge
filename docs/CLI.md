@@ -1,6 +1,6 @@
 # CLI Reference
 
-Commands below are shown as `agent-badge ...` for readability. That is the default shared runtime path after `npm init agent-badge@latest`: use `agent-badge` directly when the shared runtime is available via a global or user-scoped install on `PATH`. If you explicitly install `@legotin/agent-badge` inside the repo instead, use your package manager's exec wrapper for that alternative path.
+Commands below are shown as `agent-badge ...` for readability. The default setup model is: install the shared runtime once per machine, then run `npm init agent-badge@latest` or `agent-badge init` in each repo. Use `agent-badge` directly when the shared runtime is available via a global or user-scoped install on `PATH`. If you explicitly install `@legotin/agent-badge` inside the repo instead, use your package manager's exec wrapper for that alternative path.
 
 ## Command Summary
 
@@ -34,6 +34,8 @@ agent-badge init [--gist-id <id>]
 | Option | Meaning |
 | --- | --- |
 | `--gist-id <id>` | Reuse an existing public gist instead of creating one automatically. |
+
+Run `init` in each repo you want to badge. Installing the shared runtime is a separate machine-level step covered in [INSTALL.md](INSTALL.md).
 
 Expected terminal endings:
 

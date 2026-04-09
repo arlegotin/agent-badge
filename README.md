@@ -19,31 +19,25 @@
 Some people want transparency.<br>
 Some people just want to flex how hard they ship with agents.
 
-For a strict first-shot setup without debugging, run this exact sequence:
+Do this once on each machine:
 
 ```bash
 npm install -g @legotin/agent-badge@latest
-hash -r
-agent-badge --version
-gh auth token >/dev/null
-npm init agent-badge@latest
-agent-badge doctor
-agent-badge status
 ```
 
-That is the no-debug path.
-
-If you want the fastest best-effort path instead, run:
+Do this in each repo:
 
 ```bash
 npm init agent-badge@latest
 ```
 
-The one-liner is intentionally best-effort. If runtime setup is not ready yet, init can still finish repo wiring and end with `Shared runtime: unavailable` plus setup guidance to install/repair the shared CLI before relying on pre-push refresh.
+That is the quick install path: shared runtime once per machine, repo setup once per repo.
 
-For full support details, use [docs/INSTALL.md](docs/INSTALL.md#first-shot-recommended-path) and [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#shared-runtime-could-not-be-validated).
+For the stricter first-shot path with runtime validation, auth checks, `agent-badge doctor`, and `agent-badge status`, use [docs/INSTALL.md](docs/INSTALL.md#first-shot-recommended-path) and [docs/QUICKSTART.md](docs/QUICKSTART.md#no-debug-first-shot).
 
-If GitHub auth is already available, init creates a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
+If machine-level runtime setup is not ready yet, init can still finish repo wiring and end with `Shared runtime: unavailable` plus setup guidance to install or repair the shared CLI before relying on pre-push refresh.
+
+Live publishing also needs GitHub auth in the shell. If GitHub auth is already available, init creates a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
 If GitHub auth is not available yet, init still completes the repo-owned scaffold and ends with:
 
@@ -60,6 +54,8 @@ To publish later, make sure the shared runtime is available on `PATH`, export `G
 ```bash
 agent-badge init
 ```
+
+For full support details, use [docs/INSTALL.md](docs/INSTALL.md), [docs/QUICKSTART.md](docs/QUICKSTART.md), and [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#shared-runtime-could-not-be-validated).
 
 ## What Gets Published
 

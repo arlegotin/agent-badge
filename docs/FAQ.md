@@ -4,6 +4,22 @@
 
 Because npm initializers are published as `create-*` packages. `npm init agent-badge@latest` resolves to `create-agent-badge`, which is a thin initializer entrypoint that runs `agent-badge init` for the current repo.
 
+## What do I do once per machine and what do I do per repo?
+
+Install the shared runtime once per machine:
+
+```bash
+npm install -g @legotin/agent-badge@latest
+```
+
+Then, in each repo you want to badge, run:
+
+```bash
+npm init agent-badge@latest
+```
+
+If GitHub auth is missing, repo setup still completes and live publishing is deferred until you rerun `agent-badge init` after auth is ready.
+
 ## What if I only use Codex or only use Claude?
 
 That is supported. `agent-badge` scans whichever provider directories exist on the current machine. If one provider is missing, the CLI reports partial coverage instead of inventing data.

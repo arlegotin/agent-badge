@@ -10,9 +10,10 @@ Symptom: the repo was initialized, but your shell does not recognize `agent-badg
 
 Recovery:
 
-1. Install or repair the shared runtime so `agent-badge` resolves on `PATH`.
-2. Retry `agent-badge <command>`.
-3. If you intentionally installed `@legotin/agent-badge` inside the repo instead, use `npx --no-install agent-badge <command>`, `pnpm exec agent-badge <command>`, `yarn agent-badge <command>`, or `bunx --bun agent-badge <command>`.
+1. Treat this as a machine-level runtime issue, not a missing repo scaffold issue.
+2. Install or repair the shared runtime so `agent-badge` resolves on `PATH`.
+3. Retry `agent-badge <command>` in the repo you already initialized.
+4. If you intentionally installed `@legotin/agent-badge` inside the repo instead, use `npx --no-install agent-badge <command>`, `pnpm exec agent-badge <command>`, `yarn agent-badge <command>`, or `bunx --bun agent-badge <command>`.
 
 ## shared runtime could not be validated
 
@@ -20,10 +21,10 @@ Symptom: init prints `Shared runtime: unavailable` and setup ends with `shared r
 
 Recovery:
 
-1. Reinstall or upgrade the shared runtime: `npm install -g @legotin/agent-badge@latest` (or `pnpm add -g` / `bun add -g`).
-2. Refresh shell command cache: `hash -r`.
-3. Confirm runtime probe command works: `agent-badge --version`.
-4. Re-run `agent-badge doctor`, then rerun `agent-badge init` if doctor still reports hook/runtime issues.
+1. Machine fix: reinstall or upgrade the shared runtime with `npm install -g @legotin/agent-badge@latest` (or `pnpm add -g` / `bun add -g`).
+2. Machine fix: refresh shell command cache with `hash -r`.
+3. Machine fix: confirm the runtime probe command works with `agent-badge --version`.
+4. Repo follow-up: re-run `agent-badge doctor`, then rerun `agent-badge init` if doctor still reports hook or runtime issues for the current repo.
 
 If `agent-badge --version` fails, your shell is still resolving an old or broken runtime path. Fix `PATH`, then retry.
 
@@ -43,8 +44,9 @@ Symptom: publish target creation is deferred because authentication is unavailab
 
 Recovery:
 
-1. Export one of `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or authenticate with `gh auth login` so `gh auth token` works in the same environment.
-2. Rerun `agent-badge init`, or connect a public gist with `agent-badge init --gist-id <id>`.
+1. Treat this as shell or machine auth state, not a repo wiring failure.
+2. Export one of `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or authenticate with `gh auth login` so `gh auth token` works in the same environment.
+3. Rerun `agent-badge init`, or connect a public gist with `agent-badge init --gist-id <id>`.
 
 Use [AUTH.md](AUTH.md) if you need the exact token requirements.
 

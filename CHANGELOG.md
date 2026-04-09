@@ -6,6 +6,24 @@ All notable package releases are tracked here.
 
 - No unreleased notes yet.
 
+## 1.1.17 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.17`.
+- Removed `prebuild-install` from the runtime dependency path to keep the installed CLI footprint leaner and avoid unnecessary native-install behavior.
+- Release commit: `ccc959c`.
+
+## 1.1.16 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.16`.
+- Recovered Codex cost attribution from rollout model metadata so pricing totals continue to populate correctly.
+- Release commit: `14fb77c`.
+
+## 1.1.15 - 2026-04-09
+
+- Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.15`.
+- Aligned init state with doctor auth handling and tightened the first-shot setup smoke path around valid publish and deferred outcomes.
+- Release commit: `0295901`.
+
 ## 1.1.14 - 2026-04-09
 
 - Published `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core` at `1.1.14`.
