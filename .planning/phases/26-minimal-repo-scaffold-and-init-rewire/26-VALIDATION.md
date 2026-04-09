@@ -1,8 +1,8 @@
 ---
 phase: 26
 slug: minimal-repo-scaffold-and-init-rewire
-status: draft
-nyquist_compliant: false
+status: complete
+nyquist_compliant: true
 wave_0_complete: true
 created: 2026-04-08
 updated: 2026-04-09
@@ -43,7 +43,7 @@ updated: 2026-04-09
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 26-01-01 | 01 | 1 | DIST-01, DIST-02 | T-26-01-01 | Initializer stops installing repo-local runtime packages and does not require package.json to exist after init | integration | `npm test -- --run packages/create-agent-badge/src/index.test.ts packages/agent-badge/src/commands/init.test.ts` | ✅ | ✅ green |
 | 26-01-02 | 01 | 1 | ART-01 | T-26-01-02 | Core scaffold reconciliation manages only repo-owned artifacts and never creates managed runtime dependency/script entries by default | integration | `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts` | ✅ | ✅ green |
-| 26-02-01 | 02 | 2 | ART-02 | T-26-02-02 | Init/config reruns prune only managed legacy package.json keys while preserving user-owned content and keeping one hook/gitignore block | integration + regression | `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/uninstall.test.ts` | ✅ | ❌ red |
+| 26-02-01 | 02 | 2 | ART-02 | T-26-02-02 | Init/config reruns prune only managed legacy package.json keys while preserving user-owned content and keeping one hook/gitignore block | integration + regression | `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/uninstall.test.ts` | ✅ | ✅ green |
 | 26-02-02 | 02 | 2 | DIST-01, DIST-02, ART-01, ART-02 | T-26-02-03 | Proof surfaces stop asserting repo-local runtime ownership, and release-readiness checks reflect the minimal-artifact contract without reintroducing stale assumptions | regression | `npm run typecheck && npm test -- --run packages/create-agent-badge/src/index.test.ts packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts && bash -n scripts/smoke/verify-registry-install.sh` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -63,7 +63,6 @@ updated: 2026-04-09
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Confirm a clean temporary repo initialized through the real package-manager entrypoint does not end up with repo-local `@legotin/agent-badge` ownership or agent-badge-created `node_modules` by default | DIST-02 | The published or packed initializer path depends on actual package-manager behavior outside the mocked temp-repo tests | In a temp repo, run the closest available packaged initializer flow after implementation, inspect `package.json`, lockfiles, `.gitignore`, `.git/hooks/pre-push`, and `.agent-badge/`, and confirm only repo-owned artifacts remain. If full registry proof is deferred, record the spot-check result and leave comprehensive release smoke to Phase 27. |
-| Preserve a genuinely user-owned `@legotin/agent-badge` dependency during legacy cleanup when no managed legacy scripts are present | ART-02 | Escalated. The targeted automated regression currently fails because `applyMinimalRepoScaffold()` prunes the dependency based on version-shape heuristics rather than proven ownership, so validation cannot be made green without an implementation fix. | After narrowing the cleanup gate in `packages/core/src/init/runtime-wiring.ts`, add a regression in `packages/core/src/init/runtime-wiring.test.ts` (and extend `packages/agent-badge/src/commands/init.test.ts` if needed), then run `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts`. |
 
 ---
 
@@ -84,6 +83,23 @@ updated: 2026-04-09
 
 ---
 
+## Validation Audit 2026-04-09 (Rerun)
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 1 |
+| Resolved | 1 |
+| Escalated | 0 |
+
+### Audit Notes
+
+- Re-ran `npm run typecheck`; it passed.
+- Re-ran `npm test -- --run packages/create-agent-badge/src/index.test.ts packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/uninstall.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts`; it passed with `70/70` tests green.
+- Re-ran `bash -n scripts/smoke/verify-registry-install.sh`; it passed.
+- Closed ART-02 by replacing heuristic dependency pruning with explicit manifest-ownership checks in [runtime-wiring.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.ts#L326) and adding regression coverage in [runtime-wiring.test.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.test.ts#L240), [runtime-wiring.test.ts](/Volumes/git/legotin/agent-badge/packages/core/src/init/runtime-wiring.test.ts#L527), and [init.test.ts](/Volumes/git/legotin/agent-badge/packages/agent-badge/src/commands/init.test.ts#L574). Implementation landed in commit `3423ccd`.
+
+---
+
 ## Validation Sign-Off
 
 - [x] All planned tasks have `<automated>` verify or explicit manual-only coverage
@@ -91,6 +107,6 @@ updated: 2026-04-09
 - [x] Wave 0 covers all required verification infrastructure
 - [x] No watch-mode flags
 - [x] Feedback latency < 90s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending implementation fix for ART-02 preservation gap
+**Approval:** complete
