@@ -38,6 +38,7 @@ Bring repo docs in sync with actual `agent-badge` runtime and CLI behavior.
 - Extended [scripts/verify-docs.sh](/Volumes/git/legotin/agent-badge/scripts/verify-docs.sh) to assert:
   - all three publishable package versions are aligned
   - `CHANGELOG.md` includes the current publishable version heading
+- Commit: `ff65898`
 
 ## Verification
 
