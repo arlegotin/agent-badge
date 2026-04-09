@@ -73,6 +73,21 @@ updated: 2026-04-09
 - `2026-04-09`: Re-ran the focused cross-phase regression gate successfully: `npm test -- --run packages/create-agent-badge/src/index.test.ts packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/config.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/uninstall.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts` passed with `70/70` tests green.
 - `2026-04-09`: Schema drift verification passed with `drift_detected=false` and `blocking=false`.
 
+## Validation Audit 2026-04-09 (post-closeout rerun)
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+### Audit Notes
+
+- `npm test -- --run packages/core/src/init/runtime-wiring.test.ts packages/agent-badge/src/commands/init.test.ts packages/agent-badge/src/commands/uninstall.test.ts packages/agent-badge/src/commands/publish.test.ts packages/agent-badge/src/commands/refresh.test.ts packages/agent-badge/src/commands/status.test.ts packages/agent-badge/src/commands/doctor.test.ts packages/agent-badge/src/commands/release-readiness-matrix.test.ts packages/create-agent-badge/src/index.test.ts` passed with `98/98` tests green.
+- `npm run docs:check` passed.
+- `bash -n scripts/smoke/verify-registry-install.sh && bash -n scripts/smoke/verify-packed-install.sh && bash -n scripts/verify-clean-checkout.sh` passed.
+- Existing per-task map remains fully covered (`27-01-01`, `27-02-01`, `27-03-01` all `✅ green`), so no additional Nyquist test generation was required.
+
 ---
 
 ## Validation Sign-Off
