@@ -58,6 +58,11 @@ interface CodexRolloutUsage {
   readonly totalTokens: number;
 }
 
+interface CodexRolloutInfo {
+  readonly usage: CodexRolloutUsage | null;
+  readonly model: string | null;
+}
+
 const modelRateCardSchema = z
   .object({
     inputUsdPerMillion: z.number().nonnegative(),
@@ -632,6 +637,41 @@ function parseCodexRolloutUsageLine(line: string): CodexRolloutUsage | null {
   };
 }
 
+function parseCodexRolloutModelLine(line: string): string | null {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(line) as unknown;
+  } catch {
+    return null;
+  }
+
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("type" in parsed) ||
+    parsed.type !== "turn_context" ||
+    !("payload" in parsed)
+  ) {
+    return null;
+  }
+
+  const payload = parsed.payload;
+
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("model" in payload) ||
+    typeof payload.model !== "string"
+  ) {
+    return null;
+  }
+
+  const model = payload.model.trim();
+
+  return model.length > 0 ? model : null;
+}
+
 async function readTail(path: string, bytes: number): Promise<string | null> {
   let handle: Awaited<ReturnType<typeof open>> | null = null;
 
@@ -654,8 +694,9 @@ async function readTail(path: string, bytes: number): Promise<string | null> {
   }
 }
 
-function parseLatestCodexRolloutUsage(content: string): CodexRolloutUsage | null {
-  let latest: CodexRolloutUsage | null = null;
+function parseLatestCodexRolloutInfo(content: string): CodexRolloutInfo | null {
+  let latestUsage: CodexRolloutUsage | null = null;
+  let latestModel: string | null = null;
 
   for (const line of content.split(/\r?\n/)) {
     if (!line.trim()) {
@@ -663,22 +704,32 @@ function parseLatestCodexRolloutUsage(content: string): CodexRolloutUsage | null
     }
 
     const usage = parseCodexRolloutUsageLine(line);
+    const model = parseCodexRolloutModelLine(line);
 
     if (usage !== null) {
-      latest = usage;
+      latestUsage = usage;
+    }
+
+    if (model !== null) {
+      latestModel = model;
     }
   }
 
-  return latest;
+  return latestUsage === null && latestModel === null
+    ? null
+    : {
+        usage: latestUsage,
+        model: latestModel
+      };
 }
 
-async function readLatestCodexRolloutUsage(
+async function readLatestCodexRolloutInfo(
   rolloutPath: string
-): Promise<CodexRolloutUsage | null> {
+): Promise<CodexRolloutInfo | null> {
   const tail = await readTail(rolloutPath, ROLLOUT_USAGE_TAIL_BYTES);
 
   if (tail !== null) {
-    const fromTail = parseLatestCodexRolloutUsage(tail);
+    const fromTail = parseLatestCodexRolloutInfo(tail);
 
     if (fromTail !== null) {
       return fromTail;
@@ -686,16 +737,16 @@ async function readLatestCodexRolloutUsage(
   }
 
   try {
-    return parseLatestCodexRolloutUsage(await readFile(rolloutPath, "utf8"));
+    return parseLatestCodexRolloutInfo(await readFile(rolloutPath, "utf8"));
   } catch {
     return null;
   }
 }
 
-async function hydrateCodexRolloutUsageBySessionId(
+async function hydrateCodexRolloutInfoBySessionId(
   homeRoot: string,
   sessionIds: readonly string[]
-): Promise<Readonly<Record<string, CodexRolloutUsage>>> {
+): Promise<Readonly<Record<string, CodexRolloutInfo>>> {
   if (sessionIds.length === 0) {
     return {};
   }
@@ -713,14 +764,14 @@ async function hydrateCodexRolloutUsageBySessionId(
         return null;
       }
 
-      const usage = await readLatestCodexRolloutUsage(row.rolloutPath);
+      const info = await readLatestCodexRolloutInfo(row.rolloutPath);
 
-      return usage === null ? null : ([row.id, usage] as const);
+      return info === null ? null : ([row.id, info] as const);
     })
   );
 
   return Object.fromEntries(
-    entries.filter((entry): entry is readonly [string, CodexRolloutUsage] => entry !== null)
+    entries.filter((entry): entry is readonly [string, CodexRolloutInfo] => entry !== null)
   );
 }
 
@@ -733,11 +784,10 @@ export async function estimateSessionCostsUsdMicrosByKey({
     .filter(
       (session) =>
         session.provider === "codex" &&
-        session.tokenUsage.input === null &&
-        session.metadata.model !== null
+        (session.tokenUsage.input === null || session.metadata.model === null)
     )
     .map((session) => session.providerSessionId);
-  const codexUsageBySessionId = await hydrateCodexRolloutUsageBySessionId(
+  const codexRolloutInfoBySessionId = await hydrateCodexRolloutInfoBySessionId(
     homeRoot,
     codexSessionIds
   );
@@ -745,7 +795,9 @@ export async function estimateSessionCostsUsdMicrosByKey({
   return Object.fromEntries(
     sessions.map((session) => {
       let estimatedCostUsdMicros = 0;
-      const model = session.metadata.model;
+      const rolloutInfo = codexRolloutInfoBySessionId[session.providerSessionId];
+      const hydratedUsage = rolloutInfo?.usage ?? undefined;
+      const model = session.metadata.model ?? rolloutInfo?.model ?? null;
 
       if (model === null) {
         return [`${session.provider}:${session.providerSessionId}`, 0] as const;
@@ -783,7 +835,6 @@ export async function estimateSessionCostsUsdMicrosByKey({
           return [`${session.provider}:${session.providerSessionId}`, 0] as const;
         }
 
-        const hydratedUsage = codexUsageBySessionId[session.providerSessionId];
         const cachedInputTokens =
           hydratedUsage?.cachedInputTokens ?? session.tokenUsage.cacheRead ?? 0;
         const inputTokens =

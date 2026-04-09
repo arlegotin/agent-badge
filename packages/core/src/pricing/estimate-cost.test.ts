@@ -22,6 +22,12 @@ function createPricingCatalog(): PricingCatalog {
     },
     providers: {
       openai: {
+        "gpt-5": {
+          inputUsdPerMillion: 1.25,
+          cachedInputUsdPerMillion: 0.125,
+          cacheWriteUsdPerMillion: null,
+          outputUsdPerMillion: 10
+        },
         "gpt-5.4": {
           inputUsdPerMillion: 2.5,
           cachedInputUsdPerMillion: 0.25,
@@ -193,6 +199,116 @@ describe("estimateIncludedCostUsdMicros", () => {
       });
 
       expect(estimated).toBe(6_550);
+    } finally {
+      await rm(homeRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to rollout turn_context model when Codex db model is missing", async () => {
+    const homeRoot = await mkdtemp(join(tmpdir(), "agent-badge-cost-home-"));
+    const codexRoot = join(homeRoot, ".codex");
+    const rolloutPath = join(codexRoot, "rollout-test.jsonl");
+    const dbPath = join(codexRoot, "state_9.sqlite");
+    const sqliteModule = (await import(sqliteModuleName)) as {
+      default: new (path: string) => {
+        exec(statement: string): void;
+        prepare(statement: string): { run(...params: unknown[]): void };
+        close(): void;
+      };
+    };
+
+    await mkdir(codexRoot, { recursive: true });
+    await writeFile(
+      rolloutPath,
+      [
+        JSON.stringify({
+          timestamp: "2026-04-01T10:17:18.000Z",
+          type: "turn_context",
+          payload: {
+            model: "gpt-5.2-codex"
+          }
+        }),
+        JSON.stringify({
+          timestamp: "2026-04-01T10:17:22.832Z",
+          type: "event_msg",
+          payload: {
+            type: "token_count",
+            info: {
+              total_token_usage: {
+                input_tokens: 5000,
+                cached_input_tokens: 1000,
+                output_tokens: 200,
+                reasoning_output_tokens: 50,
+                total_tokens: 5200
+              }
+            }
+          }
+        })
+      ].join("\n"),
+      "utf8"
+    );
+
+    const database = new sqliteModule.default(dbPath);
+
+    try {
+      database.exec(`
+        CREATE TABLE threads (
+          id TEXT PRIMARY KEY,
+          rollout_path TEXT
+        );
+      `);
+      database
+        .prepare(
+          `
+            INSERT INTO threads (id, rollout_path) VALUES (?, ?)
+          `
+        )
+        .run("codex-session-1", rolloutPath);
+    } finally {
+      database.close();
+    }
+
+    const session = parseNormalizedSessionSummary({
+      provider: "codex",
+      providerSessionId: "codex-session-1",
+      startedAt: "2026-04-01T10:17:18Z",
+      updatedAt: "2026-04-01T10:17:30Z",
+      cwd: "/repo/main",
+      gitBranch: "main",
+      observedRemoteUrl: "https://github.com/openai/agent-badge.git",
+      observedRemoteUrlNormalized: "https://github.com/openai/agent-badge",
+      attributionHints: {
+        cwdRealPath: "/repo/main",
+        transcriptProjectKey: null
+      },
+      tokenUsage: {
+        total: 5200,
+        input: null,
+        output: null,
+        cacheCreation: null,
+        cacheRead: null,
+        reasoningOutput: null
+      },
+      lineage: {
+        parentSessionId: null,
+        kind: "root"
+      },
+      metadata: {
+        model: null,
+        modelProvider: "openai",
+        sourceKind: "cli",
+        cliVersion: "0.118.0"
+      }
+    });
+
+    try {
+      const estimated = await estimateIncludedCostUsdMicros({
+        sessions: [session],
+        homeRoot,
+        pricingCatalog: createPricingCatalog()
+      });
+
+      expect(estimated).toBe(7_125);
     } finally {
       await rm(homeRoot, { recursive: true, force: true });
     }
