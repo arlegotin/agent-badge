@@ -25,6 +25,8 @@ Some people just want to flex how hard they ship with agents.
 npm init agent-badge@latest
 ```
 
+If you want the strict no-debug path (runtime preinstalled, auth prechecked, and post-init verification commands), use the exact sequence in [docs/INSTALL.md](docs/INSTALL.md#first-shot-recommended-path).
+
 If GitHub auth is already available, init creates a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
 If GitHub auth is not available yet, init still completes the repo-owned scaffold and ends with:

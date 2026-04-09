@@ -15,6 +15,16 @@ Commands below are shown as `agent-badge ...` for readability. That is the defau
 | `config` | Read or update supported config keys. |
 | `uninstall` | Remove repo wiring and optionally purge local or remote state. |
 
+## Global Options
+
+```bash
+agent-badge --version
+agent-badge --help
+```
+
+- `--version` prints the installed shared runtime version.
+- `--help` prints top-level command help.
+
 ## `init`
 
 ```bash

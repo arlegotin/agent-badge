@@ -12,6 +12,22 @@ Before you start:
 
 For the complete support matrix, see [INSTALL.md](INSTALL.md).
 
+## No-Debug First Shot
+
+If your goal is "run once, done", use this exact sequence:
+
+```bash
+npm install -g @legotin/agent-badge@latest
+hash -r
+agent-badge --version
+gh auth token >/dev/null
+npm init agent-badge@latest
+agent-badge doctor
+agent-badge status
+```
+
+This pre-installs and validates the shared runtime before `init`, so the managed pre-push hook and follow-up commands can resolve `agent-badge` immediately.
+
 ## Fastest Path
 
 ```bash
@@ -25,6 +41,7 @@ At the end of init, look for the final `- Setup:` line:
 - `- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.` means the shared runtime and live badge flow are ready.
 - `- Setup: repo setup complete, but GitHub auth is still required...` means the minimal repo scaffold is in place, but you still need GitHub auth before the gist-backed badge can publish.
 - `- Setup: repo setup complete and the live badge was published, but the shared runtime is not on PATH yet...` means publish succeeded, but you still need to repair or install the shared runtime before relying on pre-push refresh.
+- `- Setup: repo setup complete and the live badge was published, but the shared runtime could not be validated...` means publish succeeded, but the runtime check failed; repair or upgrade the shared runtime, then rerun `agent-badge init` or `agent-badge doctor`.
 
 Typical init output starts with the real preflight checks:
 

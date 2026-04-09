@@ -14,6 +14,19 @@ Recovery:
 2. Retry `agent-badge <command>`.
 3. If you intentionally installed `@legotin/agent-badge` inside the repo instead, use `npx --no-install agent-badge <command>`, `pnpm exec agent-badge <command>`, `yarn agent-badge <command>`, or `bunx --bun agent-badge <command>`.
 
+## shared runtime could not be validated
+
+Symptom: init prints `Shared runtime: unavailable` and setup ends with `shared runtime could not be validated`.
+
+Recovery:
+
+1. Reinstall or upgrade the shared runtime: `npm install -g @legotin/agent-badge@latest` (or `pnpm add -g` / `bun add -g`).
+2. Refresh shell command cache: `hash -r`.
+3. Confirm runtime probe command works: `agent-badge --version`.
+4. Re-run `agent-badge doctor`, then rerun `agent-badge init` if doctor still reports hook/runtime issues.
+
+If `agent-badge --version` fails, your shell is still resolving an old or broken runtime path. Fix `PATH`, then retry.
+
 ## git bootstrap blocked
 
 Symptom: init stops before writing `.agent-badge/` because repository bootstrap is blocked.

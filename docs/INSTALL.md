@@ -14,6 +14,37 @@
 
 If neither `~/.codex` nor `~/.claude` exists, install still succeeds, but the badge will not report meaningful usage until provider data appears.
 
+## First-Shot Recommended Path
+
+If you want setup to succeed in one pass without runtime-resolution surprises, run this sequence in order:
+
+```bash
+# 1) Install shared runtime once on this machine
+npm install -g @legotin/agent-badge@latest
+
+# 2) Refresh shell command cache and verify runtime is callable
+hash -r
+agent-badge --version
+
+# 3) Ensure gist-capable auth is available in this shell
+gh auth status
+gh auth token >/dev/null
+
+# 4) Initialize the current repo
+npm init agent-badge@latest
+
+# 5) Confirm wiring and publish readiness
+agent-badge doctor
+agent-badge status
+```
+
+Expected `init` ending for a fully ready first shot:
+
+```text
+- Publish target: created public gist
+- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
+```
+
 ## Fastest Path
 
 ```bash
