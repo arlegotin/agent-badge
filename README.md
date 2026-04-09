@@ -28,10 +28,11 @@ npm install -g @legotin/agent-badge@latest
 Do this in each repo:
 
 ```bash
+gh auth token >/dev/null
 npm init agent-badge@latest
 ```
 
-That is the quick install path: shared runtime once per machine, repo setup once per repo.
+That is the quick install path: shared runtime once per machine, then in each repo confirm GitHub auth in the current shell and run init.
 
 For the stricter first-shot path with runtime validation, auth checks, `agent-badge doctor`, and `agent-badge status`, use [docs/INSTALL.md](docs/INSTALL.md#first-shot-recommended-path) and [docs/QUICKSTART.md](docs/QUICKSTART.md#no-debug-first-shot).
 

@@ -133,6 +133,7 @@ fi
 require_fixed "## 60-Second Path" README.md
 require_fixed "npm install -g @legotin/agent-badge@latest" README.md
 require_fixed "npm init agent-badge@latest" README.md
+require_fixed "gh auth token >/dev/null" README.md
 require_fixed "Do this once on each machine" README.md
 require_fixed "Do this in each repo" README.md
 require_fixed "quick install path" README.md
