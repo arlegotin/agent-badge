@@ -1,6 +1,6 @@
 # Install
 
-`agent-badge` is npm-initializer-first, but the runtime works with other package managers after install.
+`agent-badge` is npm-initializer-first. The default path is a shared runtime with minimal repo artifacts, and explicit package installation stays available as an alternative.
 
 ## Requirements
 
@@ -22,17 +22,17 @@ npm init agent-badge@latest
 
 That initializer:
 
-- installs `@legotin/agent-badge` in the current repo
 - creates `.agent-badge/config.json` and `.agent-badge/state.json`
-- adds managed `agent-badge:init` and `agent-badge:refresh` package scripts
+- updates `.gitignore` for state, cache, and logs
 - wires a failure-soft `pre-push` refresh hook
 - inserts the badge into `README.md` once a stable badge URL is available
+- does not install repo-local `@legotin/agent-badge`, managed `agent-badge:init` / `agent-badge:refresh` scripts, or repo-local `node_modules` by default
 
-If GitHub auth is already available, init finishes with:
+When GitHub auth is available and the shared runtime is already on `PATH`, init can finish with:
 
 ```text
 - Publish target: created public gist
-- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready.
+- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
 ```
 
 If GitHub auth is not available yet, init finishes with:
@@ -40,10 +40,12 @@ If GitHub auth is not available yet, init finishes with:
 ```text
 - Publish target: deferred
 - Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
-- Setup: local setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.
+- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.
 ```
 
-## Direct Runtime Install
+If the shared runtime is not on `PATH` yet, install it once globally or user-scoped, or choose the direct package-install path below.
+
+## Alternative: Direct Runtime Install
 
 If you do not want the initializer, install `@legotin/agent-badge` directly and run `init` yourself.
 
@@ -61,23 +63,23 @@ The runtime detects the repo package manager and writes the managed `pre-push` h
 The npm package names are intentionally split:
 
 - `npm init agent-badge@latest` resolves to `create-agent-badge`
-- `@legotin/agent-badge` is the repo-local runtime CLI
+- `@legotin/agent-badge` is the shared runtime CLI package when you want an explicit install path
 - `@legotin/agent-badge-core` is the published internal library used by the runtime
 
-That split is normal npm initializer behavior. You should expect `create-agent-badge` in `npm init` logs and `@legotin/agent-badge` in the repo's installed dependencies.
+That split is normal npm initializer behavior. You should expect `create-agent-badge` in `npm init` logs. You should only expect `@legotin/agent-badge` in repo dependencies when you choose the direct install path.
 
 ## After Install
 
 Check the current state:
 
 ```bash
-npx --no-install agent-badge status
+agent-badge status
 ```
 
 If publish was deferred, follow [Authentication](AUTH.md) and rerun:
 
 ```bash
-npx --no-install agent-badge init
+agent-badge init
 ```
 
 If you want the full command reference next, use [CLI.md](CLI.md).

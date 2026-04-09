@@ -27,15 +27,17 @@ npm init agent-badge@latest
 
 If GitHub auth is already available, init creates a public gist, publishes the first badge payload, and inserts the badge into `README.md`.
 
-If GitHub auth is not available yet, init still completes local setup and ends with:
+If GitHub auth is not available yet, init still completes the repo-owned scaffold and ends with:
 
 - `- Publish target: deferred`
-- `- Setup: local setup complete, but GitHub auth is still required before the live badge can publish.`
+- `- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun agent-badge init or connect a public gist with agent-badge init --gist-id <id>.`
 
-To publish later, export `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or make `gh auth token` work in the same shell, then rerun:
+The default path is shared-runtime/global-first: `npm init agent-badge@latest` writes `.agent-badge/*`, managed `.gitignore` entries, and the direct shared `pre-push` hook, but it does not install repo-local `node_modules`, `agent-badge:init`, or `agent-badge:refresh` by default.
+
+To publish later, make sure the shared runtime is available on `PATH`, export `GH_TOKEN`, `GITHUB_TOKEN`, or `GITHUB_PAT`, or make `gh auth token` work in the same shell, then rerun:
 
 ```bash
-npx --no-install agent-badge init
+agent-badge init
 ```
 
 ## What Gets Published

@@ -2,7 +2,7 @@
 
 `agent-badge` does one job: turn local AI coding usage into a stable GitHub README badge without shipping raw work to a service.
 
-Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
+Commands below are shown as `agent-badge ...` for readability. That is the default shared runtime path after `npm init agent-badge@latest`: use `agent-badge` directly when the shared runtime is on your `PATH`. If you explicitly install `@legotin/agent-badge` inside the repo instead, use your package manager's exec form for that alternative path.
 
 ## Applicability
 
@@ -15,7 +15,7 @@ If one provider is missing, the tool still works and reports partial coverage. I
 
 ## The Flow
 
-1. `agent-badge init` scaffolds local state, wires the repo-local runtime, and connects a public gist when GitHub auth is available.
+1. `agent-badge init` scaffolds local state, writes a minimal repo-owned setup, and connects a public gist when GitHub auth is available.
 2. `agent-badge scan` or `agent-badge refresh` reads local provider data from `~/.codex` and `~/.claude`.
 3. The attribution engine decides which sessions belong to the current repo and excludes ambiguous work by default.
 4. `agent-badge` writes local state under `.agent-badge/` and publishes stable badge payloads plus deterministic shared-state files to a gist you control.
@@ -56,7 +56,7 @@ The gist file name is deterministic, and Shields reads from that fixed raw gist 
 By default, init installs a failure-soft `pre-push` hook that runs:
 
 ```bash
-agent-badge refresh --hook pre-push --fail-soft
+agent-badge refresh --hook pre-push --hook-policy fail-soft || true
 ```
 
 That refresh path prefers incremental updates and falls back to a full scan when cached cursors are missing or unusable. If publish is not configured yet, refresh still updates local state and reports that publish is deferred or not configured.

@@ -2,7 +2,7 @@
 
 Use this guide to get a live badge into a repo quickly and without guessing what the CLI is doing.
 
-Commands below are shown as `agent-badge ...` for readability. In an npm-initialized repo, run them as `npx --no-install agent-badge ...` unless the binary is already on your `PATH`.
+Commands below are shown as `agent-badge ...` for readability. That is the default shared runtime path after `npm init agent-badge@latest`: use `agent-badge` directly when the shared runtime is on your `PATH`. If you explicitly install `@legotin/agent-badge` inside the repo instead, use your package manager's exec form for that alternative path.
 
 Before you start:
 
@@ -18,12 +18,12 @@ For the complete support matrix, see [INSTALL.md](INSTALL.md).
 npm init agent-badge@latest
 ```
 
-That initializer runs `agent-badge init` in the current directory and sets up the repo-local runtime.
+That initializer runs `agent-badge init` in the current directory, writes the repo-owned scaffold, and assumes a shared runtime/global or user-scoped CLI path for later commands.
 
 At the end of init, look for the final `- Setup:` line:
 
-- `- Setup: complete...` means the local runtime and live badge publishing are ready.
-- `- Setup: local setup complete, but GitHub auth is still required...` means install succeeded, but you still need GitHub auth before the gist-backed badge can publish.
+- `- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.` means the shared runtime and live badge flow are ready.
+- `- Setup: repo setup complete, but GitHub auth is still required...` means the minimal repo scaffold is in place, but you still need GitHub auth before the gist-backed badge can publish.
 
 Typical init output starts with the real preflight checks:
 
@@ -41,7 +41,7 @@ When auth is available, the final publish lines look like this:
 
 ```text
 - Publish target: created public gist
-- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready.
+- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
 ```
 
 When auth is missing, the final publish lines look like this:
@@ -49,17 +49,16 @@ When auth is missing, the final publish lines look like this:
 ```text
 - Publish target: deferred
 - Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
-- Setup: local setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.
+- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.
 ```
 
 What init usually handles for you:
 
-- installs `@legotin/agent-badge` locally in the repo
 - creates `.agent-badge/config.json` and `.agent-badge/state.json`
-- adds managed package scripts and a `pre-push` refresh hook
-- updates `.gitignore` for local state, cache, and logs
+- writes managed `.gitignore` entries for local state, cache, and logs plus the direct shared-runtime `pre-push` refresh hook
 - creates or reuses a public gist if GitHub auth is available
 - inserts the badge into `README.md` when a stable badge URL is ready
+- does not create managed runtime manifest ownership by default
 
 ## If Publish Was Deferred
 
@@ -131,12 +130,7 @@ If either command surfaces a `Recovery path` or `- Recovery:` line, follow the e
 
 ## Manual Install Instead Of The Initializer
 
-If you want the runtime without `npm init`, install it directly and run init yourself:
-
-```bash
-npm install -D @legotin/agent-badge
-npx --no-install agent-badge init
-```
+If you want explicit repo-owned runtime dependencies instead of the global-first initializer path, use the direct package-install flow in [INSTALL.md](INSTALL.md).
 
 ## What To Read Next
 

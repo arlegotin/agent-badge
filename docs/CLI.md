@@ -1,17 +1,12 @@
 # CLI Reference
 
-Commands below are shown as `agent-badge ...` for readability. Use the repo-local wrapper that matches your package manager:
-
-- npm: `npx --no-install agent-badge`
-- pnpm: `pnpm exec agent-badge`
-- yarn: `yarn agent-badge`
-- bun: `bunx --bun agent-badge`
+Commands below are shown as `agent-badge ...` for readability. That is the default shared runtime path after `npm init agent-badge@latest`: use `agent-badge` directly when the shared runtime is available via a global or user-scoped install on `PATH`. If you explicitly install `@legotin/agent-badge` inside the repo instead, use your package manager's exec wrapper for that alternative path.
 
 ## Command Summary
 
 | Command | Purpose |
 | --- | --- |
-| `init` | Install repo wiring and connect or reuse the publish gist. |
+| `init` | Write minimal repo-owned wiring and connect or reuse the publish gist. |
 | `scan` | Run a full attribution report and optionally resolve ambiguous sessions. |
 | `publish` | Publish aggregate badge JSON to the configured gist target. |
 | `refresh` | Refresh persisted totals and publish only when needed. |
@@ -34,14 +29,14 @@ Expected terminal endings:
 
 ```text
 - Publish target: created public gist
-- Setup: complete. Local runtime, pre-push refresh, and live badge publishing are ready.
+- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
 ```
 
 or:
 
 ```text
 - Publish target: deferred
-- Setup: local setup complete, but GitHub auth is still required before the live badge can publish.
+- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish.
 ```
 
 ## `scan`
