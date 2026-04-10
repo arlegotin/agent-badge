@@ -1,7 +1,7 @@
 <h1 align="center">agent-badge</h1>
 
 <p align="center">
-  A README badge for repos that ship with AI:
+  A README badge showing AI coding-agent usage for a repo:
 </p>
 
 <p align="center">
@@ -15,6 +15,10 @@
 </p>
 
 ---
+
+## What is it
+
+`agent-badge` is an open-source CLI that adds a GitHub README badge showing **AI coding-agent usage** for a repo. It currently supports **Claude Code** and **OpenAI Codex**, shows **aggregate tokens + estimated cost**, and publishes **aggregate badge data only** — not prompts, transcripts, filenames, or local paths.
 
 ## 60-Second Path
 
