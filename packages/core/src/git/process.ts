@@ -17,6 +17,7 @@ export interface GitRunOptions {
   readonly indexFile?: string;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly input?: string | Uint8Array;
+  /** All free-form stderr is suppressed, including any supplied private tokens. */
   readonly redact?: readonly string[];
 }
 
@@ -25,17 +26,17 @@ export interface GitRunResult {
   readonly exitCode: number | null;
   /** Private protocol output. Never include this in public artifacts or diagnostics. */
   readonly stdout: string;
-  /** Bounded, redacted diagnostic output. */
+  /** Bounded static diagnostic; raw Git stderr may contain private filenames. */
   readonly stderr: string;
 }
 
-function diagnostic(value: string, secrets: readonly string[], limit: number): string {
-  // Also covers an authority cut off before its @ delimiter by an output cap.
-  let safe = value.replace(/[a-z][a-z0-9+.-]*:\/\/[^\s'"<>]*/gi, "[remote]");
-  for (const secret of secrets) if (secret) safe = safe.split(secret).join("[redacted]");
-  // An unquoted filename can contain spaces; discard its line tail as well.
-  safe = safe.replace(/(^|[\s'"(=])(?:\/[^\r\n]*|[A-Za-z]:\\[^\r\n]*)/g, "$1[path]");
-  return Buffer.from(safe).subarray(0, limit).toString("utf8").replace(/\uFFFD$/u, "");
+function diagnostic(value: string, limit: number): string {
+  if (!value) return "";
+  // Arbitrary Git messages can contain bare filenames or partial credentials.
+  // Preserve only a finite severity label, never free-form stderr fragments.
+  const severity = /^(fatal|error|warning|hint):/m.exec(value)?.[1];
+  const safe = `${severity ? `${severity}: ` : ""}Git diagnostic details suppressed`;
+  return safe.slice(0, limit);
 }
 
 /** argv only; ambient Git repository/index overrides are deliberately ignored. */
@@ -94,8 +95,7 @@ export async function runGit(args: readonly string[], options: GitRunOptions): P
       resolve({
         status: status ?? (code === 0 ? "ok" : "error"), exitCode: code,
         stdout: Buffer.concat(stdout).toString("utf8"),
-        // A cut-off secret can no longer match the caller's complete redaction token.
-        stderr: diagnostic(status === "output-limit" ? "[output truncated]" : Buffer.concat(stderr).toString("utf8"), [options.cwd, ...(options.redact ?? [])], maxOutputBytes)
+        stderr: diagnostic(status === "output-limit" ? "[output truncated]" : Buffer.concat(stderr).toString("utf8"), maxOutputBytes)
       });
     });
   });

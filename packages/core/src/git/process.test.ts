@@ -58,6 +58,24 @@ describe("bounded Git subprocess", () => {
     expect(result.stderr).toContain("fatal:");
   });
 
+  it("does not expose a path suffix after redacting the cwd prefix", async () => {
+    const message = `fatal: ${fixture.root}/src/secret.ts: denied\n`;
+    const args = await command(`process.stderr.write(${JSON.stringify(message)})`);
+    const result = await runGit(args, { cwd: fixture.root });
+    expect(result.status).toBe("ok");
+    expect(result.stderr).not.toMatch(/src|secret\.ts/);
+    expect(result.stderr).toContain("fatal:");
+  });
+
+  it.each(["src/secret.ts", "./src/secret.ts", "../src/secret.ts", "src\\secret.ts", "secret.ts", "Makefile"])("does not expose relative filename diagnostics: %s", async path => {
+    const message = `fatal: unable to read '${path}': denied\n`;
+    const args = await command(`process.stderr.write(${JSON.stringify(message)})`);
+    const result = await runGit(args, { cwd: fixture.root });
+    expect(result.status).toBe("ok");
+    expect(result.stderr).not.toContain(path);
+    expect(result.stderr).toContain("fatal:");
+  });
+
   it.skipIf(process.platform === "win32")("times out and kills descendants even when the direct process exits", async () => {
     const pidFile = join(fixture.root, "pid");
     const args = await command(`const {spawn}=require('node:child_process'); const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:['ignore','inherit','inherit']}); require('node:fs').writeFileSync(${JSON.stringify(pidFile)},String(child.pid)); process.exit(0);`);

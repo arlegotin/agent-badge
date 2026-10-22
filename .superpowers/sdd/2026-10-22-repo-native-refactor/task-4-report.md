@@ -189,3 +189,44 @@ verified on both target Node majors.
 - `packages/core/src/index.ts`
 - `packages/testkit/src/git-fixtures.ts`
 - This report.
+
+## Review fix round 1: suppress free-form Git diagnostics
+
+The reviewer identified an important path leak: replacing the cwd first changed
+an absolute filename into `[redacted]/src/secret.ts`, so the absolute-path matcher
+missed its suffix. Relative paths and bare filenames were also emitted unchanged.
+Reproduced both cases with real synthetic Git subprocesses before changing code.
+
+Free-form stderr cannot safely distinguish a bare filename such as `Makefile`
+from ordinary text. With controller approval, replaced heuristic substitutions
+with finite static diagnostics. Empty stderr remains empty; nonempty stderr returns
+`Git diagnostic details suppressed`, optionally prefixed by one whitelisted
+severity (`fatal`, `error`, `warning`, or `hint`). Output is ASCII and capped to the
+caller limit. No original message fragment is forwarded. This supersedes the
+earlier report's description of retaining heuristically redacted message text.
+
+Status, exitCode, private raw stdout, process limits and cleanup remain unchanged.
+The optional caller redaction-token input remains accepted; all free-form stderr,
+including those tokens, is suppressed. Raw stderr is intentionally unavailable.
+Task 9 must determine remote acceptance and ref conflicts from Git state, rather
+than string-matching stderr. No classification framework was introduced.
+
+Added seven regressions for cwd-prefixed paths, plain relative paths, dot-relative
+and parent-relative paths, Windows separators, a bare extension filename and a
+bare extensionless filename. Existing credential-cap, spaced-absolute-path,
+bounded-output, abort, descendant cleanup and isolated-index cases still pass.
+
+Verification evidence (isolated synthetic HOME/config):
+
+- RED: `python3 .superpowers/sdd/2026-10-22-repo-native-refactor/run-isolated.py
+  <node24> node_modules/vitest/vitest.mjs run packages/core/src/git/process.test.ts`
+  — **7 failed / 8 passed**, exit 1. The cwd case exposed
+  `[redacted]/src/secret.ts`; all six relative/bare path cases exposed their input.
+- GREEN: identical command after the fix — **15/15 passed**, exit 0,
+  8.71 seconds, no warnings.
+- `python3 .superpowers/sdd/2026-10-22-repo-native-refactor/run-isolated.py
+  npm run typecheck` — exit 0.
+- `git diff --check` — exit 0 before committing.
+
+Only `git/process.ts`, `git/process.test.ts`, and this report changed. The full
+suite was not rerun, following the controller's focused review-fix instruction.
