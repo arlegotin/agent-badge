@@ -48,6 +48,19 @@ async function atomic(path: string, bytes: string, mode = 0o600) {
     try { await parent.sync(); } finally { await parent.close(); }
   } finally { await rm(stage, { force: true }); }
 }
+interface SetupIntent { schemaVersion: 1; repositoryId: string; initializeAllowed: true }
+async function loadSetupIntent(privateDir: string): Promise<SetupIntent | null> {
+  try {
+    const info = await lstat(privateDir);
+    if (!info.isDirectory() || info.isSymbolicLink() || (process.getuid && info.uid !== process.getuid())) throw new Error('Unsafe private setup directory.');
+  } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
+  const bytes = await contents(join(privateDir, 'setup-intent.json'));
+  if (!bytes) return null;
+  const intent = JSON.parse(bytes) as SetupIntent;
+  if (Buffer.byteLength(bytes) > 4096 || !intent || Object.keys(intent).sort().join(',') !== 'initializeAllowed,repositoryId,schemaVersion' ||
+      intent.schemaVersion !== 1 || intent.initializeAllowed !== true || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(intent.repositoryId)) throw new Error('Invalid private setup intent.');
+  return intent;
+}
 async function resolveNpmPin(version: string): Promise<RuntimePin> {
   const root = await mkdtemp(join(tmpdir(), 'agent-badge-pin-'));
   try {
@@ -73,12 +86,14 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   }
   const existing = await contents(join(repository.worktreeRoot, '.agent-badge/config.json'));
   const previous = existing ? parseDeclaration(JSON.parse(existing)) : null;
+  const intent = await loadSetupIntent(repository.privateDir);
   const local = await loadActivation(repository.privateDir);
   const runtimeVersion = options.runtimeVersion ?? previous?.runtimeVersion ?? JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')).version;
   assertExactVersion(runtimeVersion);
   let declaredUrl = options.declaredUrl ?? previous?.declaredUrl;
   if (!declaredUrl) { const remote = await core.runGit(['remote', 'get-url', 'origin'], { cwd: repository.worktreeRoot }); if (remote.status !== 'ok') throw new Error('Specify a public repository URL.'); const canonical = core.canonicalRemoteUrl(remote.stdout.trim(), repository.worktreeRoot); declaredUrl = canonical?.startsWith('github.com/') ? `https://${canonical}` : remote.stdout.trim(); }
-  const repositoryId = previous?.repositoryId ?? local?.repositoryId ?? randomUUID();
+  const repositoryId = previous?.repositoryId ?? local?.repositoryId ?? intent?.repositoryId ?? randomUUID();
+  if (intent && intent.repositoryId !== repositoryId) throw new Error('Private setup intent identity mismatch.');
   let policy = core.parseSharedPolicy(previous?.policy ?? local?.capturePolicy ?? { schemaVersion: 1, repositoryId, normalizationVersion: 1, discovery: 'auto', disabledProviders: [], badge: { label: 'AI usage', metric: 'tokens' } });
   const acceptedBytes = await contents(join(repository.privateDir, 'transport.json'));
   if (acceptedBytes) {
@@ -104,7 +119,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const worktreeInventory = [...enrolled.values()];
   const roots = options.roots ?? local?.roots ?? {};
   if (Object.keys(roots).some(k => !['codex', 'claude'].includes(k)) || Object.values(roots).some(paths => !Array.isArray(paths) || paths.some(p => typeof p !== 'string' || !isAbsolute(p)))) throw new Error('Invalid private provider roots.');
-  const activation: Activation = { schemaVersion: 1, repositoryId, runtimeVersion, lockHash, initializeAllowed: local?.initializeAllowed ?? (!previous && !local), binding, capturePolicy: policy, privatePolicy: core.parsePrivateAttributionPolicy(privatePolicy), roots, worktreeInventory };
+  const activation: Activation = { schemaVersion: 1, repositoryId, runtimeVersion, lockHash, initializeAllowed: local?.initializeAllowed ?? (intent?.initializeAllowed ?? (!previous && !local)), binding, capturePolicy: policy, privatePolicy: core.parsePrivateAttributionPolicy(privatePolicy), roots, worktreeInventory };
   if (Buffer.byteLength(json(activation)) > 200 * 1024) throw new Error('Private activation exceeds supervised input limit.');
   const block = '<!-- agent-badge:start -->\nAI coding usage: [data and coverage](' + declaration.declaredUrl.replace(/\.git$/, '') + '/tree/agent-badge/data).\n<!-- agent-badge:end -->';
   const readmeBefore = await contents(join(repository.worktreeRoot, 'README.md'));
@@ -130,7 +145,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const changes: OwnedChange[] = [];
   for (const [path, after] of Object.entries(owned)) { const before = await contents(join(repository.worktreeRoot, path)); if (before !== after) changes.push({ path, before, after }); }
   return { repository, declaration, pin, lockHash, activation, changes, initialize: activation.initializeAllowed,
-    privateChanges: [`runtime/${lockHash}`, 'bootstrap.cjs', 'local.json'], options };
+    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json'], options };
 }
 async function verifyRuntime(path: string, version: string) {
   const root = join(path, 'node_modules/@legotin/agent-badge');
@@ -156,11 +171,17 @@ export async function applySetup(plan: SetupPlan): Promise<SetupResult> {
     finally { await rm(stage, { recursive: true, force: true }); }
   }
 
+  if (plan.initialize) {
+    const intent = await loadSetupIntent(privateDir);
+    if (intent && intent.repositoryId !== plan.declaration.repositoryId) throw new Error('Private setup intent identity mismatch.');
+    await atomic(join(privateDir, 'setup-intent.json'), json({ schemaVersion: 1, repositoryId: plan.declaration.repositoryId, initializeAllowed: true }));
+  }
   for (const change of plan.changes) await atomic(join(plan.repository.worktreeRoot, change.path), change.after, 0o644);
   // Approval precedes switching executable entrypoints. A crash can leave an old approved
   // bootstrap, which fails its own runtime/pin check; it cannot start unapproved new code.
   await atomic(join(privateDir, 'local.json'), json(plan.activation));
   await atomic(join(privateDir, 'bootstrap.cjs'), bootstrapSource.replace('APPROVED_RUNTIME_HASH', plan.lockHash));
+  await rm(join(privateDir, 'setup-intent.json'), { force: true });
   const request: RepositoryOperationRequest = { cwd: plan.repository.worktreeRoot, privateDir, repositoryId: plan.declaration.repositoryId, binding: plan.activation.binding, collect: 'full', capturePolicy: plan.activation.capturePolicy,
     collection: { roots: plan.activation.roots, privatePolicy: plan.activation.privatePolicy } };
   if (plan.initialize) request.initialize = { meta: { schemaVersion: 2, protocolVersion: 1, repositoryId: plan.declaration.repositoryId, normalizationVersion: 1,

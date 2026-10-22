@@ -26,5 +26,73 @@ test.each(['--help', '--version', 'status'])('ordinary launcher %s never install
   await writeFile(join(cwd, '.agent-badge/runtime/package.json'), JSON.stringify({ private: true, dependencies: { '@legotin/agent-badge': version } }));
   await writeFile(join(cwd, '.agent-badge/runtime/package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: { '@legotin/agent-badge': version } }, 'node_modules/@legotin/agent-badge': { version, integrity: 'sha512-c3ludGhldGlj' } } }));
   const result = await execute(node24, [join(cwd, '.agent-badge/run.cjs'), command], { cwd }).catch(e => e);
-  expect(result.stderr).toContain('explicit setup'); expect(await readdir(join(cwd, '.git'))).not.toContain('agent-badge');
+  if (command === 'status') expect(result.stderr).toContain('explicit setup'); else expect(result.stdout).toContain(command === '--version' ? '1.1.20' : 'setup');
+  expect(await readdir(join(cwd, '.git'))).not.toContain('agent-badge');
+});
+
+async function launcherFixture() {
+  const f = await createBareRemoteFixture(); fixtures.push(f); const cwd = f.clones[0], version = '1.1.20';
+  const pin = { manifest: JSON.stringify({ private: true, dependencies: { '@legotin/agent-badge': version } }), lock: JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: { '@legotin/agent-badge': version } }, 'node_modules/@legotin/agent-badge': { version, resolved: 'https://registry.npmjs.org/@legotin/agent-badge/-/agent-badge-1.1.20.tgz', integrity: 'sha512-c3ludGhldGlj' } } }) };
+  await mkdir(join(cwd, '.agent-badge/runtime'), { recursive: true });
+  await writeFile(join(cwd, '.agent-badge/run.cjs'), launcherSource);
+  await writeFile(join(cwd, '.agent-badge/config.json'), JSON.stringify({ runtimeVersion: version }));
+  await writeFile(join(cwd, '.agent-badge/runtime/package.json'), pin.manifest);
+  await writeFile(join(cwd, '.agent-badge/runtime/package-lock.json'), pin.lock);
+  return { f, cwd, pin };
+}
+
+test.each([
+  { args: ['setup', '--help'], code: 0 },
+  { args: ['setup', '--version'], code: 0 },
+  { args: ['setup', '--target', 'bad remote'], code: 1 },
+  { args: ['setup', '--runtime-version=^1.1.20'], code: 1 },
+  { args: ['setup', '--definitely-invalid'], code: 1 },
+  { args: ['setup', '--target'], code: 1 },
+  { args: ['setup', '--target', '-unsafe'], code: 1 },
+  { args: ['setup', '--runtime-version', '^1.1.20'], code: 1 },
+  { args: ['setup', '--repository-url', 'file:///synthetic/private'], code: 1 },
+  { args: ['setup', '--repository-url', 'https://token@example.invalid/repo'], code: 1 },
+])('launcher validates $args before Git discovery, installs, or mutations', async ({ args, code }) => {
+  const { f, cwd } = await launcherFixture(), bin = join(f.root, 'bin'); await mkdir(bin);
+  for (const command of ['git', 'npm']) await writeFile(join(bin, command), '#!/bin/sh\necho forbidden > "$CALL_MARKER"\nexit 97\n', { mode: 0o700 });
+  const result = await execute(node24, [join(cwd, '.agent-badge/run.cjs'), ...args], { cwd, env: { ...process.env, PATH: bin, CALL_MARKER: join(f.root, 'subprocess-ran') } }).then(r => ({ ...r, code: 0 })).catch(e => ({ ...e, code: e.code }));
+  expect(result.code).toBe(code); expect(await readdir(f.root)).not.toContain('subprocess-ran');
+  expect(await readdir(join(cwd, '.git'))).not.toContain('agent-badge');
+  if (code === 0) expect(result.stdout).toContain(args.includes('--version') ? '1.1.20' : 'setup');
+});
+
+async function repairFixture() {
+  const fixture = await launcherFixture(); const { f, cwd, pin } = fixture;
+  const { createHash } = await import('node:crypto'); const hash = createHash('sha256').update(pin.manifest + '\0' + pin.lock).digest('hex');
+  const privateDir = join(cwd, '.git/agent-badge'), runtime = join(privateDir, 'runtime', hash);
+  const packageRoot = join(runtime, 'node_modules/@legotin/agent-badge');
+  await mkdir(join(packageRoot, 'dist/integration'), { recursive: true });
+  await writeFile(join(packageRoot, 'package.json'), '{"name":"@legotin/agent-badge","version":"1.1.20"}');
+  await writeFile(join(packageRoot, 'dist/integration/runtime.js'), 'old partial runtime');
+  await writeFile(join(runtime, 'retained-partial'), 'old partial bytes');
+  const bin = join(f.root, 'bin'); await mkdir(bin);
+  await writeFile(join(bin, 'npm'), '#!/bin/sh\nmkdir -p node_modules/@legotin/agent-badge/dist/cli node_modules/@legotin/agent-badge/dist/integration\nprintf \'%s\' \'{"name":"@legotin/agent-badge","version":"1.1.20"}\' > node_modules/@legotin/agent-badge/package.json\nprintf \'%s\' \'require("node:fs").writeFileSync(process.env.REPAIR_MARKER,"repaired");\' > node_modules/@legotin/agent-badge/dist/cli/main.js\nprintf \'%s\' \'exports.valid=true;\' > node_modules/@legotin/agent-badge/dist/integration/runtime.js\n', { mode: 0o700 });
+  return { ...fixture, privateDir, runtime, bin };
+}
+
+test('explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification', async () => {
+  const { f, cwd, runtime, bin } = await repairFixture();
+  const result = await execute(node24, [join(cwd, '.agent-badge/run.cjs'), 'setup'], { cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH, REPAIR_MARKER: join(f.root, 'repaired') } }).then(r => ({ ...r, code: 0 })).catch(e => ({ ...e, code: e.code }));
+  expect(result.code, result.stderr).toBe(0); expect(await readFile(join(f.root, 'repaired'), 'utf8')).toBe('repaired');
+  expect(await readdir(runtime)).not.toContain('retained-partial');
+});
+
+test('a failed staged replacement retains the existing partial runtime', async () => {
+  const { cwd, runtime, bin } = await repairFixture();
+  await writeFile(join(bin, 'npm'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
+  await expect(execute(node24, [join(cwd, '.agent-badge/run.cjs'), 'setup'], { cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH } })).rejects.toThrow();
+  expect(await readFile(join(runtime, 'retained-partial'), 'utf8')).toBe('old partial bytes');
+});
+
+test('runtime repair refuses a symlink hash directory and preserves its target', async () => {
+  const { f, cwd, runtime, bin } = await repairFixture(); const { symlink } = await import('node:fs/promises');
+  await rm(runtime, { recursive: true }); await writeFile(join(f.root, 'keep'), 'outside owned runtime'); await symlink(f.root, runtime);
+  await expect(execute(node24, [join(cwd, '.agent-badge/run.cjs'), 'setup'], { cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH } })).rejects.toThrow();
+  expect(await readFile(join(f.root, 'keep'), 'utf8')).toBe('outside owned runtime');
+  expect((await (await import('node:fs/promises')).lstat(runtime)).isSymbolicLink()).toBe(true);
 });

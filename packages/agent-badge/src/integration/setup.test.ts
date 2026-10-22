@@ -185,3 +185,37 @@ test('repeated setup never silently rebinds changed routing through a remembered
   const rebound = await planSetup({ ...options, cwd, target: 'origin' });
   expect(rebound.activation.binding).toMatchObject({ status: 'bound', canonicalPushUrl: 'github.com/example/fork' });
 });
+
+test.each(['config.json', 'run.cjs'])('private first-setup intent survives interruption at tracked %s without authorizing a clone', async obstructed => {
+  const f = await fixture(), cwd = f.clones[0];
+  const first = await planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/repo', installRuntime: async directory => {
+    await install(directory); await mkdir(join(cwd, '.agent-badge', obstructed), { recursive: true });
+  } });
+  await expect(applySetup(first)).rejects.toThrow();
+  expect(await loadActivation(first.repository.privateDir)).toBeNull();
+  const intent = JSON.parse(await readFile(join(first.repository.privateDir, 'setup-intent.json'), 'utf8'));
+  expect(intent).toMatchObject({ repositoryId: first.declaration.repositoryId, initializeAllowed: true });
+  const { rm } = await import('node:fs/promises'); await rm(join(cwd, '.agent-badge', obstructed), { recursive: true });
+  if (obstructed === 'run.cjs') {
+    await f.git(cwd, ['add', '.agent-badge/config.json']); await f.git(cwd, ['commit', '-m', 'Synthetic interrupted declaration']); await f.git(cwd, ['push', 'origin', 'HEAD']); await f.git(f.clones[1], ['pull', '--ff-only']);
+    const cloned = await planSetup({ ...options, cwd: f.clones[1] });
+    expect(cloned.declaration.repositoryId).toBe(first.declaration.repositoryId); expect(cloned.initialize).toBe(false);
+  }
+  const retry = await planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/repo' });
+  expect(retry.declaration.repositoryId).toBe(first.declaration.repositoryId); expect(retry.initialize).toBe(true);
+  let initializedId: string | undefined;
+  retry.options.runInitialOperation = async request => { initializedId = request.initialize?.meta.repositoryId; return options.runInitialOperation(); };
+  await applySetup(retry); expect(initializedId).toBe(first.declaration.repositoryId);
+});
+
+
+test('private first-setup intent refuses a symlink record or private directory', async () => {
+  const f = await fixture(), cwd = f.clones[0], privateDir = join(cwd, '.git/agent-badge');
+  const { symlink, rm } = await import('node:fs/promises');
+  await mkdir(privateDir); await writeFile(join(f.root, 'external-intent'), 'keep external intent');
+  await symlink(join(f.root, 'external-intent'), join(privateDir, 'setup-intent.json'));
+  await expect(planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/repo' })).rejects.toThrow('Unsafe setup file');
+  await rm(privateDir, { recursive: true }); await symlink(f.clones[1], privateDir);
+  await expect(planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/repo' })).rejects.toThrow('Unsafe private setup directory');
+  expect(await readFile(join(f.root, 'external-intent'), 'utf8')).toBe('keep external intent');
+});

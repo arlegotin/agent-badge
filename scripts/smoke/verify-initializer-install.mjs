@@ -80,6 +80,11 @@ try {
   await rm(join(root, 'node_modules'), { recursive: true, force: true });
   const second = await run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project);
   assert.match(second.stdout, /runtime .*usage unchanged/);
+  const originalCli = await readFile(join(runtime, 'dist/cli/main.js'), 'utf8');
+  await rm(join(runtime, 'dist/cli/main.js'));
+  const repaired = await run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project);
+  assert.match(repaired.stdout, /runtime .*usage unchanged/);
+  assert.equal(await readFile(join(runtime, 'dist/cli/main.js'), 'utf8'), originalCli);
   assert.equal(await readFile(join(project, 'package.json'), 'utf8').catch(() => null), null);
   await run('git', ['add', '.agent-badge', 'README.md'], project);
   await run('git', ['commit', '-m', 'Synthetic installed declaration'], project);
@@ -96,7 +101,7 @@ try {
   await writeFile(join(clone, '.agent-badge/run.cjs'), 'throw new Error("UNTRUSTED tracked launcher executed");');
   const automatic = await run(process.execPath, [join(clonePrivate, 'bootstrap.cjs')], clone);
   assert.equal(automatic.stderr, '');
-  console.log('Packed initializer persistent-runtime smoke passed: ' + child.stdout.trim() + '; temporary initializer removed; fresh clone explicitly activated; mutable launcher ignored; no root package created.');
+  console.log('Packed initializer persistent-runtime smoke passed: ' + child.stdout.trim() + '; temporary initializer removed; nonempty partial runtime repaired; fresh clone explicitly activated; mutable launcher ignored; no root package created.');
 } finally {
   if (registry) await new Promise(accept => registry.close(accept));
   await rm(root, { recursive: true, force: true });

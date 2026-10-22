@@ -9,6 +9,36 @@ const cp = require('node:child_process');
 function main() {
   const root = path.dirname(__dirname);
   const command = process.argv[2] || 'setup';
+  // Validate bootstrap commands before repository discovery or runtime installation.
+  const setup = command === 'setup' || command === 'init';
+  let help = command === '--help' || command === '-h';
+  let showVersion = command === '--version';
+  if (setup) {
+    const args = process.argv.slice(3);
+    for (let index = 0; index < args.length; index++) {
+      const argument = args[index];
+      if (argument === '--help' || argument === '-h') { help = true; continue; }
+      if (argument === '--version') { showVersion = true; continue; }
+      if (argument === '--dry-run') continue;
+      const separator = argument.indexOf('=');
+      const option = separator < 0 ? argument : argument.slice(0, separator);
+      if (!['--target', '--repository-url', '--runtime-version'].includes(option)) throw new Error('Invalid setup argument.');
+      const value = separator < 0 ? args[++index] : argument.slice(separator + 1);
+      if (!value || value.startsWith('-')) throw new Error('Invalid setup argument.');
+      if (option === '--target' && !/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(value)) throw new Error('Invalid setup target.');
+      if (option === '--runtime-version' && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value)) throw new Error('Invalid exact runtime version.');
+      if (option === '--repository-url') {
+        const url = new URL(value);
+        if (/[\x00-\x20\x7f]/.test(value) || !['https:', 'ssh:'].includes(url.protocol) || url.password || (url.protocol === 'https:' && url.username) || url.search || url.hash) throw new Error('Invalid public repository URL.');
+      }
+    }
+  }
+  if (help) { console.log('Usage: node .agent-badge/run.cjs setup [--target <remote>] [--repository-url <url>] [--runtime-version <exact-version>] [--dry-run]'); return; }
+  if (showVersion) {
+    const version = JSON.parse(fs.readFileSync(path.join(root, '.agent-badge/config.json'), 'utf8')).runtimeVersion;
+    if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid exact runtime version.');
+    console.log(version); return;
+  }
   let declaration, manifest, lock;
   try {
     declaration = JSON.parse(fs.readFileSync(path.join(root, '.agent-badge/config.json'), 'utf8'));
@@ -34,7 +64,16 @@ function main() {
   const common = path.resolve(root, git(['rev-parse', '--git-common-dir']));
   const privateDir = path.join(common, 'agent-badge');
   const hash = crypto.createHash('sha256').update(manifest + '\0' + lock).digest('hex');
-  function directory(p) { if (!fs.existsSync(p)) fs.mkdirSync(p, { mode: 0o700 }); const s = fs.lstatSync(p); if (!s.isDirectory() || s.isSymbolicLink()) throw new Error('Unsafe runtime directory.'); }
+  function safeDirectory(p) { const s = fs.lstatSync(p); if (!s.isDirectory() || s.isSymbolicLink() || (process.getuid && s.uid !== process.getuid())) throw new Error('Unsafe runtime directory.'); }
+  function directory(p) { if (!fs.existsSync(p)) fs.mkdirSync(p, { mode: 0o700 }); safeDirectory(p); }
+  function ready(directory) {
+    const packageRoot = path.join(directory, 'node_modules/@legotin/agent-badge');
+    try {
+      for (const p of [directory, path.join(directory, 'node_modules'), path.join(directory, 'node_modules/@legotin'), packageRoot, path.join(packageRoot, 'dist'), path.join(packageRoot, 'dist/cli'), path.join(packageRoot, 'dist/integration')]) safeDirectory(p);
+      for (const file of ['package.json', 'dist/cli/main.js', 'dist/integration/runtime.js']) { const s = fs.lstatSync(path.join(packageRoot, file)); if (!s.isFile() || s.isSymbolicLink() || (process.getuid && s.uid !== process.getuid())) throw new Error('Unsafe runtime file.'); }
+      return JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version === version;
+    } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+  }
   if (command === 'setup' || command === 'init') { directory(privateDir); directory(path.join(privateDir, 'runtime')); }
   const runtime = path.join(privateDir, 'runtime', hash);
   const cli = path.join(runtime, 'node_modules/@legotin/agent-badge/dist/cli/main.js');
@@ -42,15 +81,16 @@ function main() {
     const a = JSON.parse(fs.readFileSync(path.join(privateDir, 'local.json'), 'utf8'));
     if (a.lockHash !== hash || a.repositoryId !== declaration.repositoryId) throw new Error('Runtime activation required.');
   }
-  if (!fs.existsSync(cli)) {
+  if (!ready(runtime)) {
     if (command !== 'setup' && command !== 'init') throw new Error('Runtime activation required.');
     const stage = fs.mkdtempSync(path.join(privateDir, 'runtime', '.install-'));
     try {
       fs.writeFileSync(path.join(stage, 'package.json'), manifest); fs.writeFileSync(path.join(stage, 'package-lock.json'), lock);
       const result = cp.spawnSync('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false'], { cwd: stage, stdio: 'ignore', timeout: 120000 });
       if (result.status !== 0) throw new Error('Runtime installation unavailable; retry setup when online.');
-      const pkg = JSON.parse(fs.readFileSync(path.join(stage, 'node_modules/@legotin/agent-badge/package.json'), 'utf8'));
-      if (pkg.version !== version) throw new Error('Installed runtime version mismatch.');
+      if (!ready(stage)) throw new Error('Installed runtime incomplete or version mismatch.');
+      // Remove only a verified owned hash directory, after its replacement is complete.
+      if (fs.existsSync(runtime)) { safeDirectory(runtime); fs.rmSync(runtime, { recursive: true, force: true }); }
       fs.renameSync(stage, runtime);
     } finally { fs.rmSync(stage, { recursive: true, force: true }); }
   }
