@@ -11,6 +11,7 @@ import { CLAUDE_SOURCE_SCHEMA, parseClaudeTranscript } from '../providers/claude
 import { sanitizeObservation } from '../ledger/sanitize.js';
 import { recordHash } from '../ledger/canonical-json.js';
 import { openStore as openNativeStore } from './store.js';
+import { appendJournal } from './journal.js';
 const openStore = (ctx: RepositoryContext) => openNativeStore(ctx, { processNamespace: async () => 'synthetic-namespace' });
 import { resolveRepository } from '../git/context.js';
 
@@ -322,8 +323,8 @@ describe('durable repository store', () => {
   test('queued operations drain before an explicit owner releases the common lock', async () => {
     const ctx = await context(); const prelude = await childFixture(ctx);
     const result = await runStorageFixtureProcess(project, prelude + `
-      const rename = fs.default.rename.bind(fs.default);
-      fs.default.rename = async (from, to) => { if (String(to).includes('/journal/')) await new Promise(r => setTimeout(r, 200)); return rename(from, to); };
+      const link = fs.default.link.bind(fs.default);
+      fs.default.link = async (from, to) => { if (String(to).includes('/journal/')) await new Promise(r => setTimeout(r, 200)); return link(from, to); };
       let queued;
       await store.withLock(AbortSignal.timeout(1000), async () => { queued = store.commitBatch(source, batch, [record]); });
       console.log((await fs.readdir(ctx.privateDir + '/journal')).filter(name => name.endsWith('.json')).length);
@@ -388,6 +389,105 @@ async function childFixture(ctx: RepositoryContext) {
 }
 
 describe('real process death and filesystem failures', () => {
+  test('immutable journal append refuses an existing sequence without changing its bytes', async () => {
+    const ctx = await context(), store = await openStore(ctx), first = fixture();
+    await store.commitBatch(first.source, first.batch, [first.record]);
+    const [entry] = await store.journal(), path = join(ctx.privateDir, 'journal/0000000000000001.json');
+    const original = await readFile(path);
+    await expect(appendJournal(join(ctx.privateDir, 'journal'), {
+      ...entry, checkpoint: { ...entry.checkpoint, cursor: { ...entry.checkpoint.cursor, offset: 20, size: 20 } }
+    })).rejects.toThrow();
+    expect(await readFile(path)).toEqual(original);
+    expect((await store.checkpoint(first.source, first.batch.nextCheckpoint))?.cursor.offset).toBe(10);
+  });
+
+  test.each((['journal', 'control', 'ack'] as const).flatMap(kind =>
+    ['begin', 'insert', 'commit', 'directory-sync'].map(fault => ({ kind, fault }))
+  ))('$kind authority survives caught $fault failure and queued same-lease continuation', async ({ kind, fault }) => {
+      const ctx = await context(), prelude = await childFixture(ctx), first = fixture();
+      const result = await runStorageFixtureProcess(project, prelude + `
+        const { DatabaseSync } = await import('node:sqlite');
+        const { readFileSync, readdirSync } = await import('node:fs');
+        const { recordHash } = await import(${JSON.stringify(pathToFileURL(join(project, 'packages/core/src/ledger/canonical-json.ts')).href)});
+        const kind = ${JSON.stringify(kind)}, fault = ${JSON.stringify(fault)};
+        const control = { schemaVersion: 2, normalizationVersion: 1, repositoryId: record.repositoryId,
+          kind: 'exclude', targetUnitKey: record.unitKey, supersedes: [] };
+        const nextSource = { ...source, sourceIdentity: '/synthetic/second' };
+        const nextBatch = { ...batch, source: nextSource, observations: [],
+          nextCheckpoint: { ...batch.nextCheckpoint, sourceIdentity: nextSource.sourceIdentity } };
+        if (kind !== 'journal') await store.commitBatch(source, batch, [record]);
+        const directory = ctx.privateDir + '/' + ({ journal: 'journal', control: 'controls', ack: 'acknowledgements' })[kind];
+        let fired = false, sameLease, originalAuthority;
+        await store.withLock(AbortSignal.timeout(5000), async () => {
+          await store.pending(); // Open the complete generation before injecting its next mutation failure.
+          const exec = DatabaseSync.prototype.exec, prepare = DatabaseSync.prototype.prepare, open = fs.default.open;
+          const capture = () => { originalAuthority = readdirSync(directory).filter(name => name.endsWith('.json'))
+            .map(name => [name, readFileSync(directory + '/' + name, 'utf8')]); };
+          const fail = () => { fired = true; capture(); throw new Error('synthetic index failure'); };
+          DatabaseSync.prototype.exec = function(sql) {
+            if (!fired && ((fault === 'begin' && sql === 'BEGIN') || (fault === 'commit' && sql === 'COMMIT'))) fail();
+            return exec.call(this, sql);
+          };
+          DatabaseSync.prototype.prepare = function(sql) {
+            const statement = prepare.call(this, sql);
+            const prefix = { journal: 'INSERT INTO journal ', control: 'INSERT OR IGNORE INTO records ', ack: 'INSERT OR IGNORE INTO acknowledgements ' }[kind];
+            if (!fired && fault === 'insert' && sql.startsWith(prefix)) {
+              const run = statement.run;
+              statement.run = function(...args) { if (!fired) fail(); return run.apply(this, args); };
+            }
+            return statement;
+          };
+          fs.default.open = async (...args) => {
+            const handle = await open(...args), sync = handle.sync.bind(handle);
+            if (fault === 'directory-sync' && String(args[0]) === directory)
+              handle.sync = async () => { if (!fired) { fired = true; capture(); throw Object.assign(new Error('synthetic sync failure'), { code: 'EIO' }); } await sync(); };
+            return handle;
+          };
+          const attempt = promise => promise.then(() => false, () => true);
+          try {
+            const first = attempt(kind === 'journal' ? store.commitBatch(source, batch, [record]) :
+              kind === 'control' ? store.commitControl(control) : store.acknowledge([recordHash(record)]));
+            // Both operations are queued before the first mutation fails; neither may see its stale index.
+            const second = attempt(store.commitBatch(nextSource, nextBatch, []));
+            const pending = attempt(store.pending());
+            sameLease = { first: await first, second: await second, pending: await pending };
+          } finally { DatabaseSync.prototype.exec = exec; DatabaseSync.prototype.prepare = prepare; fs.default.open = open; }
+          sameLease.checkpoint = await attempt(store.checkpoint(source, batch.nextCheckpoint));
+          sameLease.control = await attempt(store.commitControl(control));
+          sameLease.ack = await attempt(store.acknowledge([recordHash(record)]));
+          sameLease.flush = await attempt(store.flushDerivedIndex());
+          sameLease.invalidate = await attempt(store.invalidateCache());
+          const files = (await fs.readdir(directory)).filter(name => name.endsWith('.json'));
+          sameLease.authority = await Promise.all(files.map(async name => [name, await fs.readFile(directory + '/' + name, 'utf8')]));
+          sameLease.checkpointFiles = (await fs.readdir(ctx.privateDir + '/checkpoints')).filter(name => name.endsWith('.json')).length;
+        });
+        console.log(JSON.stringify({ fired, sameLease, originalAuthority }));
+      `);
+      expect(result.code, `${kind}/${fault}: ${result.stderr}`).toBe(0);
+      const evidence = JSON.parse(result.stdout);
+      expect(evidence.fired, `${kind}/${fault}`).toBe(true);
+      expect(evidence.sameLease.authority).toEqual(evidence.originalAuthority);
+      expect(evidence.sameLease).toMatchObject({ first: true, second: true, pending: true,
+        checkpoint: true, control: true, ack: true, flush: true, invalidate: true,
+        checkpointFiles: kind === 'journal' ? 0 : 1 });
+      const directory = join(ctx.privateDir, { journal: 'journal', control: 'controls', ack: 'acknowledgements' }[kind]);
+      for (const [name, bytes] of evidence.sameLease.authority) expect(await readFile(join(directory, name), 'utf8')).toBe(bytes);
+      const reopened = await openStore(ctx), journal = await reopened.journal();
+      expect(journal).toHaveLength(1);
+      expect(journal[0].source).toEqual(first.source);
+      expect(journal[0].records).toEqual([first.record]);
+      expect((await reopened.checkpoint(first.source, first.batch.nextCheckpoint))?.cursor.offset).toBe(10);
+      const control = { schemaVersion: 2 as const, normalizationVersion: 1 as const, repositoryId,
+        kind: 'exclude' as const, targetUnitKey: first.record.unitKey, supersedes: [] };
+      expect(await reopened.pending()).toEqual(kind === 'ack' ? [] : kind === 'control' ?
+        expect.arrayContaining([first.record, control]) : [first.record]);
+      const original = await readFile(join(ctx.privateDir, 'journal/0000000000000001.json'));
+      await reopened.commitBatch(first.source, first.batch, [first.record]);
+      expect((await reopened.journal()).map(entry => entry.sequence)).toEqual([1, 2]);
+      expect(await readFile(join(ctx.privateDir, 'journal/0000000000000001.json'))).toEqual(original);
+      expect(await readdir(join(ctx.privateDir, 'locks'))).toEqual([]);
+  });
+
   test('publishing collected index under the lease survives death before network work without rebuilding authority',async()=>{
     const ctx=await context(),prelude=await childFixture(ctx),f=fixture();
     const killed=await runStorageFixtureProcess(project,prelude+`
@@ -404,7 +504,7 @@ describe('real process death and filesystem failures', () => {
   test.each([
     ['write', '/journal/.tmp-', 'exit-after', false],
     ['sync', '/journal/.tmp-', 'exit-after', false],
-    ['rename', '/journal/', 'exit-after', true],
+    ['link', '/journal/', 'exit-after', true],
     ['sync', '/journal', 'exit-after', true],
     ['rename', '/checkpoints/', 'exit-before', true],
     ['rename', '/checkpoints/', 'exit-after', true]

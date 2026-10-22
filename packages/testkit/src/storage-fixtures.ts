@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 
 /** Faults affect one real filesystem operation in a synthetic child, never the parent. */
 export interface StorageFault {
-  operation: 'rename' | 'sync' | 'write';
+  operation: 'rename' | 'link' | 'sync' | 'write';
   pathIncludes: string;
   pathEndsWith?: boolean;
   action: 'exit-before' | 'exit-after' | 'ENOSPC' | 'EACCES';
@@ -24,6 +24,8 @@ export function storageFaultPrelude(fault?: StorageFault): string {
     }
     const storageRename = storageFs.rename.bind(storageFs);
     storageFs.rename = (from, to) => storageIntercept('rename', to, () => storageRename(from, to));
+    const storageLink = storageFs.link.bind(storageFs);
+    storageFs.link = (from, to) => storageIntercept('link', to, () => storageLink(from, to));
     const storageOpen = storageFs.open.bind(storageFs);
     storageFs.open = async (...args) => {
       const handle = await storageOpen(...args);

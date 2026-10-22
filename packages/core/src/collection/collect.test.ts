@@ -1,5 +1,6 @@
 import { appendFile, mkdir, readFile, rm, writeFile, symlink, rename } from "node:fs/promises";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   codexRollout, codexContext, codexRequest,
@@ -71,6 +72,45 @@ describe("durable local collection", () => {
     expect(result.pendingReconciliation).toBe(false);
     expect(await options.store.pending()).toHaveLength(1);
     expect((await options.store.journal()).length).toBeGreaterThan(0);
+  });
+  it('collection cannot overwrite published source evidence after an index failure in its owning lease', async () => {
+    await writeFile(join(home, 'sessions/b.jsonl'), codexRollout({ single: true })
+      .replaceAll('original', 'second').replaceAll('/synthetic/repo', options.repository.worktreeRoot));
+    const adapter = options.adapters!.codex!, prepare = DatabaseSync.prototype.prepare;
+    let failed = false;
+    const injection = vi.spyOn(DatabaseSync.prototype, 'prepare').mockImplementation(function(sql) {
+      const statement = prepare.call(this, sql);
+      if (!failed && sql.startsWith('INSERT INTO journal ')) {
+        const run = statement.run;
+        statement.run = function(...args) {
+          if (!failed) { failed = true; throw new Error('synthetic SQLite insertion failure'); }
+          return run.apply(this, args);
+        };
+      }
+      return statement;
+    });
+    try {
+      const { result, refused } = await options.store.withLock(AbortSignal.timeout(5000), async () => {
+        const result = await collectUsage({ ...options, adapters: { codex: { ...adapter,
+          async discover(ctx) { return (await adapter.discover(ctx)).filter(source => source.sourceIdentity.endsWith('.jsonl')); }
+        } } });
+        const refused = await options.store.pending().then(() => false, () => true);
+        return { result, refused };
+      });
+      expect(failed).toBe(true);
+      expect(result.sourceOutcomes.every(source => source.outcome === 'unavailable')).toBe(true);
+      expect(result.diagnostics).toContainEqual({ code: 'incomplete-source', severity: 'warning' });
+      expect(refused).toBe(true);
+    } finally { injection.mockRestore(); }
+    const recovered = await options.store.journal();
+    expect(recovered).toHaveLength(1);
+    expect(recovered[0].source.sourceIdentity).toBe(path);
+    expect(recovered[0].records).toHaveLength(1);
+    // Loss of the provider file cannot erase already published authority.
+    await rm(path);
+    await collectUsage(options);
+    expect(await options.store.pending()).toHaveLength(2);
+    expect((await options.store.journal())[0]).toEqual(recovered[0]);
   });
   it('empty unchanged source batches require no historical control projection',async()=>{
     await collectUsage(options);const prior=await options.store.journal(),controls=vi.spyOn(options.store,'controls');

@@ -237,33 +237,11 @@ export async function rebuildAcceptedIndex(
     } else if (!hasCode(error, "ENOENT")) throw error;
   }
   const binding = options.binding ?? "";
-  async function removeStage() {
-    for (const name of [
-      "accepted-stage.sqlite",
-      "accepted-stage.sqlite-journal",
-      "accepted-stage.sqlite-wal",
-      "accepted-stage.sqlite-shm",
-      "accepted-stage.json",
-    ])
-      try {
-        const target = join(directory, name),
-          info = await fs.lstat(target);
-        if (
-          !info.isFile() ||
-          info.isSymbolicLink() ||
-          (process.getuid && info.uid !== process.getuid())
-        )
-          throw new StoreError("unsafe-store-path");
-        await fs.unlink(target);
-      } catch (error) {
-        if (!hasCode(error, "ENOENT")) throw error;
-      }
-  }
-  if (discardedOwner) await removeStage();
+  if (discardedOwner) await removeStageFiles(directory);
   if (owner && owner.binding !== binding) {
     await git(["update-ref", "-d", owner.ref, owner.commit]);
     await fs.rm(ownerPath);
-    await removeStage();
+    await removeStageFiles(directory);
     owner = undefined;
   }
   if (owner?.candidateBase) {
@@ -414,7 +392,7 @@ export async function rebuildAcceptedIndex(
     }
     await git(["update-ref", "-d", owner.ref, owner.commit]);
     await fs.rm(ownerPath);
-    await removeStage();
+    await removeStageFiles(directory);
     if (recovered && owner.commit === requested) {
       const index = await AcceptedIndex.load(root, requested);
       if (!index) throw new StoreError("invalid-durable-data");
@@ -462,7 +440,7 @@ export async function rebuildAcceptedIndex(
           // The proven stage ref is absent and its object cannot be recovered.
           // Discard its incomplete derived generation, then validate the newly
           // fetched tip from scratch; never pass old membership to the caller.
-          await removeStage();
+          await removeStageFiles(directory);
           await fs.unlink(ownerPath);
           return rebuildAcceptedIndex(repository, requested, options);
         }
@@ -509,7 +487,7 @@ export async function rebuildAcceptedIndex(
     valid = false;
   }
   if (!valid) {
-    await removeStage();
+    await removeStageFiles(directory);
     const file = await fs.open(path, "wx", 0o600);
     await file.close();
     progress = { version: 1, phase: "tree", lastPath: "", copied: false };

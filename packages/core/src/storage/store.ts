@@ -122,7 +122,7 @@ export async function openStore(ctx: RepositoryContext, options: StoreOptions = 
   } catch (error) { throw ioError(error); }
 }
 class Store implements LocalStore {
-  private readonly held = new AsyncLocalStorage<{ active: boolean; tail: Promise<void> }>();
+  private readonly held = new AsyncLocalStorage<{ active: boolean; failed: boolean; tail: Promise<void> }>();
   private index: StoreIndex | undefined;
   private async indexed(): Promise<StoreIndex> { return this.index ??= await StoreIndex.open(this.root,this.options.rebuildBudget); }
   async flushDerivedIndex():Promise<void>{await this.operation(async()=>{const index=this.index;if(!index?.needsPublication)return;this.index=undefined;await index.close();});}
@@ -132,7 +132,7 @@ class Store implements LocalStore {
     if (this.held.getStore()?.active) return task();
     try { await assertDirectory(this.root); } catch (error) { throw ioError(error); }
     const release = await acquireLock(join(this.root, 'locks'), signal, this.options.processNamespace, this.options.supervisedLeaseToken);
-    const ownership = { active: true, tail: Promise.resolve() };
+    const ownership = { active: true, failed: false, tail: Promise.resolve() };
     try { return await this.held.run(ownership, task); }
     catch (error) { throw ioError(error); }
     finally {
@@ -148,9 +148,23 @@ class Store implements LocalStore {
       let next!: () => void;
       ownership.tail = new Promise<void>(resolve => { next = resolve; });
       await previous;
-      try { await assertDirectory(this.root); return await task(); }
+      try {
+        if (ownership.failed) throw new StoreError('store-io', true);
+        await assertDirectory(this.root);
+        return await task();
+      }
       finally { next(); }
     });
+  }
+  private async mutateAuthority(index: StoreIndex, task: () => Promise<void>): Promise<void> {
+    try { await task(); }
+    catch (error) {
+      // A publication may have succeeded before fsync or derived indexing failed.
+      // No queued read/write may reuse that generation; the next lease revalidates authority.
+      this.held.getStore()!.failed = true;
+      index.invalidate();
+      throw error;
+    }
   }
   private async readReconciliation() {
     let value: unknown;
@@ -215,7 +229,15 @@ class Store implements LocalStore {
   async relatedJournal(observations: readonly UsageObservation[]): Promise<JournalEntry[]> { return this.operation(async () => (await this.indexed()).related(observations)); }
   async projectionSources(policyHash: string): Promise<SourceDescriptor[]> { return this.operation(async () => (await this.indexed()).dirtySources(policyHash)); }
   async controls(): Promise<ControlRecord[]> { return this.operation(async () => (await this.indexed()).controls()); }
-  async commitControl(record: ControlRecord): Promise<void> { return this.operation(async () => {const index=await this.indexed();await writeControl(this.root, record);index.addControl(record);}); }
+  async commitControl(record: ControlRecord): Promise<void> {
+    return this.operation(async () => {
+      const index = await this.indexed();
+      await this.mutateAuthority(index, async () => {
+        await writeControl(this.root, record);
+        index.addControl(record);
+      });
+    });
+  }
   async journal(): Promise<JournalEntry[]> { return this.operation(async () => (await this.indexed()).journal()); }
   async checkpointCandidate(source: SourceDescriptor): Promise<Checkpoint | null> {
     return this.operation(async () => latestCheckpointCandidate((await this.indexed()).source(source), source));
@@ -247,11 +269,13 @@ class Store implements LocalStore {
         if (previous && entry.checkpoint.cursor.offset < previous.cursor.offset) throw new StoreError('invalid-batch');
       }
       entry.sequence = index.count() + 1;
-      await appendJournal(join(this.root, 'journal'), entry);
-      index.addEntry(entry);
-      // The checkpoint is a derived acceleration hint. Reads recover from the journal,
-      // including when this atomic write fails or a process dies immediately before it.
-      await writeCheckpoint(join(this.root, 'checkpoints'), entry);
+      await this.mutateAuthority(index, async () => {
+        await appendJournal(join(this.root, 'journal'), entry);
+        index.addEntry(entry);
+        // The checkpoint is a derived acceleration hint. Reads recover from the journal,
+        // including when this atomic write fails or a process dies immediately before it.
+        await writeCheckpoint(join(this.root, 'checkpoints'), entry);
+      });
     });
   }
   async pending(): Promise<PublicRecord[]> { return this.operation(async () => (await this.indexed()).pending()); }
@@ -262,8 +286,10 @@ class Store implements LocalStore {
     const validated = hashes.map(hash => { if (!digestSchema.safeParse(hash).success) throw new StoreError('invalid-batch'); return hash; });
     await this.operation(async () => {
       const index = await this.indexed(), confirmed = validated.filter(hash => index.known(hash) && !index.acknowledged(hash));
-      await appendAcknowledgements(this.root, confirmed);
-      if (confirmed.length) index.addAcknowledgements(confirmed);
+      await this.mutateAuthority(index, async () => {
+        await appendAcknowledgements(this.root, confirmed);
+        if (confirmed.length) index.addAcknowledgements(confirmed);
+      });
     });
   }
   async invalidateCache(): Promise<void> {

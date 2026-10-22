@@ -45,8 +45,8 @@ export async function readPrivateFile(path: string, maxBytes = 32 * 1024 * 1024,
     } finally { await handle.close(); }
   } catch (error) { if (hasCode(error, 'ENOENT')) throw error; throw ioError(error); }
 }
-/** Rename and directory fsync complete before a caller may advance a cursor. */
-export async function atomicFile(path: string, value: unknown): Promise<void> {
+/** Publication and directory fsync complete before a caller may advance a cursor. */
+export async function atomicFile(path: string, value: unknown, options: { replace?: boolean } = {}): Promise<void> {
   const parent = dirname(path);
   const temporary = join(parent, `.tmp-${randomUUID()}`);
   let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
@@ -60,7 +60,10 @@ export async function atomicFile(path: string, value: unknown): Promise<void> {
     await handle.writeFile(bytes, 'utf8');
     await handle.sync();
     await handle.close(); handle = undefined;
-    await fs.rename(temporary, path);
+    // Linking the complete temporary inode refuses an existing destination atomically.
+    // Immutable journal sequences must never use a replacing rename, even under a lease.
+    if (options.replace === false) await fs.link(temporary, path);
+    else await fs.rename(temporary, path);
     await syncDirectory(parent);
   } catch (error) { throw ioError(error); }
   finally { await handle?.close().catch(() => {}); await fs.unlink(temporary).catch(() => {}); }

@@ -649,8 +649,9 @@ export class StoreIndex {
     }
   }
   private write(task: () => void) {
-    this.db.exec("BEGIN");
     try {
+      if (this.failed) throw new StoreError("store-io", true);
+      this.db.exec("BEGIN");
       task();
       this.db.exec("COMMIT");
     } catch (error) {
@@ -660,6 +661,9 @@ export class StoreIndex {
       } catch {}
       throw error;
     }
+  }
+  invalidate(): void {
+    this.failed = true;
   }
   private insertRecord(record: PublicRecord, control: boolean) {
     const hash = recordHash(record),

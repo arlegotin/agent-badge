@@ -68,5 +68,5 @@ function journalName(sequence: number): string { return `${String(sequence).padS
 export async function appendJournal(directory: string, entry: JournalEntry): Promise<void> {
   const validated = validateEntry(entry);
   if (Buffer.byteLength(JSON.stringify(validated)) > 32 * 1024 * 1024) throw new StoreError('invalid-batch');
-  await atomicFile(join(directory, journalName(validated.sequence)), validated);
+  await atomicFile(join(directory, journalName(validated.sequence)), validated, { replace: false });
 }
