@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { diagnosticSchema, digestSchema, modelIdSchema, parseProtocol, parsePublicProtocol, privateStringSchema,
+import { diagnosticSchema, digestSchema, knownModelVendors, modelIdSchema, parseProtocol, parsePublicProtocol, privateStringSchema,
   providerIdSchema, repositoryIdSchema, safeCounterSchema, vendorIdSchema } from "./capabilities.js";
 
 const dimension = safeCounterSchema.nullable();
@@ -21,8 +21,7 @@ export const meterSegmentSchema = z.object({ vendor: vendorIdSchema.nullable(), 
     total: z.enum(["input-plus-output", "provider-defined", "unknown"]) }).strict()
 }).strict().superRefine((meter, ctx) => {
   const invalid = () => ctx.addIssue({ code: "custom", message: "invalid-meter" });
-  if ((meter.model === "gpt-5.4-mini" || meter.model === "gpt-4.1-mini") && meter.vendor !== "openai") invalid();
-  if (meter.model === "claude-sonnet-4-6" && meter.vendor !== "anthropic") invalid();
+  if (meter.model !== null && meter.vendor !== knownModelVendors[meter.model]) invalid();
   if (meter.semantics.toolInput === "included-in-input" && meter.input !== null && meter.toolInput !== null && meter.toolInput > meter.input) invalid();
   if (meter.semantics.input === "includes-cached" && meter.input !== null) {
     if (meter.cachedInput !== null && meter.cachedInput > meter.input) invalid();

@@ -94,18 +94,33 @@ type Diagnostic = { code: string; severity: 'info' | 'warning' | 'error' };
 type ScanOutcome = 'complete' | 'partial' | 'unavailable' | 'unsupported';
 type SourceDescriptor = {
   provider: string; instanceKey: string; root: string; schema: string;
-  generation: string; readerVersion: string;
+  generation: string; readerVersion: string; sourceIdentity: string;
 }; // private; never serialized outbound
+type CheckpointScope = {repositoryId: string; normalizationVersion: 1; attributionPolicyHash: string};
+// Checkpoint includes required nullable continuation:{provider,readerVersion,state} (private, <=64KiB).
 type ScanBatch = {
+  source: SourceDescriptor; // validated logical generation; commit this exact descriptor
   observations: UsageObservation[]; nextCheckpoint: Checkpoint;
   outcome: ScanOutcome; diagnostics: Diagnostic[];
 };
 interface ProviderAdapter {
   discover(ctx: DiscoveryContext): Promise<SourceDescriptor[]>;
   scan(source: SourceDescriptor, checkpoint: Checkpoint | null,
-       signal: AbortSignal): AsyncIterable<ScanBatch>;
+       signal: AbortSignal, scope: CheckpointScope): AsyncIterable<ScanBatch>;
 }
 ```
+
+Collector integration: hold the store lock across
+`store.checkpointCandidate(source)`, `adapter.scan(source,candidate,signal,scope)`
+and `store.commitBatch(batch.source,batch,records)`. Candidate lookup returns the
+latest durable checkpoint by provider/instance/actual source identity regardless
+of generation/scope; it is not certified reuse. Adapters validate scope,
+schema/reader, physical epoch and content prefix, safely replay on mismatch,
+and emit a resolved `batch.source`. Never fall back to an older candidate.
+Opaque logical generations survive verified appends and reset on replay without
+ordering them. The store still rejects cursor rollback within a logical
+generation and reuse of an obsolete generation. Continuation is metadata only;
+provider-owned strict schemas and byte bounds apply before any skip.
 
 `UsageObservation`, `PublicObservation`, `MeterSegment`, `Checkpoint`, `LedgerMeta`,
 `ControlRecord`, `ReducedLedger`, `RepositoryContext`, `RemoteBinding`, and operation
@@ -202,6 +217,7 @@ add fault injection helpers under `packages/testkit/src/storage-fixtures.ts`.
 `openStore(ctx: RepositoryContext): Promise<LocalStore>`.
 `LocalStore.commitBatch(source: SourceDescriptor, batch: ScanBatch, records: readonly PublicRecord[]): Promise<void>`,
 `pending(): Promise<PublicRecord[]>`, `acknowledge(hashes: readonly string[]): Promise<void>`,
+`checkpointCandidate(source: SourceDescriptor): Promise<Checkpoint | null>`,
 and `withLock<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>`.
 Outbox acknowledgement and derived-cache invalidation are separate operations.
 The collector passes already-sanitized public records alongside private normalized
@@ -225,7 +241,7 @@ local roots or `CODEX_HOME`, then the documented default; multiple enrolled root
 
 - [ ] Write failing fixtures for open WAL 1,110 versus old 999, same-timestamp changes, absent optional lineage tables, unsupported schema, multiple homes, archived sessions, partial final line, truncation/rotation, model switches, spawned children, and forked history.
 - [ ] Require full/incremental parity, preserved request identity across copies, inherited fork exclusion, and explicit uncertainty where no stable inherited boundary exists. `history.jsonl` is discovery-only and cannot manufacture zero usage.
-- [ ] Run `npm test -- --run packages/core/src/providers/codex`; implement bounded streaming rollouts as accounting source, schema-probed read-only DB inventory, source fingerprinting, certified revision ordering, and isolated source errors.
+- [ ] Run `npm test -- --run packages/core/src/providers/codex`; implement bounded streaming rollouts as accounting source, schema-probed read-only DB inventory, source fingerprinting, immutable-final request comparison, and isolated source errors. Cumulative ordering remains uncertified; source pins are not release-range guarantees.
 - [ ] Add hooks/app-server/owned exec observations only through the same identities; do not launch/resume model work or attach to unknown servers. Record tested agent/format revisions and source URLs in compatibility.json.
 - [ ] Run Codex fixture tests, Task 1 WAL test, and full/incremental equivalence; commit.
 
@@ -252,6 +268,10 @@ reuse/adapt `attribution/attribution-types.ts` concepts and remove old engine ca
 Produce `collectUsage(options: CollectOptions): Promise<CollectionResult>` and
 `attributeObservation(observation: UsageObservation, context: AttributionContext): AttributionResult`.
 CollectionResult contains durable queued hashes, source outcomes, and local-only diagnostics.
+Hold one store lock across candidate lookup, scan and commit. Supply accepted
+`CheckpointScope` as the required fourth scan argument, and commit
+`batch.source` exactly; discovery's physical epoch may differ from the batch's
+validated logical generation. Candidates are not proof of cursor/state reuse.
 
 - [ ] Add tests for explicit exclusion of unchanged cached 100-token usage → zero; changes to repo mapping, aliases, parser, normalization, or policy trigger the right re-projection. Pricing changes must not reread transcripts.
 - [ ] Test nearest Git repo membership from cwd, sibling/deleted worktrees, nested repos/submodules, strong contradictory remote evidence, ambiguous multi-repo sessions, and overrides before heuristics.

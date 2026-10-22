@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { modelIdSchema, parseProtocol, safeCounterSchema, vendorIdSchema } from "../domain/capabilities.js";
+import { knownModelVendors, modelIdSchema, parseProtocol, safeCounterSchema, vendorIdSchema } from "../domain/capabilities.js";
 
 // A small audited text-token API-equivalent rate catalog; never fetched at runtime.
 // Primary sources retrieved 2026-10-22:
@@ -20,7 +20,7 @@ export const priceCatalogSchema = z.object({ schemaVersion: z.literal(1), versio
     const keys = new Set<string>();
     for (const card of catalog.cards) {
       const key = `${card.vendor}/${card.model}`;
-      if (keys.has(key) || (card.model === "claude-sonnet-4-6" ? card.vendor !== "anthropic" : card.vendor !== "openai"))
+      if (keys.has(key) || card.vendor !== knownModelVendors[card.model])
         ctx.addIssue({ code: "custom", message: "invalid-catalog" });
       keys.add(key);
     }

@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import fs from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { join, resolve } from 'node:path';
@@ -12,7 +13,7 @@ import { acquireLock } from './lock.js';
 import type { ProcessNamespaceProbe } from './lock.js';
 import { appendJournal, readJournal, validateEntry } from './journal.js';
 import type { JournalEntry } from './journal.js';
-import { latestCheckpoint, writeCheckpoint } from './checkpoints.js';
+import { latestCheckpoint, latestCheckpointCandidate, writeCheckpoint } from './checkpoints.js';
 import type { CheckpointScope } from './checkpoints.js';
 
 export { StoreError } from './atomic-file.js';
@@ -24,6 +25,8 @@ export interface LocalStore {
   /** Caller attests these hashes were verified in the accepted remote snapshot. */
   acknowledge(hashes: readonly string[]): Promise<void>;
   withLock<T>(signal: AbortSignal, task: () => Promise<T>): Promise<T>;
+  /** Untrusted latest durable candidate; adapter validates all reuse dimensions. No older fallback. */
+  checkpointCandidate(source: SourceDescriptor): Promise<Checkpoint | null>;
   checkpoint(source: SourceDescriptor, scope: CheckpointScope): Promise<Checkpoint | null>;
   /** Private normalized metadata for reprojection; never send this result to Git. */
   journal(): Promise<JournalEntry[]>;
@@ -71,6 +74,9 @@ class Store implements LocalStore {
     });
   }
   async journal(): Promise<JournalEntry[]> { return this.operation(() => readJournal(join(this.root, 'journal'))); }
+  async checkpointCandidate(source: SourceDescriptor): Promise<Checkpoint | null> {
+    return this.operation(async () => latestCheckpointCandidate(await readJournal(join(this.root, 'journal')), source));
+  }
   async checkpoint(source: SourceDescriptor, scope: CheckpointScope): Promise<Checkpoint | null> {
     return this.operation(async () => latestCheckpoint(await readJournal(join(this.root, 'journal')), source, scope));
   }
@@ -78,6 +84,7 @@ class Store implements LocalStore {
     // Snapshot and validate the entire boundary before acquiring or writing a journal.
     let entry: JournalEntry;
     try {
+      if (!isDeepStrictEqual(source, batch.source)) throw new StoreError('invalid-batch');
       entry = validateEntry({ schemaVersion: 1, sequence: 1, source, checkpoint: batch.nextCheckpoint,
         observations: batch.observations, records: records.map(parsePublicRecord), outcome: batch.outcome, diagnostics: batch.diagnostics });
     } catch { throw new StoreError('invalid-batch'); }

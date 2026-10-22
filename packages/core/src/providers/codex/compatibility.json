@@ -1,0 +1,71 @@
+{
+  "provider": "codex",
+  "normalizationVersion": 1,
+  "sourceRevision": "86e17e98c7f901277aeeb4649cf1b01462b082f2",
+  "sourceRevisionDate": "2026-10-22",
+  "releasedVersionRange": null,
+  "observedAgentVersions": [],
+  "fixtureRevision": "synthetic-token-usage-record-v1",
+  "accounting": "fixture-certified-request-usage-only",
+  "identity": [
+    "original token_usage_record.thread_id",
+    "response_id"
+  ],
+  "revision": "immutable-final",
+  "cumulativeRevision": "uncertified",
+  "snapshots": "unsupported",
+  "compressedRollouts": "unsupported",
+  "fixtureReferences": [
+    "packages/testkit/src/codex-fixtures.ts",
+    "packages/core/src/providers/codex/adapter.test.ts",
+    "scripts/feasibility/sqlite-readonly.test.ts"
+  ],
+  "sourceUrls": [
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/protocol/src/protocol.rs",
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/history/src/rollout_payload.rs",
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/core/tests/suite/token_usage_rollout.rs",
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/rollout/src/ordinal.rs",
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/thread-store/src/local/rollout_lineage.rs",
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/state/src/sqlite.rs",
+    "https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/state/migrations/0001_threads.sql",
+    "https://learn.chatgpt.com/docs/config-file/environment-variables"
+  ],
+  "limits": {
+    "parseBytesPerScan": 16777216,
+    "lineBytes": 262144,
+    "observationsPerScan": 1000,
+    "precedingTurnContexts": 128,
+    "continuationBytes": 65536,
+    "inventoryRows": 10000,
+    "sqliteBusyTimeoutMs": 50,
+    "discoveryDepth": 16,
+    "discoveryRolloutsPerHome": 10000
+  },
+  "notes": [
+    "Official source pin certifies source shapes, not a released-version interval or an observed installed agent.",
+    "Fixtures are synthetic; no private history was used.",
+    "Database is read-only WAL-aware discovery inventory, never an accounting source.",
+    "Only request usage is counted; turn/thread aggregates, token_count snapshots, compaction checkpoints and history.jsonl never create observations.",
+    "Missing inheritance boundary, model context or exact execution environment remains uncertain.",
+    "Prefix verification streams old bytes; only bounded appended records are parsed. Hook wall-clock budget remains the caller's AbortSignal responsibility.",
+    "No agent process is launched and no hook/app-server observation path is added. Future observations must share the same native request identity.",
+    "Physical history_base uses end_ordinal_exclusive/end_byte_offset of a referenced prefix rollout; it does not imply a logical fork."
+  ],
+  "modelIdentityEvidence": {
+    "retrieved": "2026-10-22",
+    "identityOnlyUnpriced": [
+      "gpt-6.1-sol",
+      "gpt-6-sol",
+      "gpt-6-luna",
+      "gpt-6-astra",
+      "gpt-5.4",
+      "gpt-5.3-codex"
+    ],
+    "availability": "account/client/rollout-dependent; no universal default claim",
+    "sourceUrls": [
+      "https://learn.chatgpt.com/docs/models?surface=app",
+      "https://developers.openai.com/api/docs/models/gpt-5.4",
+      "https://developers.openai.com/api/docs/models/gpt-5.3-codex"
+    ]
+  }
+}

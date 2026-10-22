@@ -1,33 +1,7 @@
-import { readFile, readdir, stat } from "node:fs/promises";
-import { createRequire } from "node:module";
+import { readdir, stat } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import type { Diagnostic, ScanOutcome } from "../../domain/capabilities.js";
 import { join } from "node:path";
-
-const require = createRequire(import.meta.url);
-
-interface SqlJsStatement {
-  bind(values?: readonly unknown[]): boolean;
-  step(): boolean;
-  getAsObject(): Record<string, unknown>;
-  free(): boolean;
-}
-
-interface SqlJsDatabase {
-  prepare(sql: string, params?: readonly unknown[]): SqlJsStatement;
-  close(): void;
-}
-
-interface SqlJsRuntime {
-  Database: new (data?: ArrayLike<number> | null) => SqlJsDatabase;
-}
-
-type InitSqlJs = (config?: {
-  readonly wasmBinary?: Uint8Array;
-}) => Promise<SqlJsRuntime>;
-
-const initSqlJs = require("sql.js") as InitSqlJs;
-const sqlJsWasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
-
-let sqlJsRuntimePromise: Promise<SqlJsRuntime> | null = null;
 
 export interface CodexThreadRow {
   readonly id: string;
@@ -159,44 +133,13 @@ function codexTimestampToUnixSeconds(
   return Math.floor(parsedMilliseconds / 1000);
 }
 
-async function loadSqlJsRuntime(): Promise<SqlJsRuntime> {
-  if (sqlJsRuntimePromise === null) {
-    sqlJsRuntimePromise = readFile(sqlJsWasmPath).then((wasmBinary) =>
-      initSqlJs({ wasmBinary })
-    );
-  }
-
-  return sqlJsRuntimePromise;
-}
-
-async function readRows<T>(
-  dbPath: string,
-  sql: string,
-  params: readonly unknown[] = []
-): Promise<T[]> {
-  const [runtime, databaseBytes] = await Promise.all([
-    loadSqlJsRuntime(),
-    readFile(dbPath)
-  ]);
-  const database = new runtime.Database(databaseBytes);
-  const statement = database.prepare(sql);
-
+/** Retained v1 queries share the WAL-aware read-only connection until Task17. */
+async function readRows<T>(dbPath: string, sql: string, params: readonly unknown[] = []): Promise<T[]> {
+  const database = new DatabaseSync(dbPath, { readOnly: true });
   try {
-    if (params.length > 0) {
-      statement.bind(params);
-    }
-
-    const rows: T[] = [];
-
-    while (statement.step()) {
-      rows.push(statement.getAsObject() as T);
-    }
-
-    return rows;
-  } finally {
-    statement.free();
-    database.close();
-  }
+    database.exec('PRAGMA busy_timeout = 50');
+    return database.prepare(sql).all(...params as (string | number | null)[]) as T[];
+  } finally { database.close(); }
 }
 
 function mapCodexThreadRow(row: RawCodexThreadRow): CodexThreadRow {
@@ -367,4 +310,28 @@ export async function loadCodexThreadRolloutRowsByIds(
     id: row.id,
     rolloutPath: row.rollout_path
   }));
+}
+
+export interface CodexInventory {
+  outcome: ScanOutcome;
+  rolloutPaths: string[];
+  diagnostics: Diagnostic[];
+}
+/** Inventory only. Aggregate token columns and latest model/cwd are never selected. */
+export async function readCodexInventory(path: string): Promise<CodexInventory> {
+  let database: DatabaseSync | undefined;
+  try {
+    database = new DatabaseSync(path, { readOnly: true });
+    database.exec('PRAGMA busy_timeout = 50');
+    const columns = database.prepare('PRAGMA table_info(threads)').all();
+    if (!['id', 'rollout_path'].every(name => columns.some(column => column.name === name)))
+      return { outcome: 'unsupported', rolloutPaths: [], diagnostics: [{code:'unsupported-source',severity:'warning'}] };
+    const rows = database.prepare('SELECT rollout_path FROM threads LIMIT 10001').all();
+    const overflow = rows.length > 10000;
+    return { outcome: overflow ? 'partial' : 'complete',
+      rolloutPaths: [...new Set(rows.slice(0,10000).map(row => row.rollout_path).filter((path): path is string => typeof path === 'string' && path.length > 0 && path.length <= 4096))],
+      diagnostics: overflow ? [{code:'incomplete-source',severity:'warning'}] : [] };
+  } catch {
+    return { outcome:'unavailable', rolloutPaths:[], diagnostics:[{code:'unavailable-source',severity:'warning'}] };
+  } finally { database?.close(); }
 }

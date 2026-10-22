@@ -27,3 +27,4 @@ export {
   type CheckoutSnapshot
 } from "./git-fixtures.js";
 export { runStorageFixtureProcess, storageFaultPrelude, type StorageFault } from './storage-fixtures.js';
+export { codexContext, codexRequest, codexRollout } from './codex-fixtures.js';

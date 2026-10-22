@@ -56,7 +56,7 @@ describe("strict accounting protocol", () => {
     const checkpoint = { schemaVersion: 1, provider: "codex", instanceKey: "private-instance",
       sourceIdentity: "private-source", sourceGeneration: "generation-1", sourceSchema: "rollout-v1",
       readerVersion: "1", normalizationVersion: 1, repositoryId, attributionPolicyHash: "a".repeat(64),
-      cursor: { offset: 123, prefixHash: "b".repeat(64), size: 200, incompleteTail: "" } };
+      continuation: null, cursor: { offset: 123, prefixHash: "b".repeat(64), size: 200, incompleteTail: "" } };
     expect(checkpointSchema.safeParse(checkpoint).success).toBe(true);
     for (const key of Object.keys(checkpoint)) {
       const missing = { ...checkpoint } as Record<string, unknown>; delete missing[key];

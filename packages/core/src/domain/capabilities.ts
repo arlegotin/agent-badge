@@ -6,7 +6,14 @@ export type ProviderId = z.infer<typeof providerIdSchema>;
 export const vendorIdSchema = z.enum(["openai", "anthropic", "google", "local"]);
 // Exact identity registry, independent of rates. Expand only with primary-source evidence.
 // Official model pages and dated price sources are recorded in pricing/catalog.ts.
-export const modelIdSchema = z.enum(["gpt-5.4-mini", "gpt-4.1-mini", "claude-sonnet-4-6"]);
+export const modelIdSchema = z.enum(["gpt-5.4-mini", "gpt-4.1-mini", "claude-sonnet-4-6",
+  "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-5.4", "gpt-5.3-codex"]);
+/** Exact identity evidence is separate from rate-card certification. */
+export const knownModelVendors: Readonly<Record<z.infer<typeof modelIdSchema>, z.infer<typeof vendorIdSchema>>> = Object.freeze({
+  'gpt-5.4-mini':'openai', 'gpt-4.1-mini':'openai', 'claude-sonnet-4-6':'anthropic',
+  'gpt-6.1-sol':'openai', 'gpt-6-sol':'openai', 'gpt-6-luna':'openai', 'gpt-6-astra':'openai',
+  'gpt-5.4':'openai', 'gpt-5.3-codex':'openai'
+});
 export const safeCounterSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const repositoryIdSchema = z.uuid().regex(/^[a-f0-9-]{36}$/);
@@ -57,6 +64,9 @@ export const checkpointSchema = z.object({ schemaVersion: z.literal(1), provider
   instanceKey: privateStringSchema, sourceIdentity: privateStringSchema, sourceGeneration: privateStringSchema,
   sourceSchema: privateStringSchema, readerVersion: privateStringSchema, normalizationVersion: z.literal(1),
   repositoryId: repositoryIdSchema, attributionPolicyHash: digestSchema,
+  continuation: z.object({ provider: providerIdSchema, readerVersion: privateStringSchema,
+    state: z.string().max(64 * 1024).refine(value => Buffer.byteLength(value, 'utf8') <= 64 * 1024)
+  }).strict().nullable(),
   cursor: z.object({ offset: safeCounterSchema, prefixHash: digestSchema, size: safeCounterSchema,
     incompleteTail: z.string().max(256 * 1024) }).strict().refine((cursor) => cursor.offset <= cursor.size)
 }).strict();
@@ -64,6 +74,7 @@ export type Checkpoint = z.infer<typeof checkpointSchema>;
 export const scanOutcomeSchema = z.enum(["complete", "partial", "unavailable", "unsupported"]);
 export type ScanOutcome = z.infer<typeof scanOutcomeSchema>;
 export interface ScanBatch {
+  source: SourceDescriptor;
   observations: UsageObservation[];
   nextCheckpoint: Checkpoint;
   outcome: ScanOutcome;
@@ -75,7 +86,7 @@ export const discoveryContextSchema = z.object({ repositoryId: repositoryIdSchem
 export type DiscoveryContext = z.infer<typeof discoveryContextSchema>;
 export interface ProviderAdapter {
   discover(ctx: DiscoveryContext): Promise<SourceDescriptor[]>;
-  scan(source: SourceDescriptor, checkpoint: Checkpoint | null, signal: AbortSignal): AsyncIterable<ScanBatch>;
+  scan(source: SourceDescriptor, checkpoint: Checkpoint | null, signal: AbortSignal, scope: CheckpointScope): AsyncIterable<ScanBatch>;
 }
 
 export const capabilityManifestSchema = z.object({ provider: providerIdSchema, normalizationVersion: z.literal(1),
@@ -102,3 +113,7 @@ export interface AccountingContract {
 export interface AccountingRegistry {
   getAccountingContract(provider: string, normalizationVersion: number): AccountingContract;
 }
+
+export const checkpointScopeSchema = z.object({ repositoryId: repositoryIdSchema, normalizationVersion: z.literal(1),
+  attributionPolicyHash: digestSchema }).strict();
+export type CheckpointScope = z.infer<typeof checkpointScopeSchema>;

@@ -33,8 +33,8 @@ function fixture(generation = 'generation-1', offset = 10) {
   const checkpoint: Checkpoint = { schemaVersion: 1, provider: 'codex', instanceKey: source.instanceKey,
     sourceIdentity: source.sourceIdentity, sourceGeneration: generation, sourceSchema: source.schema,
     readerVersion: '1', normalizationVersion: 1, repositoryId, attributionPolicyHash: 'a'.repeat(64),
-    cursor: { offset, size: offset, prefixHash: 'b'.repeat(64), incompleteTail: '' } };
-  const batch: ScanBatch = { observations: [observation], nextCheckpoint: checkpoint, outcome: 'complete', diagnostics: [] };
+    continuation: null, cursor: { offset, size: offset, prefixHash: 'b'.repeat(64), incompleteTail: '' } };
+  const batch: ScanBatch = { source, observations: [observation], nextCheckpoint: checkpoint, outcome: 'complete', diagnostics: [] };
   // Shared policy fixture is validated by sanitizer, independent from storage.
   const record = sanitizeObservation(observation, policy as never);
   return { source, batch, record };
@@ -414,5 +414,17 @@ describe('repository and stale recovery boundaries', () => {
     await writeFile(join(ctx.privateDir, 'locks', 'recovery.lock'), 'interrupted-recovery');
     await expect(store.withLock(AbortSignal.timeout(70), async () => undefined)).rejects.toMatchObject({ code: 'store-busy', uncertainty: true });
     expect(await readFile(lock, 'utf8')).toContain(exited.stdout.trim());
+  });
+});
+
+describe('scan-resolved checkpoint candidates', () => {
+  test('returns only latest candidate across authority changes and requires exact batch source', async () => {
+    const ctx=await context();const store=await openStore(ctx);const first=fixture();const replacement=fixture('generation-2',2);
+    await store.commitBatch(first.source,first.batch,[first.record]);await store.commitBatch(replacement.source,replacement.batch,[replacement.record]);
+    const changed={...replacement.source,generation:'physical-discovery-epoch',schema:'new-schema',readerVersion:'new-reader'};
+    expect((await store.checkpointCandidate(changed))?.sourceGeneration).toBe('generation-2');
+    expect(await store.checkpoint(changed,{...replacement.batch.nextCheckpoint,attributionPolicyHash:'c'.repeat(64)})).toBeNull();
+    await expect(store.commitBatch({...replacement.source,root:'/different/source'},replacement.batch,[replacement.record])).rejects.toThrow('invalid-batch');
+    expect((await store.journal()).length).toBe(2);
   });
 });
