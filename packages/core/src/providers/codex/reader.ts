@@ -61,7 +61,7 @@ function text(value: unknown): string | null { return typeof value === 'string' 
 function counter(value: unknown): number | null { const parsed = safeCounterSchema.safeParse(value); return parsed.success ? parsed.data : null; }
 const warning = (code: Diagnostic['code']): Diagnostic => ({code,severity:'warning'});
 const metadataText=z.string().min(1).max(4096);
-export const codexContinuationSchema=z.object({version:z.literal(1),physicalEpoch:z.string().regex(/^[a-f0-9]{64}$/),
+export const codexContinuationSchema=z.object({version:z.literal(1),physicalEpoch:z.string().regex(/^[a-f0-9]{64}$/),ownerOmitted:z.boolean(),
   owner:z.object({id:metadataText,parent_thread_id:metadataText.nullable(),forked_from_id:metadataText.nullable(),
     subagent_history_start_ordinal:safeCounterSchema.nullable(),forked_from_ordinal_exclusive:safeCounterSchema.nullable(),
     history_base:z.object({thread_id:metadataText.nullable(),end_ordinal_exclusive:safeCounterSchema.nullable(),end_byte_offset:safeCounterSchema.nullable()}).strict().nullable()}).strict().nullable(),
@@ -87,7 +87,7 @@ export function parseCodexRollout(bytes: Buffer, source: SourceDescriptor, conti
     const ordinal = counter(record.ordinal);
     if (ordinal !== null) { if(lastOrdinal !== null && ordinal <= lastOrdinal) {add('uncertain-lineage'); invalid=true;} lastOrdinal = ordinal; }
     if (record.type === 'session_meta') {
-      if(!owner) owner={id:text(payload.id),parent_thread_id:text(payload.parent_thread_id),forked_from_id:text(payload.forked_from_id),
+      if(!owner && !continuation?.ownerOmitted) owner={id:text(payload.id),parent_thread_id:text(payload.parent_thread_id),forked_from_id:text(payload.forked_from_id),
         subagent_history_start_ordinal:counter(payload.subagent_history_start_ordinal),forked_from_ordinal_exclusive:counter(payload.forked_from_ordinal_exclusive),
         history_base:object(payload.history_base) ? {thread_id:text(object(payload.history_base)!.thread_id),end_ordinal_exclusive:counter(object(payload.history_base)!.end_ordinal_exclusive),end_byte_offset:counter(object(payload.history_base)!.end_byte_offset)} : null};
       continue;
@@ -143,6 +143,6 @@ export function parseCodexRollout(bytes: Buffer, source: SourceDescriptor, conti
   if(coveragePartial && !diagnostics.length) add('incomplete-source');
   // Never persist arbitrary trailing payload (may contain prompts); replay it on the next bounded scan.
   if(offset < bytes.length) add('incomplete-source');
-  const state=codexContinuationSchema.parse({version:1,physicalEpoch:continuation?.physicalEpoch ?? source.generation,owner,contexts:[...contexts].map(([turn,context])=>({turn,...context})),lastOrdinal,invalid,coveragePartial,supported});
+  const state=codexContinuationSchema.parse({version:1,physicalEpoch:continuation?.physicalEpoch ?? source.generation,ownerOmitted:continuation?.ownerOmitted ?? false,owner,contexts:[...contexts].map(([turn,context])=>({turn,...context})),lastOrdinal,invalid,coveragePartial,supported});
   return {observations,diagnostics,offset,supported,state};
 }

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { appendFile, copyFile, mkdir, mkdtemp, readFile, rename, rm, symlink, utimes, writeFile } from 'node:fs/promises';
+import { appendFile, chmod, copyFile, mkdir, mkdtemp, readFile, rename, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createCodexAdapter } from './adapter.js';
 import { codexRollout, codexRequest, codexContext } from '@agent-badge/testkit';
 import { readCodexInventory } from './codex-sql.js';
-import { checkpointScopeSchema, type Checkpoint, type ScanBatch } from '../../domain/capabilities.js';
+import { checkpointSchema, checkpointScopeSchema, type Checkpoint, type ScanBatch } from '../../domain/capabilities.js';
 import { sanitizeObservation } from '../../ledger/sanitize.js';
 import { reduceLedger } from '../../ledger/reduce.js';
 import { getAccountingContract } from '../registry.js';
@@ -186,7 +186,8 @@ describe('Codex store generation integration', () => {
     const [source]=await adapter.discover({repositoryId:scope.repositoryId,enrolledRoots:[],signal});const candidate=await store.checkpointCandidate(source);
     expect(candidate?.sourceGeneration).toBe(changed.sourceGeneration);
     const oldReader={...candidate!,readerVersion:'old',continuation:{...candidate!.continuation!,readerVersion:'old'}};
-    for await(const batch of adapter.scan(source,oldReader,signal,scope)) {expect(batch.observations).toHaveLength(1);await store.commitBatch(batch.source,batch,[]);}
+    for await(const batch of adapter.scan(source,candidate,signal,{...scope,attributionPolicyHash:'c'.repeat(64)})) expect(batch.observations).toEqual([]);
+    for await(const batch of adapter.scan(source,oldReader,signal,{...scope,attributionPolicyHash:'c'.repeat(64)})) {expect(batch.observations).toHaveLength(1);await store.commitBatch(batch.source,batch,[]);}
     expect((await store.journal()).length).toBe(5);
   });
 });
@@ -288,5 +289,52 @@ describe('Codex inventory filename races',()=> {
     const root=await home();await writeFile(join(root,'sessions/a.jsonl'),codexRollout({single:true}));
     await symlink(join(root,'missing-database'),join(root,'state_9.sqlite'));
     const result=await collect(root);expect(result.observations).toHaveLength(1);expect(result.batches.some(b=>b.outcome==='unsupported')).toBe(true);
+  });
+});
+
+
+describe('Codex explicit root discovery failures',()=> {
+  it('retains a missing enrolled root diagnostic while scanning healthy roots',async()=> {
+    const root=await home();await writeFile(join(root,'sessions/a.jsonl'),codexRollout({single:true}));
+    const missing=join(root,'missing-home');const adapter=createCodexAdapter({environment:{},defaultHome:root});
+    const sources=await adapter.discover({repositoryId:scope.repositoryId,enrolledRoots:[missing,root],signal});
+    expect(sources.some(source=>source.root===missing)).toBe(true);
+    const batches:ScanBatch[]=[];for(const source of sources) for await(const batch of adapter.scan(source,null,signal,scope)) batches.push(batch);
+    expect(batches.flatMap(batch=>batch.observations)).toHaveLength(1);
+    expect(batches.find(batch=>batch.source.root===missing)).toMatchObject({outcome:'unavailable',observations:[],diagnostics:[{code:'unavailable-source',severity:'warning'}]});
+  });
+  it.skipIf(process.platform==='win32' || process.getuid?.()===0)('retains unreadable enrolled root coverage while scanning healthy roots',async()=> {
+    const root=await home();await writeFile(join(root,'sessions/a.jsonl'),codexRollout({single:true}));
+    const blocked=join(root,'blocked');const unreadable=join(blocked,'home');await mkdir(unreadable,{recursive:true});await chmod(blocked,0);
+    try {
+      const adapter=createCodexAdapter({environment:{},defaultHome:root});const sources=await adapter.discover({repositoryId:scope.repositoryId,enrolledRoots:[unreadable,root],signal});
+      expect(sources.some(source=>source.root===unreadable)).toBe(true);
+      const batches:ScanBatch[]=[];for(const source of sources) for await(const batch of adapter.scan(source,null,signal,scope)) batches.push(batch);
+      expect(batches.flatMap(batch=>batch.observations)).toHaveLength(1);expect(batches.find(batch=>batch.source.root===unreadable)?.outcome).toBe('unavailable');
+    } finally {await chmod(blocked,0o700);}
+  });
+});
+
+describe('Codex escaped owner continuation overflow',()=> {
+  it('commits bounded uncertainty and continues byte progress without trusting later copied metadata',async()=> {
+    const {openStore}=await import('../../storage/store.js');const root=await home();const path=join(root,'sessions/a.jsonl');const common=join(root,'.git');await mkdir(common);
+    const ctx={worktreeRoot:root,gitDir:common,commonDir:common,privateDir:join(common,'agent-badge'),hooksPath:join(common,'hooks'),superprojectRoot:null,worktrees:[],head:{kind:'unborn' as const,ref:'refs/heads/main'},shallow:false};
+    const store=await openStore(ctx,{processNamespace:async()=> 'synthetic'});const adapter=createCodexAdapter({environment:{},defaultHome:root});
+    const owner={id:'original',parent_thread_id:'\u0000'.repeat(4096),forked_from_id:'\u0001'.repeat(4096),subagent_history_start_ordinal:0,forked_from_ordinal_exclusive:0,
+      history_base:{thread_id:'\u0002'.repeat(4096),end_ordinal_exclusive:0,end_byte_offset:0}};
+    await writeFile(path,codexRollout({owner,single:true}));
+    const run=async()=> {
+      const [source]=await adapter.discover({repositoryId:scope.repositoryId,enrolledRoots:[],signal});let result:ScanBatch|undefined;
+      await store.withLock(signal,async()=> {const candidate=await store.checkpointCandidate(source);for await(const batch of adapter.scan(source,candidate,signal,scope)) {
+        result=batch;if(checkpointSchema.safeParse(batch.nextCheckpoint).success) await store.commitBatch(batch.source,batch,[]);
+      }});expect(checkpointSchema.safeParse(result!.nextCheckpoint).success).toBe(true);
+      expect(Buffer.byteLength(JSON.stringify(result!.nextCheckpoint.continuation))).toBeLessThanOrEqual(65536);return result!;
+    };
+    const first=await run();expect(first.outcome).toBe('partial');expect(first.nextCheckpoint.cursor.offset).toBeGreaterThan(0);
+    expect(first.observations).toEqual([]);expect(JSON.parse(first.nextCheckpoint.continuation!.state)).toMatchObject({owner:null,ownerOmitted:true,invalid:true,coveragePartial:true});
+    await appendFile(path,JSON.stringify({type:'session_meta',payload:{id:'copied'}})+'\n'+JSON.stringify(codexRequest('copied','turn-1','response-copied',100,3))+'\n');
+    const next=await run();expect(next.nextCheckpoint.cursor.offset).toBeGreaterThan(first.nextCheckpoint.cursor.offset);expect(next.observations).toEqual([]);expect(next.outcome).toBe('partial');
+    expect(JSON.parse(next.nextCheckpoint.continuation!.state)).toMatchObject({owner:null,ownerOmitted:true,invalid:true,coveragePartial:true});
+    expect((await store.journal()).length).toBe(2);
   });
 });

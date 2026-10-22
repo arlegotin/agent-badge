@@ -158,3 +158,17 @@ describe("tool input and exact registered models", () => {
     expect(meterSegmentSchema.safeParse({ ...meter, model: "claude-sonnet-4-6", vendor: "openai" }).success).toBe(false);
   });
 });
+
+
+describe('private continuation envelope byte cap',()=> {
+  it('bounds complete serialized envelopes including metadata and escaped state',()=> {
+    const checkpoint={schemaVersion:1,provider:'codex',instanceKey:'synthetic',sourceIdentity:'synthetic-source',sourceGeneration:'generation',sourceSchema:'rollout-v1',readerVersion:'1',normalizationVersion:1,repositoryId,attributionPolicyHash:'a'.repeat(64),cursor:{offset:0,size:0,prefixHash:'b'.repeat(64),incompleteTail:''}};
+    const envelope={provider:'codex',readerVersion:'1',state:''};
+    const overhead=Buffer.byteLength(JSON.stringify(envelope));
+    const exact={...envelope,state:'x'.repeat(65536-overhead)};expect(Buffer.byteLength(JSON.stringify(exact))).toBe(65536);
+    expect(checkpointSchema.safeParse({...checkpoint,continuation:exact}).success).toBe(true);
+    expect(checkpointSchema.safeParse({...checkpoint,continuation:{...exact,state:exact.state+'x'}}).success).toBe(false);
+    expect(checkpointSchema.safeParse({...checkpoint,continuation:{...envelope,state:'"'.repeat(32768)}}).success).toBe(false);
+    expect(checkpointSchema.safeParse({...checkpoint,continuation:{...exact,readerVersion:'longer-reader'}}).success).toBe(false);
+  });
+});

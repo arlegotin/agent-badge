@@ -60,13 +60,16 @@ export const sourceDescriptorSchema = z.object({ provider: providerIdSchema, ins
   root: privateStringSchema, schema: privateStringSchema, generation: privateStringSchema,
   readerVersion: privateStringSchema, sourceIdentity: privateStringSchema }).strict();
 export type SourceDescriptor = z.infer<typeof sourceDescriptorSchema>;
+export const CHECKPOINT_CONTINUATION_MAX_BYTES = 64 * 1024;
+/** Bound the entire serialized envelope, including nested state escaping and reader metadata. */
+export const checkpointContinuationSchema = z.object({ provider: providerIdSchema, readerVersion: privateStringSchema,
+  state: z.string().max(CHECKPOINT_CONTINUATION_MAX_BYTES)
+}).strict().refine(value => Buffer.byteLength(JSON.stringify(value), 'utf8') <= CHECKPOINT_CONTINUATION_MAX_BYTES);
 export const checkpointSchema = z.object({ schemaVersion: z.literal(1), provider: providerIdSchema,
   instanceKey: privateStringSchema, sourceIdentity: privateStringSchema, sourceGeneration: privateStringSchema,
   sourceSchema: privateStringSchema, readerVersion: privateStringSchema, normalizationVersion: z.literal(1),
   repositoryId: repositoryIdSchema, attributionPolicyHash: digestSchema,
-  continuation: z.object({ provider: providerIdSchema, readerVersion: privateStringSchema,
-    state: z.string().max(64 * 1024).refine(value => Buffer.byteLength(value, 'utf8') <= 64 * 1024)
-  }).strict().nullable(),
+  continuation: checkpointContinuationSchema.nullable(),
   cursor: z.object({ offset: safeCounterSchema, prefixHash: digestSchema, size: safeCounterSchema,
     incompleteTail: z.string().max(256 * 1024) }).strict().refine((cursor) => cursor.offset <= cursor.size)
 }).strict();

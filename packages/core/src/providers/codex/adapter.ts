@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readdir, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { isAbsolute, join } from 'node:path';
-import { checkpointSchema, checkpointScopeSchema, parseProtocol, sourceDescriptorSchema } from '../../domain/capabilities.js';
+import { isAbsolute, join, resolve } from 'node:path';
+import { checkpointContinuationSchema, checkpointSchema, checkpointScopeSchema, parseProtocol, sourceDescriptorSchema } from '../../domain/capabilities.js';
 import type { Checkpoint, CheckpointScope, Diagnostic, ProviderAdapter, SourceDescriptor } from '../../domain/capabilities.js';
 import { findLatestCodexStateDatabase, readCodexInventory } from './codex-sql.js';
 import { CODEX_READER_VERSION, CODEX_SOURCE_SCHEMA, DEFAULT_MAX_BYTES, codexContinuationSchema, emptyHash, parseCodexRollout, readRollout, rolloutEpoch } from './reader.js';
@@ -24,8 +24,17 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): ProviderA
     async discover(ctx) {
       const roots=ctx.enrolledRoots.length ? ctx.enrolledRoots : [environment.CODEX_HOME?.trim() || options.defaultHome || join(homedir(),'.codex')];
       const canonicalRoots=new Set<string>();
-      for(const root of roots) {ctx.signal.throwIfAborted();try {canonicalRoots.add(await realpath(root));} catch {/* Missing homes contribute no invented requests. */}}
       const sources=new Map<string,SourceDescriptor>();
+      for(const root of roots) {
+        ctx.signal.throwIfAborted();
+        try {canonicalRoots.add(await realpath(root));}
+        catch {
+          if(ctx.enrolledRoots.length || environment.CODEX_HOME?.trim()) {
+            const path=resolve(root);
+            sources.set(path,{provider:'codex',instanceKey:path,root:path,schema:'codex-unavailable',generation:'unavailable',readerVersion:CODEX_READER_VERSION,sourceIdentity:path});
+          }
+        }
+      }
       for(const root of canonicalRoots) {
         const paths=new Set<string>(); let inventoryUnsupported=false; let discoveryPartial=false;
         const walk=async (directory:string,depth=0):Promise<void>=> {
@@ -65,7 +74,7 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): ProviderA
       const discoveredSource=parseProtocol(sourceDescriptorSchema,input); let source=discoveredSource; const scope=parseProtocol(checkpointScopeSchema,inputScope);
       const initial=makeCheckpoint(source,scope); let nextCheckpoint=initial;
       if(source.provider!=='codex' || source.schema!==CODEX_SOURCE_SCHEMA || source.readerVersion!==CODEX_READER_VERSION) {
-        yield {source,observations:[],nextCheckpoint,outcome:source.schema==='codex-unavailable'?'unavailable':'unsupported',diagnostics:[diagnostic('unsupported-source')]};return;
+        yield {source,observations:[],nextCheckpoint,outcome:source.schema==='codex-unavailable'?'unavailable':'unsupported',diagnostics:[diagnostic(source.schema==='codex-unavailable'?'unavailable-source':'unsupported-source')]};return;
       }
       try {
         const parsed=checkpointSchema.safeParse(inputCheckpoint); const candidate=parsed.success && parsed.data.provider==='codex' && parsed.data.instanceKey===source.instanceKey && parsed.data.sourceIdentity===source.sourceIdentity?parsed.data:null;
@@ -82,13 +91,20 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): ProviderA
         source={...source,generation};
         const result=parseCodexRollout(read.bytes,source,read.resumed?state:undefined);
         result.state.physicalEpoch=discoveredSource.generation;
-        let serialized=JSON.stringify(result.state);
-        if(Buffer.byteLength(serialized,'utf8')>64*1024) {
-          result.state.contexts=[];result.state.invalid=true;serialized=JSON.stringify(result.state);
+        const envelope=()=>({provider:'codex' as const,readerVersion:CODEX_READER_VERSION,state:JSON.stringify(result.state)});
+        let continuation=envelope();
+        if(!checkpointContinuationSchema.safeParse(continuation).success) {
+          result.state.contexts=[];result.state.invalid=true;result.state.coveragePartial=true;
+          continuation=envelope();
           if(!result.diagnostics.some(d=>d.code==='incomplete-source')) result.diagnostics.push(diagnostic('incomplete-source'));
         }
-        nextCheckpoint={...makeCheckpoint(source,scope),cursor:{offset:read.start+result.offset,size:read.size,prefixHash:read.hashThrough(result.offset),incompleteTail:''},
-          continuation:{provider:'codex',readerVersion:CODEX_READER_VERSION,state:serialized}};
+        if(!checkpointContinuationSchema.safeParse(continuation).success) {
+          // Do not reinterpret omitted lineage as a safe root or accept later copied metadata as the owner.
+          result.state.owner=null;result.state.ownerOmitted=true;result.observations=[];
+          continuation=envelope();
+        }
+        nextCheckpoint=parseProtocol(checkpointSchema,{...makeCheckpoint(source,scope),
+          cursor:{offset:read.start+result.offset,size:read.size,prefixHash:read.hashThrough(result.offset),incompleteTail:''},continuation});
         const diagnostics=[...result.diagnostics];
         if(read.bounded && !diagnostics.some(d=>d.code==='incomplete-source')) diagnostics.push(diagnostic('incomplete-source'));
         if(result.observations.some(o=>o.quality==='partial') && !diagnostics.some(d=>d.code==='incomplete-source')) diagnostics.push(diagnostic('incomplete-source'));
