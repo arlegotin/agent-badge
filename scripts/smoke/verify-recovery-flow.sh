@@ -3,8 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
-DEFAULT_PHASE_DIR="${REPO_ROOT}/.planning/phases/19-recovery-paths-and-production-reliability-verification"
-PHASE_DIR="${PHASE19_DRY_RUN_DIR:-${DEFAULT_PHASE_DIR}}"
+DEFAULT_OUTPUT_DIR="${REPO_ROOT}/artifacts/recovery"
+OUTPUT_DIR="${AGENT_BADGE_RECOVERY_OUTPUT_DIR:-${DEFAULT_OUTPUT_DIR}}"
 DRY_RUN=false
 
 CLI_MAIN="${REPO_ROOT}/packages/agent-badge/dist/cli/main.js"
@@ -13,11 +13,11 @@ TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/smoke/verify-recovery-flow.sh [--dry-run] [--phase-dir <path>]
+  bash scripts/smoke/verify-recovery-flow.sh [--dry-run] [--output-dir <path>]
 
 Examples:
-  bash scripts/smoke/verify-recovery-flow.sh --dry-run --phase-dir /tmp/agent-badge-phase19-dry-run
-  bash scripts/smoke/verify-recovery-flow.sh --phase-dir .planning/phases/19-recovery-paths-and-production-reliability-verification
+  bash scripts/smoke/verify-recovery-flow.sh --dry-run --output-dir /tmp/agent-badge-recovery-dry-run
+  bash scripts/smoke/verify-recovery-flow.sh --output-dir artifacts/recovery
 EOF
 }
 
@@ -32,9 +32,9 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=true
       shift
       ;;
-    --phase-dir)
-      [[ $# -ge 2 ]] || fail "--phase-dir requires a value"
-      PHASE_DIR=$2
+    --output-dir)
+      [[ $# -ge 2 ]] || fail "--output-dir requires a value"
+      OUTPUT_DIR=$2
       shift 2
       ;;
     --help)
@@ -47,8 +47,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "${PHASE_DIR}" != /* ]]; then
-  PHASE_DIR="${REPO_ROOT}/${PHASE_DIR}"
+if [[ "${OUTPUT_DIR}" != /* ]]; then
+  OUTPUT_DIR="${REPO_ROOT}/${OUTPUT_DIR}"
 fi
 
 (
@@ -58,16 +58,16 @@ fi
 
 [[ -f "${CLI_MAIN}" ]] || fail "missing built CLI entrypoint at ${CLI_MAIN}"
 
-mkdir -p "${PHASE_DIR}"
+mkdir -p "${OUTPUT_DIR}"
 
-PRE_STATUS_FILE="${PHASE_DIR}/19-pre-status.txt"
-PRE_DOCTOR_FILE="${PHASE_DIR}/19-pre-doctor.txt"
-RECOVERY_OUTPUT_FILE="${PHASE_DIR}/19-recovery-command.txt"
-POST_STATUS_FILE="${PHASE_DIR}/19-post-status.txt"
-POST_DOCTOR_FILE="${PHASE_DIR}/19-post-doctor.txt"
-HUMAN_UAT_FILE="${PHASE_DIR}/19-HUMAN-UAT.md"
-EVIDENCE_MD_FILE="${PHASE_DIR}/19-RECOVERY-EVIDENCE.md"
-EVIDENCE_JSON_FILE="${PHASE_DIR}/19-RECOVERY-EVIDENCE.json"
+PRE_STATUS_FILE="${OUTPUT_DIR}/pre-status.txt"
+PRE_DOCTOR_FILE="${OUTPUT_DIR}/pre-doctor.txt"
+RECOVERY_OUTPUT_FILE="${OUTPUT_DIR}/recovery-command.txt"
+POST_STATUS_FILE="${OUTPUT_DIR}/post-status.txt"
+POST_DOCTOR_FILE="${OUTPUT_DIR}/post-doctor.txt"
+HUMAN_UAT_FILE="${OUTPUT_DIR}/HUMAN-UAT.md"
+EVIDENCE_MD_FILE="${OUTPUT_DIR}/RECOVERY-EVIDENCE.md"
+EVIDENCE_JSON_FILE="${OUTPUT_DIR}/RECOVERY-EVIDENCE.json"
 
 run_agent_badge_capture() {
   local output_file=$1
@@ -258,7 +258,7 @@ pre_recovery: captured
 post_recovery: ${RECOVERY_STATUS}
 ---
 
-# Phase 19 Human UAT
+# Recovery acceptance check
 
 - status: ${HUMAN_STATUS}
 - source: scripts/smoke/verify-recovery-flow.sh
@@ -298,7 +298,7 @@ ${POST_DOCTOR_OUTPUT}
 EOF
 
 cat >"${EVIDENCE_MD_FILE}" <<EOF
-# Phase 19 Recovery Evidence
+# Recovery evidence
 
 - Status: ${HUMAN_STATUS}
 - Source: scripts/smoke/verify-recovery-flow.sh

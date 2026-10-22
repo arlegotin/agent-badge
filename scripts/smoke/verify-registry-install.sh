@@ -3,18 +3,18 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/../.." && pwd)
-DEFAULT_PHASE_DIR="${REPO_ROOT}/artifacts/releases/registry-smoke"
+DEFAULT_OUTPUT_DIR="${REPO_ROOT}/artifacts/releases/registry-smoke"
 
 VERSION=""
 CHECK_INITIALIZER=false
 WRITE_EVIDENCE=false
-PHASE_DIR="${DEFAULT_PHASE_DIR}"
+OUTPUT_DIR="${DEFAULT_OUTPUT_DIR}"
 ARTIFACT_PREFIX="REGISTRY-SMOKE"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/smoke/verify-registry-install.sh --version <semver> [--check-initializer] [--write-evidence] [--phase-dir <path>] [--artifact-prefix <name>]
+  bash scripts/smoke/verify-registry-install.sh --version <semver> [--check-initializer] [--write-evidence] [--output-dir <path>] [--artifact-prefix <name>]
 
 Example:
   bash scripts/smoke/verify-registry-install.sh --version 1.1.6 --check-initializer --write-evidence
@@ -41,9 +41,9 @@ while [[ $# -gt 0 ]]; do
       WRITE_EVIDENCE=true
       shift
       ;;
-    --phase-dir)
-      [[ $# -ge 2 ]] || fail "--phase-dir requires a value"
-      PHASE_DIR=$2
+    --output-dir)
+      [[ $# -ge 2 ]] || fail "--output-dir requires a value"
+      OUTPUT_DIR=$2
       shift 2
       ;;
     --artifact-prefix)
@@ -63,8 +63,8 @@ done
 
 [[ -n "${VERSION}" ]] || fail "--version is required"
 
-if [[ "${PHASE_DIR}" != /* ]]; then
-  PHASE_DIR="${REPO_ROOT}/${PHASE_DIR}"
+if [[ "${OUTPUT_DIR}" != /* ]]; then
+  OUTPUT_DIR="${REPO_ROOT}/${OUTPUT_DIR}"
 fi
 
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/agent-badge-registry-smoke.XXXXXX")
@@ -264,11 +264,11 @@ check_import() {
 }
 
 write_evidence() {
-  local json_path="${PHASE_DIR}/${ARTIFACT_PREFIX}.json"
-  local markdown_path="${PHASE_DIR}/${ARTIFACT_PREFIX}.md"
+  local json_path="${OUTPUT_DIR}/${ARTIFACT_PREFIX}.json"
+  local markdown_path="${OUTPUT_DIR}/${ARTIFACT_PREFIX}.md"
   local package_lines
 
-  mkdir -p "${PHASE_DIR}"
+  mkdir -p "${OUTPUT_DIR}"
   package_lines=$(printf '%s\n' "${PACKAGES[@]}")
 
   SMOKE_STATUS="${STATUS}" \

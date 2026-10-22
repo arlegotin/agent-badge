@@ -66,7 +66,7 @@ After the workflow succeeds, write repo-local evidence for that exact published 
 
 ```bash
 npm run release:evidence \
-  -- --phase-dir artifacts/releases/<release-version> \
+  -- --output-dir artifacts/releases/<release-version> \
   --publish-path github-actions \
   --preflight-json artifacts/releases/<release-version>/preflight.json \
   --artifact-prefix PUBLISH-EVIDENCE \
@@ -93,7 +93,7 @@ bash scripts/smoke/verify-registry-install.sh \
   --version <release-version> \
   --check-initializer \
   --write-evidence \
-  --phase-dir artifacts/releases/<release-version> \
+  --output-dir artifacts/releases/<release-version> \
   --artifact-prefix REGISTRY-SMOKE
 ```
 

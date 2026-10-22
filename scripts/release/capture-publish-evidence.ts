@@ -18,7 +18,7 @@ const publishableManifestPaths = [
 type PublishPath = "github-actions" | "local-cli";
 
 export interface CaptureEvidenceArgs {
-  readonly phaseDir: string;
+  readonly outputDir: string;
   readonly publishPath: PublishPath;
   readonly preflightJson: string;
   readonly artifactPrefix?: string;
@@ -87,13 +87,13 @@ export function parseEvidenceArgs(argv: readonly string[]): CaptureEvidenceArgs 
     index += 1;
   }
 
-  const phaseDir = entries.get("phase-dir");
+  const outputDir = entries.get("output-dir");
   const publishPath = entries.get("publish-path") as PublishPath | undefined;
   const preflightJson = entries.get("preflight-json");
   const publishedAt = entries.get("published-at");
   const artifactPrefix = firstNonEmpty(entries.get("artifact-prefix")) ?? "PUBLISH-EVIDENCE";
 
-  if (!phaseDir) throw new Error("--phase-dir is required.");
+  if (!outputDir) throw new Error("--output-dir is required.");
   if (!publishPath) throw new Error("--publish-path is required.");
   if (!preflightJson) throw new Error("--preflight-json is required.");
   if (!publishedAt) throw new Error("--published-at is required.");
@@ -125,7 +125,7 @@ export function parseEvidenceArgs(argv: readonly string[]): CaptureEvidenceArgs 
   }
 
   return {
-    phaseDir,
+    outputDir,
     publishPath,
     preflightJson,
     artifactPrefix,
@@ -309,12 +309,12 @@ export async function runCaptureEvidence(
       ? { ...baseEvidence, fallbackReason: undefined }
       : baseEvidence;
 
-  const phaseDir = resolve(repoRoot, args.phaseDir);
-  await mkdir(phaseDir, { recursive: true });
+  const outputDir = resolve(repoRoot, args.outputDir);
+  await mkdir(outputDir, { recursive: true });
   const artifactPrefix = args.artifactPrefix ?? "PUBLISH-EVIDENCE";
 
-  await writeFile(resolve(phaseDir, `${artifactPrefix}.json`), JSON.stringify(evidence, null, 2));
-  await writeFile(resolve(phaseDir, `${artifactPrefix}.md`), buildEvidenceMarkdown(evidence));
+  await writeFile(resolve(outputDir, `${artifactPrefix}.json`), JSON.stringify(evidence, null, 2));
+  await writeFile(resolve(outputDir, `${artifactPrefix}.md`), buildEvidenceMarkdown(evidence));
 
   return evidence;
 }
@@ -323,7 +323,7 @@ function main(): void {
   const args = parseEvidenceArgs(process.argv.slice(2));
   runCaptureEvidence(args)
     .then(() => {
-      console.log(`Wrote release evidence files under ${resolve(repoRootFromScript, args.phaseDir)}.`);
+      console.log(`Wrote release evidence files under ${resolve(repoRootFromScript, args.outputDir)}.`);
     })
     .catch((error) => {
       const message = error instanceof Error ? error.message : String(error);

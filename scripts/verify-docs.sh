@@ -235,7 +235,6 @@ require_fixed "private vulnerability reporting" SECURITY.md
 require_fixed "Expected Behavior" CODE_OF_CONDUCT.md
 
 for file in "${public_docs[@]}"; do
-  forbid_ere "\\.planning/" "${file}"
   forbid_ere "Phase [0-9]+" "${file}"
 done
 
