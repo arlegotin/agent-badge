@@ -54,7 +54,30 @@ HEAD/default branch, fetches that branch into an owned temporary ref and verifie
 selected commit ancestry before reading immutable blobs by object ID. A mutable
 local tracking ref cannot establish acceptance. Temporary refs are deleted and
 normal code refs/index/worktree are preserved. Unsafe modes, symlinks, nested or
-unexpected paths, aggregate byte/count overflow and foreign envelopes fail closed.
+unexpected paths, oversized individual envelopes and foreign envelopes fail closed.
+Accepted history is an async stream of self-contained envelopes. The 10 MiB/10,000
+record caps apply to each envelope, never to the accumulated directory or ledger.
+The listing uses bounded NUL-record buffering and backpressure, with cancellation,
+deadline and owned-process cleanup. Each envelope enters a separate shared atomic
+union/reduction/render/push transaction. Earlier confirmed batches remain accepted
+if a later envelope is malformed, unavailable or interrupted; there is no rollback
+of confirmed history and no requirement to delete or archive contribution files.
+
+`runImportCommand(options): Promise<ImportCommandSummary>` returns `status`,
+`complete`, `confirmedEnvelopes`, `confirmedCommit`, the last confirmed `accepted`
+snapshot, `retrySource: contribution-envelope`, `retryRequired` and a bounded static
+`failure` reason. Optional `signal` and synchronous `onProgress(summary)` support
+cancellation and confirmed progress reporting. Completion requires successful EOF
+and confirmation of every yielded envelope. An incomplete run is `partial` after
+any confirmed envelopes, otherwise queued/invalid/conflict/unsupported as appropriate.
+The CLI exits nonzero whenever completion is false, even after earlier commits.
+No raw Git stderr, untrusted filenames or user records are included in error reports.
+
+The accepted record hashes are durable replay evidence: rerunning an envelope
+already confirmed upstream is unchanged, without private source acknowledgements.
+No cursor authorizes skipping unverified records. Task 17 owns verified-history
+skipping/indexing, including fresh CI runners, to guarantee forward progress across
+repeated bounded runs without rescanning all historical envelopes indefinitely.
 
 `generateContributionWorkflow({repositoryId, repositoryUrl, defaultBranch,
 runtimeVersion, pin: {manifest, lock}, schedule?})` asynchronously renders the
@@ -72,7 +95,8 @@ before installation or write. Checkout and setup-node use verified immutable pin
 Node 24.0.0 is selected explicitly, and package-manager cache inference is disabled.
 Top-level permissions are empty; only the importing job receives `contents: write`.
 It reads accepted data without executing fork code, repository lifecycle scripts,
-tracked launchers or a data-branch script. One shared transaction imports and renders.
+tracked launchers or a data-branch script. Each envelope uses one shared atomic
+transaction to import and render; a single importer command processes batches sequentially.
 Scheduled reconciliation is an explicit generation option, not enabled by default.
 The generator rejects output above 500,000 UTF-8 bytes; reduce the pin/input size
 before regenerating an oversized workflow. Lock data is a shell literal decoded

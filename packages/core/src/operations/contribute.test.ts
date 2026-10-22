@@ -82,4 +82,5 @@ test('current accepted controls govern imported observations without reseeding m
  initialize:{meta:{...meta,repositoryId:foreignId,policy:{...policy,repositoryId:foreignId}},catalog:core.defaultCatalog}});
  expect(initialized.status).toBe('conflict');
  expect((await f.git(f.remote,['rev-parse','refs/heads/agent-badge/data'])).trim()).toBe(tip);
-});
+ // Multiple manual transactions use existing 20s operation budgets; preserve their cancellation reporting.
+},30000);

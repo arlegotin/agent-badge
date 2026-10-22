@@ -39,4 +39,4 @@ export {
   type UninstallCommandResult
 } from "./uninstall.js";
 export { runContributeCommand, type ContributeCommandOptions } from './contribute.js';
-export { runImportCommand, type ImportCommandOptions } from './import.js';
+export { runImportCommand, type ImportCommandOptions, type ImportCommandSummary } from './import.js';

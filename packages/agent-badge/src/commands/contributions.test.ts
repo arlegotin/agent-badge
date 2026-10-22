@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createBareRemoteFixture, protocolObservationFixture, snapshotUserCheckout } from '@agent-badge/testkit';
 import type { GitFixture } from '@agent-badge/testkit';
 import * as core from '@legotin/agent-badge-core';
+import { buildProgram } from '../cli/main.js';
 import { runContributeCommand } from './contribute.js';
 import { readAcceptedContributions, readContributionFile, runImportCommand } from './import.js';
 vi.mock('node:fs/promises',async () => { const actual = await vi.importActual<typeof files>('node:fs/promises'); return {...actual,open:vi.fn(actual.open)}; });
@@ -13,7 +14,8 @@ const policy = { schemaVersion: 1 as const, repositoryId, normalizationVersion: 
 const meta = { schemaVersion: 2 as const, protocolVersion: 1 as const, repositoryId, normalizationVersion: 1 as const, catalogVersion: 1, catalogHash: core.catalogHash(core.defaultCatalog), policy };
 const record = core.sanitizeObservation(protocolObservationFixture(), policy);
 const fixtures: GitFixture[] = [];
-afterEach(async () => { vi.restoreAllMocks(); await Promise.all(fixtures.splice(0).map(f => f.cleanup())); });
+afterEach(async () => { process.exitCode=undefined; vi.restoreAllMocks(); await Promise.all(fixtures.splice(0).map(f => f.cleanup())); });
+async function collect<T>(input:AsyncIterable<T>|Promise<T[]>):Promise<T[]> { const resolved=await input; if(Array.isArray(resolved))return resolved; const values:T[]=[]; for await(const value of resolved) values.push(value); return values; }
 async function fixture() { const f = await createBareRemoteFixture(); fixtures.push(f); return f; }
 
 test('contribute writes only immutable managed envelope without staging or committing', async () => {
@@ -59,14 +61,14 @@ test('only accepted default branch blobs import; unmerged/closed proposals do no
  const result = await runContributeCommand({ cwd, meta, records: [record] });
  await f.git(cwd, ['add', result.path]); await f.git(cwd, ['commit', '-m', 'Sanitized contribution']);
  const proposal = (await f.git(cwd, ['rev-parse', 'HEAD'])).trim();
- expect(await readAcceptedContributions(repository, { ref: base, defaultBranch: branch, binding })).toEqual([]);
- await expect(readAcceptedContributions(repository, { ref: proposal, defaultBranch: branch, binding })).rejects.toThrow();
+ expect(await collect(readAcceptedContributions(repository, { ref: base, defaultBranch: branch, binding }))).toEqual([]);
+ await expect(collect(readAcceptedContributions(repository, { ref: proposal, defaultBranch: branch, binding }))).rejects.toThrow();
  await f.git(cwd,['update-ref',`refs/remotes/origin/${branch}`,proposal]);
- await expect(readAcceptedContributions(repository,{ref:proposal,defaultBranch:branch,binding})).rejects.toThrow();
+ await expect(collect(readAcceptedContributions(repository,{ref:proposal,defaultBranch:branch,binding}))).rejects.toThrow();
  await f.git(cwd, ['checkout', branch]); await f.git(cwd, ['merge', '--ff-only', 'proposal']); await f.git(cwd, ['push', 'origin', branch]);
  await f.git(cwd, ['fetch', 'origin']);
  await writeFile(join(cwd, result.path), '{"changed":"worktree"}');
- const accepted = await readAcceptedContributions(repository, { ref: proposal, defaultBranch: branch, binding });
+ const accepted = await collect(readAcceptedContributions(repository, { ref: proposal, defaultBranch: branch, binding }));
  expect(accepted).toHaveLength(1); expect(accepted[0].records).toHaveLength(1);
 });
 
@@ -107,4 +109,65 @@ test('trusted accepted import performs one shared transaction without running tr
  expect(await f.git(cwd,['for-each-ref','--format=%(refname)','refs/agent-badge/imports'])).toBe('');
  await expect(readFile(join(cwd,'ROOT_EXECUTED'))).rejects.toThrow(); await expect(readFile(join(cwd,'LAUNCHER_EXECUTED'))).rejects.toThrow();
  expect((await runImportCommand({cwd,acceptedRef,defaultBranch:'main',repositoryId,repositoryUrl:f.remote})).status).toBe('unchanged');
-});
+ // Several manual transactions/Git setup retain their own budgets; the framework must allow them to finish.
+},30000);
+
+
+async function acceptedFixture() {
+ const f=await fixture(),cwd=f.clones[0],repository=await core.resolveRepository(cwd);
+ const binding=await core.bindRemote(repository,{repositoryId,declaredUrl:f.remote}); if(binding.status!=='bound')throw Error('fixture');
+ const store=await core.openStore(repository,{processNamespace:async()=> 'synthetic'});
+ await core.syncUsage({repository,binding,store,collect:'none',initialize:{meta,catalog:core.defaultCatalog},signal:AbortSignal.timeout(20000),deadline:Date.now()+20000});
+ return {f,cwd,repository,binding,store};
+}
+async function acceptFiles(f:GitFixture,cwd:string,paths:string[]) {
+ await f.git(cwd,['add',...paths]); await f.git(cwd,['commit','-m','Accepted sanitized envelopes']); await f.git(cwd,['push','origin','HEAD']); return (await f.git(cwd,['rev-parse','HEAD'])).trim();
+}
+
+test('accepted history exceeding one envelope count is streamed without an aggregate historical ceiling',async()=> {
+ const f=await fixture(),cwd=f.clones[0],repository=await core.resolveRepository(cwd);
+ const binding=await core.bindRemote(repository,{repositoryId,declaredUrl:f.remote}); if(binding.status!=='bound')throw Error('fixture');
+ const paths:string[]=[];
+ for(const [start,count] of [[0,6000],[6000,4001]]) {
+  const records=Array.from({length:count},(_,offset)=>({schemaVersion:2 as const,normalizationVersion:1 as const,repositoryId,kind:'exclude' as const,targetUnitKey:(start+offset).toString(16).padStart(64,'0'),supersedes:[]}));
+  paths.push((await runContributeCommand({cwd,meta,records})).path);
+ }
+ const ref=await acceptFiles(f,cwd,paths); let count=0,files=0;
+ for(const envelope of await collect(readAcceptedContributions(repository,{ref,defaultBranch:'main',binding}))) { count+=envelope.records.length; files++; }
+ expect(files).toBe(2); expect(count).toBe(10001);
+},30000);
+
+test('sequential confirmed batches survive interruption and replay without private source acknowledgements',async()=> {
+ const {f,cwd,repository,store}=await acceptedFixture();
+ const second=core.sanitizeObservation({...protocolObservationFixture(),nativeUnitId:'second',nativeCoverageId:'second'},policy);
+ const one=await runContributeCommand({cwd,meta,records:[record]}),two=await runContributeCommand({cwd,meta,records:[second]});
+ const acceptedRef=await acceptFiles(f,cwd,[one.path,two.path]);
+ const options={cwd,acceptedRef,defaultBranch:'main',repositoryId,repositoryUrl:f.remote};
+ const controller=new AbortController();
+ const interrupted=await runImportCommand({...options,signal:controller.signal,onProgress:progress=> {if(progress.confirmedEnvelopes===1)controller.abort();}});
+ expect(interrupted).toMatchObject({status:'partial',complete:false,retryRequired:true,confirmedEnvelopes:1,failure:'aborted'});
+ expect(interrupted.accepted?.ledger.knownTokens).toBe('140');
+ const resumed=await runImportCommand(options);
+ expect(resumed).toMatchObject({status:'synced',complete:true,retryRequired:false,confirmedEnvelopes:2});
+ expect(resumed.accepted?.ledger.knownTokens).toBe('280');
+ const replay=await runImportCommand(options);
+ expect(replay).toMatchObject({status:'unchanged',complete:true,confirmedEnvelopes:2,confirmedCommit:resumed.confirmedCommit});
+ expect(await store.journal()).toEqual([]);
+ expect(JSON.parse(await readFile(join(repository.privateDir,'acknowledged.json'),'utf8')).hashes).toEqual([]);
+ expect(await f.git(cwd,['for-each-ref','--format=%(refname)','refs/agent-badge/imports'])).toBe('');
+},30000);
+
+test('a malformed later accepted envelope reports already confirmed progress instead of rolling it back',async()=> {
+ const {f,cwd}=await acceptedFixture();
+ const one=await runContributeCommand({cwd,meta,records:[record]});
+ const bad='.agent-badge/contributions/'+ 'f'.repeat(64)+'.json'; await writeFile(join(cwd,bad),'{}');
+ const acceptedRef=await acceptFiles(f,cwd,[one.path,bad]);
+ const result=await runImportCommand({cwd,acceptedRef,defaultBranch:'main',repositoryId,repositoryUrl:f.remote});
+ expect(result).toMatchObject({status:'partial',complete:false,retryRequired:true,confirmedEnvelopes:1,failure:'invalid-contribution'});
+ expect(result.accepted?.ledger.knownTokens).toBe('140');
+ const output:string[]=[]; vi.spyOn(console,'log').mockImplementation((...args)=>{output.push(args.join(' '));});
+ vi.spyOn(process,'cwd').mockReturnValue(cwd);
+ await buildProgram().parseAsync(['import','--accepted-ref',acceptedRef,'--default-branch','main','--repository-id',repositoryId,'--repository-url',f.remote],{from:'user'});
+ expect(process.exitCode).toBe(1); expect(output.join('\n')).toContain('complete false');
+ expect(output.join('\n')).not.toMatch(/unitKey|targetUnitKey|Unsafe|invalid-record/);
+},30000);

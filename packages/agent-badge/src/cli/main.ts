@@ -116,9 +116,9 @@ export function buildProgram(): Command {
     .option("--repository-url <url>", "Pinned repository destination (trusted CI).")
     .action(async (options: { file?: string; acceptedRef?: string; defaultBranch?: string; repositoryId?: string; repositoryUrl?: string }) => {
       const { runImportCommand } = await import("../commands/import.js");
-      const result = await runImportCommand(options);
-      console.log(`agent-badge: contribution import ${result.status}; keep the envelope for reconciliation until accepted.`);
-      if (result.status !== 'synced' && result.status !== 'unchanged') process.exitCode = 1;
+      const result = await runImportCommand({ ...options, onProgress: progress => console.log(`agent-badge: confirmed ${progress.confirmedEnvelopes} contribution envelope(s).`) });
+      console.log(`agent-badge: contribution import ${result.status}; confirmed ${result.confirmedEnvelopes}; complete ${result.complete}; keep envelopes until accepted.`);
+      if (!result.complete) process.exitCode = 1;
     });
 
   program
