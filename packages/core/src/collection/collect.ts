@@ -378,13 +378,17 @@ function projectionChunks(projection: {
   );
   // Keep records comfortably below the journal's complete 32 MiB envelope bound as well.
   const records = boundedChunks(projection.records, 2, 4 * 1024 * 1024);
-  return Array.from(
-    { length: Math.max(decisions.length, records.length) },
-    (_, index) => ({
-      metadata: { ...empty, decisions: decisions[index] ?? [] },
-      records: records[index] ?? [],
-    })
-  );
+  // Keep prior decisions until every public output is durable. A restart can then
+  // regenerate a missing control using the old policy, while hashes dedupe output.
+  return [
+    ...(projection.records.length
+      ? records.map((chunk) => ({ metadata: empty, records: chunk }))
+      : []),
+    ...decisions.map((chunk) => ({
+      metadata: { ...empty, decisions: chunk },
+      records: [] as PublicRecord[],
+    })),
+  ];
 }
 
 /** Local-only collection. Each source transaction owns candidate retrieval through durable batch commit. */

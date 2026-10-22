@@ -9,6 +9,7 @@ import {
 } from "@agent-badge/testkit";
 import { resolveRepository } from "../git/context.js";
 import { openStore } from "../storage/store.js";
+import type { LocalStore } from "../storage/store.js";
 import { createCodexAdapter } from "../providers/codex/adapter.js";
 import { createClaudeAdapter } from "../providers/claude/adapter.js";
 import { reduceLedger } from "../ledger/reduce.js";
@@ -723,6 +724,186 @@ describe("durable local collection", () => {
       expect(result.queuedHashes).toHaveLength(
         historyKind === "single-unit" ? 3 : 5
       );
+    },
+    60000
+  );
+  it.each([1, 2])(
+    "resumes mixed byte-chunk output after durable chunk %s without losing a mapping-removal exclusion",
+    async (stopAfter) => {
+      const native = options.adapters!.codex!;
+      const [source] = await native.discover({
+        repositoryId,
+        enrolledRoots: [],
+        signal: options.signal,
+      });
+      const oldPrivate = parsePrivateAttributionPolicy({
+        mappings: [{ cwd: join(fixture.root, "old-mapping"), repositoryId }],
+      });
+      const oldScope = {
+        repositoryId,
+        normalizationVersion: 1 as const,
+        attributionPolicyHash: attributionPolicyHash(policy, oldPrivate),
+      };
+      let baseline: ScanBatch | undefined;
+      for await (const batch of native.scan(
+        source,
+        null,
+        options.signal,
+        oldScope
+      ))
+        baseline = batch;
+      const newlyIncluded = Array.from({ length: 25 }, (_, index) => ({
+        ...baseline!.observations[0],
+        nativeUnitId: `newly-included-${index}`,
+        nativeCoverageId: `newly-included-${index}`,
+        execution: {
+          ...baseline!.observations[0].execution,
+          cwd: join(fixture.root, "missing-new"),
+        },
+        meters: Array.from(
+          { length: 500 },
+          () => baseline!.observations[0].meters[0]
+        ),
+      }));
+      const removed = {
+        ...baseline!.observations[0],
+        nativeUnitId: "removed-by-mapping",
+        nativeCoverageId: "removed-by-mapping",
+        execution: {
+          ...baseline!.observations[0].execution,
+          cwd: join(fixture.root, "old-mapping"),
+        },
+      };
+      const observations = [...newlyIncluded, removed];
+      const original = sanitizeObservation(removed, policy);
+      const metadata: AttributionMetadata = {
+        schemaVersion: 1,
+        policyHash: oldScope.attributionPolicyHash,
+        policy: {
+          remoteAliases: oldPrivate.remoteAliases,
+          mappings: oldPrivate.mappings,
+          overrides: oldPrivate.overrides,
+        },
+        decisions: observations.map((observation) => ({
+          observationHash: observationEvidenceHash(observation),
+          status: observation === removed ? "included" : "ambiguous",
+          reason:
+            observation === removed ? "private-mapping" : "missing-evidence",
+          verifiedCommonDir: null,
+        })),
+      };
+      await options.store.commitBatch(
+        baseline!.source,
+        { ...baseline!, observations },
+        [original],
+        metadata
+      );
+      const privatePolicy = {
+        overrides: newlyIncluded.map((observation) => ({
+          provider: observation.provider,
+          nativeUnitId: observation.nativeUnitId,
+          representation: observation.representation,
+          decision: "include",
+        })),
+      };
+      const publicBytes = Buffer.byteLength(
+        JSON.stringify(
+          newlyIncluded.map((observation) =>
+            sanitizeObservation(observation, policy)
+          )
+        )
+      );
+      expect(publicBytes).toBeGreaterThan(4 * 1024 * 1024);
+      expect(publicBytes).toBeLessThan(8 * 1024 * 1024);
+      expect(
+        Buffer.byteLength(
+          JSON.stringify({ ...metadata, policy: privatePolicy })
+        )
+      ).toBeLessThan(4 * 1024 * 1024);
+      const controller = new AbortController();
+      let durableCommits = 0;
+      const interruptingStore = new Proxy(options.store, {
+        get(target, key) {
+          if (key === "commitBatch")
+            return async (...args: Parameters<LocalStore["commitBatch"]>) => {
+              await target.commitBatch(...args);
+              if (++durableCommits === stopAfter) controller.abort();
+            };
+          const value = Reflect.get(target, key);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+      const interrupted = await collectUsage({
+        ...options,
+        adapters: {},
+        privatePolicy,
+        store: interruptingStore,
+        signal: controller.signal,
+      });
+      expect(interrupted.cancelled).toBe(true);
+      expect(durableCommits).toBe(stopAfter);
+      const reopened = await openStore(options.repository, {
+        processNamespace: async () => "synthetic",
+      });
+      const partial = await reopened.journal();
+      if (stopAfter === 1)
+        expect(
+          partial
+            .flatMap((entry) => entry.records)
+            .some((record) => "kind" in record && record.kind === "exclude")
+        ).toBe(false);
+      await collectUsage({
+        ...options,
+        adapters: {},
+        privatePolicy,
+        store: reopened,
+      });
+      const journal = await reopened.journal(),
+        records = journal.flatMap((entry) => entry.records);
+      const meta = {
+        schemaVersion: 2 as const,
+        protocolVersion: 1 as const,
+        repositoryId,
+        normalizationVersion: 1 as const,
+        catalogVersion: 1,
+        catalogHash: catalogHash(defaultCatalog),
+        policy,
+      };
+      const reduced = reduceLedger(records, meta);
+      expect(reduced.excludedUnits).toBe(1);
+      expect(reduced.includedUnits).toBe(25);
+      expect(reduced.knownTokens).toBe("1375000");
+      expect(
+        records.some(
+          (record) =>
+            "kind" in record &&
+            record.kind === "exclude" &&
+            record.targetUnitKey === original.unitKey
+        )
+      ).toBe(true);
+      expect(
+        partial
+          .slice(1)
+          .every((entry) => entry.attribution!.decisions.length === 0)
+      ).toBe(true);
+      expect(
+        journal
+          .slice(1)
+          .every(
+            (entry) =>
+              entry.records.length <= 10000 &&
+              entry.attribution!.decisions.length <= 10000 &&
+              Buffer.byteLength(JSON.stringify(entry.attribution)) <=
+                4 * 1024 * 1024
+          )
+      ).toBe(true);
+      await collectUsage({
+        ...options,
+        adapters: {},
+        privatePolicy,
+        store: reopened,
+      });
+      expect((await reopened.journal()).length).toBe(journal.length);
     },
     60000
   );
