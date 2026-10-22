@@ -98,3 +98,78 @@ attribution-policy hash. Its cursor records offset, observed size, content-prefi
 hash, and incomplete tail. Source descriptors and checkpoints are private and
 never public records. Storage must journal sanitized records durably before
 advancing any checkpoint; Task 5 implements that transaction.
+
+## Deterministic reduction and artifacts (Task 3)
+
+`reduceLedger(records, meta, resolveContract?)` validates repository identity,
+record deduplication and causal closure before selecting any meters. It returns
+sorted records/units, a metadata hash, and an input-set hash of the metadata hash
+plus sorted unique record hashes. Decimal integer token totals avoid overflow.
+Conflicting units are quarantined; partial totals never imply repository-wide
+completeness. A copied native request counts once regardless of replay order.
+
+The optional resolver is a code-owned `AccountingContract` resolver. The reducer
+independently guards provider, representation and coverage identity. Certified
+comparators must establish compatible meter layouts and epochs, reject
+same-revision meter disagreements, and prove a candidate at least as late as all
+other candidates before it can replace them. A sequence-shaped revision string
+alone cannot order snapshots. All current default cumulative comparators remain
+uncertified. There is no generic meter-layout equality rule: a certified adapter
+must decide whether its cumulative model segmentation can be compared.
+
+Observation `supersedes` edges must reference existing observations with the same
+accounting identity. Control `supersedes` edges must reference existing controls
+for the same unit. Cycles and dangling or cross-unit correction references are
+invalid. Corrections can decrease totals, must name both replaced and replacement
+observations, and preserve replacement identity/coverage. Causally superseded
+controls no longer decide inclusion; a causal include can undo an exclude, while
+an active concurrent exclude wins. Concurrent incompatible corrections conflict.
+Replaced observations stay withdrawn through a causal correction chain.
+
+Meters additionally require nullable `toolInput` and
+`semantics.toolInput: included-in-input | separate | unknown`. Included tool input
+is a known subset of input, not additional volume; separate tool input remains
+separate. For provider totals that include additional separate categories, adapters
+must preserve `total: provider-defined`, rather than assert input-plus-output.
+Unknown tool input is null. Synthetic fixtures use measured zero only when their
+source contract explicitly excludes separate tool input. Nonzero separate tool
+usage has no initial tariff and cannot silently disappear into a zero cost.
+
+The exact registered model IDs now include `gpt-5.4-mini`, `gpt-4.1-mini`, and
+`claude-sonnet-4-6`. The version 1 catalog snapshot (2026-10-22) uses official
+[OpenAI mini rates](https://developers.openai.com/api/docs/models/gpt-5.4-mini),
+[GPT-4.1 rates](https://openai.com/index/gpt-4-1/), and
+[Claude Sonnet 4.6 rates](https://platform.claude.com/docs/en/models/sonnet-4-6/overview).
+Rates are standard text token API-equivalent valuations, with explicit cache TTL
+creation/read rates and the listed same-rate long-context rule. Other tariffs are
+unsupported. This is current-catalog valuation of recorded usage, not historical
+invoices or subscription charges.
+
+`priceMeters(meters, catalog)` returns decimal integer `knownMicroUsd`, priced and
+unpriced **meter-segment** counts, and the validated catalog hash. BigInt
+intermediates preserve exact rational micro-USD; the sum is rounded half up once.
+A segment missing a required dimension or nonzero bucket tariff stays unpriced.
+The summary additionally exposes segment counts and priced/unpriced **included
+accounting-unit** counts; an accounting unit is fully priced only when every
+segment is priced. Conflict and exclusion counts remain separate.
+
+`renderArtifacts(ledger, meta, catalog?)` returns the complete sorted public tree
+map, including canonical records, metadata, accepted catalog, summary, SVG and
+README report. The optional shipped catalog is for bootstrap; synchronization must
+supply the accepted data-branch catalog. Metadata version/hash mismatch stops
+rendering. Summary, SVG and report bind the same input-set hash and contain no
+scan timestamps. The SVG interpolates only escaped text and computed geometry.
+
+`validateLedgerTree(entries, resolveContract?)` validates each path, actual Git
+object type/mode, byte limit, schema, canonical content hash, causal closure,
+catalog pin and regenerated artifact bytes. Full trees may exceed 10,000 objects
+or 10 MiB: `validateEnvelope` limits incoming transport batches, not accepted
+ledger size or history. Transport remains responsible for budgets/cancellation
+while traversing a full tree. No pruning is implied by either boundary.
+
+Distinct active cumulative unit keys claiming the same provider/coverage stream
+are also quarantined: a same-unit revision comparator cannot establish that their
+usage is disjoint. Multiple request keys remain independent. An explicit exclusion
+removes the excluded cumulative unit from this overlap check. Control supersession
+graph validation uses an iterative traversal so deep accepted histories do not
+exhaust the JavaScript stack.

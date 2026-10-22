@@ -5,8 +5,8 @@ export const providerIdSchema = z.enum(["codex", "claude", "gemini", "opencode",
 export type ProviderId = z.infer<typeof providerIdSchema>;
 export const vendorIdSchema = z.enum(["openai", "anthropic", "google", "local"]);
 // Exact identity registry, independent of rates. Expand only with primary-source evidence.
-// https://developers.openai.com/api/docs/models/gpt-5.4-mini (audit, 2026-10-22).
-export const modelIdSchema = z.enum(["gpt-5.4-mini"]);
+// Official model pages and dated price sources are recorded in pricing/catalog.ts.
+export const modelIdSchema = z.enum(["gpt-5.4-mini", "gpt-4.1-mini", "claude-sonnet-4-6"]);
 export const safeCounterSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const repositoryIdSchema = z.uuid().regex(/^[a-f0-9-]{36}$/);

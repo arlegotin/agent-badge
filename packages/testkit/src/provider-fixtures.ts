@@ -13,6 +13,7 @@ export const protocolPrivacyCanaries = {
 } as const;
 
 /** Private normalized receipt. Copies may change source/lineage, never native request identity. */
+// Synthetic request contract: tool input is explicitly measured absent; cache creation is unreported.
 export function protocolObservationFixture() {
   return { schemaVersion: 2 as const, normalizationVersion: 1 as const, provider: "codex" as const,
     representation: "request" as const, identity: "provider-native" as const, coverage: "native-request" as const,
@@ -25,8 +26,8 @@ export function protocolObservationFixture() {
     lineage: { kind: "root" as const, parentNativeId: null, inherited: "none" as const }, diagnostics: [],
     meters: [{ vendor: "openai" as const, model: "gpt-5.4-mini" as const, total: 140, input: 100,
       uncachedInput: 60, cachedInput: 40, cacheCreation: { fiveMinutes: null, oneHour: null, other: null },
-      output: 40, reasoningOutput: 0,
-      semantics: { input: "includes-cached" as const, output: "includes-reasoning" as const,
+      output: 40, reasoningOutput: 0, toolInput: 0,
+      semantics: { toolInput: "included-in-input" as const, input: "includes-cached" as const, output: "includes-reasoning" as const,
         cacheCreation: "unknown" as const, total: "input-plus-output" as const } }] };
 }
 

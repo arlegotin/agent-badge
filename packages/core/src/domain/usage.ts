@@ -14,14 +14,16 @@ const dimension = safeCounterSchema.nullable();
 export const meterSegmentSchema = z.object({ vendor: vendorIdSchema.nullable(), model: modelIdSchema.nullable(),
   total: dimension, input: dimension, uncachedInput: dimension, cachedInput: dimension,
   cacheCreation: z.object({ fiveMinutes: dimension, oneHour: dimension, other: dimension }).strict(),
-  output: dimension, reasoningOutput: dimension,
-  semantics: z.object({ input: z.enum(["includes-cached", "excludes-cached", "unknown"]),
+  output: dimension, reasoningOutput: dimension, toolInput: dimension,
+  semantics: z.object({ toolInput: z.enum(["included-in-input", "separate", "unknown"]), input: z.enum(["includes-cached", "excludes-cached", "unknown"]),
     output: z.enum(["includes-reasoning", "excludes-reasoning", "unknown"]),
     cacheCreation: z.enum(["included-in-input", "separate", "unknown"]),
     total: z.enum(["input-plus-output", "provider-defined", "unknown"]) }).strict()
 }).strict().superRefine((meter, ctx) => {
   const invalid = () => ctx.addIssue({ code: "custom", message: "invalid-meter" });
-  if (meter.model === "gpt-5.4-mini" && meter.vendor !== "openai") invalid();
+  if ((meter.model === "gpt-5.4-mini" || meter.model === "gpt-4.1-mini") && meter.vendor !== "openai") invalid();
+  if (meter.model === "claude-sonnet-4-6" && meter.vendor !== "anthropic") invalid();
+  if (meter.semantics.toolInput === "included-in-input" && meter.input !== null && meter.toolInput !== null && meter.toolInput > meter.input) invalid();
   if (meter.semantics.input === "includes-cached" && meter.input !== null) {
     if (meter.cachedInput !== null && meter.cachedInput > meter.input) invalid();
     if (meter.uncachedInput !== null && meter.uncachedInput > meter.input) invalid();

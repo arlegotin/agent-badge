@@ -146,3 +146,15 @@ describe("provider accounting contracts", () => {
       revision: { kind: "certified", evidence: "epoch", sequence: Number.MAX_SAFE_INTEGER + 1 } })).toThrow();
   });
 });
+
+describe("tool input and exact registered models", () => {
+  it("requires explicit tool overlap and validates included tool subsets", () => {
+    const meter = parseObservation(protocolObservationFixture()).meters[0];
+    expect(meterSegmentSchema.safeParse({ ...meter, toolInput: 20, semantics: { ...meter.semantics, toolInput: "included-in-input" } }).success).toBe(true);
+    expect(meterSegmentSchema.safeParse({ ...meter, toolInput: 101, semantics: { ...meter.semantics, toolInput: "included-in-input" } }).success).toBe(false);
+    const { toolInput, ...missing } = { ...meter, toolInput: null };
+    expect(meterSegmentSchema.safeParse(missing).success).toBe(false);
+    expect(meterSegmentSchema.safeParse({ ...meter, model: "claude-sonnet-4-6", vendor: "anthropic" }).success).toBe(true);
+    expect(meterSegmentSchema.safeParse({ ...meter, model: "claude-sonnet-4-6", vendor: "openai" }).success).toBe(false);
+  });
+});
