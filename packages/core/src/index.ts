@@ -25,3 +25,6 @@ export * from "./ledger/reduce.js";
 export * from "./ledger/controls.js";
 export * from "./ledger/validate-tree.js";
 export * from "./render/summary.js";
+export * from "./git/context.js";
+export * from "./git/remote-binding.js";
+export * from "./git/process.js";

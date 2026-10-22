@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { lstat, mkdtemp, readFile, readdir, readlink, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, readFile, readdir, readlink, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -50,7 +50,8 @@ export interface GitFixture {
 }
 
 export async function createBareRemoteFixture(): Promise<GitFixture> {
-  const root = await mkdtemp(join(tmpdir(), "agent-badge-git-"));
+  // Git reports physical paths (not macOS /var or /tmp symlink spellings).
+  const root = await realpath(await mkdtemp(join(tmpdir(), "agent-badge-git-")));
   const remote = join(root, "remote.git");
   const clones = [join(root, "clone-a"), join(root, "clone-b")] as const;
   try {
