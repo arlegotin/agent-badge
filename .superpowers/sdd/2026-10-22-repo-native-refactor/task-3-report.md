@@ -231,3 +231,26 @@ triggered. No publishing commands were run.
 - `packages/testkit/src/provider-fixtures.ts`
 - `docs/superpowers/specs/2026-10-22-accounting-wire-protocol.md`
 - This report.
+
+## Review fix round 1: enforce SVG digest boundary
+
+The review approved the implementation with one minor hardening finding:
+`renderSvg` interpolated `inputSetHash` into the fixed description element without
+its own digest validation. The canonical artifact path supplied a computed digest,
+but direct helper callers could inject markup. Confirmed the finding against the
+helper and reused the protocol's `digestSchema` through safe `parseProtocol`.
+The helper now requires exactly 64 lowercase hexadecimal characters before
+interpolation and reports only the redacted `invalid-record` diagnostic.
+
+Added three rejection regressions (closing-description/script injection, 63-character
+hash, uppercase hash) and a positive fixed-description test with a valid digest.
+
+TDD evidence:
+
+- RED: `python3 .superpowers/sdd/2026-10-22-repo-native-refactor/run-isolated.py npm test -- --run packages/core/src/render/svg.test.ts`
+  returned **3 failed / 11 passed**; each malformed hash incorrectly failed to throw.
+- GREEN: the same command returned **14/14 passed**, exit 0, no warnings.
+- `python3 .superpowers/sdd/2026-10-22-repo-native-refactor/run-isolated.py npm run typecheck`
+  returned exit 0 after the fix.
+- Only `render/svg.ts`, `render/svg.test.ts`, and this report changed. No broader
+  checks were repeated, following the controller's focused-verification instruction.
