@@ -38,7 +38,7 @@ export async function runOperation(input: RepositoryOperationRequest & { mode: '
       collect: captured || input.collect === 'none' ? 'none' : 'incremental', collection,
       initialize: automatic ? undefined : input.initialize });
     const collected = captured ?? result.collection;
-    if (!automatic && input.collect === 'full' && (result.status === 'synced' || result.status === 'unchanged') &&
+    if (!automatic && input.collect === 'full' && !input.collection?.target && (result.status === 'synced' || result.status === 'unchanged') &&
         collected && !collected.cancelled && !collected.pendingReconciliation && !collected.diagnostics.length &&
         collected.sourceOutcomes.every(source => source.outcome === 'complete' || source.outcome === 'disabled' || source.outcome === 'empty'))
       await store.recordReconciliationPending(false);

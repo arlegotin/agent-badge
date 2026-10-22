@@ -121,3 +121,16 @@ test('only a successful complete manual reconciliation clears durable pending st
   manual.dispose(); expect(result.status).toBe('unchanged'); expect(result.pendingReconciliation).toBe(false);
   expect(await store.reconciliationPending()).toBe(false);
 });
+
+test.each(['provider-only', 'exact-source'] as const)('manual full mode with a %s target never clears broad reconciliation evidence', async targetKind => {
+  const { f, repository, binding, store } = await fixture();
+  await store.recordReconciliationPending(true);
+  const root = join(f.root, 'empty-target-codex');
+  await mkdir(join(root, 'sessions'), { recursive: true });
+  const target = targetKind === 'provider-only' ? { provider: 'codex' as const } : { provider: 'codex' as const, sourceIdentity: join(root, 'sessions', 'missing.jsonl') };
+  const budget = createOperationBudget('manual', 10000);
+  const result = await runRepositoryOperation({ budget, request: { cwd: repository.worktreeRoot, privateDir: repository.privateDir,
+    binding, collect: 'full', capturePolicy: policy, collection: { roots: { codex: [root] }, target } } });
+  budget.dispose(); expect(result.status).toBe('unchanged');
+  expect(result.pendingReconciliation).toBe(true); expect(await store.reconciliationPending()).toBe(true);
+});

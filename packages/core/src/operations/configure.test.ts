@@ -178,3 +178,20 @@ test('usage-only remote advancement retries the metadata CAS without dropping re
     expect(await a.store.journal()).toEqual([]);
   } finally { spy.mockRestore(); }
 });
+
+test('foreign configure UUID is rejected before any remote write and preserves prior repair evidence on an empty ledger', async () => {
+  const { f, a } = await fixture();
+  const prior = { schemaVersion: 1 as const, metadataRevision: 'a'.repeat(64) };
+  await a.store.recordPendingConfiguration(prior);
+  const beforeTip = (await f.git(f.remote, ['rev-parse', 'refs/heads/agent-badge/data'])).trim();
+  const beforeMeta = await f.git(f.remote, ['show', `${beforeTip}:meta.json`]);
+  const foreignId = '98765432-1234-4234-8234-123456789abc';
+  const proposed = { ...meta, repositoryId: foreignId, policy: { ...meta.policy, repositoryId: foreignId } };
+  let wroteDeclaration = false;
+  const result = await configureRepository({ ...a, expectedMetadataRevision: metadataRevision(meta), meta: proposed, catalog: defaultCatalog,
+    writeDeclaration: async () => { wroteDeclaration = true; } });
+  expect(result.status).toBe('conflict'); expect(wroteDeclaration).toBe(false);
+  expect((await f.git(f.remote, ['rev-parse', 'refs/heads/agent-badge/data'])).trim()).toBe(beforeTip);
+  expect(await f.git(f.remote, ['show', 'refs/heads/agent-badge/data:meta.json'])).toBe(beforeMeta);
+  expect(await a.store.pendingConfiguration()).toEqual(prior);
+});

@@ -145,6 +145,11 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
           return accepted;
         }
         let accepted = await accept();
+        // Empty ledgers provide no records for reduceLedger to catch a UUID change.
+        // Configure may change policy, never the approved binding/accepted repository identity.
+        if (change && (parseLedgerMeta(change.meta).repositoryId !== binding.repositoryId ||
+            change.meta.repositoryId !== accepted?.meta.repositoryId))
+          throw new ProtocolError("repository-mismatch");
         if (change && (!accepted || contentHash(accepted.meta) !== change.expectedMetadataRevision))
           return { ...result, status: "conflict" };
         let meta: LedgerMeta, catalog: PriceCatalog;
