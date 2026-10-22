@@ -4,6 +4,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { assertSupportedNode, UnsupportedNodeError, UNSUPPORTED_NODE_MESSAGE } from '../integration/manifest.js';
+import { formatPlaintext } from './format.js';
+import type { CliResults } from './format.js';
 import { CommandFailure } from '../commands/errors.js';
 
 function version():string {try{return JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)),'../../package.json'),'utf8')).version;}catch{return '0.0.0';}}
@@ -12,22 +14,14 @@ const collect=(value:string,previous:string[]=[])=>[...previous,value];
 export function buildProgram(context:CliOptions={}):Command {
   const program=new Command().name('agent-badge').description('Record supported local AI usage in a repository-owned ledger.').version(version(),'--version');
   const cwd=context.cwd;
-  function emit(command:string,value:object,json?:boolean) {
+  function emit<C extends keyof CliResults>(command:C,value:CliResults[C],json?:boolean) {
     const result={schemaVersion:1,command,...value};
     const write=context.write??console.log;
     if(json)write(JSON.stringify(result));
-    else {
-      const r=result as typeof result & {status?:string;state?:string;exitCode?:number;queuedRecords?:number|null;complete?:boolean;confirmedEnvelopes?:number;changes?:{path:string;action:string}[];totals?:{knownTokens:string;recordedUnits:number;includedUnits:number;unknownTokenUnits:number};valuation?:{kind:string}|null};
-      write(`agent-badge: ${command} ${r.status??r.state??'complete'}.`);
-      if(r.changes)for(const change of r.changes)write(`  ${change.action} ${change.path}`);
-      if(r.totals)write(`  ${r.totals.recordedUnits} recorded units; ${r.totals.includedUnits > 0 && r.totals.unknownTokenUnits === r.totals.includedUnits ? 'usage unknown' : r.totals.knownTokens + ' known tokens'}; repository completeness unknown.`);
-      if(r.valuation)write('  Current catalog estimate; not an invoice.');
-      if(r.queuedRecords!==undefined)write(`  ${r.queuedRecords??'unknown'} queued records.`);
-      if(r.complete!==undefined)write(`  ${r.confirmedEnvelopes??0} confirmed envelopes; complete ${r.complete}. Retain envelopes for retry until complete.`);
-    }
+    else for (const line of formatPlaintext(command,value)) write(line);
     const exit=(result as {exitCode?:number}).exitCode;if(exit!==undefined)process.exitCode=exit;
   }
-  for(const name of ['init','setup']) program.command(name).description('Install and explicitly activate repository-owned setup.')
+  for(const name of ['init','setup'] as const) program.command(name).description('Install and explicitly activate repository-owned setup.')
     .option('--new-repository','Create a standalone UUID in a fresh clone without private Badge state.')
     .option('--target <remote>','Explicitly approve a Git remote destination.').option('--repository-url <url>','Credential-free repository declaration URL.')
     .option('--runtime-version <version>','Exact runtime version.').option('--dry-run','Print concrete owned changes without applying.')

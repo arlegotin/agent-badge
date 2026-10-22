@@ -13,7 +13,7 @@ export async function install(directory: string) {
   await writeFile(join(root, 'dist/integration/runtime.js'), 'export const fixture = true;');
   await writeFile(join(root, 'dist/integration/runtime-worker.js'), 'export const fixture = true;');
 }
-export const setupOptions = { nodeVersion: '24.0.0', runtimeVersion: version, resolvePin: async (v: string) => pin(v), installRuntime: install,
+export const setupOptions = { roots: { codex: [], claude: [], gemini: [] }, nodeVersion: '24.0.0', runtimeVersion: version, resolvePin: async (v: string) => pin(v), installRuntime: install,
   runInitialOperation: async () => ({ status: 'queued', acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true, exitCode: 1 }) };
 export async function activatedFixture() {
   const f = await createBareRemoteFixture(), cwd = f.clones[0];

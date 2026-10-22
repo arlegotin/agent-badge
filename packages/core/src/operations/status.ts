@@ -1,3 +1,4 @@
+import type { LedgerMeta } from '../domain/ledger.js';
 import type { RepositoryContext } from '../git/context.js';
 import { readLedgerCommit } from '../git/data-transport.js';
 import type { AcceptedLedger } from '../git/data-transport.js';
@@ -32,6 +33,13 @@ export interface StatusReport {
   capabilities?: CapabilityReport;
   providers: { provider: string; outcome: string; diagnostics: string[] }[];
 }
+/** Compare actual declaration with validated authority; a pending request proves no acceptance. */
+export function configurationState(meta: LedgerMeta | null, inspection: IntegrationInspection | undefined, pending: boolean): StatusReport['configuration'] {
+  if (!inspection) return 'not-inspected';
+  if (!inspection.policy) return 'absent';
+  if (meta && contentHash(meta.policy) !== contentHash(inspection.policy)) return 'drift';
+  return pending ? 'uncertain' : 'current';
+}
 export async function loadLocalAccepted(ctx: RepositoryContext, snapshot: StoreSnapshot, signal: AbortSignal, deadline: number): Promise<AcceptedLedger | null> {
   const commit = snapshot.transport?.commit;
   if (!commit) return null;
@@ -56,8 +64,7 @@ export async function getStatus(ctx: RepositoryContext, options: { inspection?: 
     report.metadataRevision = accepted ? contentHash(accepted.meta) : null;
     report.pendingReconciliation = snapshot.reconciliationPending;
     if (accepted && inspection?.repositoryId && accepted.meta.repositoryId !== inspection.repositoryId) throw new ProtocolError('repository-mismatch');
-    if (accepted && inspection?.policy && contentHash(accepted.meta.policy) !== contentHash(inspection.policy)) report.configuration = 'drift';
-    else if (snapshot.pendingConfiguration) report.configuration = 'uncertain';
+    report.configuration = configurationState(accepted?.meta ?? null, inspection, snapshot.pendingConfiguration !== null);
     const latest = new Map<string, (typeof snapshot.entries)[number]>();
     for (const entry of snapshot.entries) latest.set(JSON.stringify([entry.source.provider, entry.source.instanceKey, entry.source.sourceIdentity]), entry);
     report.providers = [...latest.values()].map(entry => ({ provider: entry.source.provider, outcome: entry.outcome, diagnostics: entry.diagnostics.map(d => d.code) }));

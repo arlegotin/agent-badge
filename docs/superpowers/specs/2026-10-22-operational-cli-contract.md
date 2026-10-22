@@ -17,7 +17,7 @@ identity/policy/binding/roots for orchestration. The CLI adapter composes instal
 activation/Git/provider owners. Core never imports the CLI or duplicates ownership
 rules. `diagnose(ctx,{integrations?,remote?,timeoutMs?})` defaults to local checks,
 requires complete owning setup/runtime/Git/provider inspection to claim health, and
-bounds explicit remote reads. Remote read is not proof of write, branch-rule,
+bounds all inspection stages, including capability discovery and explicit remote reads. Freshly fetched authority controls remote policy diagnosis; pending requests remain uncertain and absent declarations stay absent. Doctor exposes `configuration`, reports exit4 for proven drift, and returns `remote:history-conflict`/required `remote-history:fail`/exit2 when a ref disappears after durable presence, accepted history or validated binding evidence. An empty never-initialized destination stays distinct. It does not write/reseed remote history or advance the local accepted anchor. Remote read is not proof of write, branch-rule,
 signing, native trust or private image capability. `uninstall({repository,
 integrations?,signal?})` requires the owner to report `deactivated` independently
 from unresolved cleanup. It preserves journals, controls, accepted evidence,
@@ -57,3 +57,5 @@ CLI JSON has schemaVersion1 and command discriminator, static failures/exit code
 public counts and redacted explanations. Accepted ledger objects/private normalized
 source data never appear in JSON. Public managed contribution paths are the explicit
 normal-staging exception. Exit codes and every command are documented in[CLI](../../CLI.md).
+
+The CLI plaintext formatter consumes only typed handler summaries, with the same safe fields as JSON: redacted attribution, checks, static repair/action codes, independent deactivation and unresolved cleanup, managed contribution paths, provider outcomes/capability limits, accepted commit and configuration state. It never dumps raw exceptions or private ledger/source objects. Unsupported runtime diagnostics retain their static typed message before operational imports.

@@ -21,6 +21,8 @@ Examples assume a verified candidate runtime on PATH, or replace `agent-badge` w
 | `configure` | Explicit shared metadata/catalog change with expected metadata revision conflict detection. |
 | `uninstall` | Deactivate owned approval and remove owned integrations; retain ledger, journals, unknown files and leases. |
 
+Plaintext output includes redacted attribution, diagnostic check results, setup repair items, uninstall deactivation and unresolved owner codes, contribution staging paths, and status provider coverage/configuration/last confirmed sync.
+
 All commands accept `--json`. Results use `schemaVersion: 1`, a `command` discriminator and static status fields. Counts distinguish known data from unknown completeness. JSON never dumps accepted ledger bodies, source paths, native IDs or provider errors. `explain` stays redacted. `status.localUnits` exposes opaque local IDs for explanation/control; `metadataRevision` identifies current accepted metadata for configure requests. Public contribution output paths are safe managed digest paths.
 
 ```sh
@@ -61,3 +63,5 @@ Include/exclude require successful current accepted-ledger validation. Offline, 
 Exit codes: `0` completed requested operation; `1` incomplete/queued/unavailable/setup action required; `2` causal/identity/metadata conflict or wrong destination; `3` unsupported data/schema; `4` accepted configuration differs from the local declaration; `64` invalid CLI arguments. Explicit operation results and coverage are separate: partial provider coverage can accompany a confirmed sync. Doctor returns nonzero for failing required checks. A successful read does not prove write permission, branch-rule acceptance, signing capability, native trust or private image rendering; those checks remain unverified.
 
 Status exposes primary `state` plus overlapping `states`: `recorded`, `pending`, `synced`, `partial`, `conflicted`; unavailable and unsupported data are distinct. `lastConfirmedSync` is a commit, not a cache-refresh time. Pending configuration is uncertainty; `drift` compares the actual declaration with accepted metadata. Older branches can have an absent declaration while retaining approved private activation.
+
+Remote doctor compares the declaration with the freshly validated data-branch metadata. Its `configuration` distinguishes `current`, `drift`, `uncertain`, `absent` and `not-inspected`; a pending request does not prove acceptance. A missing remote ref after durable presence/accepted history or validated binding evidence reports `remote: history-conflict`, required `remote-history: fail` and exit `2`. A never-initialized destination stays distinct. Doctor never recreates or writes the remote ledger, updates the local accepted anchor, or repairs configuration. Its total deadline includes local capability discovery.

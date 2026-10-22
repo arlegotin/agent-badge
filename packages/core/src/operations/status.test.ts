@@ -59,6 +59,8 @@ test('pending configuration is uncertainty and actual declaration controls drift
   await store.recordPendingConfiguration({ schemaVersion: 1, metadataRevision: 'c'.repeat(64) });
   expect(await getStatus(repository, { inspection: { setup: 'approved', policy, repositoryId, binding, checks: [] } })).toMatchObject({ configuration: 'uncertain' });
   expect(await getStatus(repository, { inspection: { setup: 'approved', policy: { ...policy, badge: { ...policy.badge, label: 'Stale' } }, repositoryId, binding, checks: [] } })).toMatchObject({ configuration: 'drift', exitCode: 4 });
+  expect(await getStatus(repository, { inspection: { setup: 'approved', repositoryId, binding, checks: [] } })).toMatchObject({ configuration: 'absent' });
+  expect(await getStatus(repository)).toMatchObject({ configuration: 'not-inspected' });
 });
 
 test('future private schema is static unsupported output and is never rewritten', async () => {

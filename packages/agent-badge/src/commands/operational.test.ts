@@ -1,13 +1,16 @@
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { protocolObservationFixture } from '@agent-badge/testkit';
 import type { GitFixture } from '@agent-badge/testkit';
 import * as core from '@legotin/agent-badge-core';
 import { buildProgram } from '../cli/main.js';
+import { repositoryIntegrations } from '../integration/operations.js';
 import { activatedFixture } from '../../test/operational-fixture.js';
 const fixtures: GitFixture[] = [];
-afterEach(async () => {process.exitCode=undefined; await Promise.all(fixtures.splice(0).map(f=>f.cleanup()));});
+// Keep owning checks real while explicitly disabling unrelated native discovery.
+beforeEach(()=>{const inspect=repositoryIntegrations.inspect.bind(repositoryIntegrations);vi.spyOn(repositoryIntegrations,'inspect').mockImplementation(async(ctx,signal)=>{const result=await inspect(ctx,signal);return {...result,roots:{codex:[],claude:[],gemini:[],opencode:[],cursor:[],copilot:[],import:[],...result.roots}};});});
+afterEach(async () => {vi.restoreAllMocks();process.exitCode=undefined; await Promise.all(fixtures.splice(0).map(f=>f.cleanup()));});
 async function command(cwd:string,args:string[]) { const output:string[]=[]; await buildProgram({cwd,write:line=>output.push(line)}).exitOverride().parseAsync(args,{from:'user'}); return JSON.parse(output.join('\n')); }
 
 test('status JSON and doctor preserve explicit setup needs, unavailable sources and required failures', async () => {
@@ -27,7 +30,7 @@ test('collect is local-only, sync confirms data, explain redacts, and explicit c
   // Native fixture is the exact explicit source boundary, never a real agent home.
   const root=join(f.root,'codex');await mkdir(join(root,'sessions'),{recursive:true});
   const {codexRollout}=await import('@agent-badge/testkit');await writeFile(join(root,'sessions','usage.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',cwd));
-  const activation=JSON.parse(await readFile(join(plan.repository.privateDir,'local.json'),'utf8'));activation.roots={codex:[root]};await writeFile(join(plan.repository.privateDir,'local.json'),JSON.stringify(activation));
+  const activation=JSON.parse(await readFile(join(plan.repository.privateDir,'local.json'),'utf8'));activation.roots={...activation.roots,codex:[root]};await writeFile(join(plan.repository.privateDir,'local.json'),JSON.stringify(activation));
   const captured=await command(cwd,['collect','--full','--json']);expect(captured.command).toBe('collect');
   expect(await f.git(f.remote,['for-each-ref','--format=%(refname)','refs/heads/agent-badge/data'])).toBe('');
   const store=await core.openStore(plan.repository),entries=await store.journal(),observation=entries.flatMap(e=>e.observations)[0];
@@ -82,7 +85,7 @@ test('supervised collect never invokes remote Git and cancellation preserves cap
  const {f,cwd,plan}=await activatedFixture();fixtures.push(f);const {chmod}=await import('node:fs/promises');
  const root=join(f.root,'source'),bin=join(f.root,'bin'),marker=join(f.root,'remote-invocation');await mkdir(join(root,'sessions'),{recursive:true});await mkdir(bin);
  const {codexRollout}=await import('@agent-badge/testkit');await writeFile(join(root,'sessions','request.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',cwd));
- const activation=JSON.parse(await readFile(join(plan.repository.privateDir,'local.json'),'utf8'));activation.roots={codex:[root]};await writeFile(join(plan.repository.privateDir,'local.json'),JSON.stringify(activation));
+ const activation=JSON.parse(await readFile(join(plan.repository.privateDir,'local.json'),'utf8'));activation.roots={...activation.roots,codex:[root]};await writeFile(join(plan.repository.privateDir,'local.json'),JSON.stringify(activation));
  await writeFile(join(bin,'git'),`#!/bin/sh\nfor arg do\n case "$arg" in ls-remote|fetch|push) printf 'remote\\n' >> '${marker}' ;; esac\ndone\nexec /usr/bin/git "$@"\n`);await chmod(join(bin,'git'),0o755);
  const beforePath=process.env.PATH;process.env.PATH=bin+':'+beforePath;
  try{
@@ -113,3 +116,37 @@ test('include reports a concurrent later remote exclusion instead of silently re
   const include=(await store.controls()).find(c=>c.kind==='include')!;expect(include.supersedes).toEqual([core.recordHash(oldHead)]);
  }finally{spy.mockRestore();}
 },20000);
+
+async function transcript(cwd:string,args:string[]){const output:string[]=[];await buildProgram({cwd,write:line=>output.push(line)}).exitOverride().parseAsync(args,{from:'user'});return output.join('\n');}
+
+test('plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state',async()=>{
+ const {f,cwd,plan}=await activatedFixture();fixtures.push(f);
+ const file=join(f.root,'private-source.json');
+ await writeFile(file,JSON.stringify({kind:'agent-badge/normalized-source',schemaVersion:1,normalizationVersion:1,repositoryId:plan.declaration.repositoryId,provenance:{kind:'independent-request',producerId:'12345678-1234-4234-8234-123456789abc',sourceId:'22345678-1234-4234-8234-123456789abc',producerVersion:'synthetic',assertion:'original-independent-requests-no-native-agent-usage',identity:'preserved-across-copies-and-reexports'},requests:[{requestId:'private-original-id',meters:protocolObservationFixture().meters}]}));
+ await command(cwd,['import','--normalized-source',file,'--json']);
+ const store=await core.openStore(plan.repository),observation=(await store.journal())[0].observations[0],id=core.observationEvidenceHash(observation);
+ const explained=await command(cwd,['explain',id,'--json']),plain=await transcript(cwd,['explain',id]);
+ expect(plain).toContain(`Attribution: ${explained.attribution.status} (${explained.attribution.reason})`);
+ expect(plain).toContain(`Provider: import; representation: ${explained.representation}; quality: ${explained.quality}; lineage: ${explained.lineage}`);
+ expect(plain).toContain('Historical proof: no');
+ const meta={schemaVersion:2 as const,protocolVersion:1 as const,repositoryId:plan.declaration.repositoryId,normalizationVersion:1 as const,catalogVersion:core.defaultCatalog.version,catalogHash:core.catalogHash(core.defaultCatalog),policy:plan.declaration.policy};
+ const synced=await core.syncUsage({repository:plan.repository,store,binding:plan.activation.binding,collect:'none',initialize:{meta,catalog:core.defaultCatalog},signal:AbortSignal.timeout(15000),deadline:Date.now()+15000});expect(synced.status).toBe('synced');
+ const exported=await command(cwd,['contribute','--json']),contribution=await transcript(cwd,['contribute']);expect(contribution).toContain(exported.path);expect(contribution).toContain('Stage this contribution with your normal PR.');
+ const status=await command(cwd,['status','--json']),text=await transcript(cwd,['status']);
+ expect(text).toContain(`Last confirmed sync: ${synced.confirmedCommit}`);expect(text).toContain('Configuration: current');expect(text).toContain(`Provider import: ${status.providers.find((p:{provider:string})=>p.provider==='import').outcome}`);
+ expect(text).toContain('Coverage import: explicit-only; accounting fixture-certified; coverage request');
+ expect(text).toContain('independent-origin-not-automatically-verifiable, coverage-partial');
+ const config=JSON.parse(await readFile(join(cwd,'.agent-badge/config.json'),'utf8'));config.policy.badge.label='Unaccepted';await writeFile(join(cwd,'.agent-badge/config.json'),JSON.stringify(config));
+ expect(await transcript(cwd,['status'])).toContain('Configuration: drift');
+ expect([plain,contribution,text].join('')).not.toMatch(/private-original-id|private-source|\/private\/|sourceIdentity|nativeUnitId/);
+},15000);
+
+test('plaintext doctor setup and uninstall expose required failures owner repair items and independent deactivation',async()=>{
+ const {f,cwd,plan}=await activatedFixture();fixtures.push(f);const hook=join(plan.repository.hooksPath,'pre-push');await writeFile(hook,(await readFile(hook,'utf8'))+'\n# user edit\n');
+ const doctor=await transcript(cwd,['doctor']);expect(doctor).toContain('git-hooks: fail (required)');expect(doctor).toContain('Remote: not-requested');
+ const setup=await transcript(cwd,['setup','--dry-run']);expect(setup).toContain('Owned hook was modified; reconcile it before setup.');expect(process.exitCode).toBe(1);
+ const setupJson=await command(cwd,['setup','--dry-run','--json']);expect(setupJson.actionItems).toContain('Owned hook was modified; reconcile it before setup.');
+ const removed=await transcript(cwd,['uninstall']);expect(removed).toContain('Automation deactivated: yes');expect(removed).toContain('Unresolved: git-hook-action-required');expect(removed).toContain('Preserved: private-journal');expect(process.exitCode).toBe(1);
+ const json=await command(cwd,['uninstall','--json']);expect(json).toMatchObject({deactivated:true,unresolved:expect.arrayContaining(['git-hook-action-required'])});
+ expect([doctor,setup,removed].join('')).not.toContain(f.root);
+});
