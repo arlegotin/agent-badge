@@ -17,6 +17,7 @@ import type { LocalStore, JournalEntry } from "../storage/store.js";
 import { recordHash } from "../ledger/canonical-json.js";
 import { sanitizeObservation } from "../ledger/sanitize.js";
 import { codexAdapter } from "../providers/codex/adapter.js";
+import { opencodeAdapter } from "../providers/opencode/adapter.js";
 import { geminiAdapter } from "../providers/gemini/adapter.js";
 import { claudeAdapter } from "../providers/claude/adapter.js";
 import {
@@ -279,6 +280,39 @@ async function project(
           privatePolicy
         )
     );
+    const explicitReinclude = values.some((value) => {
+      if (!value.previous) return false;
+      const applies = (choice: PrivateAttributionPolicy["overrides"][number]) =>
+        choice.provider === value.observation.provider &&
+        choice.nativeUnitId === value.observation.nativeUnitId &&
+        choice.representation === value.observation.representation;
+      if (
+        privatePolicy.overrides.some(
+          (choice) => applies(choice) && choice.decision === "attribute"
+        )
+      )
+        return false;
+      // Destination approval must not manufacture shared-control intent. Compare
+      // authority edits only, while retaining deliberate exclude/mapping removal.
+      return relevantPolicyChanged(
+        value.observation,
+        {
+          ...value.previous.metadata,
+          policy: {
+            ...value.previous.metadata.policy,
+            overrides: value.previous.metadata.policy.overrides.filter(
+              (choice) => choice.decision !== "attribute"
+            ),
+          },
+        },
+        {
+          ...privatePolicy,
+          overrides: privatePolicy.overrides.filter(
+            (choice) => choice.decision !== "attribute"
+          ),
+        }
+      );
+    });
     const explicitExclusion = values.some(
       (value) =>
         value.decision.status === "excluded" &&
@@ -302,7 +336,12 @@ async function project(
         } catch (error) {
           if (!(error instanceof ProtocolError)) throw error;
         }
-      if (heads.some(([, control]) => control.kind === "exclude"))
+      // Ordinary native/import replay cannot undo shared controls. A deliberate
+      // relevant authority edit can still causally undo an earlier local exclusion.
+      if (
+        explicitReinclude &&
+        heads.some(([, control]) => control.kind === "exclude")
+      )
         add({
           schemaVersion: 2,
           normalizationVersion: 1,
@@ -503,6 +542,7 @@ export async function collectUsage(
           codex: codexAdapter,
           claude: claudeAdapter,
           gemini: geminiAdapter,
+          opencode: opencodeAdapter,
         },
         roots: options.roots ?? {},
         signal: options.signal,

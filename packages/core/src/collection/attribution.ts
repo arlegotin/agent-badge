@@ -60,7 +60,8 @@ export const privateAttributionPolicySchema = z
             provider: providerIdSchema,
             nativeUnitId: privateStringSchema,
             representation: z.enum(["request", "cumulative"]),
-            decision: z.enum(["include", "exclude"]),
+            // Destination attribution grants no authority to reverse shared controls.
+            decision: z.enum(["include", "exclude", "attribute"]),
           })
           .strict()
       )
@@ -179,7 +180,7 @@ export function attributeObservation(
   );
   if (override)
     return decide(
-      override.decision === "include" ? "included" : "excluded",
+      override.decision === "exclude" ? "excluded" : "included",
       "user-override"
     );
   if (

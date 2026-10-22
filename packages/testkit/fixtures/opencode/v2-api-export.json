@@ -1,0 +1,57 @@
+{
+  "data": {
+    "info": {
+      "id": "ses_synthetic",
+      "projectID": "project_synthetic",
+      "location": {
+        "directory": "/synthetic/repo"
+      },
+      "cost": 999999,
+      "tokens": {
+        "input": 60,
+        "output": 20,
+        "reasoning": 10,
+        "cache": {
+          "read": 40,
+          "write": 0
+        }
+      },
+      "time": {
+        "created": 1,
+        "updated": 2
+      }
+    },
+    "messages": [
+      {
+        "id": "msg_synthetic",
+        "type": "assistant",
+        "agent": "build",
+        "model": {
+          "id": "gpt-5.4-mini",
+          "providerID": "openai"
+        },
+        "time": {
+          "created": 1,
+          "completed": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "PRIVATE_PROMPT_CANARY"
+          }
+        ],
+        "tokens": {
+          "input": 60,
+          "output": 20,
+          "reasoning": 10,
+          "cache": {
+            "read": 40,
+            "write": 0
+          }
+        },
+        "cost": 999999,
+        "finish": "stop"
+      }
+    ]
+  }
+}

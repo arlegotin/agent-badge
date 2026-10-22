@@ -1,0 +1,72 @@
+{
+  "info": {
+    "id": "ses_synthetic",
+    "projectID": "project_synthetic",
+    "directory": "/synthetic/repo",
+    "version": "1.19.3",
+    "title": "synthetic",
+    "time": {
+      "created": 1,
+      "updated": 2
+    }
+  },
+  "messages": [
+    {
+      "info": {
+        "id": "msg_synthetic",
+        "sessionID": "ses_synthetic",
+        "parentID": "msg_user",
+        "role": "assistant",
+        "modelID": "gpt-5.4-mini",
+        "providerID": "openai",
+        "mode": "build",
+        "agent": "build",
+        "path": {
+          "cwd": "/synthetic/repo",
+          "root": "/synthetic/repo"
+        },
+        "time": {
+          "created": 1,
+          "completed": 2
+        },
+        "cost": 999999,
+        "tokens": {
+          "input": 60,
+          "output": 20,
+          "reasoning": 10,
+          "cache": {
+            "read": 40,
+            "write": 0
+          }
+        },
+        "finish": "stop"
+      },
+      "parts": [
+        {
+          "id": "prt_synthetic",
+          "sessionID": "ses_synthetic",
+          "messageID": "msg_synthetic",
+          "type": "step-finish",
+          "reason": "stop",
+          "cost": 999999,
+          "tokens": {
+            "input": 60,
+            "output": 20,
+            "reasoning": 10,
+            "cache": {
+              "read": 40,
+              "write": 0
+            }
+          }
+        },
+        {
+          "id": "prt_text",
+          "sessionID": "ses_synthetic",
+          "messageID": "msg_synthetic",
+          "type": "text",
+          "text": "PRIVATE_PROMPT_CANARY"
+        }
+      ]
+    }
+  ]
+}

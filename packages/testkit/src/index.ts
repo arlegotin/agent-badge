@@ -31,3 +31,4 @@ export { codexContext, codexRequest, codexRollout } from './codex-fixtures.js';
 export { claudeNativeResponse, certifiedClaudeImport } from './claude-fixtures.js';
 export { commitFixtureTree } from './git-fixtures.js';
 export { createGeminiFixtureHome, geminiSavedSession } from './gemini-fixtures.js';
+export { openCodeExport } from './opencode-fixtures.js';
