@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { checkpointSchema, diagnosticSchema, scanOutcomeSchema, sourceDescriptorSchema } from '../domain/capabilities.js';
 import { parsePublicRecord, publicRecordSchema } from '../domain/ledger.js';
-import { usageObservationSchema } from '../domain/usage.js';
+import { hasOnlyUnknownAmounts, usageObservationSchema } from '../domain/usage.js';
+import { CLAUDE_SOURCE_SCHEMA } from '../providers/claude/reader.js';
 import { atomicFile, assertDirectory, readPrivateFile, StoreError } from './atomic-file.js';
 
 const entrySchema = z.object({ schemaVersion: z.literal(1), sequence: z.number().safe().positive(),
@@ -17,6 +18,12 @@ export function validateEntry(value: unknown): JournalEntry {
   const parsed = entrySchema.safeParse(value);
   if (!parsed.success) throw new StoreError('invalid-durable-data');
   const entry = parsed.data; const { source, checkpoint } = entry;
+  // Validate the native source contract independently of optional private evidence
+  // and independently supplied public records, on both commit and durable replay.
+  if (source.provider === 'claude' && source.schema === CLAUDE_SOURCE_SCHEMA &&
+    (entry.observations.some(observation => !observation.meters.every(hasOnlyUnknownAmounts)) ||
+      entry.records.some(record => 'meters' in record && !record.meters.every(hasOnlyUnknownAmounts))))
+    throw new StoreError('invalid-durable-data');
   try { entry.records.forEach(parsePublicRecord); } catch { throw new StoreError('invalid-durable-data'); }
   if (checkpoint.provider !== source.provider || checkpoint.instanceKey !== source.instanceKey ||
     checkpoint.sourceIdentity !== source.sourceIdentity || checkpoint.sourceGeneration !== source.generation ||

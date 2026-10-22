@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { hostname } from 'node:os';
 import { afterEach, describe, expect, test } from 'vitest';
-import { protocolObservationFixture, runStorageFixtureProcess, createBareRemoteFixture, snapshotUserCheckout } from '@agent-badge/testkit';
+import { certifiedClaudeImport, claudeNativeResponse, protocolObservationFixture, runStorageFixtureProcess, createBareRemoteFixture, snapshotUserCheckout } from '@agent-badge/testkit';
 import type { Checkpoint, ScanBatch, SourceDescriptor } from '../domain/capabilities.js';
 import type { RepositoryContext } from '../git/context.js';
+import { CLAUDE_SOURCE_SCHEMA, parseClaudeTranscript } from '../providers/claude/reader.js';
 import { sanitizeObservation } from '../ledger/sanitize.js';
 import { recordHash } from '../ledger/canonical-json.js';
 import { openStore as openNativeStore } from './store.js';
@@ -39,6 +40,14 @@ function fixture(generation = 'generation-1', offset = 10) {
   const record = sanitizeObservation(observation, policy as never);
   return { source, batch, record };
 }
+function claudeFixture() {
+  const base=fixture();
+  const source:SourceDescriptor={...base.source,provider:'claude',schema:CLAUDE_SOURCE_SCHEMA};
+  const observations=parseClaudeTranscript(Buffer.from(JSON.stringify(claudeNativeResponse())+'\n'),source).observations;
+  const batch:ScanBatch={...base.batch,source,observations,outcome:'partial',nextCheckpoint:{...base.batch.nextCheckpoint,provider:'claude',sourceSchema:source.schema}};
+  const record=sanitizeObservation(observations[0],policy);
+  return {source,batch,record};
+}
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
 
 describe('durable repository store', () => {
@@ -55,6 +64,51 @@ describe('durable repository store', () => {
     await restarted.acknowledge([recordHash(record)]);
     expect(await (await openStore(ctx)).pending()).toEqual([]);
     expect((await restarted.journal()).flatMap(entry => entry.observations)).toHaveLength(2);
+  });
+
+  test('rejects separate public records promoted from untouched Claude private evidence',async()=>{
+    const ctx=await context();const store=await openStore(ctx);const {source,batch,record}=claudeFixture();
+    const promoted={...record,meters:batch.observations[0].privateEvidence!.meters};
+    const unchanged=structuredClone(batch);
+    await expect(store.commitBatch(source,batch,[promoted])).rejects.toThrow('invalid-batch');
+    expect(batch).toEqual(unchanged);expect(await store.pending()).toEqual([]);expect(await store.journal()).toEqual([]);
+    await store.commitBatch(source,batch,[record]);expect(await (await openStore(ctx)).pending()).toEqual([record]);
+  });
+
+  test('enforces the Claude identity-only source contract without privateEvidence or observations',async()=>{
+    const ctx=await context();const store=await openStore(ctx);const {source,batch,record}=claudeFixture();
+    const meters=batch.observations[0].privateEvidence!.meters;
+    const withoutEvidence=batch.observations.map(({privateEvidence:_,...observation})=>observation);
+    await expect(store.commitBatch(source,{...batch,observations:withoutEvidence},[{...record,meters}])).rejects.toThrow('invalid-batch');
+    await expect(store.commitBatch(source,{...batch,observations:[]},[{...record,meters}])).rejects.toThrow('invalid-batch');
+    await expect(store.commitBatch(source,{...batch,observations:withoutEvidence.map(observation=>({...observation,meters}))},[])).rejects.toThrow('invalid-batch');
+    const measuredZero={...record,meters:record.meters.map(meter=>({...meter,input:0}))};
+    await expect(store.commitBatch(source,{...batch,observations:withoutEvidence},[measuredZero])).rejects.toThrow('invalid-batch');
+    expect(await store.pending()).toEqual([]);expect(await store.journal()).toEqual([]);
+  });
+
+  test('rejects promoted native Claude records during durable journal recovery',async()=>{
+    const ctx=await context();const store=await openStore(ctx);const {source,batch,record}=claudeFixture();
+    await store.commitBatch(source,batch,[record]);const journalPath=join(ctx.privateDir,'journal','0000000000000001.json');
+    const entry=JSON.parse(await readFile(journalPath,'utf8'));
+    const promotedMeters=entry.observations[0].privateEvidence.meters;
+    entry.records[0].meters=promotedMeters;
+    delete entry.observations[0].privateEvidence;
+    await writeFile(journalPath,JSON.stringify(entry));
+    const recovered=await openStore(ctx);await expect(recovered.pending()).rejects.toThrow('invalid-durable-data');
+    await expect(recovered.journal()).rejects.toThrow('invalid-durable-data');
+    entry.records[0]=record;entry.observations[0].meters=promotedMeters;
+    await writeFile(journalPath,JSON.stringify(entry));await expect(recovered.pending()).rejects.toThrow('invalid-durable-data');
+  });
+
+  test('preserves explicitly certified numeric imports through durable commit and recovery',async()=>{
+    const ctx=await context();const store=await openStore(ctx);const base=fixture();const observation=certifiedClaudeImport();
+    const source:SourceDescriptor={...base.source,provider:'import',schema:observation.source.sourceSchema};
+    observation.source={...observation.source,instanceKey:source.instanceKey,sourceIdentity:source.sourceIdentity,generation:source.generation};
+    const record=sanitizeObservation(observation,policy);
+    const batch:ScanBatch={...base.batch,source,observations:[observation],nextCheckpoint:{...base.batch.nextCheckpoint,provider:'import',sourceSchema:source.schema}};
+    await store.commitBatch(source,batch,[record]);const recovered=await openStore(ctx);
+    expect(await recovered.pending()).toEqual([record]);expect((await recovered.journal())[0].records[0]).toHaveProperty('meters.0.total',100);
   });
 
   test('unknown confirmation hashes cannot pre-acknowledge records collected later', async () => {
