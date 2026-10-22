@@ -30,6 +30,14 @@
     "./operations/budget": {
       "types": "./dist/operations/budget.d.ts",
       "import": "./dist/operations/budget.js"
+    },
+    "./operations/supervisor": {
+      "types": "./dist/operations/supervisor.d.ts",
+      "import": "./dist/operations/supervisor.js"
+    },
+    "./operations/worker": {
+      "types": "./dist/operations/worker-sync.d.ts",
+      "import": "./dist/operations/worker-sync.js"
     }
   },
   "files": [

@@ -17,6 +17,7 @@ async function install(directory: string) {
   await writeFile(join(root, 'dist/cli/main.js'), 'process.stdout.write("fixture-runtime\\n")');
   await mkdir(join(root, 'dist/integration'), { recursive: true });
   await writeFile(join(root, 'dist/integration/runtime.js'), 'export const fixture = true;');
+  await writeFile(join(root, 'dist/integration/runtime-worker.js'), 'export const fixture = true;');
 }
 const options = { nodeVersion: '24.0.0', runtimeVersion: version, resolvePin: async () => pin(), installRuntime: install, runInitialOperation: async () => ({ status: 'queued' as const, acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true, exitCode: 1 }) };
 
@@ -45,6 +46,24 @@ test('repeated setup reuses exact pin and approved runtime and preserves private
   await applySetup(second);
   expect((await loadActivation(first.repository.privateDir))?.privatePolicy.mappings).toHaveLength(1);
   expect((await readFile(join(cwd, 'README.md'), 'utf8')).match(/<!-- agent-badge:start -->/g)).toHaveLength(1);
+});
+
+test('setup installs repository-local hooks and provider wakeups without claiming native trust', async () => {
+  const f = await fixture(), cwd = f.clones[0];
+  const plan = await planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/repo' });
+  const result = await applySetup(plan);
+  expect(result.hooks.status).toBe('installed'); expect(result.agentHooks.status).toBe('configured-needs-trust');
+  expect(JSON.parse(await readFile(join(cwd, '.codex/hooks.json'), 'utf8')).hooks.SubagentStop).toHaveLength(1);
+  const instructions = await readFile(join(cwd, '.agent-badge/README.md'), 'utf8');
+  expect(instructions).toMatch(/native.*trust/); expect(instructions).toMatch(/Windows/);
+});
+
+test('an installed runtime missing its supervised activation worker is never approved', async () => {
+  const f = await fixture();
+  const { rm } = await import('node:fs/promises');
+  const plan = await planSetup({ ...options, cwd: f.clones[0], declaredUrl: 'https://github.com/example/repo', installRuntime: async dir => { await install(dir); await rm(join(dir, 'node_modules/@legotin/agent-badge/dist/integration/runtime-worker.js'), { force: true }); } });
+  await expect(applySetup(plan)).rejects.toThrow(/installation unavailable/);
+  expect(await loadActivation(plan.repository.privateDir)).toBeNull();
 });
 
 test('offline or interrupted installation leaves no approved activation and resumes explicitly', async () => {

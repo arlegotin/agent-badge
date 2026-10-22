@@ -87,10 +87,12 @@ export function buildProgram(): Command {
       .action(async (options: { target?: string; repositoryUrl?: string; runtimeVersion?: string; dryRun?: boolean }) => {
         const { planSetup, applySetup } = await import("../integration/setup.js");
         const plan = await planSetup({ target: options.target, declaredUrl: options.repositoryUrl, runtimeVersion: options.runtimeVersion ?? resolveCliVersion() });
-        console.log(JSON.stringify({ changes: plan.changes, privateChanges: plan.privateChanges }, null, 2));
+        console.log(JSON.stringify({ changes: plan.changes, privateChanges: plan.privateChanges, hookActionItems: [...plan.hooks.actionItems, ...plan.hooks.notices, ...plan.agentHooks.actionItems, ...plan.agentHooks.notices] }, null, 2));
         if (!options.dryRun) {
           const result = await applySetup(plan);
           console.log(`agent-badge: runtime ${result.runtimeVersion}; usage ${result.status}; coverage may be partial.`);
+          console.log(`agent-badge: Git hooks ${result.hooks.status}; provider hooks ${result.agentHooks.status}.`);
+          for (const item of [...result.hooks.actionItems, ...result.agentHooks.actionItems]) console.error(`agent-badge: ${item}`);
           process.exitCode = result.operation.exitCode;
         }
       });

@@ -71,7 +71,7 @@ async function repairFixture() {
   await writeFile(join(packageRoot, 'dist/integration/runtime.js'), 'old partial runtime');
   await writeFile(join(runtime, 'retained-partial'), 'old partial bytes');
   const bin = join(f.root, 'bin'); await mkdir(bin);
-  await writeFile(join(bin, 'npm'), '#!/bin/sh\nmkdir -p node_modules/@legotin/agent-badge/dist/cli node_modules/@legotin/agent-badge/dist/integration\nprintf \'%s\' \'{"name":"@legotin/agent-badge","version":"1.1.20"}\' > node_modules/@legotin/agent-badge/package.json\nprintf \'%s\' \'require("node:fs").writeFileSync(process.env.REPAIR_MARKER,"repaired");\' > node_modules/@legotin/agent-badge/dist/cli/main.js\nprintf \'%s\' \'exports.valid=true;\' > node_modules/@legotin/agent-badge/dist/integration/runtime.js\n', { mode: 0o700 });
+  await writeFile(join(bin, 'npm'), '#!/bin/sh\nmkdir -p node_modules/@legotin/agent-badge/dist/cli node_modules/@legotin/agent-badge/dist/integration\nprintf \'%s\' \'{"name":"@legotin/agent-badge","version":"1.1.20"}\' > node_modules/@legotin/agent-badge/package.json\nprintf \'%s\' \'require("node:fs").writeFileSync(process.env.REPAIR_MARKER,"repaired");\' > node_modules/@legotin/agent-badge/dist/cli/main.js\nprintf \'%s\' \'exports.valid=true;\' > node_modules/@legotin/agent-badge/dist/integration/runtime.js\nprintf \'%s\' \'exports.valid=true;\' > node_modules/@legotin/agent-badge/dist/integration/runtime-worker.js\n', { mode: 0o700 });
   return { ...fixture, privateDir, runtime, bin };
 }
 

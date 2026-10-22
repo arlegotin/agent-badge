@@ -10,6 +10,10 @@ import { assertSupportedNode, assertExactVersion, parseDeclaration, validatePin,
 import type { Declaration, RuntimePin, Activation } from './manifest.js';
 import { launcherSource, bootstrapSource } from './templates.js';
 import { loadActivation } from './runtime.js';
+import { planHooks, applyHookPlan } from './hooks.js';
+import type { HookPlan, HookInstallResult } from './hooks.js';
+import { planAgentHooks, applyAgentHookPlan } from './agent-hooks.js';
+import type { AgentHookPlan, AgentHookResult } from './agent-hooks.js';
 const execute = promisify(execFile);
 type InitialResult = { status: string; exitCode: number; acknowledgedCount: number; queuedCount: number | null; pendingReconciliation: boolean };
 export interface SetupOptions {
@@ -27,8 +31,9 @@ export interface SetupPlan {
   /** Approved private effects are separate from tracked file changes. */
   privateChanges: string[];
   options: SetupOptions;
+  hooks: HookPlan; agentHooks: AgentHookPlan;
 }
-export interface SetupResult { status: string; runtimeVersion: string; installed: boolean; changedFiles: string[]; operation: InitialResult }
+export interface SetupResult { status: string; runtimeVersion: string; installed: boolean; changedFiles: string[]; operation: InitialResult; hooks: HookInstallResult; agentHooks: AgentHookResult }
 async function contents(path: string): Promise<string | null> {
   try { const stat = await lstat(path); if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 8 * 1024 * 1024) throw new Error('Unsafe setup file.'); return await readFile(path, 'utf8'); }
   catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
@@ -120,6 +125,8 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const roots = options.roots ?? local?.roots ?? {};
   if (Object.keys(roots).some(k => !['codex', 'claude'].includes(k)) || Object.values(roots).some(paths => !Array.isArray(paths) || paths.some(p => typeof p !== 'string' || !isAbsolute(p)))) throw new Error('Invalid private provider roots.');
   const activation: Activation = { schemaVersion: 1, repositoryId, runtimeVersion, lockHash, initializeAllowed: local?.initializeAllowed ?? (intent?.initializeAllowed ?? (!previous && !local)), binding, capturePolicy: policy, privatePolicy: core.parsePrivateAttributionPolicy(privatePolicy), roots, worktreeInventory };
+  const hooks = await planHooks(repository, { privateDir: repository.privateDir, nodePath: process.execPath });
+  const agentHooks = await planAgentHooks(repository.worktreeRoot, repository);
   if (Buffer.byteLength(json(activation)) > 200 * 1024) throw new Error('Private activation exceeds supervised input limit.');
   const block = '<!-- agent-badge:start -->\nAI coding usage: [data and coverage](' + declaration.declaredUrl.replace(/\.git$/, '') + '/tree/agent-badge/data).\n<!-- agent-badge:end -->';
   const readmeBefore = await contents(join(repository.worktreeRoot, 'README.md'));
@@ -132,6 +139,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
     '.agent-badge/README.md': '# Agent Badge\n\nRequires Node 24 or 26 and npm. Each clone needs explicit activation:\n\n```sh\nnode .agent-badge/run.cjs setup\n```\n\nOnly local agent usage can be collected. CI cannot discover histories on another machine. Initial state may be queued or unavailable; see [data and coverage](' + declaration.declaredUrl.replace(/\.git$/, '') + '/tree/agent-badge/data). No measurement is a claim of complete coverage or a bill.\n',
     'README.md': readme };
   const ownershipPath = '.agent-badge/ownership.json';
+  owned['.agent-badge/README.md'] += '\nSetup installs a private pre-push delegate and shared Codex/Claude Stop and SubagentStop wakeups. Existing user hook failures still block pushes. Legacy Agent Badge/Gist markers, shared hooksPath and self-dispatching hook managers require explicit local cleanup/integration; inspect setup action items.\n\nProvider hooks require Node 24 or 26 on the provider PATH plus explicit native project trust and hook review. Review .codex/hooks.json and .claude/settings.json in the provider, then restart it. Setup never grants native trust. On the inspected Codex source generation, linked worktrees load hooks from the primary checkout; review/setup that checkout explicitly when required. Worktree-local Codex config alone does not establish native hooks. Git hooks retain the approved Node executable for minimal GUI PATH. Windows automatic hooks are unsupported; use manual synchronization.\n\nAutomatic work has a two-second total budget and retains available local usage before transport; incomplete capture remains pending for manual reconciliation. Provider payloads only route bounded local reads; they are never usage receipts. Claude historical JSONL numeric accounting is unsupported/unknown. Fresh clones require explicit setup. An already activated common directory can reuse its approved private runtime from older branches without a tracked pin; a changed pin requires explicit setup.\n';
   const priorOwnership = await contents(join(repository.worktreeRoot, ownershipPath));
   const ownership = priorOwnership ? JSON.parse(priorOwnership) : null;
   for (const [path, after] of Object.entries(owned)) {
@@ -144,13 +152,14 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   owned[ownershipPath] = json({ schemaVersion: 1, files: Object.fromEntries(Object.entries(owned).filter(([p]) => p !== 'README.md').map(([p, value]) => [p, digest(value)])), readmeBlock: 'agent-badge' });
   const changes: OwnedChange[] = [];
   for (const [path, after] of Object.entries(owned)) { const before = await contents(join(repository.worktreeRoot, path)); if (before !== after) changes.push({ path, before, after }); }
+  changes.push(...agentHooks.changes);
   return { repository, declaration, pin, lockHash, activation, changes, initialize: activation.initializeAllowed,
-    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json'], options };
+    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json', 'hooks.json', 'git-hook.cjs', repository.hooksPath + '/pre-push'], options, hooks, agentHooks };
 }
 async function verifyRuntime(path: string, version: string) {
   const root = join(path, 'node_modules/@legotin/agent-badge');
   const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-  if (pkg.version !== version || !await contents(join(root, 'dist/cli/main.js')) || !await contents(join(root, 'dist/integration/runtime.js'))) throw new Error('Installed runtime version mismatch.');
+  if (pkg.version !== version || !await contents(join(root, 'dist/cli/main.js')) || !await contents(join(root, 'dist/integration/runtime.js')) || !await contents(join(root, 'dist/integration/runtime-worker.js'))) throw new Error('Installed runtime version mismatch.');
 }
 export async function applySetup(plan: SetupPlan): Promise<SetupResult> {
   assertSupportedNode(plan.options.nodeVersion);
@@ -176,11 +185,14 @@ export async function applySetup(plan: SetupPlan): Promise<SetupResult> {
     if (intent && intent.repositoryId !== plan.declaration.repositoryId) throw new Error('Private setup intent identity mismatch.');
     await atomic(join(privateDir, 'setup-intent.json'), json({ schemaVersion: 1, repositoryId: plan.declaration.repositoryId, initializeAllowed: true }));
   }
-  for (const change of plan.changes) await atomic(join(plan.repository.worktreeRoot, change.path), change.after, 0o644);
+  const agentFiles = new Set(plan.agentHooks.changes.map(c => c.path));
+  for (const change of plan.changes) if (!agentFiles.has(change.path)) await atomic(join(plan.repository.worktreeRoot, change.path), change.after, 0o644);
+  const agentHooks = await applyAgentHookPlan(plan.agentHooks);
   // Approval precedes switching executable entrypoints. A crash can leave an old approved
   // bootstrap, which fails its own runtime/pin check; it cannot start unapproved new code.
   await atomic(join(privateDir, 'local.json'), json(plan.activation));
   await atomic(join(privateDir, 'bootstrap.cjs'), bootstrapSource.replace('APPROVED_RUNTIME_HASH', plan.lockHash));
+  const hooks = await applyHookPlan(plan.hooks);
   await rm(join(privateDir, 'setup-intent.json'), { force: true });
   const request: RepositoryOperationRequest = { cwd: plan.repository.worktreeRoot, privateDir, repositoryId: plan.declaration.repositoryId, binding: plan.activation.binding, collect: 'full', capturePolicy: plan.activation.capturePolicy,
     collection: { roots: plan.activation.roots, privatePolicy: plan.activation.privatePolicy } };
@@ -190,7 +202,7 @@ export async function applySetup(plan: SetupPlan): Promise<SetupResult> {
   if (plan.options.runInitialOperation) operation = await plan.options.runInitialOperation(request);
   else { const { createOperationBudget } = await import('@legotin/agent-badge-core/operations/budget'); const { runRepositoryOperation } = await import('@legotin/agent-badge-core/operations/runner');
     const budget = createOperationBudget('manual', plan.options.timeoutMs ?? 120000); try { operation = await runRepositoryOperation({ request, budget }); } finally { budget.dispose(); } }
-  return { status: operation.status, runtimeVersion: plan.declaration.runtimeVersion, installed, changedFiles: plan.changes.map(c => c.path), operation };
+  return { status: operation.status, runtimeVersion: plan.declaration.runtimeVersion, installed, changedFiles: plan.changes.map(c => c.path), operation, hooks, agentHooks };
 }
 
 /** Task10 configure callback: acceptance is authoritative; checkout failure reports drift. */

@@ -1,0 +1,117 @@
+import { afterEach, expect, test } from 'vitest';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { planAgentHooks, applyAgentHookPlan, removeAgentHooks } from './agent-hooks.js';
+import { bootstrapSource } from './templates.js';
+const roots: string[] = [];
+// Retained Node22 Vitest needs its old addon; automatic child processes still
+// run the supported explicit toolchain, including shell/provider PATH lookup.
+if (process.env.AGENT_BADGE_TEST_NODE) process.env.PATH = dirname(process.env.AGENT_BADGE_TEST_NODE) + ':' + process.env.PATH;
+afterEach(async () => { await Promise.all(roots.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
+async function fixture() {
+  const cwd = await mkdtemp('/private/tmp/agent-badge-provider hooks-'); roots.push(cwd);
+  spawnSync('git', ['init', '-q'], { cwd });
+  const privateDir = join(cwd, '.git/agent-badge'); await mkdir(privateDir, { recursive: true });
+  const hash = 'a'.repeat(64), runtime = join(privateDir, 'runtime', hash, 'node_modules/@legotin/agent-badge/dist/integration');
+  await mkdir(runtime, { recursive: true });
+  const output = join(cwd, 'routing.json');
+  await writeFile(join(runtime, 'runtime.js'), `exports.runApprovedOperation=async o=>{require('node:fs').writeFileSync(${JSON.stringify(output)},JSON.stringify(o));return {exitCode:0};};`);
+  await writeFile(join(privateDir, 'bootstrap.cjs'), bootstrapSource.replace('APPROVED_RUNTIME_HASH', hash));
+  return { cwd, output, privateDir };
+}
+async function command(cwd: string, provider: 'codex' | 'claude') {
+  const file = provider === 'codex' ? '.codex/hooks.json' : '.claude/settings.json';
+  return JSON.parse(await readFile(join(cwd, file), 'utf8')).hooks.Stop.at(-1).hooks[0].command as string;
+}
+test('JSON adapter preserves unrelated handlers, TOML and trust settings; duplicate setup and removal preserve later additions', async () => {
+  const f = await fixture(); await mkdir(join(f.cwd, '.codex')); await mkdir(join(f.cwd, '.claude'));
+  const toml = 'model = "synthetic"\n[projects."/synthetic"]\ntrust_level = "untrusted"\n';
+  await writeFile(join(f.cwd, '.codex/config.toml'), toml);
+  await writeFile(join(f.cwd, '.codex/hooks.json'), JSON.stringify({ other: 'keep', hooks: { Stop: [{ matcher: 'keep', hooks: [{ type: 'command', command: 'echo keep' }] }] } }));
+  await writeFile(join(f.cwd, '.claude/settings.json'), JSON.stringify({ permissions: { deny: ['Read(secret)'] }, hooks: { SessionStart: [{ hooks: [{ type: 'command', command: 'echo start' }] }] } }));
+  const result = await applyAgentHookPlan(await planAgentHooks(f.cwd)); expect(result.status).toBe('configured-needs-trust');
+  const config = JSON.parse(await readFile(join(f.cwd, '.codex/hooks.json'), 'utf8')); expect(config.other).toBe('keep'); expect(config.hooks.Stop[0].hooks[0].command).toBe('echo keep');
+  expect(await readFile(join(f.cwd, '.codex/config.toml'), 'utf8')).toBe(toml);
+  expect((await planAgentHooks(f.cwd)).changes).toEqual([]);
+  const claude = JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')); expect(claude.permissions.deny).toEqual(['Read(secret)']);
+  claude.extra = 'added later'; await writeFile(join(f.cwd, '.claude/settings.json'), JSON.stringify(claude));
+  await removeAgentHooks(f.cwd);
+  const removed = JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')); expect(removed.extra).toBe('added later'); expect(removed.hooks.SessionStart).toHaveLength(1); expect(removed.hooks.Stop).toBeUndefined();
+  expect((await removeAgentHooks(f.cwd)).status).toBe('unchanged');
+});
+test.each(['codex', 'claude'] as const)('%s native event adapter forwards only targeted routing and discards assistant text', async provider => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd));
+  const cmd = await command(f.cwd, provider); expect(cmd).not.toContain(f.cwd);
+  const run = (event: object) => spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, input: JSON.stringify(event), encoding: 'utf8', timeout: 3500 });
+  const input = { hook_event_name: 'Stop', transcript_path: '/synthetic/parent.jsonl', cwd: f.cwd, session_id: 'private-session', last_assistant_message: 'NEVER-PERSIST-THIS' };
+  expect(run(input).status).toBe(0);
+  let routing = await readFile(f.output, 'utf8'); expect(routing).not.toContain('NEVER-PERSIST'); expect(routing).not.toContain('private-session');
+  expect(JSON.parse(routing).target).toEqual({ provider, sourceIdentity: '/synthetic/parent.jsonl' });
+  expect(run({ ...input, hook_event_name: 'SubagentStop', agent_transcript_path: '/synthetic/child.jsonl', agent_id: 'private-agent' }).status).toBe(0);
+  routing = await readFile(f.output, 'utf8'); expect(JSON.parse(routing).target.sourceIdentity).toBe('/synthetic/child.jsonl');
+  expect(JSON.parse(routing).timeoutMs).toBeLessThan(2000);
+});
+test('malformed, oversized and wrong-event payloads never invoke the runtime or expose raw input', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); const cmd = await command(f.cwd, 'claude');
+  for (const input of ['private malformed', 'x'.repeat(70000), JSON.stringify({ hook_event_name: 'Other', transcript_path: '/secret' }), JSON.stringify({ hook_event_name: 'SubagentStop', transcript_path: '/parent' })]) {
+    const r = spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, input, encoding: 'utf8', timeout: 3500 }); expect(r.status).toBe(0); expect(r.stderr).not.toContain('private malformed');
+    await expect(readFile(f.output)).rejects.toThrow();
+  }
+});
+test('open provider stdin has a bounded deadline and missing Node reports an actionable soft failure', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); const cmd = await command(f.cwd, 'claude');
+  const nativeSeconds = JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')).hooks.Stop.at(-1).hooks[0].timeout;
+  const start = performance.now(); const child = spawn('/bin/sh', ['-c', cmd], { cwd: f.cwd, stdio: ['pipe', 'ignore', 'pipe'] });
+  let nativeKilled = false;
+  await new Promise<void>((resolve, reject) => {
+    const nativeTimer = setTimeout(() => { nativeKilled = true; child.kill('SIGKILL'); }, nativeSeconds * 1000);
+    const timer = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('stdin deadline exceeded')); }, 2500);
+    child.once('exit', () => { clearTimeout(timer); clearTimeout(nativeTimer); resolve(); });
+  });
+  expect(nativeKilled).toBe(false);
+  expect(performance.now() - start).toBeLessThan(2300);
+  const missing = spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, input: '{}', env: { PATH: '/missing' }, encoding: 'utf8' });
+  expect(missing.status).toBe(0); expect(missing.stderr).toMatch(/Node.*PATH/);
+});
+test('unsupported inline TOML and invalid JSON schemas require local action without modifying user settings', async () => {
+  const f = await fixture(); await mkdir(join(f.cwd, '.codex')); await mkdir(join(f.cwd, '.claude'));
+  await writeFile(join(f.cwd, '.codex/config.toml'), '[hooks]\nStop = "unsupported"\n');
+  await writeFile(join(f.cwd, '.claude/settings.json'), '{"hooks":{"Stop":"unsupported"}}\n');
+  const p = await planAgentHooks(f.cwd); expect(p.actionItems.join()).toMatch(/inline TOML/); expect(p.actionItems.join()).toMatch(/Claude.*schema/);
+  expect(p.changes.some(c => c.path === '.codex/hooks.json' || c.path === '.claude/settings.json')).toBe(false);
+});
+
+test('locator Git lookup includes its own helper cleanup and deducted elapsed time', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); const cmd = await command(f.cwd, 'codex');
+  const bin = join(f.cwd, 'bin'); await mkdir(bin);
+  const realGit = spawnSync('/bin/sh', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+  await writeFile(join(bin, 'git'), `#!${process.execPath}\nsetTimeout(()=>{const r=require('node:child_process').spawnSync(${JSON.stringify(realGit)},process.argv.slice(2),{stdio:'inherit'});process.exit(r.status);},250);`, { mode: 0o755 });
+  const r = spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH }, input: JSON.stringify({ hook_event_name: 'Stop', transcript_path: '/synthetic/a.jsonl' }), encoding: 'utf8', timeout: 3500 });
+  expect(r.status, r.stderr).toBe(0); expect(JSON.parse(await readFile(f.output, 'utf8')).timeoutMs).toBeLessThan(1750);
+});
+
+test('Codex linked-worktree hook discovery requires primary-checkout integration and never edits that checkout', async () => {
+  const f = await fixture();
+  spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], { cwd: f.cwd });
+  const linked = join(f.cwd, 'linked'); expect(spawnSync('git', ['worktree', 'add', '-qb', 'linked', linked], { cwd: f.cwd }).status).toBe(0);
+  const missing = await planAgentHooks(linked); expect(missing.actionItems.join()).toMatch(/primary.checkout.*setup/i);
+  await applyAgentHookPlan(missing); await expect(readFile(join(f.cwd, '.codex/hooks.json'))).rejects.toThrow();
+  await applyAgentHookPlan(await planAgentHooks(f.cwd));
+  const available = await planAgentHooks(linked); expect(available.actionItems.join()).not.toMatch(/primary.checkout.*setup/i); expect(available.notices.join()).toMatch(/primary.checkout/);
+  await expect(readFile(join(f.cwd, '.codex/config.toml'))).rejects.toThrow();
+});
+
+test('locator timeout reaps a hung Git command and its helper without starting runtime', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); const cmd = await command(f.cwd, 'codex');
+  const bin = join(f.cwd, 'hung-bin'), pid = join(f.cwd, 'helper-pid'); await mkdir(bin);
+  const helper = join(f.cwd, 'helper.cjs'); await writeFile(helper, `require('node:fs').writeFileSync(${JSON.stringify(pid)},String(process.pid));setInterval(()=>{},1000);`);
+  await writeFile(join(bin, 'git'), `#!${process.execPath}\nrequire('node:child_process').spawn(process.execPath,[${JSON.stringify(helper)}],{stdio:'ignore'});setInterval(()=>{},1000);`, { mode: 0o755 });
+  const start = performance.now();
+  const r = spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH }, input: '{}', encoding: 'utf8', timeout: 3500 });
+  const helperPid = Number(await readFile(pid, 'utf8'));
+  try {
+    expect(r.status).toBe(0); expect(performance.now() - start).toBeLessThan(2300); expect(r.stderr).toMatch(/lookup unavailable/);
+    expect(() => process.kill(helperPid, 0)).toThrow(); await expect(readFile(f.output)).rejects.toThrow();
+  } finally { try { process.kill(helperPid, 'SIGKILL'); } catch { /* Reaped by locator. */ } }
+});

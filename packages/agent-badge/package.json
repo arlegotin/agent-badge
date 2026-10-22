@@ -46,6 +46,14 @@
     "./integration/setup": {
       "types": "./dist/integration/setup.d.ts",
       "import": "./dist/integration/setup.js"
+    },
+    "./integration/hooks": {
+      "types": "./dist/integration/hooks.d.ts",
+      "import": "./dist/integration/hooks.js"
+    },
+    "./integration/agent-hooks": {
+      "types": "./dist/integration/agent-hooks.d.ts",
+      "import": "./dist/integration/agent-hooks.js"
     }
   },
   "files": [

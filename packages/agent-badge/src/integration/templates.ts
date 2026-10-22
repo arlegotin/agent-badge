@@ -70,7 +70,7 @@ function main() {
     const packageRoot = path.join(directory, 'node_modules/@legotin/agent-badge');
     try {
       for (const p of [directory, path.join(directory, 'node_modules'), path.join(directory, 'node_modules/@legotin'), packageRoot, path.join(packageRoot, 'dist'), path.join(packageRoot, 'dist/cli'), path.join(packageRoot, 'dist/integration')]) safeDirectory(p);
-      for (const file of ['package.json', 'dist/cli/main.js', 'dist/integration/runtime.js']) { const s = fs.lstatSync(path.join(packageRoot, file)); if (!s.isFile() || s.isSymbolicLink() || (process.getuid && s.uid !== process.getuid())) throw new Error('Unsafe runtime file.'); }
+      for (const file of ['package.json', 'dist/cli/main.js', 'dist/integration/runtime.js', 'dist/integration/runtime-worker.js']) { const s = fs.lstatSync(path.join(packageRoot, file)); if (!s.isFile() || s.isSymbolicLink() || (process.getuid && s.uid !== process.getuid())) throw new Error('Unsafe runtime file.'); }
       return JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version === version;
     } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
   }
@@ -102,17 +102,49 @@ try { main(); } catch { console.error('agent-badge: setup unavailable; explicit 
 
 export const bootstrapSource = String.raw`#!/usr/bin/env node
 'use strict';
+const started = performance.now();
 if (!/^(24|26)\./.test(process.versions.node)) { console.error('agent-badge: Node 24 or 26 required.'); process.exitCode = 0; }
+else if (process.platform === 'win32') { console.error('agent-badge: Windows automatic hooks unsupported; use manual sync.'); }
 else {
-  const fs = require('node:fs');
   const path = require('node:path');
   const { pathToFileURL } = require('node:url');
   const privateDir = __dirname;
-  const started = performance.now();
-  // Only private approved code is loaded; the runtime starts its budget before trust checks.
-  try {
+  async function main() {
+    const args=process.argv.slice(2); let provider, duration=2000;
+    if(args[0]==='--hook' && ['codex','claude'].includes(args[1])) { provider=args[1]; args.splice(0,2); }
+    else if(args[0]==='--git-hook') args.shift();
+    if(args.length) {
+      if(![2,4].includes(args.length) || args[0]!=='--remaining-ms' || !/^\d+$/.test(args[1]) || +args[1]<1 || +args[1]>2000) return; duration=+args[1];
+      if(args.length===4) {
+        if(args[2]!=='--deadline-ms' || !/^\d{1,16}$/.test(args[3]) || !Number.isSafeInteger(+args[3]))return;
+        const remaining=+args[3]-Number(process.hrtime.bigint()/1000000n);
+        if(remaining>duration)return;
+        duration=Math.min(duration,remaining);
+      }
+      if(duration<1)return;
+    }
+    let target;
+    if(provider) {
+      const payload=await new Promise(resolve=>{
+        let length=0, chunks=[], done=false;
+        const finish=value=>{ if(done)return; done=true;clearTimeout(timer);process.stdin.destroy();resolve(value); };
+        const timer=setTimeout(()=>finish(null),Math.max(1,duration-(performance.now()-started)));
+        process.stdin.on('data',chunk=>{ length+=chunk.length; if(length>65536)finish(null);else chunks.push(chunk); });
+        process.stdin.once('error',()=>finish(null));
+        process.stdin.once('end',()=>{try {finish(JSON.parse(Buffer.concat(chunks).toString('utf8')));}catch{finish(null);} });
+      });
+      if(!payload || !['Stop','SubagentStop'].includes(payload.hook_event_name)) return;
+      const source=payload.hook_event_name==='SubagentStop' ? payload.agent_transcript_path : payload.transcript_path;
+      if(typeof source!=='string' || source.length>8192 || !path.isAbsolute(source) || /[\x00-\x1f]/.test(source)) return;
+      target={provider,sourceIdentity:source};
+      // No text/session/agent identifiers leave this bounded parser.
+    }
+    const remaining=Math.floor(duration-(performance.now()-started)); if(remaining<1)return;
     const runtime = path.join(privateDir, 'runtime', 'APPROVED_RUNTIME_HASH', 'node_modules/@legotin/agent-badge/dist/integration/runtime.js');
-    import(pathToFileURL(runtime).href).then(m => m.runApprovedOperation({ cwd: process.cwd(), privateDir, timeoutMs: Math.max(1, 2000 - (performance.now() - started)), onDiagnostic: line => console.error(line) })).then(r => { process.exitCode = r.exitCode; }).catch(() => { console.error('agent-badge: local work queued.'); });
-  } catch { console.error('agent-badge: local activation required.'); }
+    const m=await import(pathToFileURL(runtime).href);
+    const timeoutMs=Math.floor(duration-(performance.now()-started)); if(timeoutMs<1)return;
+    const r=await m.runApprovedOperation({ cwd: process.cwd(), privateDir, target, timeoutMs, onDiagnostic: line => console.error(line) }); process.exitCode=r.exitCode;
+  }
+  main().catch(()=>{console.error('agent-badge: local work queued; run setup or manual sync.');});
 }
 `;

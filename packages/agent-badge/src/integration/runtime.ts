@@ -1,10 +1,10 @@
 import { readFile, lstat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createOperationBudget } from '@legotin/agent-badge-core/operations/budget';
-import { runRepositoryOperation } from '@legotin/agent-badge-core/operations/runner';
+import { superviseOperation } from '@legotin/agent-badge-core/operations/supervisor';
 import type { RepositoryOperationRequest } from '@legotin/agent-badge-core/operations/runner';
 import { assertSupportedNode, validatePin, parseDeclaration, gitEnvironment } from './manifest.js';
 import type { Activation } from './manifest.js';
@@ -42,7 +42,7 @@ export async function checkActivation(options: { cwd: string; privateDir?: strin
   }
   const packageRoot = join(privateDir, 'runtime', activation.lockHash, 'node_modules/@legotin/agent-badge');
   const packageBytes = await read(join(packageRoot, 'package.json'));
-  if (!packageBytes || JSON.parse(packageBytes).version !== activation.runtimeVersion || !await read(join(packageRoot, 'dist/cli/main.js')) || !await read(join(packageRoot, 'dist/integration/runtime.js'))) return { status: 'missing-runtime' };
+  if (!packageBytes || JSON.parse(packageBytes).version !== activation.runtimeVersion || !await read(join(packageRoot, 'dist/cli/main.js')) || !await read(join(packageRoot, 'dist/integration/runtime.js')) || !await read(join(packageRoot, 'dist/integration/runtime-worker.js'))) return { status: 'missing-runtime' };
   return { status: 'approved', activation, privateDir, worktreeRoot };
 }
 /** Task12 calls this approved private entry; the two-second timer precedes activation reads. */
@@ -50,16 +50,17 @@ export async function runApprovedOperation(options: { cwd: string; privateDir?: 
   assertSupportedNode();
   const budget = createOperationBudget(options.mode ?? 'automatic', options.timeoutMs);
   try {
-    const checked = await checkActivation({ ...options, signal: budget.signal, timeoutMs: budget.remainingMs() });
-    if (checked.status !== 'approved') { options.onDiagnostic?.('agent-badge: local activation required.'); return { status: 'queued' as const, exitCode: budget.mode === 'automatic' ? 0 : 1, acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true }; }
-    const a = checked.activation;
-    const expectedRuntime = join(checked.privateDir, 'runtime', a.lockHash, 'node_modules/@legotin/agent-badge');
-    if (resolve(fileURLToPath(new URL('../../', import.meta.url))) !== expectedRuntime) {
+    // Derive lease cleanup authority from this installed private module, never input.
+    const installed = resolve(fileURLToPath(new URL('../../', import.meta.url)));
+    const privateDir = resolve(installed, '../../../../..');
+    const hash = basename(dirname(dirname(dirname(installed))));
+    if (!/^[a-f0-9]{64}$/.test(hash) || installed !== join(privateDir, 'runtime', hash, 'node_modules/@legotin/agent-badge') || (options.privateDir && resolve(options.privateDir) !== privateDir)) {
       options.onDiagnostic?.('agent-badge: runtime activation required.');
       return { status: 'queued' as const, exitCode: budget.mode === 'automatic' ? 0 : 1, acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true };
     }
-    return await runRepositoryOperation({ budget, onDiagnostic: options.onDiagnostic, request: { cwd: options.cwd, privateDir: checked.privateDir, repositoryId: a.repositoryId, binding: a.binding,
-      collect: 'incremental', capturePolicy: a.capturePolicy, collection: { roots: a.roots, privatePolicy: a.privatePolicy, target: options.target } } });
+    return await superviseOperation({ budget, onDiagnostic: options.onDiagnostic,
+      worker: new URL('./runtime-worker.js', import.meta.url), leaseDirectory: join(privateDir, 'locks'),
+      input: { cwd: options.cwd, privateDir, mode: budget.mode, target: options.target } });
   } catch { options.onDiagnostic?.('agent-badge: local work queued.'); return { status: 'queued' as const, exitCode: budget.mode === 'automatic' ? 0 : 1, acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true }; }
   finally { budget.dispose(); }
 }
