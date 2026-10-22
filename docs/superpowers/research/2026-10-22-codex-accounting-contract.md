@@ -136,3 +136,30 @@ never synthesizes prefix usage from metadata. Physical pagination alone does
 not establish a logical fork or parent thread: `lineage.kind` follows actual
 parent/fork fields, while inherited physical history remains isolated. Prefix
 rollout IDs stay private and are not substituted for native parent thread IDs.
+
+## Request attribution: initial Git metadata is not a turn remote
+
+The optional Git URL is `session_meta.payload.git.repository_url`, beside flattened
+session metadata ([SessionMetaLine](https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/protocol/src/protocol.rs#L3368),
+[GitInfo](https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/protocol/src/protocol.rs#L3559)).
+The recorder captures it from the initial cwd when writing session metadata
+([capture](https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/rollout/src/recorder.rs#L2022))
+and then clears the pending metadata
+([recorder state](https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/rollout/src/recorder.rs#L1919)).
+The Git collector reads the initial origin and sanitizes credentials
+([collector](https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/git-utils/src/info.rs#L64)).
+
+Neither turn context nor a request usage record supplies a refreshed Git URL.
+Database extraction records initial Git metadata while later settings can change cwd
+([extraction](https://github.com/openai/codex/blob/86e17e98c7f901277aeeb4649cf1b01462b082f2/codex-rs/state/src/extract.rs#L112)).
+Therefore a database cwd and origin URL are not a certified contemporaneous pair.
+Native observations keep `execution.remoteUrl` null. Collection resolves each
+absolute per-request cwd to its nearest Git repository, checks strong contradictions,
+and uses explicit private mappings or verified enrollment for removed worktrees.
+Matching an old path alone does not prove historical repository continuity.
+
+Targeted source hints filter discovered sources and never grant file access. The
+collector rejects inventory candidates outside the provider instance root as
+unsupported coverage. An external rollout root must be explicitly enrolled; an
+SQLite inventory path alone cannot enroll an arbitrary file. No provider transcript
+is read by CI or transmitted by this collection path.

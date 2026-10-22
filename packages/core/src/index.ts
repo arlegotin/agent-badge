@@ -29,3 +29,7 @@ export * from "./git/context.js";
 export * from "./git/remote-binding.js";
 export * from "./git/process.js";
 export * from "./storage/store.js";
+export * from "./collection/collect.js";
+export * from "./collection/attribution.js";
+export * from "./collection/source-resolver.js";
+export type { AttributionMetadata, AttributionDecision } from "./collection/metadata.js";
