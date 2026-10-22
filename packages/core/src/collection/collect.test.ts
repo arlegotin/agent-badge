@@ -65,6 +65,37 @@ describe("durable local collection", () => {
   afterEach(async () => {
     await fixture.cleanup();
   });
+  it("bounded automatic collection counts a new small session without an existing checkpoint", async () => {
+    const result = await collectUsage({ ...options, automaticLimits: { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 } });
+    expect(result.pendingReconciliation).toBe(false);
+    expect(await options.store.pending()).toHaveLength(1);
+    expect((await options.store.journal()).length).toBeGreaterThan(0);
+  });
+  it("huge cold history is durably pending and repeated automatic attempts do not restart parsing", async () => {
+    await appendFile(path, JSON.stringify({ type: 'synthetic-padding', value: 'x'.repeat(2 * 1024 * 1024) }) + '\n');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await collectUsage({ ...options, automaticLimits: { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 } });
+      expect(result.pendingReconciliation).toBe(true);
+      expect(await options.store.pending()).toEqual([]);
+      expect(await options.store.journal()).toEqual([]);
+      expect(await options.store.reconciliationPending()).toBe(true);
+    }
+  });
+  it("persisted rotation reaches more than sixteen sources and a newly discovered session", async () => {
+    for (let index = 0; index < 18; index++) await writeFile(join(home, 'sessions', `session-${String(index).padStart(2, '0')}.jsonl`),
+      codexRollout({ single: true }).replaceAll('original', `session-${index}`).replaceAll('/synthetic/repo', options.repository.worktreeRoot));
+    const automatic = { ...options, automaticLimits: { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 } };
+    await collectUsage(automatic);
+    expect(await options.store.pending()).toHaveLength(16);
+    await writeFile(join(home, 'sessions', 'z-new.jsonl'), codexRollout({ single: true }).replaceAll('original', 'session-new').replaceAll('/synthetic/repo', options.repository.worktreeRoot));
+    const reopened = await openStore(options.repository, { processNamespace: async () => 'synthetic' });
+    await collectUsage({ ...automatic, store: reopened });
+    expect(await reopened.pending()).toHaveLength(20);
+    expect(await reopened.reconciliationPending()).toBe(true);
+    // Targeted work cannot claim broad pending reconciliation has completed.
+    await collectUsage({ ...options, store: reopened, target: { provider: 'codex', sourceIdentity: path } });
+    expect(await reopened.reconciliationPending()).toBe(true);
+  });
   it("excludes unchanged cached 100-token usage to zero and re-includes causally after acknowledgment", async () => {
     const lines = (await readFile(path, "utf8"))
       .trim()

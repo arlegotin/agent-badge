@@ -1,4 +1,12 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { spawn } from "node:child_process";
+
+const supervisedGroup = new AsyncLocalStorage<boolean>();
+/** Only an owned detached worker host may establish this context. Git and helpers
+ * inherit its group so the responsive parent can kill them during CPU stalls. */
+export function inSupervisedProcessGroup<T>(task: () => Promise<T>): Promise<T> {
+  return supervisedGroup.run(true, task);
+}
 
 /** Automatic supervisors must queue before spawning on unsupported platforms.
  * Windows manual invocations use taskkill /T, which cannot guarantee cleanup of
@@ -54,8 +62,9 @@ export async function runGit(args: readonly string[], options: GitRunOptions): P
   Object.assign(env, options.env, { GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", GIT_OPTIONAL_LOCKS: "0" });
   if (options.indexFile) env.GIT_INDEX_FILE = options.indexFile;
 
+  const supervised = supervisedGroup.getStore() === true;
   return new Promise(resolve => {
-    const child = spawn("git", [...args], { cwd: options.cwd, env, shell: false, detached: process.platform !== "win32", stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn("git", [...args], { cwd: options.cwd, env, shell: false, detached: process.platform !== "win32" && !supervised, stdio: ["pipe", "pipe", "pipe"] });
     let status: GitRunResult["status"] | undefined;
     let bytes = 0;
     const stdout: Buffer[] = [];
@@ -65,6 +74,9 @@ export async function runGit(args: readonly string[], options: GitRunOptions): P
       if (process.platform === "win32") {
         const killer = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
         killer.on("error", () => child.kill("SIGKILL"));
+      } else if (supervised) {
+        // The parent owns the whole group, including helpers whose Git parent exits.
+        child.kill("SIGKILL");
       } else {
         try { process.kill(-child.pid, "SIGKILL"); } catch { /* Already reaped. */ }
       }

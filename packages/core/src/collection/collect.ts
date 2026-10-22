@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { ProtocolError } from "../domain/capabilities.js";
 import type {
@@ -41,6 +42,8 @@ import type {
 } from "./source-resolver.js";
 
 export interface CollectOptions {
+  /** Automatic callers bound source work and use byte-bounded adapters under parent supervision. */
+  automaticLimits?: { maxSources: number; maxSourceBytes: number };
   repository: RepositoryContext;
   store: LocalStore;
   policy: SharedPolicy;
@@ -52,6 +55,7 @@ export interface CollectOptions {
   target?: SourceTarget;
 }
 export interface CollectionResult {
+  pendingReconciliation: boolean;
   queuedHashes: string[];
   sourceOutcomes: SourceOutcome[];
   diagnostics: Diagnostic[];
@@ -403,6 +407,7 @@ export async function collectUsage(
     attributionPolicyHash: attributionPolicyHash(policy, privatePolicy),
   };
   const result: CollectionResult = {
+    pendingReconciliation: false,
     queuedHashes: [],
     sourceOutcomes: [],
     diagnostics: [],
@@ -502,11 +507,32 @@ export async function collectUsage(
         target: options.target,
       });
       result.sourceOutcomes.push(...discovery.outcomes);
-      for (const { source, adapter } of discovery.sources) {
+      const limits = options.automaticLimits;
+      if (limits && (!Number.isInteger(limits.maxSources) || limits.maxSources < 1 || limits.maxSources > 10000 ||
+          !Number.isSafeInteger(limits.maxSourceBytes) || limits.maxSourceBytes < 1 || limits.maxSourceBytes > 64 * 1024 * 1024)) throw new Error("invalid-record");
+      const sources = [...discovery.sources];
+      if (limits) sources.sort((a, b) => identity(a.source).localeCompare(identity(b.source)));
+      const offset = limits && !options.target?.sourceIdentity && sources.length ? (await options.store.automaticSourceOffset()) % sources.length : 0;
+      if (limits && sources.length > limits.maxSources) {
+        result.pendingReconciliation = true;
+        await options.store.recordReconciliationPending(true);
+      }
+      const count = limits ? Math.min(limits.maxSources, sources.length) : sources.length;
+      for (let index = 0; index < count; index++) {
+        const position = (offset + index) % sources.length;
+        const { source, adapter } = sources[position];
         if (options.signal.aborted) break;
         try {
           await options.store.withLock(options.signal, async () => {
             const candidate = await options.store.checkpointCandidate(source);
+            if (limits && !options.target?.sourceIdentity) await options.store.recordAutomaticSourceOffset((position + 1) % sources.length);
+            if (limits && ((await stat(source.root)).size > limits.maxSourceBytes || (candidate &&
+                (candidate.readerVersion !== source.readerVersion || candidate.repositoryId !== scope.repositoryId ||
+                 candidate.normalizationVersion !== scope.normalizationVersion || candidate.attributionPolicyHash !== scope.attributionPolicyHash)))) {
+              result.pendingReconciliation = true;
+              await options.store.recordReconciliationPending(true);
+              return;
+            }
             for await (const batch of adapter.scan(
               source,
               candidate,
@@ -514,6 +540,10 @@ export async function collectUsage(
               scope
             )) {
               options.signal.throwIfAborted();
+              if (limits && batch.nextCheckpoint.cursor.offset < batch.nextCheckpoint.cursor.size) {
+                result.pendingReconciliation = true;
+                await options.store.recordReconciliationPending(true);
+              }
               if (
                 batch.nextCheckpoint.repositoryId !== scope.repositoryId ||
                 batch.nextCheckpoint.normalizationVersion !==

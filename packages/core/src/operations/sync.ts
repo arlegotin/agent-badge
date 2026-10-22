@@ -13,6 +13,7 @@ import type { RemoteBinding } from "../git/remote-binding.js";
 import { recordHash } from "../ledger/canonical-json.js";
 import { reduceLedger } from "../ledger/reduce.js";
 import { renderArtifacts } from "../render/summary.js";
+import { contentHash } from "../pricing/catalog.js";
 import type { PriceCatalog } from "../pricing/catalog.js";
 import type { LocalStore, TransportState } from "../storage/store.js";
 
@@ -42,6 +43,17 @@ export interface SyncResult {
 }
 /** Immutable union; accepted data-branch metadata is authoritative on every retry. */
 export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
+  return synchronizeTransaction(options);
+}
+/** Internal shared transaction seam. Explicit metadata changes are revision-CAS, never bootstrap input. */
+export interface MetadataChange {
+  /** Private uncertainty evidence; once a send is attempted, later failures cannot prove non-acceptance. */
+  attempted?: boolean;
+  expectedMetadataRevision: string;
+  meta: LedgerMeta;
+  catalog: PriceCatalog;
+}
+export async function synchronizeTransaction(options: SyncOptions, change?: MetadataChange): Promise<SyncResult> {
   const result: SyncResult = {
     status: "queued",
     confirmedCommit: null,
@@ -133,6 +145,8 @@ export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
           return accepted;
         }
         let accepted = await accept();
+        if (change && (!accepted || contentHash(accepted.meta) !== change.expectedMetadataRevision))
+          return { ...result, status: "conflict" };
         let meta: LedgerMeta, catalog: PriceCatalog;
         if (accepted) {
           meta = accepted.meta;
@@ -146,7 +160,7 @@ export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
           // Validate all bootstrap metadata/catalog coherence before discovery or outbound records.
           renderArtifacts(reduceLedger([], meta), meta, catalog);
         }
-        if (options.collect !== "none")
+        if (!change && options.collect !== "none")
           result.collection = await collectUsage({
             ...options.collection,
             repository: options.repository,
@@ -161,6 +175,7 @@ export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
           snapshot: AcceptedLedger,
           wrote: boolean
         ): Promise<SyncResult | null> => {
+          if (change && contentHash(snapshot.meta) !== contentHash(change.meta)) return null;
           const included = new Set(snapshot.ledger.recordHashes);
           if (!hashes.every((hash) => included.has(hash))) return null;
           signal.throwIfAborted();
@@ -179,11 +194,14 @@ export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
         }
         for (let attempt = 0; attempt <= retries; attempt++) {
           signal.throwIfAborted();
+          if (change && (!accepted || contentHash(accepted.meta) !== change.expectedMetadataRevision))
+            return { ...result, status: "conflict" };
           // No stale tracked/local configuration can replace accepted remote metadata on a race.
           if (accepted) {
             meta = accepted.meta;
             catalog = accepted.catalog;
           }
+          if (change) { meta = change.meta; catalog = change.catalog; }
           const ledger = reduceLedger(
             [...(accepted?.records ?? []), ...pending],
             meta
@@ -198,9 +216,16 @@ export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
             prior = { ...identity, commit: null };
             await options.store.recordAcceptedLedger(prior);
           }
+          if (change) change.attempted = true;
           await transport!.push(commit, accepted?.commit ?? null);
           accepted = await accept();
           if (!accepted) throw new TransportError("unavailable");
+          // Metadata equality alone cannot prove this configure won: confirm its attempted candidate's ancestry.
+          if (change && !(await transport!.containsCommit(accepted.commit, commit))) {
+            if (contentHash(accepted.meta) !== change.expectedMetadataRevision)
+              return { ...result, status: "conflict" };
+            continue;
+          }
           const done = await confirmed(accepted, true);
           if (done) return done;
         }

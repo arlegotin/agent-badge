@@ -32,3 +32,35 @@ test('absent namespace evidence preserves stale ownership with uncertainty', asy
     await expect(acquireLock(root, AbortSignal.timeout(30), async () => null)).rejects.toMatchObject({ code: 'store-busy', uncertainty: true });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('caller cancellation interrupts a hanging namespace probe without waiting for fallback', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'agent-badge-probe-cancel-')));
+  const start = performance.now();
+  try {
+    await expect(acquireLock(root, AbortSignal.timeout(15), () => new Promise(() => {}))).rejects.toMatchObject({ code: 'store-busy' });
+    expect(performance.now() - start).toBeLessThan(120);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('atomic lease publication preserves an existing symlink and never writes its target', async () => {
+  const { symlink, readFile, readdir } = await import('node:fs/promises');
+  const root = await realpath(await mkdtemp(join('/private/tmp', 'agent-badge-lock-symlink-')));
+  const target = join(root, 'target');
+  await writeFile(target, 'unchanged'); await symlink(target, join(root, 'operation.lock'));
+  try {
+    await expect(acquireLock(root, AbortSignal.timeout(40), async () => null)).rejects.toMatchObject({ code: 'unsafe-store-path' });
+    expect(await readFile(target, 'utf8')).toBe('unchanged');
+    expect((await readdir(root)).filter(name => name.startsWith('lease-'))).toEqual([]);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('unsupported hardlink publication fails closed and removes its staging file', async () => {
+  const fs = (await import('node:fs/promises')).default;
+  const { vi } = await import('vitest');
+  const root = await realpath(await mkdtemp(join('/private/tmp', 'agent-badge-lock-link-failure-')));
+  const spy = vi.spyOn(fs, 'link').mockRejectedValue(Object.assign(new Error('synthetic'), { code: 'ENOTSUP' }));
+  try {
+    await expect(acquireLock(root, AbortSignal.timeout(100), async () => null)).rejects.toMatchObject({ code: 'store-io' });
+    expect(await fs.readdir(root)).toEqual([]);
+  } finally { spy.mockRestore(); await rm(root, { recursive: true, force: true }); }
+});

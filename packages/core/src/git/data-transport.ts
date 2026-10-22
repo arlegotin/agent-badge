@@ -305,6 +305,13 @@ export class DataTransport {
       if (!artifacts.has(path)) throw new TransportError("history-rewritten");
     }
   }
+  async containsCommit(descendant: string, ancestor: string): Promise<boolean> {
+    if (!oidPattern.test(descendant) || !oidPattern.test(ancestor)) throw new TransportError("unavailable");
+    const result = await this.git(["merge-base", "--is-ancestor", ancestor, descendant]);
+    if (result.status === "ok") return true;
+    if (result.status === "error" && result.exitCode === 1) return false;
+    throw new TransportError("unavailable");
+  }
   async anchor(commit: string): Promise<void> {
     if (!oidPattern.test(commit)) throw new TransportError("unavailable");
     await this.require([

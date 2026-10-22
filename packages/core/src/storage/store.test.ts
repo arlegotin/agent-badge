@@ -523,3 +523,50 @@ describe('reentrant accepted ledger transactions', () => {
     expect(await (await openStore(ctx)).transportState()).toEqual(state);
   });
 });
+
+describe('pending configuration repair evidence', () => {
+  test('strict private state persists across reopen and reentrant transitions remain ordered', async () => {
+    const ctx = await context(), store = await openStore(ctx);
+    const first = { schemaVersion: 1 as const, metadataRevision: 'a'.repeat(64) };
+    const second = { schemaVersion: 1 as const, metadataRevision: 'b'.repeat(64) };
+    expect(await store.pendingConfiguration()).toBeNull();
+    await store.withLock(AbortSignal.timeout(2000), () => Promise.all([
+      store.recordPendingConfiguration(first), store.recordPendingConfiguration(second),
+    ]));
+    expect(await (await openStore(ctx)).pendingConfiguration()).toEqual(second);
+    await expect(store.recordPendingConfiguration({ ...first, localPath: '/synthetic/private' } as typeof first)).rejects.toThrow('invalid-batch');
+    expect(await store.pendingConfiguration()).toEqual(second);
+    await store.recordPendingConfiguration(null);
+    expect(await (await openStore(ctx)).pendingConfiguration()).toBeNull();
+  });
+  test('future or corrupt pending evidence fails closed without losing durable observations', async () => {
+    const ctx = await context(), store = await openStore(ctx), batch = fixture();
+    await store.commitBatch(batch.source, batch.batch, [batch.record]);
+    const path = join(ctx.privateDir, 'pending-configuration.json');
+    for (const bytes of ['{', JSON.stringify({ schemaVersion: 999, metadataRevision: 'a'.repeat(64) })]) {
+      await writeFile(path, bytes);
+      await expect(store.pendingConfiguration()).rejects.toThrow('invalid-durable-data');
+      expect(await store.pending()).toEqual([batch.record]);
+    }
+  });
+});
+
+test('durable reconciliation signal survives reopen and only explicit complete work clears it', async () => {
+  const ctx = await context(), store = await openStore(ctx);
+  expect(await store.reconciliationPending()).toBe(false);
+  await store.recordReconciliationPending(true);
+  expect(await (await openStore(ctx)).reconciliationPending()).toBe(true);
+  await store.recordReconciliationPending(false);
+  expect(await (await openStore(ctx)).reconciliationPending()).toBe(false);
+  await writeFile(join(ctx.privateDir, 'reconciliation.json'), JSON.stringify({ schemaVersion: 999, pending: false }));
+  await expect(store.reconciliationPending()).rejects.toThrow('invalid-durable-data');
+});
+
+test('automatic cursor covers the combined provider inventory beyond one providers ten-thousand sources', async () => {
+  const ctx = await context(), store = await openStore(ctx);
+  await store.withLock(AbortSignal.timeout(2000), () => Promise.all([
+    store.recordAutomaticSourceOffset(10001), store.recordReconciliationPending(true),
+  ]));
+  const reopened = await openStore(ctx);
+  expect(await reopened.automaticSourceOffset()).toBe(10001); expect(await reopened.reconciliationPending()).toBe(true);
+});

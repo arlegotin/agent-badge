@@ -186,6 +186,8 @@ test("normal sync cannot seed an absent ref; deletion after accepted state survi
   });
   expect(first.status).toBe("synced");
   await f.git(f.remote, ["update-ref", "-d", "refs/heads/agent-badge/data"]);
+  const queued = await client(f, f.clones[0], "after-deletion");
+  const beforeJournal = await queued.store.journal();
   const store = await openStore(c.repository);
   expect(
     (
@@ -196,6 +198,8 @@ test("normal sync cannot seed an absent ref; deletion after accepted state survi
       })
     ).status
   ).toBe("conflict");
+  expect(await store.pending()).toHaveLength(1);
+  expect(await store.journal()).toEqual(beforeJournal);
   expect(
     await f.git(f.remote, ["for-each-ref", "refs/heads/agent-badge/data"])
   ).toBe("");
@@ -776,4 +780,19 @@ test("a valid descendant cannot erase previously acknowledged immutable records"
   expect(result.status).toBe("conflict");
   expect(result.acknowledgedHashes).toEqual([]);
   expect(result.confirmedCommit).toBeNull();
+});
+
+test.each(['corrupt', 'future'] as const)('%s remote metadata preserves queued observations and accepted history, including explicit reinitialize', async kind => {
+  const f = await fixture(), a = await client(f);
+  const first = await syncUsage({ ...a, initialize: { meta, catalog: defaultCatalog } });
+  const pending = await client(f, f.clones[0], 'pending');
+  const beforeState = await pending.store.transportState(), beforeJournal = await pending.store.journal();
+  const bad = await commitFixtureTree(f, f.remote, [{ path: 'meta.json', content: kind === 'corrupt' ? '{broken' : JSON.stringify({ ...meta, schemaVersion: 999 }) }], first.confirmedCommit!);
+  await f.git(f.remote, ['update-ref', 'refs/heads/agent-badge/data', bad]);
+  const result = await syncUsage({ ...pending, initialize: { meta, catalog: defaultCatalog } });
+  expect(result.status).toBe('unsupported'); expect(result.acknowledgedHashes).toEqual([]);
+  expect(await pending.store.pending()).toHaveLength(1);
+  expect(await pending.store.journal()).toEqual(beforeJournal);
+  expect(await pending.store.transportState()).toEqual(beforeState);
+  expect((await f.git(f.remote, ['rev-parse', 'refs/heads/agent-badge/data'])).trim()).toBe(bad);
 });

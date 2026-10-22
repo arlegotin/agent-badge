@@ -26,7 +26,18 @@ const transportStateSchema = z.object({ schemaVersion: z.literal(1), repositoryI
   commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/).nullable() }).strict();
 /** Private monotonic presence/accepted snapshot evidence; never a public artifact. */
 export type TransportState = z.infer<typeof transportStateSchema>;
+const pendingConfigurationSchema = z.object({ schemaVersion: z.literal(1), metadataRevision: digestSchema }).strict();
+/** Uncertain declaration repair evidence; compare actual declaration against current accepted metadata. */
+export type PendingConfiguration = z.infer<typeof pendingConfigurationSchema>;
+const reconciliationSchema = z.object({ schemaVersion: z.literal(1), pending: z.boolean(), automaticSourceOffset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) }).strict();
 export interface LocalStore {
+  reconciliationPending(): Promise<boolean>;
+  automaticSourceOffset(): Promise<number>;
+  recordAutomaticSourceOffset(offset: number): Promise<void>;
+  /** Only successful explicit full reconciliation may clear known skipped work. */
+  recordReconciliationPending(pending: boolean): Promise<void>;
+  pendingConfiguration(): Promise<PendingConfiguration | null>;
+  recordPendingConfiguration(state: PendingConfiguration | null): Promise<void>;
   transportState(): Promise<TransportState | null>;
   /** null marks a seen ref before validation; it never clears an accepted commit or changes identity. */
   recordAcceptedLedger(state: TransportState): Promise<void>;
@@ -43,7 +54,7 @@ export interface LocalStore {
   journal(): Promise<JournalEntry[]>;
   invalidateCache(): Promise<void>;
 }
-export interface StoreOptions { readonly processNamespace?: ProcessNamespaceProbe }
+export interface StoreOptions { readonly processNamespace?: ProcessNamespaceProbe; readonly supervisedLeaseToken?: string }
 export async function openStore(ctx: RepositoryContext, options: StoreOptions = {}): Promise<LocalStore> {
   try {
     const common = await fs.realpath(ctx.commonDir);
@@ -63,7 +74,7 @@ class Store implements LocalStore {
     if (signal.aborted) throw new StoreError('store-busy');
     if (this.held.getStore()?.active) return task();
     try { await assertDirectory(this.root); } catch (error) { throw ioError(error); }
-    const release = await acquireLock(join(this.root, 'locks'), signal, this.options.processNamespace);
+    const release = await acquireLock(join(this.root, 'locks'), signal, this.options.processNamespace, this.options.supervisedLeaseToken);
     const ownership = { active: true, tail: Promise.resolve() };
     try { return await this.held.run(ownership, task); }
     catch (error) { throw ioError(error); }
@@ -83,6 +94,40 @@ class Store implements LocalStore {
       try { await assertDirectory(this.root); return await task(); }
       finally { next(); }
     });
+  }
+  private async readReconciliation() {
+    let value: unknown;
+    try { value = JSON.parse(await readPrivateFile(join(this.root, 'reconciliation.json'), 4096)); }
+    catch (error) { if (hasCode(error, 'ENOENT')) return { schemaVersion: 1 as const, pending: false, automaticSourceOffset: 0 }; throw new StoreError('invalid-durable-data'); }
+    const parsed = reconciliationSchema.safeParse(value);
+    if (!parsed.success) throw new StoreError('invalid-durable-data');
+    return parsed.data;
+  }
+  async reconciliationPending(): Promise<boolean> { return this.operation(async () => (await this.readReconciliation()).pending); }
+  async automaticSourceOffset(): Promise<number> { return this.operation(async () => (await this.readReconciliation()).automaticSourceOffset); }
+  async recordReconciliationPending(pending: boolean): Promise<void> {
+    if (typeof pending !== 'boolean') throw new StoreError('invalid-batch');
+    await this.operation(async () => atomicFile(join(this.root, 'reconciliation.json'), { ...await this.readReconciliation(), pending }));
+  }
+  async recordAutomaticSourceOffset(offset: number): Promise<void> {
+    if (!Number.isSafeInteger(offset) || offset < 0) throw new StoreError('invalid-batch');
+    await this.operation(async () => atomicFile(join(this.root, 'reconciliation.json'), { ...await this.readReconciliation(), automaticSourceOffset: offset }));
+  }
+  async pendingConfiguration(): Promise<PendingConfiguration | null> {
+    return this.operation(async () => {
+      let value: unknown;
+      try { value = JSON.parse(await readPrivateFile(join(this.root, 'pending-configuration.json'), 4096)); }
+      catch (error) { if (hasCode(error, 'ENOENT')) return null; throw new StoreError('invalid-durable-data'); }
+      if (value === null) return null;
+      const parsed = pendingConfigurationSchema.safeParse(value);
+      if (!parsed.success) throw new StoreError('invalid-durable-data');
+      return parsed.data;
+    });
+  }
+  async recordPendingConfiguration(value: PendingConfiguration | null): Promise<void> {
+    const parsed = value === null ? null : pendingConfigurationSchema.safeParse(value);
+    if (parsed && !parsed.success) throw new StoreError('invalid-batch');
+    await this.operation(() => atomicFile(join(this.root, 'pending-configuration.json'), parsed?.success ? parsed.data : null));
   }
   private async readTransportState(): Promise<TransportState | null> {
     let data: unknown;
