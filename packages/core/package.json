@@ -45,7 +45,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "resources/workflows"
   ],
   "publishConfig": {
     "access": "public"

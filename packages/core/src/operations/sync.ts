@@ -1,5 +1,5 @@
 import { ProtocolError } from "../domain/capabilities.js";
-import type { LedgerMeta } from "../domain/ledger.js";
+import type { LedgerMeta, PublicRecord } from "../domain/ledger.js";
 import { parseLedgerMeta } from "../domain/ledger.js";
 import { collectUsage } from "../collection/collect.js";
 import type {
@@ -53,7 +53,7 @@ export interface MetadataChange {
   meta: LedgerMeta;
   catalog: PriceCatalog;
 }
-export async function synchronizeTransaction(options: SyncOptions, change?: MetadataChange): Promise<SyncResult> {
+export async function synchronizeTransaction(options: SyncOptions, change?: MetadataChange, importedRecords: readonly PublicRecord[] = []): Promise<SyncResult> {
   const result: SyncResult = {
     status: "queued",
     confirmedCommit: null,
@@ -174,7 +174,9 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
             signal,
           });
         signal.throwIfAborted();
-        const pending = await options.store.pending();
+        const localPending = await options.store.pending();
+        const localHashes = localPending.map(recordHash).sort();
+        const pending = [...localPending, ...importedRecords];
         const hashes = pending.map(recordHash).sort();
         const confirmed = async (
           snapshot: AcceptedLedger,
@@ -184,13 +186,13 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
           const included = new Set(snapshot.ledger.recordHashes);
           if (!hashes.every((hash) => included.has(hash))) return null;
           signal.throwIfAborted();
-          await options.store.acknowledge(hashes);
+          await options.store.acknowledge(localHashes);
           return {
             ...result,
             status: wrote ? "synced" : "unchanged",
             confirmedCommit: snapshot.commit,
             accepted: snapshot,
-            acknowledgedHashes: hashes,
+            acknowledgedHashes: localHashes,
           };
         };
         if (accepted) {

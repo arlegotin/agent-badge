@@ -41,3 +41,6 @@ export * from './operations/budget.js';
 export * from './operations/runner.js';
 
 export { loadCapturePolicy } from './operations/capture-policy.js';
+
+export * from "./operations/contribute.js";
+export * from "./operations/contribution-workflow.js";

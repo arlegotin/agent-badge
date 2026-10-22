@@ -17,7 +17,7 @@ import type { AgentHookPlan, AgentHookResult } from './agent-hooks.js';
 const execute = promisify(execFile);
 type InitialResult = { status: string; exitCode: number; acknowledgedCount: number; queuedCount: number | null; pendingReconciliation: boolean };
 export interface SetupOptions {
-  cwd?: string; nodeVersion?: string; runtimeVersion?: string; declaredUrl?: string; target?: string;
+  cwd?: string; newRepository?: boolean; nodeVersion?: string; runtimeVersion?: string; declaredUrl?: string; target?: string;
   privatePolicy?: unknown; roots?: Activation['roots']; timeoutMs?: number;
   /** Controlled package resolution/install ports, also used by offline distributors. */
   resolvePin?(version: string): Promise<RuntimePin>;
@@ -93,13 +93,19 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const previous = existing ? parseDeclaration(JSON.parse(existing)) : null;
   const intent = await loadSetupIntent(repository.privateDir);
   const local = await loadActivation(repository.privateDir);
+  if (options.newRepository) {
+    // A private directory can contain accepted/journaled usage even without local.json.
+    const privateExists = await lstat(repository.privateDir).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+    if (privateExists) throw new Error('Standalone identity requires a fresh clone without Badge private state; use another clone.');
+    if (!options.declaredUrl) throw new Error('Standalone setup requires an explicit repository URL.');
+  }
   const runtimeVersion = options.runtimeVersion ?? previous?.runtimeVersion ?? JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')).version;
   assertExactVersion(runtimeVersion);
   let declaredUrl = options.declaredUrl ?? previous?.declaredUrl;
   if (!declaredUrl) { const remote = await core.runGit(['remote', 'get-url', 'origin'], { cwd: repository.worktreeRoot }); if (remote.status !== 'ok') throw new Error('Specify a public repository URL.'); const canonical = core.canonicalRemoteUrl(remote.stdout.trim(), repository.worktreeRoot); declaredUrl = canonical?.startsWith('github.com/') ? `https://${canonical}` : remote.stdout.trim(); }
-  const repositoryId = previous?.repositoryId ?? local?.repositoryId ?? intent?.repositoryId ?? randomUUID();
+  const repositoryId = options.newRepository ? randomUUID() : previous?.repositoryId ?? local?.repositoryId ?? intent?.repositoryId ?? randomUUID();
   if (intent && intent.repositoryId !== repositoryId) throw new Error('Private setup intent identity mismatch.');
-  let policy = core.parseSharedPolicy(previous?.policy ?? local?.capturePolicy ?? { schemaVersion: 1, repositoryId, normalizationVersion: 1, discovery: 'auto', disabledProviders: [], badge: { label: 'AI usage', metric: 'tokens' } });
+  let policy = core.parseSharedPolicy((options.newRepository ? undefined : previous?.policy ?? local?.capturePolicy) ?? { schemaVersion: 1, repositoryId, normalizationVersion: 1, discovery: 'auto', disabledProviders: [], badge: { label: 'AI usage', metric: 'tokens' } });
   const acceptedBytes = await contents(join(repository.privateDir, 'transport.json'));
   if (acceptedBytes) {
     const accepted = core.parseTransportState(JSON.parse(acceptedBytes));
@@ -124,7 +130,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const worktreeInventory = [...enrolled.values()];
   const roots = options.roots ?? local?.roots ?? {};
   if (Object.keys(roots).some(k => !['codex', 'claude', 'gemini'].includes(k)) || Object.values(roots).some(paths => !Array.isArray(paths) || paths.some(p => typeof p !== 'string' || !isAbsolute(p)))) throw new Error('Invalid private provider roots.');
-  const activation: Activation = { schemaVersion: 1, repositoryId, runtimeVersion, lockHash, initializeAllowed: local?.initializeAllowed ?? (intent?.initializeAllowed ?? (!previous && !local)), binding, capturePolicy: policy, privatePolicy: core.parsePrivateAttributionPolicy(privatePolicy), roots, worktreeInventory };
+  const activation: Activation = { schemaVersion: 1, repositoryId, runtimeVersion, lockHash, initializeAllowed: options.newRepository || (local?.initializeAllowed ?? (intent?.initializeAllowed ?? (!previous && !local))), binding, capturePolicy: policy, privatePolicy: core.parsePrivateAttributionPolicy(privatePolicy), roots, worktreeInventory };
   const hooks = await planHooks(repository, { privateDir: repository.privateDir, nodePath: process.execPath });
   const agentHooks = await planAgentHooks(repository.worktreeRoot, repository);
   if (Buffer.byteLength(json(activation)) > 200 * 1024) throw new Error('Private activation exceeds supervised input limit.');
@@ -138,6 +144,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
     '.agent-badge/runtime/package.json': pin.manifest, '.agent-badge/runtime/package-lock.json': pin.lock,
     '.agent-badge/README.md': '# Agent Badge\n\nRequires Node 24 or 26 and npm. Each clone needs explicit activation:\n\n```sh\nnode .agent-badge/run.cjs setup\n```\n\nOnly local agent usage can be collected. CI cannot discover histories on another machine. Initial state may be queued or unavailable; see [data and coverage](' + declaration.declaredUrl.replace(/\.git$/, '') + '/tree/agent-badge/data). No measurement is a claim of complete coverage or a bill.\n',
     'README.md': readme };
+  owned['.agent-badge/README.md'] += '\nFork origins that differ from the declaration collect locally with auto-sync unbound. Writers may explicitly select setup --target upstream. A standalone fork uses setup --new-repository --repository-url <fork-url> in a fresh clone without private Badge state, creating a new UUID. Existing remote ledgers with a different UUID are never overwritten.\n\nFork contributors run agent-badge contribute, then stage the generated .agent-badge/contributions/<digest>.json with their normal PR. This is an explicit normal-staging exception: contribute never stages or commits. Only accepted default-branch envelopes affect upstream; closed or unmerged PRs do not. Retain the immutable file until trusted import succeeds; retry import/reconciliation after offline or queued outcomes.\n';
   const ownershipPath = '.agent-badge/ownership.json';
   owned['.agent-badge/README.md'] += '\nSetup installs a private pre-push delegate and shared Codex/Claude Stop and SubagentStop wakeups, plus a Gemini AfterModel wakeup. Existing user hook failures still block pushes. Legacy Agent Badge/Gist markers, shared hooksPath and self-dispatching hook managers require explicit local cleanup/integration; inspect setup action items.\n\nProvider hooks require Node 24 or 26 on the provider PATH plus explicit native project trust and hook review. Review .codex/hooks.json, .claude/settings.json and .gemini/settings.json in the provider, then restart it. Setup never grants native trust. On the inspected Codex source generation, linked worktrees load hooks from the primary checkout; review/setup that checkout explicitly when required. Worktree-local Codex config alone does not establish native hooks. Git hooks retain the approved Node executable for minimal GUI PATH. Windows automatic hooks are unsupported; use manual synchronization.\n\nAutomatic work has a two-second total budget and retains available local usage before transport. Pre-push streams refs to the existing hook immediately and only retains a bounded 1 MiB Badge copy until EOF. Open, oversized or expired input skips Badge while preserving the user hook lifetime and input. Incomplete capture remains pending for manual reconciliation. Provider payloads only route bounded local reads; they are never usage receipts. Claude historical JSONL numeric accounting is unsupported/unknown. Gemini saved-success coverage is partial: failed attempts can be absent, and AfterModel only wakes collection; it is never an independent receipt. Gemini exact model IDs remain unpriced. Fresh clones require explicit setup. An already activated common directory can reuse its approved private runtime from older branches without a tracked pin; a changed pin requires explicit setup.\n';
   const priorOwnership = await contents(join(repository.worktreeRoot, ownershipPath));

@@ -500,7 +500,8 @@ test("explicit cross-clone inclusion can supersede accepted remote exclusion wit
   const final = await syncUsage(b);
   expect(final.accepted!.ledger.includedUnits).toBe(1);
   expect((await syncUsage(a)).accepted!.ledger.includedUnits).toBe(1);
-});
+  // Five manual transactions share existing 20s operation budgets; let their own cancellation report.
+}, 30_000);
 function cUnit(c: Awaited<ReturnType<typeof client>>) {
   if ("kind" in c.record) throw Error("fixture");
   return c.record.unitKey;

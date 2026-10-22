@@ -20,3 +20,5 @@ export {
   type RunStatusCommandOptions,
   type StatusCommandResult
 } from "./commands/index.js";
+export { runContributeCommand, type ContributeCommandOptions } from './commands/contribute.js';
+export { runImportCommand, type ImportCommandOptions } from './commands/import.js';

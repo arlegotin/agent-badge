@@ -80,13 +80,14 @@ export function buildProgram(): Command {
   for (const name of ["init", "setup"]) {
     program.command(name)
       .description("Install and explicitly activate repository-owned agent-badge setup.")
+      .option("--new-repository", "Create a standalone fork UUID in a fresh unactivated clone.")
       .option("--target <remote>", "Explicitly approve a Git remote destination.")
       .option("--repository-url <url>", "Public repository URL for the tracked declaration.")
       .option("--runtime-version <version>", "Exact runtime version to install.")
       .option("--dry-run", "Print exact owned file changes without applying setup.")
-      .action(async (options: { target?: string; repositoryUrl?: string; runtimeVersion?: string; dryRun?: boolean }) => {
+      .action(async (options: { newRepository?: boolean; target?: string; repositoryUrl?: string; runtimeVersion?: string; dryRun?: boolean }) => {
         const { planSetup, applySetup } = await import("../integration/setup.js");
-        const plan = await planSetup({ target: options.target, declaredUrl: options.repositoryUrl, runtimeVersion: options.runtimeVersion ?? resolveCliVersion() });
+        const plan = await planSetup({ newRepository: options.newRepository, target: options.target, declaredUrl: options.repositoryUrl, runtimeVersion: options.runtimeVersion ?? resolveCliVersion() });
         console.log(JSON.stringify({ changes: plan.changes, privateChanges: plan.privateChanges, hookActionItems: [...plan.hooks.actionItems, ...plan.hooks.notices, ...plan.agentHooks.actionItems, ...plan.agentHooks.notices] }, null, 2));
         if (!options.dryRun) {
           const result = await applySetup(plan);
@@ -97,6 +98,28 @@ export function buildProgram(): Command {
         }
       });
   }
+
+  program.command("contribute")
+    .description("Write a sanitized immutable contribution for normal PR staging.")
+    .option("--hash <digest>", "Select a public record and required closure.", collectOptionValue, [])
+    .action(async (options: { hash: string[] }) => {
+      const { runContributeCommand } = await import("../commands/contribute.js");
+      const result = await runContributeCommand({ selectedHashes: options.hash.length ? options.hash : undefined });
+      console.log(`agent-badge: contribution ${result.path}; stage it with your normal PR.`);
+    });
+  program.command("import")
+    .description("Import sanitized public contributions using the shared ledger transaction.")
+    .option("--file <path>", "Managed contribution envelope (explicit local writer).")
+    .option("--accepted-ref <oid>", "Accepted default-branch commit (trusted CI).")
+    .option("--default-branch <branch>", "Actual trusted default branch.")
+    .option("--repository-id <uuid>", "Pinned repository UUID (trusted CI).")
+    .option("--repository-url <url>", "Pinned repository destination (trusted CI).")
+    .action(async (options: { file?: string; acceptedRef?: string; defaultBranch?: string; repositoryId?: string; repositoryUrl?: string }) => {
+      const { runImportCommand } = await import("../commands/import.js");
+      const result = await runImportCommand(options);
+      console.log(`agent-badge: contribution import ${result.status}; keep the envelope for reconciliation until accepted.`);
+      if (result.status !== 'synced' && result.status !== 'unchanged') process.exitCode = 1;
+    });
 
   program
     .command("scan")

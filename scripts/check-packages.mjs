@@ -8,7 +8,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const publishablePackages = [
   {
     workspace: "packages/core",
-    requiredFiles: ["package.json", "dist/index.js", "dist/index.d.ts"]
+    requiredFiles: ["package.json", "dist/index.js", "dist/index.d.ts", "resources/workflows/agent-badge-import.yml"]
   },
   {
     workspace: "packages/agent-badge",
@@ -26,8 +26,8 @@ const publishablePackages = [
   }
 ];
 
-function isAllowedPackPath(packPath) {
-  return packPath === "package.json" || packPath.startsWith("dist/");
+function isAllowedPackPath(packPath, pkg) {
+  return packPath === "package.json" || packPath.startsWith("dist/") || pkg.requiredFiles.includes(packPath);
 }
 
 function runPackDryRun(workspace) {
@@ -69,7 +69,7 @@ for (const pkg of publishablePackages) {
   const packJson = runPackDryRun(pkg.workspace);
   const filePaths = toFilePaths(packJson);
   const fileSet = new Set(filePaths);
-  const unexpectedPaths = filePaths.filter((packPath) => !isAllowedPackPath(packPath));
+  const unexpectedPaths = filePaths.filter((packPath) => !isAllowedPackPath(packPath, pkg));
   const missingPaths = pkg.requiredFiles.filter((packPath) => !fileSet.has(packPath));
 
   if (unexpectedPaths.length === 0 && missingPaths.length === 0) {

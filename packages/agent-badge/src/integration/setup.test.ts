@@ -238,3 +238,25 @@ test('private first-setup intent refuses a symlink record or private directory',
   await expect(planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/repo' })).rejects.toThrow('Unsafe private setup directory');
   expect(await readFile(join(f.root, 'external-intent'), 'utf8')).toBe('keep external intent');
 });
+
+test('fresh fork remains collection-only; explicit upstream writer binding is allowed', async () => {
+ const f = await fixture(), cwd = f.clones[0];
+ const first = await planSetup({ ...options, cwd, declaredUrl: 'https://github.com/example/upstream' });
+ await applySetup(first);
+ const fork = await planSetup({ ...options, cwd });
+ expect(fork.activation.binding).toMatchObject({status:'unbound', reason:'destination-mismatch'});
+ await f.git(cwd, ['remote','add','upstream','https://github.com/example/upstream']);
+ const writer = await planSetup({ ...options, cwd, target:'upstream' });
+ expect(writer.activation.binding).toMatchObject({status:'bound',remoteName:'upstream',repositoryId:first.declaration.repositoryId});
+});
+
+test('standalone fork receives a fresh UUID without resetting an activated common directory', async () => {
+ const f = await fixture(), cwd = f.clones[0];
+ const inherited = await planSetup({ ...options, cwd, declaredUrl:'https://github.com/example/upstream' });
+ for(const change of inherited.changes.filter(c=>c.path.startsWith('.agent-badge/'))) { await mkdir(join(cwd,change.path,'..'),{recursive:true}); await writeFile(join(cwd,change.path),change.after); }
+ const standalone = await planSetup({ ...options,cwd,newRepository:true,declaredUrl:'https://github.com/example/fork' });
+ expect(standalone.declaration.repositoryId).not.toBe(inherited.declaration.repositoryId);
+ expect(standalone.activation.initializeAllowed).toBe(true);
+ await applySetup(standalone);
+ await expect(planSetup({...options,cwd,newRepository:true})).rejects.toThrow(/fresh clone/);
+});
