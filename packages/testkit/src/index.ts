@@ -28,3 +28,4 @@ export {
 } from "./git-fixtures.js";
 export { runStorageFixtureProcess, storageFaultPrelude, type StorageFault } from './storage-fixtures.js';
 export { codexContext, codexRequest, codexRollout } from './codex-fixtures.js';
+export { claudeNativeResponse, certifiedClaudeImport } from './claude-fixtures.js';

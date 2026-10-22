@@ -37,16 +37,28 @@ describe("one snapshot artifacts and strict tree validation", () => {
     expect(svg).not.toMatch(/<script|<foreignObject|href=|url\(|onload=|<image/);
     expect(svg).toMatch(/width="\d+" height="20"/);
   });
-  it("names partial cost as a known subtotal and rejects mismatched catalog pins", () => {
+  it("names wholly unknown cost honestly and rejects mismatched catalog pins", () => {
     const { ledger, meta, record } = snapshot("AI usage", "estimated-cost");
     const unknown = { ...record, meters: [{ ...record.meters[0], model: null }] };
     const partial = reduceLedger([unknown], meta);
-    expect(Buffer.from(renderArtifacts(partial, meta).get("badge.svg")!).toString()).toContain("~$0 known");
+    expect(Buffer.from(renderArtifacts(partial, meta).get("badge.svg")!).toString()).toContain("cost unknown");
     expect(() => renderArtifacts(ledger, { ...meta, catalogHash: "a".repeat(64) })).toThrow();
     const custom = { ...defaultCatalog, version: 2, snapshotDate: "2026-10-23" };
     const newMeta = { ...meta, catalogVersion: 2, catalogHash: catalogHash(custom) };
     const artifacts = renderArtifacts(reduceLedger(ledger.records, newMeta), newMeta, custom);
     expect(JSON.parse(Buffer.from(artifacts.get("catalog.json")!).toString()).snapshotDate).toBe("2026-10-23");
+  });
+  it("keeps measured zero separate from unknown-only coverage and retains mixed known subtotals", () => {
+    const { meta, record } = snapshot();
+    const zero = { ...record, meters: record.meters.map(meter => ({ ...meter,total:0,input:0,uncachedInput:0,cachedInput:0,output:0 })) };
+    const zeroLedger=reduceLedger([zero],meta);
+    expect(Buffer.from(renderArtifacts(zeroLedger,meta).get("badge.svg")!).toString()).toContain("0 tokens");
+    const costMeta={...meta,policy:{...meta.policy,badge:{...meta.policy.badge,metric:"estimated-cost" as const}}};
+    expect(Buffer.from(renderArtifacts(reduceLedger([zero],costMeta),costMeta).get("badge.svg")!).toString()).toContain("~$0");
+    const unknown={...record,unitKey:"b".repeat(64),coverageKey:"b".repeat(64),meters:[{...record.meters[0],total:null,model:null}]};
+    const mixed=reduceLedger([record,unknown],meta);
+    expect(Buffer.from(renderArtifacts(mixed,meta).get("badge.svg")!).toString()).toContain("140 known tokens");
+    expect(Buffer.from(renderArtifacts(reduceLedger([record,unknown],costMeta),costMeta).get("badge.svg")!).toString()).toContain("known");
   });
   it("validates a full ledger above the incoming batch object limit", () => {
     const { meta, record } = snapshot();

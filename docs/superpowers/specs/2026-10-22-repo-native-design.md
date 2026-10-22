@@ -266,7 +266,7 @@ that alter accounting identity require explicit reconciliation, not new random k
 | Integration | Planned contract | Initial support boundary |
 | --- | --- | --- |
 | Codex CLI/app/IDE | Respect `CODEX_HOME` and explicitly enrolled extra homes; versioned rollout reader; read-only WAL-aware SQLite for inventory/hints; lifecycle hooks for targeted ingestion | Core release, with fixture-certified store versions; optional owned SDK/app-server events use the same dedupe path |
-| Claude Code | Respect `CLAUDE_CONFIG_DIR`; stream root and nested subagent JSONL; stable response/request identity; multiple models and cache TTLs | Core release; root, subagent, resume, copied-history, worktree fixtures mandatory |
+| Claude Code | Respect `CLAUDE_CONFIG_DIR`; enumerate root/subagent/background/team JSONL; documented native response identity; private model/cache snapshots | Identity-only partial coverage; all public amounts unknown. Numeric JSONL accounting unsupported pending positive finality provenance; root/subagent/resume/copy/worktree fixtures mandatory |
 | Gemini CLI | Project-scoped saved sessions and token metadata; `AfterModel` as a targeted ingestion signal; provider-specific total semantics | Required follow-on integration before broad four-agent support claims |
 | OpenCode | Version-negotiated local session exports/API; per-request tokens/cost provenance; separate v1/v2 contracts | Required follow-on integration; current experimental API is capability-gated |
 | Cursor | Lifecycle hooks and session context are available; documented context-window counts do not establish cumulative billed usage | Report detected/unsupported accounting until a tested local usage contract exists; never infer cost from context size |
@@ -288,12 +288,22 @@ rotation, imported older files, and same-timestamp changes. SQLite reads use a
 read-only transaction and WAL-aware driver with a deadline. No `sql.js` full-file
 copies. Candidate database schema must be inspected, not chosen only by mtime.
 
+Claude numeric scope correction (user decision, October22): omit unverified amounts.
+Neither end_turn nor componentwise dominance proves persisted counter finality;
+input/cache can change as well as output. Keep strict bounded provisional normalized
+meters private. Their presence requires all public-facing numeric fields null.
+Response identity-only projections keep public model/vendor null too, independent
+of expanding private model recognition. Certified normalized/import fixtures may
+still exercise numeric dedupe/pricing; they do not certify native amounts. See
+[tracked evidence](../research/2026-10-22-claude-accounting-contract.md).
+
 ## 8. Pricing and badge semantics
 
 Default badge: token usage, label `AI usage`. Optional estimated cost shows a `~`
 marker and coverage information in the linked report. If some units cannot be
 priced, display a clearly identified known-cost subtotal or omit cost; never present
-it as a complete total. Free local inference and unknown price are different states.
+it as a complete total. Unknown-only badges say usage unknown or cost unknown;
+measured zero remains zero. Free local inference and unknown price are different states.
 
 Price each model segment using exact, dated rate cards with source URL, catalog
 snapshot date, currency, unit, cache/long-context rules, and catalog hash. Store arithmetic

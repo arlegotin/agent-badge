@@ -253,11 +253,28 @@ and tests; replace `claude-adapter.ts`/`claude-jsonl.ts` callers; extend testkit
 **Interfaces:** Produce `claudeAdapter: ProviderAdapter` and its AccountingContract.
 Resolve `CLAUDE_CONFIG_DIR`, explicit roots, project naming variants, and default root.
 
-- [ ] Add red tests for nested parent/child shared session IDs, duplicate streamed responses, copied/forked history, resume, agent teams/background agents, mixed models, mixed cwd, and cache creation TTLs.
-- [ ] Pin synthetic assertions from the audit: 100+40 → 140; fork 100+copied100+50 → 150; mixed supplied cards → 1,800 micros; older-mtime new file is discovered; JSON null/array/truncated tail does not abort valid files.
-- [ ] Run `npm test -- --run packages/core/src/providers/claude`; implement bounded per-file offsets and inventories with replacement/rotation checks, stable request/agent stream identities, and provenance retained locally.
-- [ ] Ensure Stop/SubagentStop only schedules targeted reads; a partially flushed final transcript retries later. Never treat Agent tool final-request totals as whole-agent totals or count the same telemetry and transcript receipt twice.
-- [ ] Run Claude fixture/equivalence tests, certify the supported format versions, and commit.
+- [x] Add red tests for nested parent/child shared session IDs, duplicate streamed responses, copied/forked history, resume, agent teams/background agents, mixed models, mixed cwd, and cache creation TTLs.
+- [x] Pin explicitly certified normalized/import assertions (not native CLI numeric claims): 100+40 → 140; fork 100+copied100+50 → 150; mixed supplied cards → 1,800 micros; older-mtime new file is discovered; JSON null/array/truncated tail does not abort valid files.
+- [x] Run `npm test -- --run packages/core/src/providers/claude`; implement bounded per-file offsets and inventories with replacement/rotation checks, stable request/agent stream identities, and provenance retained locally.
+- [x] Ensure Stop/SubagentStop only schedules targeted reads; a partially flushed final transcript retries later. Never treat Agent tool final-request totals as whole-agent totals or count the same telemetry and transcript receipt twice.
+- [x] Run Claude fixture/equivalence tests, record narrow identity/source evidence and unsupported numeric accounting, and commit.
+
+**Research/user scope correction:** omit all unverified native Claude amounts.
+CLI2.1.307 premature EOF can persist placeholder output with end_turn; official
+streaming docs also permit mutable input/cache deltas. No inspected historical
+JSONL finality discriminator certifies numeric snapshots. Native message identities
+therefore create constant all-null/model-null partial public coverage receipts.
+Keep bounded strict normalized provisional evidence private; its presence forbids
+numeric public-facing meters. No cumulative ordering/finality heuristic is allowed.
+140/150/1800 assertions apply only to separately certified normalized/import fixtures.
+Unknown-only badges say usage/cost unknown; measured zero stays distinct. Add exact
+opus/sonnet/haiku5.5 identities without rates. See tracked
+[Claude evidence](../research/2026-10-22-claude-accounting-contract.md).
+
+Task7 consumes Task6 scan scope, nullable continuation, batch.source and latest
+checkpointCandidate. Physical epochs are distinct from logical generations; validate
+scope/reader/prefix before cursor reuse. Task8 holds one store lock across candidate,
+scan and commit(batch.source). Existing v1 callers remain compiling until Task17.
 
 ## Task 8: Connect collection, attribution, and invalidation
 

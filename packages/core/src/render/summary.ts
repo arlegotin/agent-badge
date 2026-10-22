@@ -26,9 +26,11 @@ export function renderArtifacts(ledger: ReducedLedger, inputMeta: LedgerMeta,
     knownTokens: ledger.knownTokens, unknownTokenUnits: ledger.unknownTokenUnits,
     repositoryCompleteness: ledger.repositoryCompleteness, price };
   const partial = ledger.unknownTokenUnits > 0 || ledger.conflictingUnits > 0 || ledger.partialUnits > 0;
+  const unknownTokensOnly = included.length > 0 && included.every(unit => unit.meters.every(meter => meter.total === null));
+  const unknownPriceOnly = included.length > 0 && price.pricedSegments === 0 && price.unpricedSegments > 0;
   const value = meta.policy.badge.metric === "tokens"
-    ? `${compactInteger(ledger.knownTokens)}${partial ? " known" : ""} tokens`
-    : `~${compactMicroUsd(price.knownMicroUsd)}${price.unpricedUnits > 0 || partial ? " known" : ""}`;
+    ? unknownTokensOnly ? "usage unknown" : `${compactInteger(ledger.knownTokens)}${partial ? " known" : ""} tokens`
+    : unknownPriceOnly ? "cost unknown" : `~${compactMicroUsd(price.knownMicroUsd)}${price.unpricedUnits > 0 || partial ? " known" : ""}`;
   const artifacts = new Map<string, Uint8Array>();
   const add = (path: string, value: string) => artifacts.set(path, Buffer.from(value, "utf8"));
   add("meta.json", stableJson(meta)); add("catalog.json", stableJson(catalog)); add("summary.json", stableJson(summary));

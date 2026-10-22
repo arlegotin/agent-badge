@@ -173,3 +173,25 @@ usage is disjoint. Multiple request keys remain independent. An explicit exclusi
 removes the excluded cumulative unit from this overlap check. Control supersession
 graph validation uses an iterative traversal so deep accepted histories do not
 exhaust the JavaScript stack.
+
+
+## Claude identity-only native projection
+
+The native JSONL contract has no certified numerical provenance. Valid native
+message IDs produce immutable partial receipts with constant unknown semantics,
+null model/vendor and every numerical dimension null. Request aliases, entry IDs,
+provisional usage and source order cannot change this public projection. Flagged
+synthetic/error assistants and request-ID-only rows are excluded. Numerical
+accounting remains unsupported; numeric normalized/import fixtures are a separate
+explicit certification.
+
+Private observations may contain strict `privateEvidence` with kind
+`claude-native-uncertified`, nullable bounded requestAlias and exactly one normalized
+meter (complete serialized field <=8192 UTF-8 bytes). Evidence requires provider
+claude, request representation, partial quality and all public-facing amounts null.
+Public schemas reject the field; sanitization omits it. Store journals validate
+that invariant. No raw transcript, prompt or tool text is permitted. An evidence
+upgrade requires an explicit new provenance/reconciliation contract. Unknown-only
+SVG values are usage unknown / cost unknown; measured zero remains distinguishable.
+Exact opus/sonnet/haiku5.5 identities map to anthropic independently of pricing and
+remain unpriced. Evidence: [Claude contract research](../research/2026-10-22-claude-accounting-contract.md).

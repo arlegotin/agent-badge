@@ -56,6 +56,15 @@ export const publicObservationSchema = z.object(publicFields).strict().refine((o
   observation.representation === "request" ? observation.revision === "final" : observation.revision !== "final");
 export type PublicObservation = z.infer<typeof publicObservationSchema>;
 
+/** Private native snapshots are not certified consumed usage. Never project these meters. */
+export const privateEvidenceSchema = z.object({ kind: z.literal("claude-native-uncertified"),
+  requestAlias: privateStringSchema.nullable(), meters: z.array(meterSegmentSchema).length(1)
+}).strict().refine(value => Buffer.byteLength(JSON.stringify(value), "utf8") <= 8192);
+export function hasOnlyUnknownAmounts(meter: MeterSegment): boolean {
+  return [meter.total,meter.input,meter.uncachedInput,meter.cachedInput,meter.output,meter.reasoningOutput,
+    meter.toolInput,...Object.values(meter.cacheCreation)].every(value => value === null);
+}
+
 export const usageObservationSchema = z.object({ schemaVersion: z.literal(2), normalizationVersion: z.literal(1),
   provider: providerIdSchema, representation: z.enum(["request", "cumulative"]),
   identity: z.enum(["provider-native", "local-fallback"]), coverage: z.enum(["native-request", "origin-stream"]),
@@ -72,8 +81,13 @@ export const usageObservationSchema = z.object({ schemaVersion: z.literal(2), no
     generation: privateStringSchema, sourceSchema: privateStringSchema, readerVersion: privateStringSchema }).strict(),
   lineage: z.object({ kind: z.enum(["root", "child", "fork", "unknown"]),
     parentNativeId: privateStringSchema.nullable(), inherited: z.enum(["none", "isolated", "uncertain"]) }).strict(),
-  diagnostics: z.array(diagnosticSchema).max(1024)
-}).strict().refine((observation) => observation.representation === "request"
+  diagnostics: z.array(diagnosticSchema).max(1024),
+  privateEvidence: privateEvidenceSchema.optional()
+}).strict().superRefine((observation, ctx) => {
+  if (observation.privateEvidence && (observation.provider !== "claude" || observation.quality !== "partial" ||
+    observation.representation !== "request" || !observation.meters.every(hasOnlyUnknownAmounts)))
+    ctx.addIssue({code:"custom",message:"invalid-private-evidence"});
+}).refine((observation) => observation.representation === "request"
   ? observation.revision.kind === "final" : observation.revision.kind !== "final" && observation.coverage === "origin-stream");
 export type UsageObservation = z.infer<typeof usageObservationSchema>;
 export function parseObservation(input: unknown): UsageObservation {
