@@ -6,6 +6,8 @@ export {
 } from "./codex-fixtures.js";
 export {
   createProviderFixture,
+  protocolObservationFixture,
+  protocolPrivacyCanaries,
   type CreateProviderFixtureOptions,
   type ProviderFixture,
   type ProviderFixtureSeed,
