@@ -1,10 +1,4 @@
 export {
-  createClaudeFixtureHome
-} from "./claude-fixtures.js";
-export {
-  createCodexFixtureHome
-} from "./codex-fixtures.js";
-export {
   createProviderFixture,
   protocolObservationFixture,
   protocolPrivacyCanaries,
@@ -32,3 +26,4 @@ export { claudeNativeResponse, certifiedClaudeImport } from './claude-fixtures.j
 export { commitFixtureTree } from './git-fixtures.js';
 export { createGeminiFixtureHome, geminiSavedSession } from './gemini-fixtures.js';
 export { openCodeExport } from './opencode-fixtures.js';
+export { startFixtureGitDaemon, type FixtureGitDaemon } from './git-daemon.js';

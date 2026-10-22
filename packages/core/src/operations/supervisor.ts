@@ -25,7 +25,7 @@ export async function superviseOperation(options: SupervisorOptions): Promise<Su
   const { budget } = options;
   const finish = (summary: WorkerSummary, reason?: string): SupervisedResult => {
     const success = summary.status === 'synced' || summary.status === 'unchanged';
-    const diagnostic = success ? (summary.pendingReconciliation ? 'agent-badge: usage synced; manual reconciliation pending' : null) : reason ?? (summary.status === 'conflict' ? 'agent-badge: recovery required; run manual sync' : summary.status === 'unsupported' ? 'agent-badge: unsupported data or automatic process supervision; run manual sync' : 'agent-badge: usage queued; run manual sync');
+    const diagnostic = success ? (summary.pendingReconciliation ? 'agent-badge: usage synced; manual reconciliation pending' : null) : reason ?? (summary.reason === 'automatic-local-transport' ? 'agent-badge: local/file automatic publication unsupported; run manual sync' : summary.oversizedPendingUnits ? 'agent-badge: oversized usage groups queued; run manual sync' : summary.status === 'conflict' ? 'agent-badge: recovery required; run manual sync' : summary.status === 'unsupported' ? 'agent-badge: unsupported data or automatic process supervision; run manual sync' : 'agent-badge: usage queued; run manual sync');
     if (diagnostic) options.onDiagnostic?.(diagnostic);
     return { ...summary, diagnostic, exitCode: budget.mode === 'automatic' || success ? 0 : summary.status === 'conflict' ? 2 : summary.status === 'unsupported' ? 3 : 1 };
   };
@@ -33,7 +33,8 @@ export async function superviseOperation(options: SupervisorOptions): Promise<Su
   if (budget.mode === 'automatic' && (options.platform ?? process.platform) === 'win32')
     return finish({ ...queued, status: 'unsupported' });
   if (budget.signal.aborted || budget.remainingMs() < 1) return finish(queued, 'agent-badge: deadline reached; usage queued');
-  const envelope = { worker: options.worker.href, input: options.input, deadline: budget.deadline, leaseToken: randomUUID() };
+  const reserve = Math.min(100, budget.remainingMs() / 10);
+  const envelope = { worker: options.worker.href, input: options.input, deadline: budget.deadline-reserve, leaseToken: randomUUID() };
   let bytes: string;
   try { bytes = JSON.stringify(envelope); } catch { return finish(queued); }
   if (Buffer.byteLength(bytes) > 256 * 1024) return finish(queued);
@@ -62,7 +63,6 @@ export async function superviseOperation(options: SupervisorOptions): Promise<Su
     const stop = () => { stopped = true; killTree(); };
     const abort = () => { stop(); done('agent-badge: deadline reached; usage queued'); };
     // Reserve time for exit observation, exact owned-lease cleanup and group reaping.
-    const reserve = Math.min(100, budget.remainingMs() / 10);
     const stopTimer = setTimeout(stop, Math.max(1, budget.remainingMs() - reserve));
     const hardTimer = setTimeout(abort, Math.max(1, budget.remainingMs()));
     budget.signal.addEventListener('abort', abort, { once: true });

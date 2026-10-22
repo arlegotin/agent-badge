@@ -4,7 +4,7 @@ import { lstat, open } from 'node:fs/promises';
 import { join, isAbsolute, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveRepository, bindRemote, openStore, runGit, parseContribution, contributionBytes, contributionPath, importContribution,
-  ENVELOPE_MAX_BYTES, validateEnvelope, resolvePushDestination, DataTransport, TransportError, streamGitRecords, GitStreamError } from '@legotin/agent-badge-core';
+  ENVELOPE_MAX_BYTES, validateEnvelope, resolvePushDestination, DataTransport, TransportError, streamGitRecords, GitStreamError, syncUsage, readVerifiedGitBlobs } from '@legotin/agent-badge-core';
 import type { RepositoryContext, ContributionEnvelope, ImportResult, BoundRemote, AcceptedLedger } from '@legotin/agent-badge-core';
 import { loadActivation } from '../integration/runtime.js';
 
@@ -63,14 +63,17 @@ export async function* readAcceptedContributions(repository: RepositoryContext, 
 
   const listing = streamGitRecords(['--no-replace-objects','-c','core.hooksPath=/dev/null','ls-tree','-r','-z','-l',options.ref,'--','.agent-badge/contributions'],
     {cwd:repository.worktreeRoot,signal,timeoutMs:Math.max(1,deadline-Date.now()),maxRecordBytes:1024});
+  let batch:{oid:string;size:number;path:string}[]=[],bytesInBatch=0;
+  const read=async function*(){const bodies=await readVerifiedGitBlobs(repository.worktreeRoot,batch,{signal,deadline});for(let i=0;i<batch.length;i++)yield validateBytes(batch[i].path,new TextDecoder('utf-8',{fatal:true}).decode(bodies[i]));};
   for await (const line of listing) {
     signal.throwIfAborted();
     const match = /^100644 blob ([a-f0-9]{40}|[a-f0-9]{64}) +(\d+)\t(.+)$/.exec(line);
     if (!match || !managedPath.test(match[3])) throw new Error('Unsafe contribution tree.');
     validateEnvelope(Number(match[2]), 0);
-    const bytes = await git(['cat-file','blob',match[1]]);
-    yield validateBytes(match[3],bytes);
+    if(batch.length&&(batch.length>=64||bytesInBatch+Number(match[2])+128>12*1024*1024)){yield*read();batch=[];bytesInBatch=0;}
+    batch.push({oid:match[1],size:Number(match[2]),path:match[3]});bytesInBatch+=Number(match[2])+128;
   }
+  if(batch.length)yield*read();
 }
 
 export interface ImportCommandSummary {
@@ -113,19 +116,37 @@ export async function runImportCommand(options: ImportCommandOptions): Promise<I
     const envelopes = options.acceptedRef ? readAcceptedContributions(repository,{ref:options.acceptedRef,defaultBranch:options.defaultBranch!,binding,signal,deadline}) :
       (async function* () { yield await readContributionFile(repository.worktreeRoot,options.file!); })();
     const store = await openStore(repository);
+    // Fresh CI derives membership from the current validated remote ledger. An
+    // interrupted invocation leaves no cursor that can authorize skipping data.
+    let confirmed=new Set<string>();
+    if(options.acceptedRef){
+      const current=await syncUsage({repository,binding,store,signal,deadline,collect:'none'});
+      if((current.status!=='synced'&&current.status!=='unchanged')||!current.accepted)return stopped('unavailable',current.status);
+      confirmed=new Set(current.accepted.ledger.recordHashes);
+      result={...result,accepted:current.accepted,confirmedCommit:current.confirmedCommit};
+    }
     for await (const envelope of envelopes) {
       signal.throwIfAborted();
+      if(Date.now()>=deadline)return stopped('deadline','queued');
+      // readAcceptedContributions already verified canonical filename, envelope
+      // hash, schema and complete causal closure. Membership alone cannot do that.
+      if(envelope.repositoryId!==binding.repositoryId||(options.acceptedRef&&envelope.normalizationVersion!==result.accepted?.meta.normalizationVersion))throw new Error('Invalid contribution identity.');
+      if(options.acceptedRef&&envelope.records.every(entry=>confirmed.has(entry.hash))){
+        result={...result,confirmedEnvelopes:result.confirmedEnvelopes+1};options.onProgress?.({...result});signal.throwIfAborted();continue;
+      }
       const imported = await importContribution(envelope,{repository,binding,store,signal,deadline});
       if (imported.status !== 'synced' && imported.status !== 'unchanged') {
         const failure = signal.aborted ? (options.signal?.aborted ? 'aborted' : 'deadline') : imported.status === 'conflict' ? 'conflict' : imported.status === 'unsupported' ? 'unsupported' : 'unavailable';
         return stopped(failure,imported.status);
       }
       changed ||= imported.status === 'synced';
+      if(imported.accepted)confirmed=new Set(imported.accepted.ledger.recordHashes);
       result = {...result,status:changed?'synced':'unchanged',confirmedEnvelopes:result.confirmedEnvelopes+1,confirmedCommit:imported.confirmedCommit,accepted:imported.accepted};
       options.onProgress?.({...result});
       signal.throwIfAborted();
     }
     signal.throwIfAborted();
+    if(Date.now()>=deadline)return stopped('deadline','queued');
     return {...result,complete:true,retryRequired:false};
   } catch (error) {
     if (signal.aborted) return stopped(options.signal?.aborted?'aborted':'deadline','queued');

@@ -45,6 +45,8 @@ export function validatePin(pin: RuntimePin, version: string): string {
   return digest(pin.manifest + '\0' + pin.lock);
 }
 export function parseDeclaration(value: unknown): Declaration {
+  if(value&&typeof value==='object'&&'version'in value&&value.version===1&&'publish'in value)
+    throw new Error('Legacy Gist configuration is unsupported. Preserve the old files and explicitly reinitialize repository-native setup; opaque totals cannot be migrated.');
   const d = value as Declaration;
   if (!d || Object.keys(d).sort().join(',') !== 'dataRef,declaredUrl,policy,repositoryId,runtimeVersion,schemaVersion' || d.schemaVersion !== 1 ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(d.repositoryId) ||

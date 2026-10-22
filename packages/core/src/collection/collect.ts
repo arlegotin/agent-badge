@@ -1,4 +1,3 @@
-import { stat } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { ProtocolError } from "../domain/capabilities.js";
 import type {
@@ -20,6 +19,7 @@ import { codexAdapter } from "../providers/codex/adapter.js";
 import { opencodeAdapter } from "../providers/opencode/adapter.js";
 import { geminiAdapter } from "../providers/gemini/adapter.js";
 import { claudeAdapter } from "../providers/claude/adapter.js";
+import { resolveSourceEpoch } from "../providers/source-file.js";
 import {
   attributeObservation,
   attributionPolicyHash,
@@ -45,7 +45,7 @@ import type {
 
 export interface CollectOptions {
   /** Automatic callers bound source work and use byte-bounded adapters under parent supervision. */
-  automaticLimits?: { maxSources: number; maxSourceBytes: number };
+  automaticLimits?: { maxSources: number };
   repository: RepositoryContext;
   store: LocalStore;
   policy: SharedPolicy;
@@ -137,12 +137,14 @@ async function project(
   policy: SharedPolicy,
   privatePolicy: PrivateAttributionPolicy,
   scope: CheckpointScope,
+  evidenceByCwd: Map<string | null, ReturnType<typeof resolveAttributionEvidence>>,
   historical = false
 ): Promise<{
   records: PublicRecord[];
   metadata: AttributionMetadata;
   metadataChanged: boolean;
 }> {
+  if(!observations.length){const {verifiedWorktrees:_,...snapshot}=privatePolicy;return {records:[],metadataChanged:false,metadata:{schemaVersion:1,policyHash:scope.attributionPolicyHash,policy:snapshot,decisions:[]}};}
   const prior = priorDecisions(entries),
     known = new Map(
       [...entries.flatMap((entry) => entry.records), ...await options.store.controls()]
@@ -199,11 +201,11 @@ async function project(
                     containsPath(value.path, observation.execution.cwd!)
                 ),
             }
-          : await resolveAttributionEvidence(
-              observation,
-              options.repository,
-              privatePolicy
-            );
+          : { ...await (() => {
+              let pending = evidenceByCwd.get(observation.execution.cwd);
+              if (!pending) { pending = resolveAttributionEvidence(observation, options.repository, privatePolicy); evidenceByCwd.set(observation.execution.cwd, pending); }
+              return pending;
+            })() };
       // Only the exact historical observation can reuse its own verified membership after loss of a path.
       if (
         previous?.decision.verifiedCommonDir === options.repository.commonDir &&
@@ -440,6 +442,9 @@ export async function collectUsage(
 ): Promise<CollectionResult> {
   const policy = parseSharedPolicy(options.policy),
     privatePolicy = parsePrivateAttributionPolicy(options.privatePolicy ?? {});
+  // One operation observes one repository/private-policy snapshot. Never persist
+  // this base evidence; each decision gets a copy for its own historical proof.
+  const evidenceByCwd = new Map<string | null, ReturnType<typeof resolveAttributionEvidence>>();
   const scope: CheckpointScope = {
     repositoryId: policy.repositoryId,
     normalizationVersion: policy.normalizationVersion,
@@ -461,15 +466,9 @@ export async function collectUsage(
   if (!options.signal.aborted)
     try {
       await options.store.withLock(options.signal, async () => {
-        let entries = await options.store.journal();
-        const groups = new Map<string, JournalEntry[]>();
-        for (const entry of entries) {
-          const key = identity(entry.source),
-            group = groups.get(key) ?? [];
-          group.push(entry);
-          groups.set(key, group);
-        }
-        for (const group of groups.values()) {
+        for (const source of await options.store.projectionSources(scope.attributionPolicyHash)) {
+          const group = await options.store.sourceJournal(source);
+          let entries = group;
           options.signal.throwIfAborted();
           try {
             const latest = group.findLast(
@@ -489,6 +488,7 @@ export async function collectUsage(
               ).values(),
             ];
             if (!observations.length) continue;
+            entries = await options.store.relatedJournal(observations);
             const projection = await project(
               observations,
               entries,
@@ -496,6 +496,7 @@ export async function collectUsage(
               policy,
               privatePolicy,
               scope,
+              evidenceByCwd,
               true
             );
             if (
@@ -519,12 +520,12 @@ export async function collectUsage(
                   chunk.metadata
                 );
               }
-              entries = await options.store.journal();
+              entries = await options.store.sourceJournal(source);
             }
           } catch {
             if (options.signal.aborted) options.signal.throwIfAborted();
             // Earlier chunks remain durable even if a later source chunk fails.
-            entries = await options.store.journal();
+            entries = await options.store.sourceJournal(source);
             result.sourceOutcomes.push({
               provider: group[0].source.provider,
               sourceIdentity: group[0].source.sourceIdentity,
@@ -546,11 +547,11 @@ export async function collectUsage(
         roots: options.roots ?? {},
         signal: options.signal,
         target: options.target,
+        lazyEpoch: !!options.automaticLimits,
       });
       result.sourceOutcomes.push(...discovery.outcomes);
       const limits = options.automaticLimits;
-      if (limits && (!Number.isInteger(limits.maxSources) || limits.maxSources < 1 || limits.maxSources > 10000 ||
-          !Number.isSafeInteger(limits.maxSourceBytes) || limits.maxSourceBytes < 1 || limits.maxSourceBytes > 64 * 1024 * 1024)) throw new Error("invalid-record");
+      if (limits && (!Number.isInteger(limits.maxSources) || limits.maxSources < 1 || limits.maxSources > 10000)) throw new Error("invalid-record");
       const sources = [...discovery.sources];
       if (limits) sources.sort((a, b) => identity(a.source).localeCompare(identity(b.source)));
       const offset = limits && !options.target?.sourceIdentity && sources.length ? (await options.store.automaticSourceOffset()) % sources.length : 0;
@@ -559,17 +560,27 @@ export async function collectUsage(
         await options.store.recordReconciliationPending(true);
       }
       const count = limits ? Math.min(limits.maxSources, sources.length) : sources.length;
+      const rotate = !!limits && !options.target?.sourceIdentity && count > 0;
+      // Reserve only the next starting source. If a slow source consumes this
+      // invocation, every candidate still becomes first on a later invocation.
+      if(rotate)await options.store.recordAutomaticSourceOffset((offset+1)%sources.length);
+      let processed=0;
+      const resolvedIdentities = new Set<string>();
       for (let index = 0; index < count; index++) {
         const position = (offset + index) % sources.length;
-        const { source, adapter } = sources[position];
+        let { source } = sources[position];
+        const { adapter } = sources[position];
         if (options.signal.aborted) break;
+        processed++;
         try {
           await options.store.withLock(options.signal, async () => {
+            source = await resolveSourceEpoch(source, options.signal);
+            if(resolvedIdentities.has(identity(source)))return;
+            resolvedIdentities.add(identity(source));
             const candidate = await options.store.checkpointCandidate(source);
-            if (limits && !options.target?.sourceIdentity) await options.store.recordAutomaticSourceOffset((position + 1) % sources.length);
-            if (limits && ((await stat(source.root)).size > limits.maxSourceBytes || (candidate &&
+            if (limits && candidate &&
                 (candidate.readerVersion !== source.readerVersion || candidate.repositoryId !== scope.repositoryId ||
-                 candidate.normalizationVersion !== scope.normalizationVersion || candidate.attributionPolicyHash !== scope.attributionPolicyHash)))) {
+                 candidate.normalizationVersion !== scope.normalizationVersion || candidate.attributionPolicyHash !== scope.attributionPolicyHash)) {
               result.pendingReconciliation = true;
               await options.store.recordReconciliationPending(true);
               return;
@@ -594,14 +605,15 @@ export async function collectUsage(
                 identity(batch.source) !== identity(source)
               )
                 throw new Error("invalid-record");
-              const entries = await options.store.journal();
+              const entries = await options.store.relatedJournal(batch.observations);
               const projection = await project(
                 batch.observations,
                 entries,
                 options,
                 policy,
                 privatePolicy,
-                scope
+                scope,
+                evidenceByCwd
               );
               if (
                 batch.observations.length ||
@@ -638,14 +650,13 @@ export async function collectUsage(
           });
         }
       }
+      if(rotate && !options.signal.aborted && processed>1)await options.store.recordAutomaticSourceOffset((offset+processed)%sources.length);
     } catch {
       failure();
     }
   result.cancelled = options.signal.aborted;
   try {
-    result.queuedHashes = (await options.store.pending())
-      .map(recordHash)
-      .sort();
+    result.queuedHashes = await options.store.pendingHashes();
   } catch {
     failure();
   }

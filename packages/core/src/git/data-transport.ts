@@ -1,5 +1,5 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -9,24 +9,36 @@ import {
 import { validatePublicBlob } from "../domain/ledger.js";
 import { validateLedgerTree } from "../ledger/validate-tree.js";
 import type { PublicTreeEntry } from "../ledger/validate-tree.js";
-import { assertDirectory } from "../storage/atomic-file.js";
-import { resolvePushDestination } from "./remote-binding.js";
+import { assertDirectory,StoreError } from "../storage/atomic-file.js";
+import { resolvePushDestination, canonicalRemoteUrl } from "./remote-binding.js";
 import type { BoundRemote } from "./remote-binding.js";
 import type { RepositoryContext } from "./context.js";
 import { runGit } from "./process.js";
+import { readVerifiedGitBlobs } from './objects.js';
+import { AcceptedIndex } from '../storage/accepted-index.js';
+import { rebuildAcceptedIndex,prepareAcceptedCandidate } from '../storage/accepted-stage.js';
+import type { AcceptedExtension } from '../storage/accepted-index.js';
 import type { GitRunOptions, GitRunResult } from "./process.js";
 
 export class TransportError extends Error {
   constructor(
-    readonly reason: "unavailable" | "routing-changed" | "history-rewritten"
+    readonly reason: "unavailable" | "routing-changed" | "history-rewritten" | "automatic-local-transport"
   ) {
     super(reason);
   }
 }
 export type AcceptedLedger = ReturnType<typeof validateLedgerTree> & {
   readonly commit: string;
+  readonly indexed?: import('../storage/accepted-index.js').AcceptedIndex;
+  readonly rebuilt?: boolean;
 };
 export interface TransportOptions {
+  operationMode?: 'automatic' | 'manual';
+  /** Only owning sync transactions may rebuild the disposable accepted cache. */
+  indexMode?: 'full' | 'lazy';
+  priorCommit?: string;
+  /** Owning sync's existing acceptance routine, after complete current validation. */
+  onValidatedStage?(snapshot:AcceptedLedger):Promise<void>;
   repository: RepositoryContext;
   binding: BoundRemote;
   signal: AbortSignal;
@@ -57,6 +69,10 @@ exit 0
 
 /** Invocation-private refs/index and an owned-only ref-guard hooks directory. Never touches FETCH_HEAD or checkout. */
 export class DataTransport {
+  private acceptedIndex?:AcceptedIndex;
+  private readonly candidates=new Map<string,AcceptedExtension>();
+  private readonly retainedParents=new Map<string,string>();
+  private refMayExist=false;
   private constructor(
     private readonly options: TransportOptions,
     private readonly directory: string,
@@ -64,12 +80,9 @@ export class DataTransport {
     private readonly url: string
   ) {}
   static async open(options: TransportOptions): Promise<DataTransport> {
-    const route = await resolvePushDestination(
-      options.repository,
-      options.binding,
-      options
-    );
-    if (route.status !== "valid" || !route.pushUrl)
+    // The complete current route is verified below before any network operation.
+    // Reject unsafe argv now; avoid repeating the same local routing probes.
+    if (!canonicalRemoteUrl(options.binding.pushUrl,options.repository.worktreeRoot))
       throw new TransportError("routing-changed");
     await assertDirectory(options.repository.privateDir);
     const directory = await mkdtemp(
@@ -81,7 +94,7 @@ export class DataTransport {
         options,
         directory,
         `refs/agent-badge/transactions/${randomUUID()}`,
-        executableUrl(route.pushUrl, options.repository.worktreeRoot)
+        executableUrl(options.binding.pushUrl, options.repository.worktreeRoot)
       );
       await writeFile(join(directory, "hooks", "pre-push"), pushGuard, {
         mode: 0o700,
@@ -115,7 +128,7 @@ export class DataTransport {
       {
         ...extra,
         cwd: this.options.repository.worktreeRoot,
-        signal: this.options.signal,
+        signal: extra.signal ?? this.options.signal,
         timeoutMs,
         env: { ...extra.env, GIT_NO_REPLACE_OBJECTS: "1" },
       }
@@ -131,11 +144,23 @@ export class DataTransport {
   }
   /** Git expands a literal URL again. Fail closed if either direction would reroute it. */
   async verifyRoute(): Promise<void> {
-    const route = await resolvePushDestination(
+    const controller=new AbortController(),signal=AbortSignal.any([this.options.signal,controller.signal]);
+    const checked=<T>(task:Promise<T>)=>task.catch(error=>{controller.abort();throw error;});
+    const results=await Promise.allSettled([
+      checked(resolvePushDestination(
       this.options.repository,
       this.options.binding,
-      this.options
-    );
+      {...this.options,signal}
+    ).then(route=>{if(route.status!=='valid')throw new TransportError('routing-changed');return route;})),
+      checked(this.require(["ls-remote", "--get-url", this.url],{signal})),
+      checked(this.git(["config", "--null", "--get-regexp", "^url\\..*\\.pushinsteadof$"],{signal}).then(result=>{
+        if(result.status!=="ok" && !(result.status==="error" && result.exitCode===1))throw new TransportError('unavailable');return result;
+      })),
+    ]);
+    for(const result of results)if(result.status==='rejected')throw result.reason;
+    const route=(results[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof resolvePushDestination>>>).value;
+    const expanded=(results[1] as PromiseFulfilledResult<string>).value;
+    const rewrites=(results[2] as PromiseFulfilledResult<GitRunResult>).value;
     if (
       route.status !== "valid" ||
       !route.pushUrl ||
@@ -143,17 +168,10 @@ export class DataTransport {
         this.url
     )
       throw new TransportError("routing-changed");
-    const expanded = await this.require(["ls-remote", "--get-url", this.url]);
     if (expanded.replace(/\r?\n$/, "") !== this.url)
       throw new TransportError("routing-changed");
     // An explicit named pushurl suppresses pushInsteadOf; a literal push does not.
     // Reject applicable changing push mappings rather than risk authorizing the named route only.
-    const rewrites = await this.git([
-      "config",
-      "--null",
-      "--get-regexp",
-      "^url\\..*\\.pushinsteadof$",
-    ]);
     if (
       rewrites.status !== "ok" &&
       !(rewrites.status === "error" && rewrites.exitCode === 1)
@@ -201,6 +219,7 @@ export class DataTransport {
   }
   async fetch(): Promise<AcceptedLedger> {
     await this.verifyRoute();
+    this.refMayExist=true;
     await this.require([
       "fetch",
       "--no-write-fetch-head",
@@ -213,18 +232,61 @@ export class DataTransport {
     const commit = (
       await this.require(["rev-parse", "--verify", this.ref])
     ).trim();
-    if (
-      !oidPattern.test(commit) ||
-      (await this.require(["cat-file", "-t", commit])).trim() !== "commit"
-    )
-      throw new ProtocolError("invalid-object-type");
-    return readLedgerCommit(this.options.repository, commit, this.options);
+    if (!oidPattern.test(commit)) throw new ProtocolError("invalid-object-type");
+    if(!this.options.indexMode)return readLedgerCommit(this.options.repository,commit,this.options);
+    const candidate=this.candidates.get(commit);
+    if(candidate&&this.acceptedIndex?.commit===candidate.baseCommit){
+      await this.acceptedIndex.install(commit,candidate,this.options);
+      // Confirmation already read the exact candidate from the bound remote.
+      // Publish its derived generation before any further cancellable Git work;
+      // otherwise a deadline destroys the verified base needed for delta recovery.
+      await this.closeCache();this.acceptedIndex=await AcceptedIndex.load(this.options.repository.privateDir,commit)??undefined;
+    }
+    if(this.acceptedIndex?.commit!==commit){await this.closeCache();this.acceptedIndex=await AcceptedIndex.load(this.options.repository.privateDir,commit)??undefined;}
+    let rebuilt=false;
+    if(!this.acceptedIndex){
+      if(this.options.indexMode==='lazy'){
+        const index=await rebuildAcceptedIndex(this.options.repository,commit,{...this.options,
+          binding:JSON.stringify([this.options.binding.repositoryId,this.options.binding.canonicalPushUrl,this.options.binding.dataRef]),
+          onValidatedStage:this.options.onValidatedStage?async snapshot=>{
+            if(snapshot.commit!==commit)throw new ProtocolError('invalid-record');
+            await this.verifyRoute();
+            const retained=snapshot.indexed?.validatedState.retainedCommit;if(retained)this.retainedParents.set(commit,retained);
+            await this.options.onValidatedStage!(snapshot);
+          }:undefined,
+          recoverCommit:async oid=>{await this.verifyRoute();const result=await this.git(['fetch','--no-write-fetch-head','--no-tags','--no-recurse-submodules','--refmap=',this.url,oid]);return result.status==='ok';},
+        });
+        if(!index)throw new TransportError('unavailable');this.acceptedIndex=index;rebuilt=!index.recoveredCandidate;
+      }else{
+        const full=await readLedgerCommit(this.options.repository,commit,this.options);
+        try{this.acceptedIndex=await AcceptedIndex.create(this.options.repository.privateDir,full);}
+        catch(error){
+          // Manual callers already own a fully validated detached snapshot.
+          // A pinned disposable slot cannot prevent the normal acceptance path
+          // from confirming it; a later invocation can refresh the cache.
+          if(error instanceof StoreError&&error.code==='store-busy')return full;
+          throw error;
+        }
+      }
+    }
+    const retained=this.acceptedIndex.validatedState.retainedCommit;if(retained)this.retainedParents.set(commit,retained);
+    const snapshot=this.acceptedIndex.snapshot();
+    if(this.options.indexMode==='lazy')return Object.assign(snapshot,{rebuilt});
+    // Explicit/manual consumers own detached fully materialized results after close.
+    return {commit:snapshot.commit,meta:snapshot.meta,catalog:snapshot.catalog,records:snapshot.records,ledger:snapshot.ledger,artifacts:snapshot.artifacts};
+  }
+  async closeCache():Promise<void>{const index=this.acceptedIndex;this.acceptedIndex=undefined;await index?.close();}
+  async commitExtension(extension:AcceptedExtension):Promise<string>{
+    if(extension.baseCommit!==this.acceptedIndex?.commit)throw new ProtocolError('invalid-record');
+    const commit=await this.commit(extension.artifacts,extension.baseCommit,true);
+    if(this.options.indexMode==='lazy')await prepareAcceptedCandidate(this.options.repository,commit,extension,{...this.options,binding:JSON.stringify([this.options.binding.repositoryId,this.options.binding.canonicalPushUrl,this.options.binding.dataRef])});
+    this.candidates.set(commit,extension);this.retainedParents.set(commit,extension.baseCommit);return commit;
   }
 
   async assertDescendant(
     commit: string,
     accepted: string,
-    artifacts: ReadonlyMap<string, Uint8Array>
+    artifacts: Pick<ReadonlyMap<string, Uint8Array>,'has'>
   ): Promise<void> {
     if (!oidPattern.test(commit) || !oidPattern.test(accepted))
       throw new TransportError("history-rewritten");
@@ -237,6 +299,7 @@ export class DataTransport {
       ])
     ).trim();
     if (anchor !== accepted) throw new TransportError("history-rewritten");
+    if(commit===accepted)return;
     const result = await this.git([
       "merge-base",
       "--is-ancestor",
@@ -244,6 +307,9 @@ export class DataTransport {
       commit,
     ]);
     if (result.status !== "ok") throw new TransportError("history-rewritten");
+    // This invocation built the candidate by read-tree of the verified parent
+    // plus canonical additions only; no immutable path could be removed.
+    if(this.retainedParents.get(commit)===accepted)return;
     const immutable = await this.require(
       [
         "ls-tree",
@@ -262,6 +328,11 @@ export class DataTransport {
       if (!artifacts.has(path)) throw new TransportError("history-rewritten");
     }
   }
+  /** Existing acceptance evidence only; this never validates or acknowledges new records. */
+  async verifyAnchor(commit: string): Promise<void> {
+    if (!oidPattern.test(commit) || (await this.require(['rev-parse','--verify',`refs/agent-badge/accepted/${commit}^{commit}`])).trim() !== commit)
+      throw new TransportError('history-rewritten');
+  }
   async containsCommit(descendant: string, ancestor: string): Promise<boolean> {
     if (!oidPattern.test(descendant) || !oidPattern.test(ancestor)) throw new TransportError("unavailable");
     const result = await this.git(["merge-base", "--is-ancestor", ancestor, descendant]);
@@ -279,20 +350,42 @@ export class DataTransport {
   }
   async commit(
     artifacts: ReadonlyMap<string, Uint8Array>,
-    parent: string | null
+    parent: string | null,
+    patch=false
   ): Promise<string> {
     const indexFile = join(this.directory, "index");
-    await this.require(["read-tree", "--empty"], { indexFile });
-    const entries: string[] = [];
-    for (const [path, bytes] of artifacts) {
-      this.options.signal.throwIfAborted();
-      validatePublicBlob(path, "100644", bytes, "blob");
-      const oid = (
-        await this.require(["hash-object", "-w", "--stdin"], { input: bytes })
-      ).trim();
-      if (!oidPattern.test(oid)) throw new TransportError("unavailable");
-      entries.push(`100644 ${oid}\t${path}\0`);
+    if(patch&&!parent)throw new ProtocolError('invalid-record');
+    await this.require(patch?["read-tree",parent!]:["read-tree", "--empty"], { indexFile });
+    const algorithm=(await this.require(['rev-parse','--show-object-format'])).trim();
+    if(algorithm!=='sha1'&&algorithm!=='sha256')throw new TransportError('unavailable');
+    const previous=new Map<string,string>();
+    if(parent&&!patch)for(const line of (await this.require(['ls-tree','-r','-z',parent],{maxOutputBytes:Number.MAX_SAFE_INTEGER})).split('\0').filter(Boolean)) {
+      const match=/^100644 blob ([a-f0-9]+)\t(.+)$/.exec(line);if(!match)throw new ProtocolError('invalid-path');previous.set(match[2],match[1]);
     }
+    const entries: string[] = [],changed:{bytes:Uint8Array;oid:string}[]=[];
+    for (const [path, bytes] of artifacts) {
+      this.options.signal.throwIfAborted();validatePublicBlob(path,'100644',bytes,'blob');
+      const oid=createHash(algorithm).update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+      entries.push(`100644 ${oid}\t${path}\0`);
+      if(previous.get(path)!==oid)changed.push({bytes,oid});
+    }
+    const objects=join(this.directory,'objects');await mkdir(objects,{mode:0o700});
+    try {
+      for(let offset=0;offset<changed.length;) {
+        const batch:typeof changed=[];let bytes=0;
+        while(offset<changed.length && batch.length<4096 && bytes+changed[offset].bytes.length<=8*1024*1024) {
+          const object=changed[offset++];batch.push(object);bytes+=object.bytes.length;
+        }
+        const paths=batch.map((_,index)=>join(objects,String(index)));
+        for(let start=0;start<batch.length;start+=64) {
+          this.options.signal.throwIfAborted();
+          await Promise.all(batch.slice(start,start+64).map((object,index)=>writeFile(paths[start+index],object.bytes,{mode:0o600,flag:'wx'})));
+        }
+        const written=(await this.require(['hash-object','-w','--no-filters','--stdin-paths'],{input:paths.map(path=>JSON.stringify(path)+'\n').join(''),maxOutputBytes:batch.length*66})).trim().split('\n');
+        if(written.length!==batch.length || written.some((oid,index)=>oid!==batch[index].oid))throw new TransportError('unavailable');
+        for(let start=0;start<paths.length;start+=64)await Promise.all(paths.slice(start,start+64).map(path=>rm(path)));
+      }
+    }finally{await rm(objects,{recursive:true,force:true});}
     await this.require(["update-index", "-z", "--index-info"], {
       indexFile,
       input: entries.join(""),
@@ -340,6 +433,11 @@ export class DataTransport {
     if (parent && !tip) throw new TransportError("history-rewritten");
     if (tip !== parent) return; // Ref moved: confirm and rebuild on its current accepted state.
     await this.verifyRoute();
+    // A supervised local receiver shares the worker group. Killing it while refs
+    // are locked can strand a lock in a user-owned repository.
+    if (this.options.operationMode === 'automatic' &&
+        canonicalRemoteUrl(this.url, this.options.repository.worktreeRoot)?.startsWith('file://'))
+      throw new TransportError('automatic-local-transport');
     // Never infer rejection/auth/non-FF from redacted stderr. Always confirm by fetching.
     await this.git(
       [
@@ -361,7 +459,7 @@ export class DataTransport {
   }
   async close(): Promise<void> {
     // Cleanup has a small independent budget even when the transaction has expired.
-    await runGit(
+    if(this.refMayExist)await runGit(
       [
         "--no-replace-objects",
         "-c",
@@ -395,6 +493,7 @@ export async function readLedgerCommit(repository: RepositoryContext, commit: st
       ["ls-tree", "-r", "-t", "-z", "-l", "--full-tree", commit],
       { maxOutputBytes: Number.MAX_SAFE_INTEGER }
     );
+    const blobs: { path:string; mode:string; objectType:string; oid:string; size:number }[] = [];
     const entries: PublicTreeEntry[] = [],
       directories: string[] = [];
     const paths = new Set<string>();
@@ -416,15 +515,17 @@ export async function readLedgerCommit(repository: RepositoryContext, commit: st
       validatePublicBlob(path, mode, new Uint8Array(), objectType);
       if (!/^\d+$/.test(size) || Number(size) > PUBLIC_OBJECT_MAX_BYTES)
         throw new ProtocolError("object-too-large");
-      const bytes = Buffer.from(
-        await require(["cat-file", "blob", oid], {
-          maxOutputBytes: PUBLIC_OBJECT_MAX_BYTES + 1,
-        }),
-        "utf8"
-      );
-      if (bytes.length !== Number(size))
-        throw new ProtocolError("invalid-record");
-      entries.push({ path, mode, objectType, bytes });
+      blobs.push({path,mode,objectType,oid,size:Number(size)});
+    }
+    // Bound each transfer independently of total historical ledger size. Git owns
+    // object decompression; our standard runner owns cancellation/process groups.
+    for(let offset=0;offset<blobs.length;) {
+      const batch:typeof blobs=[];let limit=0;
+      while(offset<blobs.length && batch.length<4096 && limit+blobs[offset].size+128<=8*1024*1024) {
+        const blob=blobs[offset++];batch.push(blob);limit+=blob.size+128;
+      }
+      const bodies=await readVerifiedGitBlobs(repository.worktreeRoot,batch,options);
+      batch.forEach((blob,index)=>entries.push({path:blob.path,mode:blob.mode,objectType:blob.objectType,bytes:bodies[index]}));
     }
     if (
       directories.some(

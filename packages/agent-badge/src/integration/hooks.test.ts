@@ -25,9 +25,41 @@ async function fixture(hook?: string, hooksPath?: string) {
   if (hook) { await writeFile(hookPath, hook); await chmod(hookPath, 0o755); }
   await mkdir(ctx.privateDir, { recursive: true });
   const receipt = join(root, 'badge.json');
-  await writeFile(join(ctx.privateDir, 'bootstrap.cjs'), `require('node:fs').writeFileSync(${JSON.stringify(receipt)},JSON.stringify({args:process.argv.slice(2),stdin:require('node:fs').readFileSync(0,'utf8'),cwd:process.cwd(),env:process.env.HOOK_TEST}));`);
+  await writeFile(join(ctx.privateDir, 'bootstrap.cjs'), `exports.runBootstrap=async options=>{require('node:fs').writeFileSync(${JSON.stringify(receipt)},JSON.stringify({args:options.args,stdin:options.input.toString(),cwd:process.cwd(),env:process.env.HOOK_TEST}));return {exitCode:0};};`);
   return { root, cwd, ctx, hookPath, receipt, runtime: { privateDir: ctx.privateDir, nodePath: process.execPath } };
 }
+
+test('concurrent stale setup plans preserve the original executable and reject the losing plan', async () => {
+  const original = '#!/bin/sh\nexit 7\n';
+  const f = await fixture(original);
+  await chmod(f.hookPath,0o751);
+  const plans = await Promise.all([planHooks(f.ctx, f.runtime), planHooks(f.ctx, f.runtime)]);
+  const rename = fs.rename; let delayed = false;
+  // Pause at the destructive seam: without a transaction lease the other plan
+  // can publish its wrapper, which the stale rename then overwrites the backup with.
+  const pause = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+    if (String(from) === f.hookPath && !delayed) { delayed = true; await new Promise(resolve => setTimeout(resolve, 150)); }
+    return rename(from, to);
+  }); syncBuiltinESMExports();
+  let results: PromiseSettledResult<Awaited<ReturnType<typeof applyHookPlan>>>[];
+  try { results = await Promise.allSettled(plans.map(applyHookPlan)); }
+  finally { pause.mockRestore(); syncBuiltinESMExports(); }
+  expect(results.filter(result => result.status === 'fulfilled' && result.value.status === 'installed')).toHaveLength(1);
+  expect(await readFile(join(f.ctx.hooksPath, '.agent-badge-user-pre-push'), 'utf8')).toBe(original);
+  expect((await fs.stat(join(f.ctx.hooksPath,'.agent-badge-user-pre-push'))).mode&0o777).toBe(0o751);
+  await removeHooks(f.ctx);
+  expect(await readFile(f.hookPath, 'utf8')).toBe(original);
+  expect((await fs.stat(f.hookPath)).mode&0o777).toBe(0o751);
+  expect(spawnSync(f.hookPath, [], { cwd: f.cwd, encoding: 'utf8' }).status).toBe(7);
+});
+test('installed driver calls bootstrap in its parent without changing the original delegate exit',async()=>{
+  const f=await fixture('#!/bin/sh\ncat > user-refs\nexit 7\n');
+  await writeFile(join(f.ctx.privateDir,'bootstrap.cjs'),`exports.runBootstrap=async options=>{require('node:fs').writeFileSync(${JSON.stringify(f.receipt)},JSON.stringify({pid:process.pid,stdin:options.input.toString()}));return {exitCode:99};};`);
+  await applyHookPlan(await planHooks(f.ctx,f.runtime));
+  const child=spawnSync(process.execPath,[join(f.ctx.privateDir,'git-hook.cjs'),join(f.ctx.hooksPath,'.agent-badge-user-pre-push')],{cwd:f.cwd,input:'refs\n',encoding:'utf8'});
+  expect(child.status).toBe(7);expect(JSON.parse(await readFile(f.receipt,'utf8'))).toEqual({pid:child.pid,stdin:'refs\n'});
+  expect(await readFile(join(f.cwd,'user-refs'),'utf8')).toBe('refs\n');
+});
 
 // Removing executable delegation, dropping argv/env/stdin or swallowing user failures breaks these real pushes.
 test.each(['shell', 'python', 'node', 'set-e', 'early-exit'] as const)('real push preserves %s user-hook execution and both refs consumers', async kind => {
@@ -47,12 +79,14 @@ test.each(['shell', 'python', 'node', 'set-e', 'early-exit'] as const)('real pus
 });
 
 test('user failure still blocks a push while badge receives the same refs', async () => {
-  const f = await fixture('#!/bin/sh\ncat > user-refs\nexit 7\n');
+  const f = await fixture('#!/bin/sh\ncat > user-refs\necho "synthetic original-hook exit7" >&2\nexit 7\n');
   await applyHookPlan(await planHooks(f.ctx, f.runtime));
   const result = git(f.cwd, ['push', 'origin', 'HEAD:refs/heads/main']); expect(result.status).not.toBe(0);
+  expect(result.stderr).toContain('synthetic original-hook exit7');
   expect(JSON.parse(await readFile(f.receipt, 'utf8')).stdin).toBe(await readFile(join(f.cwd, 'user-refs'), 'utf8'));
   expect(git(f.cwd, ['ls-remote', 'origin', 'refs/heads/main']).stdout).toBe('');
   const direct = spawnSync(f.hookPath, ['remote', 'url'], { cwd: f.cwd, input: 'refs\n', encoding: 'utf8' }); expect(direct.status).toBe(7);
+  expect(direct.stderr).toBe('synthetic original-hook exit7\n');
 });
 
 test.each(['custom hooks', 'absolute'])('repository-local hooksPath %s preserves symlink and repeated setup/removal', async hooksPath => {

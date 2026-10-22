@@ -7,6 +7,16 @@ import type { ControlRecord } from '../domain/ledger.js';
 import { canonicalJson, recordHash } from '../ledger/canonical-json.js';
 import { assertDirectory, readPrivateFile, hasCode, StoreError, privateDirectory, syncDirectory } from './atomic-file.js';
 import { PUBLIC_OBJECT_MAX_BYTES } from '../domain/capabilities.js';
+export async function readControlFile(root:string,path:string):Promise<ControlRecord>{
+  if(!/^controls\/[a-f0-9]{64}\.json$/.test(path))throw new StoreError('invalid-durable-data');
+  const info=await lstat(join(root,path));if(!info.isFile()||info.isSymbolicLink()||(info.mode&0o777)!==0o600)throw new StoreError('invalid-durable-data');
+  const bytes=await readPrivateFile(join(root,path),PUBLIC_OBJECT_MAX_BYTES,true);let value:unknown;
+  try{value=JSON.parse(bytes);}catch{throw new StoreError('invalid-durable-data');}
+  if(value&&typeof value==='object'&&'schemaVersion'in value&&value.schemaVersion!==2)throw new StoreError('unsupported-durable-schema');
+  const parsed=controlRecordSchema.safeParse(value);
+  if(!parsed.success||'controls/'+recordHash(parsed.data)+'.json'!==path||canonicalJson(parsed.data)!==bytes)throw new StoreError('invalid-durable-data');
+  return parsed.data;
+}
 /** Immutable source-free explicit intent. No source path/checkpoint or private identity is invented. */
 export async function readControls(root:string):Promise<ControlRecord[]> {
   const directory=join(root,'controls');
@@ -15,14 +25,7 @@ export async function readControls(root:string):Promise<ControlRecord[]> {
   for(const name of (await readdir(directory)).sort()) {
     if(/^\.tmp-[a-f0-9-]{36}$/.test(name))continue;
     if(!/^[a-f0-9]{64}\.json$/.test(name))throw new StoreError('invalid-durable-data');
-    const path=join(directory,name),info=await lstat(path);
-    if(!info.isFile()||info.isSymbolicLink()||(info.mode&0o777)!==0o600)throw new StoreError('invalid-durable-data');
-    const bytes=await readPrivateFile(path,PUBLIC_OBJECT_MAX_BYTES,true);let value:unknown;
-    try{value=JSON.parse(bytes);}catch{throw new StoreError('invalid-durable-data');}
-    if(value&&typeof value==='object'&&'schemaVersion'in value&&value.schemaVersion!==2)throw new StoreError('unsupported-durable-schema');
-    const parsed=controlRecordSchema.safeParse(value);
-    if(!parsed.success||recordHash(parsed.data)+'.json'!==name||canonicalJson(parsed.data)!==bytes)throw new StoreError('invalid-durable-data');
-    records.push(parsed.data);
+    records.push(await readControlFile(root,'controls/'+name));
   }
   return records;
 }

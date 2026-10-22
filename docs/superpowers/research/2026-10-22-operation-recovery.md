@@ -18,7 +18,8 @@ marker is not proof of acceptance or a complete drift detector. Status/setup mus
 compare the actual checkout declaration with **current validated accepted metadata**;
 a different marker revision never establishes that the declaration is correct.
 Setup can repair the declaration from that accepted snapshot without a policy push.
-Task11 owns declaration format, activation persistence and repair integration.
+Repository setup persists the declaration and approved local activation and owns
+this explicit repair integration.
 
 ## Automatic deadlines
 
@@ -26,7 +27,8 @@ The lightweight operation launcher starts the budget before spawning an owned
 worker. Repository discovery, provider parsing, journal replay, Git, helpers and
 transaction cleanup all fall inside the same maximum two-second wall budget.
 The parent kills the owned POSIX process group before the deadline, reserving time
-for exit observation and lock cleanup. Git inside that worker inherits its group;
+for exit observation and lock cleanup. The worker receives that actual earlier
+stop deadline so cooperative work does not consume the cleanup reserve. Git inside that worker inherits its group;
 manual in-process Git retains its independent group cleanup. Completion also kills
 remaining helpers. An unrelated launching shell/process group is never targeted.
 Only status, bounded counts and a reconciliation flag cross back through IPC;
@@ -42,24 +44,28 @@ collection can discover small new sources without an existing checkpoint, includ
 pre-push without a provider hook. Current adapters parse at most 512KiB per source
 per scan, safely above their 256KiB maximum line. Each invocation attempts at most
 16 sources with a private persisted rotating cursor; an exact source hint bypasses
-rotation. The next source cursor is persisted before its attempt, so a killed attempt
-does not permanently starve later sources. Added sources enter subsequent rotations.
+rotation. Before scanning, the cursor reserves the next starting candidate; after
+the slice returns, one write records the actual completed boundary. A repeatedly
+interrupted slice therefore eventually starts with every candidate. Added sources
+enter subsequent rotations.
 
-As a provisional Task10 guard, files larger than 2MiB (including costly warm prefix
-verification) and incompatible established reader/policy scopes defer provider reads.
+The provisional Task10 2MiB whole-source barrier was removed in Task17. Mutable
+sources retain full SHA256 prefix proof using a bounded 1MiB scratch buffer and
+before/after identity checks. Per-source parsing remains bounded and interrupted
+work resumes from durable checkpoints. Incompatible established reader/policy scopes defer provider reads.
 Known skipped/incomplete work sets a strict private durable reconciliation signal.
 Only successful complete explicit manual/setup reconciliation clears it; targeted
 work never clears broad pending evidence. Existing journal, queue and checkpoints
-survive. Task17 must replace the provisional whole-source barrier with bounded
-verified-prefix/index progress for large histories and active large sessions; this
-is not a permanent product support boundary. Discovery remains deadline-supervised
-and has adapter structural caps; Task17 owns its indexing/performance improvements.
+survive. Discovery remains deadline-supervised and has adapter structural caps.
+Private journal queries and accepted Git snapshots use disposable validated
+indexes with bounded rebuild progress; the immutable journal and Git ledger remain
+authority. See [storage and performance boundaries](../../maintainers/STORAGE-AND-PERFORMANCE.md)
+for measured limits and the remaining release gates.
 
-Task12 can supply a trusted last-accepted/activation policy to capture local changes
+The automatic worker uses a trusted last-accepted/activation policy to capture local changes
 before attempting network transport with `collect:none`. This policy is not remote
-approval, and the worker never promotes it into shared metadata. Trust persistence
-belongs to Task11; cold indexing, warm-path performance and artifact cleanup belong
-to Task17. An offline fetch is not permission to discard captured usage.
+approval, and the worker never promotes it into shared metadata. Setup owns trust
+persistence. An offline fetch is not permission to discard captured usage.
 
 ## Locks and uncertain ownership
 

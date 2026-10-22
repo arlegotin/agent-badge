@@ -57,7 +57,7 @@ export function canonicalRemoteUrl(value: string, cwd?: string): string | null {
   let account = "";
   let protocol: string;
   let port = "";
-  if (/^(https?|ssh):\/\//i.test(value)) {
+  if (/^(https?|ssh|git):\/\//i.test(value)) {
     // Reject ambiguity before WHATWG URL normalizes dot segments away.
     const raw = value.match(/^[a-z]+:\/\/[^/]+\/(.*)$/i);
     if (!raw) return null;
@@ -67,6 +67,7 @@ export function canonicalRemoteUrl(value: string, cwd?: string): string | null {
       host = url.hostname.toLowerCase();
       protocol = url.protocol.slice(0, -1);
       port = url.port;
+      if (protocol === "git" && (url.username || url.password)) return null;
       if (protocol === "ssh") {
         if (url.password) return null;
         account = url.username;
@@ -74,6 +75,8 @@ export function canonicalRemoteUrl(value: string, cwd?: string): string | null {
       }
     } catch { return null; }
   } else {
+    // An unsupported URL scheme is never an SCP hostname.
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) return null;
     const scp = value.match(/^(?:([^@/:]+)@)?([a-z0-9.-]+):(.+)$/i);
     if (!scp || scp[3].startsWith(":")) return null;
     host = scp[2].toLowerCase();
@@ -91,14 +94,15 @@ export function canonicalRemoteUrl(value: string, cwd?: string): string | null {
 export interface BindingBudget { readonly signal?: AbortSignal; readonly deadline?: number }
 async function routing(ctx: RepositoryContext, remoteName: string, budget: BindingBudget = {}): Promise<{ fetch: string; push: string; fetchUrl: string; pushUrl: string } | BindingReason> {
   const deadline = budget.deadline ?? Date.now() + 2000;
+  const controller=new AbortController(),signal=budget.signal?AbortSignal.any([budget.signal,controller.signal]):controller.signal;
   async function urls(push: boolean): Promise<string[] | null> {
     const remaining = deadline - Date.now();
     if (remaining <= 0) return null;
-    const result = await runGit(["remote", "get-url", ...(push ? ["--push"] : []), "--all", remoteName], { cwd: ctx.worktreeRoot, timeoutMs: remaining, signal: budget.signal });
+    const result = await runGit(["remote", "get-url", ...(push ? ["--push"] : []), "--all", remoteName], { cwd: ctx.worktreeRoot, timeoutMs: remaining, signal });
+    if(result.status!=='ok')controller.abort();
     return result.status === "ok" ? result.stdout.replace(/\r?\n$/, "").split(/\r?\n/) : null;
   }
-  const fetch = await urls(false);
-  const push = await urls(true);
+  const [fetch,push] = await Promise.all([urls(false),urls(true)]);
   if (!fetch || !push) return "remote-unavailable";
   if (push.length !== 1) return "multiple-push-urls";
   if (fetch.length !== 1) return "multiple-fetch-urls";

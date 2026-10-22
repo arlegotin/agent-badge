@@ -51,6 +51,94 @@ function claudeFixture() {
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
 
 describe('durable repository store', () => {
+  test('bounded cache rebuild resumes validated source/control/ack stages without exposing partial pending state',async()=>{
+    const ctx=await context(),store=await openStore(ctx),first=fixture();
+    for(let i=0;i<12;i++){const next=fixture();next.batch.observations[0].nativeUnitId='rebuild-'+i;await store.commitBatch(next.source,next.batch,[sanitizeObservation(next.batch.observations[0],policy)]);}
+    const control={schemaVersion:2 as const,normalizationVersion:1 as const,repositoryId,kind:'exclude' as const,targetUnitKey:first.record.unitKey,supersedes:[]};await store.commitControl(control);
+    const all=await store.pending();await store.acknowledge([recordHash(all[0])]);const expected=await store.pending();await store.invalidateCache();
+    let deferred=0,actual;
+    for(let run=0;run<10;run++){
+      const resumed=await openNativeStore(ctx,{processNamespace:async()=>'synthetic-namespace',rebuildBudget:{signal:AbortSignal.timeout(2000),deadline:Date.now()+2000,maxEntries:3}});
+      try{actual=await resumed.pending();break;}catch(error){expect(String(error)).toContain('store-busy');deferred++;}
+    }
+    expect(deferred).toBeGreaterThan(1);expect(actual).toEqual(expected);
+    expect(await readdir(join(ctx.privateDir,'cache'))).not.toContain('index-stage.sqlite');
+  });
+  test.each(['corrupt-stage','missing-stage-manifest','interrupted-promotion','changed-authority'])('local rebuild handles %s without accepting a partial generation',async(fault)=>{
+    const ctx=await context(),store=await openStore(ctx),first=fixture();
+    for(let i=0;i<5;i++)await store.commitBatch(first.source,first.batch,[first.record]);
+    const expected=await store.pending();await store.invalidateCache();
+    const resume=async()=>openNativeStore(ctx,{processNamespace:async()=>'synthetic-namespace',rebuildBudget:{signal:AbortSignal.timeout(2000),deadline:Date.now()+2000,maxEntries:2}});
+    await expect((await resume()).pending()).rejects.toThrow('store-busy');
+    if(fault==='corrupt-stage')await writeFile(join(ctx.privateDir,'cache/index-stage.sqlite'),'corrupt');
+    if(fault==='missing-stage-manifest')await rm(join(ctx.privateDir,'cache/index-stage.json'));
+    if(fault==='interrupted-promotion'){const {rename}=await import('node:fs/promises');await rename(join(ctx.privateDir,'cache/index-stage.sqlite'),join(ctx.privateDir,'cache/index.sqlite'));}
+    if(fault==='changed-authority'){await writeFile(join(ctx.privateDir,'journal/0000000000000005.json'),'{}');await expect((await resume()).pending()).rejects.toThrow('invalid-durable-data');return;}
+    let actual;for(let i=0;i<5;i++)try{actual=await (await resume()).pending();break;}catch(error){expect(String(error)).toContain('store-busy');}
+    expect(actual).toEqual(expected);
+  });
+  test('bounded pending groups keep controls with their unit and skip oversized groups without losing unrelated progress',async()=>{
+    const ctx=await context(),store=await openStore(ctx),first=fixture();
+    await store.commitBatch(first.source,first.batch,[first.record]);
+    for(let i=0;i<3;i++)await store.commitControl({schemaVersion:2,normalizationVersion:1,repositoryId,kind:'exclude',targetUnitKey:first.record.unitKey,supersedes:i?['a'.repeat(63)+i]:[]});
+    const unrelated={schemaVersion:2 as const,normalizationVersion:1 as const,repositoryId,kind:'exclude' as const,targetUnitKey:'f'.repeat(64),supersedes:[]};await store.commitControl(unrelated);
+    expect(await store.pendingCount()).toBe(5);
+    const small=await store.pendingBatch(2,512*1024);expect(small).toEqual({records:[unrelated],deferredUnitCount:1});
+    const all=await store.pendingBatch(128,512*1024);expect(all.records).toHaveLength(5);expect(all.deferredUnitCount).toBe(0);
+    await store.acknowledge([recordHash(unrelated)]);expect(await (await openStore(ctx)).pendingCount()).toBe(4);
+  });
+  test.each(['journal','controls'])('verified inventory rejects missing authoritative %s members',async(kind)=>{
+    const ctx=await context(),store=await openStore(ctx),first=fixture();
+    await store.commitBatch(first.source,first.batch,[first.record]);
+    const control={schemaVersion:2 as const,normalizationVersion:1 as const,repositoryId,kind:'exclude' as const,targetUnitKey:'a'.repeat(64),supersedes:[]};
+    await store.commitControl(control);
+    const directory=join(ctx.privateDir,kind),names=await readdir(directory);
+    await rm(join(directory,names.at(-1)!));
+    await expect((await openStore(ctx)).pending()).rejects.toThrow('invalid-durable-data');
+  });
+  test.each(['delete','corrupt'])('cache-only %s rebuilds complete journal and controls',async(kind)=>{
+    const ctx=await context(),store=await openStore(ctx),first=fixture();
+    await store.commitBatch(first.source,first.batch,[first.record]);
+    const control={schemaVersion:2 as const,normalizationVersion:1 as const,repositoryId,kind:'exclude' as const,targetUnitKey:'a'.repeat(64),supersedes:[]};
+    await store.commitControl(control);const expected=await store.pending();
+    if(kind==='delete')await rm(join(ctx.privateDir,'cache'),{recursive:true});
+    else await writeFile(join(ctx.privateDir,'cache/index.sqlite'),'invalid sqlite');
+    expect(await (await openStore(ctx)).pending()).toEqual(expected);
+  });
+  test('unchanged reconciliation state does not republish durable scheduling bytes',async()=>{
+    const ctx=await context(),store=await openStore(ctx);await store.recordReconciliationPending(true);await store.recordAutomaticSourceOffset(7);
+    const path=join(ctx.privateDir,'reconciliation.json'),before=await stat(path,{bigint:true});
+    await store.recordReconciliationPending(true);await store.recordAutomaticSourceOffset(7);
+    const after=await stat(path,{bigint:true});expect(after.ino).toBe(before.ino);expect(after.mtimeNs).toBe(before.mtimeNs);
+  });
+  test('source index selects exact journal evidence and rebuilds after cache loss or durable replacement', async () => {
+    const ctx=await context(),store=await openStore(ctx),first=fixture(),other=fixture();
+    other.source={...other.source,sourceIdentity:'/synthetic/other'};
+    other.batch={...other.batch,source:other.source,nextCheckpoint:{...other.batch.nextCheckpoint,sourceIdentity:other.source.sourceIdentity},
+      observations:other.batch.observations.map(o=>({...o,nativeUnitId:'other',source:{...o.source,sourceIdentity:other.source.sourceIdentity}}))};
+    await store.commitBatch(first.source,first.batch,[first.record]);
+    await store.commitBatch(other.source,other.batch,[sanitizeObservation(other.batch.observations[0],policy)]);
+    expect((await store.sourceJournal(first.source)).map(entry=>entry.sequence)).toEqual([1]);
+    await store.invalidateCache();
+    expect((await (await openStore(ctx)).sourceJournal(other.source)).map(entry=>entry.sequence)).toEqual([2]);
+    await writeFile(join(ctx.privateDir,'journal','0000000000000001.json'),'{}');
+    await expect((await openStore(ctx)).checkpointCandidate(first.source)).rejects.toThrow('invalid-durable-data');
+  });
+  test('acknowledgement batches survive restart without rewriting earlier confirmed evidence', async () => {
+    const ctx = await context(), store = await openStore(ctx), first = fixture();
+    await store.commitBatch(first.source, first.batch, [first.record]);
+    await store.acknowledge([recordHash(first.record)]);
+    const dir = join(ctx.privateDir, 'acknowledgements');
+    const files = await readdir(dir), original = await readFile(join(dir, files[0]));
+    const next = fixture(); next.batch.observations[0].nativeUnitId = 'second';
+    const second = sanitizeObservation(next.batch.observations[0], policy);
+    await store.commitBatch(next.source, next.batch, [second]);
+    await store.acknowledge([recordHash(second)]);
+    expect(await readFile(join(dir, files[0]))).toEqual(original);
+    expect(await (await openStore(ctx)).pending()).toEqual([]);
+    await writeFile(join(dir, files[0]), '{}');
+    await expect((await openStore(ctx)).pending()).rejects.toThrow('invalid-durable-data');
+  });
   test('restart replays once by public hash and retains private metadata after acknowledgement', async () => {
     const ctx = await context(); const { source, batch, record } = fixture();
     const store = await openStore(ctx);
@@ -133,8 +221,8 @@ describe('durable repository store', () => {
     await store.commitBatch(f.source, f.batch, [f.record]);
     await writeFile(join(ctx.privateDir, 'cache', 'broken.json'), '{');
     await store.invalidateCache();
-    expect(await store.pending()).toEqual([f.record]);
     expect(await readdir(join(ctx.privateDir, 'cache'))).toEqual([]);
+    expect(await store.pending()).toEqual([f.record]);
   });
 
   test('source replacement resets checkpoint without deleting old pending evidence', async () => {
@@ -300,6 +388,19 @@ async function childFixture(ctx: RepositoryContext) {
 }
 
 describe('real process death and filesystem failures', () => {
+  test('publishing collected index under the lease survives death before network work without rebuilding authority',async()=>{
+    const ctx=await context(),prelude=await childFixture(ctx),f=fixture();
+    const killed=await runStorageFixtureProcess(project,prelude+`
+      await store.withLock(AbortSignal.timeout(5000),async()=>{
+        await store.commitBatch(source,batch,[record]);await store.flushDerivedIndex();
+        await fs.writeFile(${JSON.stringify(join(ctx.worktreeRoot,'flushed.json'))},await fs.readFile(${JSON.stringify(join(ctx.privateDir,'cache/index.json'))}));
+        process.kill(process.pid,'SIGKILL');
+      });`);
+    expect(killed.signal).toBe('SIGKILL');expect(killed.stderr).toBe('');
+    const published=await readFile(join(ctx.worktreeRoot,'flushed.json'),'utf8'),info=await stat(join(ctx.privateDir,'cache/index.sqlite'));
+    const store=await openStore(ctx);expect(await store.pending()).toEqual([f.record]);
+    expect(await readFile(join(ctx.privateDir,'cache/index.json'),'utf8')).toBe(published);expect((await stat(join(ctx.privateDir,'cache/index.sqlite'))).ino).toBe(info.ino);
+  });
   test.each([
     ['write', '/journal/.tmp-', 'exit-after', false],
     ['sync', '/journal/.tmp-', 'exit-after', false],
@@ -323,7 +424,7 @@ describe('real process death and filesystem failures', () => {
     const killed = await runStorageFixtureProcess(project, prelude + `
       await store.commitBatch(source, batch, [record]);
       await store.acknowledge([${JSON.stringify(recordHash(f.record))}]);`,
-      { operation: 'rename', pathIncludes: '/acknowledged.json', action: 'exit-before' });
+      { operation: 'rename', pathIncludes: '/acknowledgements/', action: 'exit-before' });
     expect(killed.signal).toBe('SIGKILL');
     const store = await openStore(ctx); expect(await store.pending()).toEqual([f.record]);
     await store.acknowledge([recordHash(f.record)]);

@@ -102,15 +102,14 @@ try { main(); } catch { console.error('agent-badge: setup unavailable; explicit 
 
 export const bootstrapSource = String.raw`#!/usr/bin/env node
 'use strict';
-const started = performance.now();
-if (!/^(24|26)\./.test(process.versions.node)) { console.error('agent-badge: Node 24 or 26 required.'); process.exitCode = 0; }
-else if (process.platform === 'win32') { console.error('agent-badge: Windows automatic hooks unsupported; use manual sync.'); }
-else {
+async function runBootstrap(options={}) {
+  const started = performance.now();
+  if (!/^(24|26)\./.test(process.versions.node)) { console.error('agent-badge: Node 24 or 26 required.'); return {exitCode:0}; }
+  if (process.platform === 'win32') { console.error('agent-badge: Windows automatic hooks unsupported; use manual sync.'); return {exitCode:0}; }
   const path = require('node:path');
   const { pathToFileURL } = require('node:url');
   const privateDir = __dirname;
-  async function main() {
-    const args=process.argv.slice(2); let provider, duration=2000;
+    const args=[...(options.args??process.argv.slice(2))]; let provider, duration=2000;
     if(args[0]==='--hook' && ['codex','claude','gemini'].includes(args[1])) { provider=args[1]; args.splice(0,2); }
     else if(args[0]==='--git-hook') args.shift();
     if(args.length) {
@@ -125,6 +124,8 @@ else {
     }
     let target;
     if(provider) {
+      // Callable Git-driver entry never owns or consumes the delegate's stdin.
+      if(options.input!==undefined)return;
       const payload=await new Promise(resolve=>{
         let length=0, chunks=[], done=false;
         const finish=value=>{ if(done)return; done=true;clearTimeout(timer);process.stdin.destroy();resolve(value); };
@@ -143,8 +144,8 @@ else {
     const runtime = path.join(privateDir, 'runtime', 'APPROVED_RUNTIME_HASH', 'node_modules/@legotin/agent-badge/dist/integration/runtime.js');
     const m=await import(pathToFileURL(runtime).href);
     const timeoutMs=Math.floor(duration-(performance.now()-started)); if(timeoutMs<1)return;
-    const r=await m.runApprovedOperation({ cwd: process.cwd(), privateDir, target, timeoutMs, onDiagnostic: line => console.error(line) }); process.exitCode=r.exitCode;
-  }
-  main().catch(()=>{console.error('agent-badge: local work queued; run setup or manual sync.');});
+    return m.runApprovedOperation({ cwd: process.cwd(), privateDir, target, timeoutMs, onDiagnostic: line => console.error(line) });
 }
+module.exports.runBootstrap=runBootstrap;
+if(require.main===module)runBootstrap().then(result=>{if(result)process.exitCode=result.exitCode;}).catch(()=>{console.error('agent-badge: local work queued; run setup or manual sync.');});
 `;

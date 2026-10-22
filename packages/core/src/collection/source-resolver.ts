@@ -93,6 +93,7 @@ export interface SourceTarget {
 export type ProviderAdapters = Partial<Record<ProviderId, ProviderAdapter>>;
 export type ProviderRoots = Partial<Record<ProviderId, readonly string[]>>;
 export interface DiscoverOptions {
+  lazyEpoch?: boolean;
   repositoryId: string;
   disabledProviders: readonly ProviderId[];
   adapters: ProviderAdapters;
@@ -125,6 +126,7 @@ export async function discoverSources(options: DiscoverOptions): Promise<{
         repositoryId: options.repositoryId,
         enrolledRoots: [...roots],
         signal: options.signal,
+        lazyEpoch: options.lazyEpoch,
       });
       const unique = new Map<string, SourceDescriptor>();
       for (const value of discovered) {

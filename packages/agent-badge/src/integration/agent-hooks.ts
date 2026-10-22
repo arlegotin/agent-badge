@@ -23,7 +23,7 @@ const quote = (s: string) => "'" + s.replaceAll("'", "'\"'\"'") + "'";
 /** Fixed built-in-only locator. No tracked executable is loaded. Git lookup is a
  * killable owned group; its elapsed time is deducted from the same hook budget. */
 const locator = String.raw`'use strict';
-const started=performance.now(),cp=require('node:child_process'),path=require('node:path');
+const deadline=Number(process.hrtime.bigint()/1000000n)+2000,cp=require('node:child_process'),path=require('node:path');
 if(process.platform==='win32'){console.error('agent-badge: Windows automatic hooks unsupported; use manual sync.');process.exit(0);}
 if(!/^(24|26)\./.test(process.versions.node)){console.error('agent-badge: Node 24 or 26 required on provider PATH.');process.exit(0);}
 const env={...process.env};for(const k of ['GIT_DIR','GIT_COMMON_DIR','GIT_WORK_TREE','GIT_INDEX_FILE','GIT_PREFIX','GIT_OBJECT_DIRECTORY','GIT_ALTERNATE_OBJECT_DIRECTORIES','GIT_NAMESPACE','GIT_SHALLOW_FILE','GIT_IMPLICIT_WORK_TREE','GIT_GRAFT_FILE','GIT_REPLACE_REF_BASE'])delete env[k];
@@ -31,15 +31,15 @@ env.GIT_OPTIONAL_LOCKS='0';env.GIT_TERMINAL_PROMPT='0';
 const child=cp.spawn('git',['rev-parse','--git-common-dir'],{env,detached:true,stdio:['ignore','pipe','ignore']});
 let chunks=[],size=0,finished=false;
 const kill=()=>{if(child.pid)try{process.kill(-child.pid,'SIGKILL');}catch{}};
-const timer=setTimeout(()=>{finished=true;kill();console.error('agent-badge: repository lookup unavailable; run manual sync.');},Math.max(1,2000-(performance.now()-started)));
+const timer=setTimeout(()=>{finished=true;kill();console.error('agent-badge: repository lookup unavailable; run manual sync.');},Math.max(1,deadline-Number(process.hrtime.bigint()/1000000n)));
 child.stdout.on('data',c=>{size+=c.length;if(size>65536){finished=true;kill();}else chunks.push(c);});
 child.once('error',()=>{clearTimeout(timer);console.error('agent-badge: Git unavailable; run setup or manual sync.');});
 child.once('exit',code=>{clearTimeout(timer);kill();if(finished||code!==0)return;
-const remaining=Math.floor(2000-(performance.now()-started));if(remaining<1)return;
+const remaining=deadline-Number(process.hrtime.bigint()/1000000n);if(remaining<1)return;
 const common=Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/,'');if(!common||/[\x00-\x1f]/.test(common))return;
 const bootstrap=path.join(path.resolve(process.cwd(),common),'agent-badge/bootstrap.cjs');
-const provider=process.argv[1];process.argv=[process.execPath,bootstrap,'--hook',provider,'--remaining-ms',String(remaining)];
-try{require(bootstrap);}catch{console.error('agent-badge: local activation required; run setup.');}
+const provider=process.argv[1],failed=()=>console.error('agent-badge: local activation required; run setup.');
+try{Promise.resolve(require(bootstrap).runBootstrap({args:['--hook',provider,'--remaining-ms',String(remaining),'--deadline-ms',String(deadline)]})).catch(failed);}catch{failed();}
 });`;
 function command(provider: Provider) {
   return `if command -v node >/dev/null 2>&1; then node -e ${quote(locator)} ${provider}; else printf '%s\\n' 'agent-badge: Node 24 or 26 required on provider PATH; run setup.' >&2; fi; true`;
@@ -94,13 +94,13 @@ async function recoverable(cwd: string, intent: ProviderIntent) {
 }
 /** Reuse the existing private lease in a separate namespace so usage-store lock
  * owners can invoke provider removal without reentering their own lock. */
-async function withProviderLease(privateDir: string, task: () => Promise<AgentHookResult>): Promise<AgentHookResult> {
+export async function withIntegrationLease<T>(privateDir: string, task: () => Promise<T>): Promise<T | { status: 'action-required'; actionItems: string[] }> {
   const directory = join(privateDir, 'integration-locks');
   await safeParents(join(directory, 'operation.lock')); await mkdir(directory, { recursive: true, mode: 0o700 });
   let release: () => Promise<void>;
   try { release = await acquireLock(directory, AbortSignal.timeout(2000)); }
   catch (error) {
-    if ((error as { code?: string }).code === 'store-busy') return { status: 'action-required', actionItems: ['Provider integration is busy or its previous owner cannot be verified. Stop concurrent setup/uninstall and retry; stale lease recovery requires proving owner death.'] };
+    if ((error as { code?: string }).code === 'store-busy') return { status: 'action-required', actionItems: ['Repository integration is busy or its previous owner cannot be verified. Stop concurrent setup/uninstall and retry; stale lease recovery requires proving owner death.'] };
     throw error;
   }
   try { return await task(); } finally { await release(); }
@@ -173,7 +173,7 @@ export async function planAgentHooks(cwd: string, context?: RepositoryContext): 
   return { cwd: resolve(cwd), privateDir: repository.privateDir, pending: null, changes, actionItems, notices };
 }
 export async function applyAgentHookPlan(plan: AgentHookPlan): Promise<AgentHookResult> {
-  return withProviderLease(plan.privateDir, () => applyAgentHookPlanLocked(plan));
+  return withIntegrationLease(plan.privateDir, () => applyAgentHookPlanLocked(plan));
 }
 async function applyAgentHookPlanLocked(plan: AgentHookPlan): Promise<AgentHookResult> {
   for (const c of plan.changes) if (await contents(join(plan.cwd, c.path)) !== c.before) throw new Error('Agent hook files changed after planning.');
@@ -193,7 +193,7 @@ async function applyAgentHookPlanLocked(plan: AgentHookPlan): Promise<AgentHookR
 }
 export async function removeAgentHooks(cwd: string): Promise<AgentHookResult> {
   const repository = await (await import('@legotin/agent-badge-core')).resolveRepository(cwd);
-  return withProviderLease(repository.privateDir, () => removeAgentHooksLocked(repository.worktreeRoot, repository.privateDir));
+  return withIntegrationLease(repository.privateDir, () => removeAgentHooksLocked(repository.worktreeRoot, repository.privateDir));
 }
 async function removeAgentHooksLocked(cwd: string, privateDir: string): Promise<AgentHookResult> {
   const pending = await loadPending(privateDir);

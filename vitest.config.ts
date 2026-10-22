@@ -13,9 +13,7 @@ export default defineConfig({
       "@legotin/agent-badge-core/storage/lock": `${rootDir}packages/core/src/storage/lock.ts`,
       "@legotin/agent-badge-core/operations/runner": `${rootDir}packages/core/src/operations/runner.ts`,
       "@legotin/agent-badge-core": `${rootDir}packages/core/src/index.ts`,
-      "@agent-badge/core": `${rootDir}packages/core/src/index.ts`,
-      "@agent-badge/testkit": `${rootDir}packages/testkit/src/index.ts`,
-      "agent-badge": `${rootDir}packages/agent-badge/src/index.ts`
+      "@agent-badge/testkit": `${rootDir}packages/testkit/src/index.ts`
     }
   },
   test: {

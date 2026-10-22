@@ -87,6 +87,8 @@ export interface ScanBatch {
   diagnostics: Diagnostic[];
 }
 export const discoveryContextSchema = z.object({ repositoryId: repositoryIdSchema,
+  /** Automatic discovery hint only; never a checkpoint or source epoch. */
+  lazyEpoch: z.boolean().optional(),
   enrolledRoots: z.array(privateStringSchema), signal: z.custom<AbortSignal>((input) => input instanceof AbortSignal)
 }).strict();
 export type DiscoveryContext = z.infer<typeof discoveryContextSchema>;

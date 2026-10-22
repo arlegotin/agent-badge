@@ -1,5 +1,19 @@
 import { createHash } from 'node:crypto';
 import { open, realpath } from 'node:fs/promises';
+import { isAbsolute, relative, sep } from 'node:path';
+import type { SourceDescriptor } from '../domain/capabilities.js';
+
+export const UNRESOLVED_SOURCE_EPOCH = 'unresolved-source-epoch';
+/** Discovery hints are resolved before a checkpoint is selected. Failures never
+ * become journal generations. A resolved alias must remain inside its enrolled root. */
+export async function resolveSourceEpoch(source: SourceDescriptor, signal: AbortSignal): Promise<SourceDescriptor> {
+  if(source.generation!==UNRESOLVED_SOURCE_EPOCH)return source;
+  signal.throwIfAborted();
+  const epoch=await sourceFileEpoch(source.root),local=relative(source.instanceKey,epoch.identity);
+  signal.throwIfAborted();
+  if(local==='..'||local.startsWith('..'+sep)||isAbsolute(local))throw new Error('unavailable-source');
+  return {...source,root:epoch.identity,sourceIdentity:epoch.identity,generation:epoch.generation};
+}
 
 export const DEFAULT_MAX_BYTES = 16 * 1024 * 1024;
 const digest = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
@@ -25,7 +39,7 @@ export async function readSourceFile(path: string, maxBytes: number, signal: Abo
     if (!before.isFile() || generation !== expectedGeneration || before.size > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('incomplete-source');
     let hasher=createHash('sha256'); let start=0; let resumed=false;
     if(resume && resume.offset <= Number(before.size)) {
-      const scratch=Buffer.alloc(64*1024);
+      const scratch=Buffer.alloc(1024*1024);
       while(start < resume.offset) {signal.throwIfAborted(); const n=Math.min(scratch.length,resume.offset-start);
         const {bytesRead}=await handle.read(scratch,0,n,start); if(bytesRead!==n) throw new Error('incomplete-source');
         hasher.update(scratch.subarray(0,n)); start+=n;

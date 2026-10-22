@@ -6,7 +6,7 @@ import { claudeCapabilityManifest } from '../packages/core/src/providers/claude/
 import { geminiCapabilityManifest } from '../packages/core/src/providers/gemini/adapter.ts';
 import { opencodeCapabilityManifest } from '../packages/core/src/providers/opencode/adapter.ts';
 import { normalizedImportCapabilityManifest } from '../packages/core/src/providers/normalized-import.ts';
-const files=['README.md','SECURITY.md','docs/INSTALL.md','docs/QUICKSTART.md','docs/CLI.md','docs/CONFIGURATION.md','docs/AUTH.md','docs/ATTRIBUTION.md','docs/PRIVACY.md','docs/UNINSTALL.md','docs/FAQ.md','docs/TROUBLESHOOTING.md','docs/HOW-IT-WORKS.md','docs/RECOVERY.md','docs/MANUAL-GIST.md'];
+const files=['README.md','SECURITY.md','docs/INSTALL.md','docs/QUICKSTART.md','docs/CLI.md','docs/CONFIGURATION.md','docs/AUTH.md','docs/ATTRIBUTION.md','docs/PRIVACY.md','docs/UNINSTALL.md','docs/FAQ.md','docs/TROUBLESHOOTING.md','docs/HOW-IT-WORKS.md','docs/RECOVERY.md'];
 const errors=[];let examples=0,links=0;
 for(const file of files){
  const source=await readFile(file,'utf8');

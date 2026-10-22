@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'vitest';
 import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createBareRemoteFixture, codexRollout, codexContext, codexRequest } from '@agent-badge/testkit';
+import { createBareRemoteFixture, startFixtureGitDaemon, codexRollout, codexContext, codexRequest } from '@agent-badge/testkit';
 import type { GitFixture } from '@agent-badge/testkit';
 import { resolveRepository } from '../git/context.js';
 import { bindRemote } from '../git/remote-binding.js';
@@ -17,11 +17,21 @@ const repositoryId = '12345678-1234-4234-8234-123456789abc';
 const policy = { schemaVersion: 1 as const, repositoryId, normalizationVersion: 1 as const, discovery: 'auto' as const, disabledProviders: [], badge: { label: 'Usage', metric: 'tokens' as const } };
 const meta = { schemaVersion: 2 as const, protocolVersion: 1 as const, repositoryId, normalizationVersion: 1 as const, catalogVersion: 1, catalogHash: catalogHash(defaultCatalog), policy };
 const fixtures: GitFixture[] = [];
-afterEach(async () => { await Promise.all(fixtures.splice(0).map(f => f.cleanup())); });
-async function fixture() {
+const receivers: Awaited<ReturnType<typeof startFixtureGitDaemon>>[] = [];
+afterEach(async () => {
+  await Promise.all(receivers.splice(0).map(receiver => receiver.stop()));
+  await Promise.all(fixtures.splice(0).map(f => f.cleanup()));
+});
+async function fixture(hosted = false) {
   const f = await createBareRemoteFixture(); fixtures.push(f);
+  let declaredUrl = f.remote;
+  if (hosted) {
+    const receiver = await startFixtureGitDaemon(f); receivers.push(receiver);
+    declaredUrl = receiver.url;
+    await f.git(f.clones[0], ['remote', 'set-url', 'origin', declaredUrl]);
+  }
   const repository = await resolveRepository(f.clones[0]); const store = await openStore(repository);
-  const binding = await bindRemote(repository, { repositoryId, declaredUrl: f.remote });
+  const binding = await bindRemote(repository, { repositoryId, declaredUrl });
   const options = { repository, store, binding, signal: AbortSignal.timeout(15000), deadline: Date.now() + 15000, collect: 'none' as const };
   expect((await syncUsage({ ...options, initialize: { meta, catalog: defaultCatalog } })).status).toBe('synced');
   return { f, repository, store, binding, options };
@@ -77,13 +87,13 @@ test('a stalled store lock stays within the automatic wall budget and emits one 
 });
 
 test.each([true, false])('new small session after setup is automatically counted with targeted=%s', async targeted => {
-  const { f, repository, binding, store } = await fixture();
+  const { f, repository, binding, store } = await fixture(true);
   const root = join(f.root, 'new-codex'), path = join(root, 'sessions', 'new.jsonl');
   await mkdir(join(root, 'sessions'), { recursive: true });
   await writeFile(path, codexRollout({ single: true }).replaceAll('/synthetic/repo', repository.worktreeRoot));
   const budget = createOperationBudget('automatic');
   const result = await runRepositoryOperation({ budget, request: { cwd: repository.worktreeRoot, privateDir: repository.privateDir,
-    binding, capturePolicy: policy, collect: 'incremental', collection: { roots: { codex: [root], claude: [join(f.root, 'absent-claude')] },
+    binding, capturePolicy: policy, collect: 'incremental', collection: { roots: { codex: [root], claude: [join(f.root, 'absent-claude')], gemini: [], opencode: [] },
       ...(targeted ? { target: { provider: 'codex' as const, sourceIdentity: path } } : {}) } } });
   budget.dispose(); expect(result.status).toBe('synced'); expect(result.acknowledgedCount).toBe(1);
   expect(await store.pending()).toEqual([]); expect((await store.journal()).flatMap(entry => entry.observations)).toHaveLength(1);
@@ -91,7 +101,7 @@ test.each([true, false])('new small session after setup is automatically counted
 
 
 test('automatic scan chunk handles near-maximum lines without stalling at the first unread line', async () => {
-  const { f, repository, binding, store } = await fixture();
+  const { f, repository, binding, store } = await fixture(true);
   const root = join(f.root, 'codex-lines'), path = join(root, 'sessions', 'near-limit.jsonl');
   await mkdir(join(root, 'sessions'), { recursive: true });
   const lines = codexRollout({ single: true }).replaceAll('/synthetic/repo', repository.worktreeRoot).trim().split('\n');
@@ -99,19 +109,19 @@ test('automatic scan chunk handles near-maximum lines without stalling at the fi
   lines.splice(2, 0, padding, padding); await writeFile(path, lines.join('\n') + '\n');
   const budget = createOperationBudget('automatic');
   const result = await runRepositoryOperation({ budget, request: { cwd: repository.worktreeRoot, privateDir: repository.privateDir, binding, collect: 'incremental', capturePolicy: policy,
-    collection: { roots: { codex: [root] }, target: { provider: 'codex', sourceIdentity: path } } } });
+    collection: { roots: { codex: [root], claude: [], gemini: [], opencode: [] }, target: { provider: 'codex', sourceIdentity: path } } } });
   budget.dispose(); expect(result.status).toBe('synced'); expect(result.acknowledgedCount).toBe(1);
   const journal = await store.journal(); expect(journal.at(-1)?.checkpoint.cursor.offset).toBe((await readFile(path)).length);
 });
 
 test('only a successful complete manual reconciliation clears durable pending state', async () => {
-  const { f, repository, binding, store } = await fixture();
+  const { f, repository, binding, store } = await fixture(true);
   await store.recordReconciliationPending(true);
   const root = join(f.root, 'manual-codex'), path = join(root, 'sessions', 'new.jsonl');
   await mkdir(join(root, 'sessions'), { recursive: true });
   await writeFile(path, codexRollout({ single: true }).replaceAll('/synthetic/repo', repository.worktreeRoot));
   const request = { cwd: repository.worktreeRoot, privateDir: repository.privateDir, binding, capturePolicy: policy,
-    collection: { roots: { codex: [root], claude: [join(f.root, 'empty-claude')] } } };
+    collection: { roots: { codex: [root], claude: [join(f.root, 'empty-claude')], gemini: [], opencode: [] } } };
   await mkdir(join(f.root, 'empty-claude', 'projects'), { recursive: true });
   const automatic = createOperationBudget('automatic');
   const targeted = await runRepositoryOperation({ budget: automatic, request: { ...request, collect: 'incremental', collection: { ...request.collection, target: { provider: 'codex', sourceIdentity: path } } } });

@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { protocolObservationFixture } from "@agent-badge/testkit";
 import { parseObservation } from "../domain/usage.js";
-import { priceMeters } from "./price.js";
+import { priceMeters, compilePricing } from "./price.js";
 import { catalogHash, defaultCatalog, parsePriceCatalog } from "./catalog.js";
 const meter = () => { const m = parseObservation(protocolObservationFixture()).meters[0];
   return { ...m, cacheCreation: { fiveMinutes: 0, oneHour: 0, other: 0 }, semantics: { ...m.semantics, cacheCreation: "included-in-input" as const } }; };
 describe("exact catalog pricing", () => {
+  it('preserves exact unrounded numerators across independently priced components',()=>{
+    const pricing=compilePricing(defaultCatalog),a=meter(),b={...meter(),model:null};
+    const first=pricing.accumulate([a]),second=pricing.accumulate([a,b]);
+    expect(pricing.finish({numerator:first.numerator+second.numerator,pricedUnits:first.pricedUnits+second.pricedUnits,unpricedUnits:first.unpricedUnits+second.unpricedUnits})).toEqual(priceMeters([a,a,b],defaultCatalog));
+    expect(()=>pricing.accumulate([{...a,private:'canary'} as typeof a])).toThrow('invalid-record');
+  });
   it("uses each exact model rate and rounds the combined rational amount once", () => {
     const a = meter(); const b = { ...meter(), model: "gpt-4.1-mini" as const };
     // 60*.75 + 40*.075 + 40*4.5 = 228 microUSD; 60*.4 + 40*.1 + 40*1.6 = 92.

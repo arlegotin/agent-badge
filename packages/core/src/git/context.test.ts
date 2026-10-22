@@ -1,13 +1,35 @@
 import { mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBareRemoteFixture, snapshotUserCheckout, type GitFixture } from "@agent-badge/testkit";
 import { resolveRepository } from "./context.js";
+import * as processes from './process.js';
 
 describe("repository context", () => {
   let fixture: GitFixture;
   beforeEach(async () => { fixture = await createBareRemoteFixture(); });
   afterEach(async () => { await fixture.cleanup(); });
+
+  it('runs independent discovery probes together with one cancellable deadline',async()=>{
+    const actual=processes.runGit;let active=0,maximum=0;
+    const signals:AbortSignal[]=[];
+    const spy=vi.spyOn(processes,'runGit').mockImplementation(async(args,options)=>{
+      active++;maximum=Math.max(maximum,active);if(options.signal)signals.push(options.signal);
+      try{return await actual(args,options);}finally{active--;}
+    });
+    try {
+      expect((await resolveRepository(fixture.clones[0])).head.kind).toBe('branch');
+      expect(maximum).toBeGreaterThan(1);
+      expect(signals).toHaveLength(spy.mock.calls.length);
+      expect(new Set(signals).size).toBe(1);
+    }finally{spy.mockRestore();}
+  });
+  it('does not spawn discovery after the owning deadline or cancellation',async()=>{
+    const controller=new AbortController();controller.abort();const calls=vi.spyOn(processes,'runGit');
+    try{await expect(resolveRepository(fixture.clones[0],{signal:controller.signal,deadline:Date.now()+1000})).rejects.toThrow('Unable to resolve repository');
+      await expect(resolveRepository(fixture.clones[0],{deadline:Date.now()-1})).rejects.toThrow('Unable to resolve repository');expect(calls).not.toHaveBeenCalled();}
+    finally{calls.mockRestore();}
+  });
 
   it("resolves subdirectories without modifying checkout, index or refs", async () => {
     const cwd = fixture.clones[0];

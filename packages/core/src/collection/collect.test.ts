@@ -1,8 +1,8 @@
-import { appendFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, rm, writeFile, symlink, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  codexRollout,
+  codexRollout, codexContext, codexRequest,
   claudeNativeResponse,
   createBareRemoteFixture,
   type GitFixture,
@@ -17,6 +17,7 @@ import { catalogHash, defaultCatalog } from "../pricing/catalog.js";
 import { protocolObservationFixture } from "@agent-badge/testkit";
 import { recordHash } from "../ledger/canonical-json.js";
 import { collectUsage } from "./collect.js";
+import * as sourceResolver from './source-resolver.js';
 import {
   attributionPolicyHash,
   parsePrivateAttributionPolicy,
@@ -66,25 +67,93 @@ describe("durable local collection", () => {
     await fixture.cleanup();
   });
   it("bounded automatic collection counts a new small session without an existing checkpoint", async () => {
-    const result = await collectUsage({ ...options, automaticLimits: { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 } });
+    const result = await collectUsage({ ...options, automaticLimits: { maxSources: 16 } });
     expect(result.pendingReconciliation).toBe(false);
     expect(await options.store.pending()).toHaveLength(1);
     expect((await options.store.journal()).length).toBeGreaterThan(0);
   });
-  it("huge cold history is durably pending and repeated automatic attempts do not restart parsing", async () => {
-    await appendFile(path, JSON.stringify({ type: 'synthetic-padding', value: 'x'.repeat(2 * 1024 * 1024) }) + '\n');
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const result = await collectUsage({ ...options, automaticLimits: { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 } });
-      expect(result.pendingReconciliation).toBe(true);
-      expect(await options.store.pending()).toEqual([]);
-      expect(await options.store.journal()).toEqual([]);
-      expect(await options.store.reconciliationPending()).toBe(true);
-    }
+  it('empty unchanged source batches require no historical control projection',async()=>{
+    await collectUsage(options);const prior=await options.store.journal(),controls=vi.spyOn(options.store,'controls');
+    try{const result=await collectUsage(options);expect(result.cancelled).toBe(false);expect(await options.store.journal()).toEqual(prior);expect(controls).not.toHaveBeenCalled();}
+    finally{controls.mockRestore();}
+  });
+  it('one operation verifies each distinct attribution cwd once across source batches',async()=>{
+    await writeFile(join(home,'sessions/b.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',options.repository.worktreeRoot));
+    await writeFile(join(home,'sessions/c.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',fixture.clones[1]));
+    const resolve=vi.spyOn(sourceResolver,'resolveAttributionEvidence');
+    try {
+      await collectUsage(options);
+      expect(resolve).toHaveBeenCalledTimes(2);
+      expect(new Set(resolve.mock.calls.map(([observation])=>observation.execution.cwd))).toEqual(new Set([options.repository.worktreeRoot,fixture.clones[1]]));
+    }finally{resolve.mockRestore();}
+  });
+  it("automatic discovery defers epochs and resolves selected sources before checkpoints", async () => {
+    const adapter=options.adapters!.codex!;
+    for(let i=0;i<25;i++)await writeFile(join(home,'sessions',`other-${i}.jsonl`),codexRollout({single:true}));
+    const discovered=await adapter.discover({repositoryId,enrolledRoots:[home],signal:options.signal,lazyEpoch:true});
+    expect(discovered).toHaveLength(26);
+    expect(discovered.every(source=>source.generation==='unresolved-source-epoch')).toBe(true);
+    const result=await collectUsage({...options,automaticLimits:{maxSources:1},target:{provider:'codex',sourceIdentity:path}});
+    expect(result.sourceOutcomes.filter(source=>source.sourceIdentity===path)).toHaveLength(1);
+    const journal=await options.store.journal();
+    expect(journal.flatMap(entry=>entry.observations)).toHaveLength(1);
+    expect(journal.every(entry=>entry.source.generation!=='unresolved-source-epoch' && entry.checkpoint.sourceGeneration!=='unresolved-source-epoch')).toBe(true);
+    expect((await adapter.discover({repositoryId,enrolledRoots:[home],signal:options.signal})).every(source=>source.generation!=='unresolved-source-epoch')).toBe(true);
+  });
+  it("lazy selected sources resolve replacement identities and never checkpoint missing candidates", async () => {
+    await collectUsage(options);
+    const before=await options.store.journal(),adapter=options.adapters!.codex!;
+    const replacement=path+'.new';
+    await writeFile(replacement,codexRollout({single:true}).replaceAll('original','replacement').replaceAll('/synthetic/repo',options.repository.worktreeRoot));
+    let remove=false;
+    const selected={...adapter,async discover(ctx:Parameters<typeof adapter.discover>[0]) {
+      const sources=await adapter.discover(ctx);
+      if(remove)await rm(path);else await rename(replacement,path);
+      return sources;
+    }};
+    const automatic={...options,adapters:{codex:selected},automaticLimits:{maxSources:1},target:{provider:'codex' as const,sourceIdentity:path}};
+    await collectUsage(automatic);
+    const replaced=await options.store.journal();
+    expect(replaced.at(-1)!.checkpoint.sourceGeneration).not.toBe(before.at(-1)!.checkpoint.sourceGeneration);
+    expect(await options.store.pending()).toHaveLength(2);
+    remove=true;
+    expect((await collectUsage(automatic)).sourceOutcomes.some(source=>source.outcome==='unavailable')).toBe(true);
+    expect(await options.store.journal()).toEqual(replaced);
+  });
+  it("lazy aliases deduplicate canonical sources and reject aliases outside enrollment", async () => {
+    const adapter=options.adapters!.codex!,alias=join(home,'sessions','alias.jsonl');
+    await symlink(path,alias);
+    const raw=await adapter.discover({repositoryId,enrolledRoots:[home],signal:options.signal,lazyEpoch:true});
+    const base=raw.find(source=>source.root===path)!;
+    const discovered={...adapter,async discover(){return [...raw,{...base,root:alias,sourceIdentity:alias}];}};
+    const result=await collectUsage({...options,adapters:{codex:discovered},automaticLimits:{maxSources:16}});
+    expect(result.sourceOutcomes.filter(source=>source.sourceIdentity===path)).toHaveLength(1);
+    expect((await options.store.journal()).flatMap(entry=>entry.observations)).toHaveLength(1);
+    await rm(alias);const external=join(fixture.root,'outside.jsonl');await writeFile(external,codexRollout({single:true}));await symlink(external,alias);
+    const blocked=await collectUsage({...options,adapters:{codex:discovered},automaticLimits:{maxSources:16},target:{provider:'codex',sourceIdentity:alias}});
+    expect(blocked.sourceOutcomes.some(source=>source.outcome==='unavailable')).toBe(true);
+    expect((await options.store.journal()).flatMap(entry=>entry.observations)).toHaveLength(1);
+  });
+  it("large automatic histories checkpoint bounded slices and continue warm appends beyond two MiB", async () => {
+    await appendFile(path, (JSON.stringify({type:'synthetic-padding',value:'x'.repeat(1024)})+'\n').repeat(3072));
+    const automatic={...options, adapters:{codex:createCodexAdapter({environment:{},defaultHome:home,maxBytes:512*1024})},automaticLimits:{maxSources:16}};
+    const first=await collectUsage(automatic);
+    expect(first.pendingReconciliation).toBe(true);
+    const initial=(await options.store.journal()).at(-1)!;
+    expect(initial.checkpoint.cursor.offset).toBeGreaterThan(0);
+    expect(initial.checkpoint.cursor.offset).toBeLessThan(initial.checkpoint.cursor.size);
+    for(let index=0;index<8;index++)await collectUsage(automatic);
+    const completed=(await options.store.journal()).at(-1)!.checkpoint;
+    expect(completed.cursor.offset).toBe(completed.cursor.size);
+    await appendFile(path,[{...codexContext('turn-new'),ordinal:9998},codexRequest('original','turn-new','response-new',300,9999)].map(row=>JSON.stringify(row).replaceAll('/synthetic/repo',options.repository.worktreeRoot)).join('\n')+'\n');
+    await collectUsage(automatic);
+    expect(await options.store.pending()).toHaveLength(2);
+    expect((await options.store.journal()).at(-1)!.checkpoint.cursor.offset).toBeGreaterThan(completed.cursor.offset);
   });
   it("persisted rotation reaches more than sixteen sources and a newly discovered session", async () => {
     for (let index = 0; index < 18; index++) await writeFile(join(home, 'sessions', `session-${String(index).padStart(2, '0')}.jsonl`),
       codexRollout({ single: true }).replaceAll('original', `session-${index}`).replaceAll('/synthetic/repo', options.repository.worktreeRoot));
-    const automatic = { ...options, automaticLimits: { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 } };
+    const automatic = { ...options, automaticLimits: { maxSources: 16 } };
     await collectUsage(automatic);
     expect(await options.store.pending()).toHaveLength(16);
     await writeFile(join(home, 'sessions', 'z-new.jsonl'), codexRollout({ single: true }).replaceAll('original', 'session-new').replaceAll('/synthetic/repo', options.repository.worktreeRoot));
@@ -95,6 +164,20 @@ describe("durable local collection", () => {
     // Targeted work cannot claim broad pending reconciliation has completed.
     await collectUsage({ ...options, store: reopened, target: { provider: 'codex', sourceIdentity: path } });
     expect(await reopened.reconciliationPending()).toBe(true);
+  });
+  it('automatic slices persist at most two scheduling writes and interrupted starts visit every source',async()=>{
+    for(let i=0;i<4;i++)await writeFile(join(home,'sessions',`rotate-${i}.jsonl`),codexRollout({single:true}).replaceAll('original',`rotate-${i}`).replaceAll('/synthetic/repo',options.repository.worktreeRoot));
+    const base=options.adapters!.codex!;let writes=0;
+    const store=new Proxy(options.store,{get(target,key){const value=Reflect.get(target,key);if(key==='recordAutomaticSourceOffset')return async(offset:number)=>{writes++;return target.recordAutomaticSourceOffset(offset);};return typeof value==='function'?value.bind(target):value;}});
+    await collectUsage({...options,store,automaticLimits:{maxSources:4}});
+    expect(writes).toBeLessThanOrEqual(2);
+    const firsts=new Set<string>();
+    for(let i=0;i<5;i++){
+      const controller=new AbortController();
+      const adapter={...base,async *scan(...args:Parameters<typeof base.scan>){firsts.add(args[0].sourceIdentity);for await(const batch of base.scan(...args))yield batch;controller.abort();}};
+      await collectUsage({...options,store,adapters:{codex:adapter},signal:controller.signal,automaticLimits:{maxSources:4}});
+    }
+    expect(firsts.size).toBe(5);
   });
   it("excludes unchanged cached 100-token usage to zero and re-includes causally after acknowledgment", async () => {
     const lines = (await readFile(path, "utf8"))

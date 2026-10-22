@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { mkdir, writeFile, readFile, symlink, readdir, chmod } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, symlink, readdir, chmod, rm } from 'node:fs/promises';
 import * as files from 'node:fs/promises';
 import { join } from 'node:path';
 import { createBareRemoteFixture, protocolObservationFixture, snapshotUserCheckout } from '@agent-badge/testkit';
@@ -153,9 +153,40 @@ test('sequential confirmed batches survive interruption and replay without priva
  const replay=await runImportCommand(options);
  expect(replay).toMatchObject({status:'unchanged',complete:true,confirmedEnvelopes:2,confirmedCommit:resumed.confirmedCommit});
  expect(await store.journal()).toEqual([]);
- expect(JSON.parse(await readFile(join(repository.privateDir,'acknowledged.json'),'utf8')).hashes).toEqual([]);
+ expect(await readdir(repository.privateDir)).not.toContain('acknowledgements');
+ expect((await core.readStoreSnapshot(repository)).pending).toEqual([]);
  expect(await f.git(cwd,['for-each-ref','--format=%(refname)','refs/agent-badge/imports'])).toBe('');
 },30000);
+
+test('fresh CI skips confirmed historical envelopes by validated membership and reaches new data',async()=>{
+ const {f,cwd,store}=await acceptedFixture();const paths:string[]=[];
+ for(let i=0;i<5;i++)paths.push((await runContributeCommand({cwd,meta,records:[{...record,unitKey:i.toString(16).padStart(64,'0'),coverageKey:i.toString(16).padStart(64,'0')}]})).path);
+ let acceptedRef=await acceptFiles(f,cwd,paths);
+ const options={cwd,acceptedRef,defaultBranch:'main',repositoryId,repositoryUrl:f.remote};
+ expect((await runImportCommand(options)).complete).toBe(true);
+ const imports=vi.spyOn(core,'importContribution'),now=Date.now.bind(Date);let expired=false;
+ const clock=vi.spyOn(Date,'now').mockImplementation(()=>now()+(expired?120001:0));
+ try {
+  const interrupted=await runImportCommand({...options,cwd:f.clones[1],onProgress:()=>{expired=true;}});
+  expect(interrupted).toMatchObject({status:'partial',complete:false,confirmedEnvelopes:1,failure:'deadline'});
+  expect(imports).not.toHaveBeenCalled();
+ }finally{clock.mockRestore();}
+ // A fresh CI process has no trusted progress cursor or private accepted cache.
+ await rm((await core.resolveRepository(f.clones[1])).privateDir,{recursive:true,force:true});
+ const added={...record,unitKey:'e'.repeat(64),coverageKey:'e'.repeat(64)};
+ const next=await runContributeCommand({cwd,meta,records:[added]});acceptedRef=await acceptFiles(f,cwd,[next.path]);
+ const resumed=await runImportCommand({...options,cwd:f.clones[1],acceptedRef});
+ expect(resumed).toMatchObject({status:'synced',complete:true,confirmedEnvelopes:6});
+ expect(imports).toHaveBeenCalledTimes(1);expect(resumed.accepted!.ledger.recordedUnits).toBe(6);expect(await store.journal()).toEqual([]);
+},30000);
+
+test('accepted envelope histories read verified blobs in bounded batches',async()=>{
+ const {f,cwd,repository,binding}=await acceptedFixture();const paths:string[]=[];
+ for(let i=0;i<3;i++)paths.push((await runContributeCommand({cwd,meta,records:[{...record,unitKey:i.toString(16).padStart(64,'0')}]})).path);
+ const ref=await acceptFiles(f,cwd,paths),calls=vi.spyOn(core,'readVerifiedGitBlobs');
+ expect(await collect(readAcceptedContributions(repository,{ref,defaultBranch:'main',binding}))).toHaveLength(3);
+ expect(calls).toHaveBeenCalledTimes(1);expect(calls.mock.calls[0][1]).toHaveLength(3);
+});
 
 test('a malformed later accepted envelope reports already confirmed progress instead of rolling it back',async()=> {
  const {f,cwd}=await acceptedFixture();

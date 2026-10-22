@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { RepositoryContext } from '@legotin/agent-badge-core';
 import { digest, gitEnvironment, json } from './manifest.js';
+import { withIntegrationLease } from './agent-hooks.js';
 const execute = promisify(execFile);
 export interface RuntimeLocation { privateDir: string; nodePath: string; platform?: NodeJS.Platform }
 interface Snapshot { kind: 'file' | 'symlink'; bytes: string; mode: number; hash?: string }
@@ -73,10 +74,10 @@ process.stdin.once('end',()=>{
     const bootstrap=path.join(__dirname,'bootstrap.cjs'),info=fs.lstatSync(bootstrap);
     if(!info.isFile()||info.isSymbolicLink()||info.size>65536)throw new Error();
     const input=Buffer.concat(chunks);chunks=[];eligible=false;
-    const badge=cp.spawn(process.execPath,[bootstrap,'--git-hook','--remaining-ms',String(remaining),'--deadline-ms',String(deadline)],{stdio:['pipe','ignore','inherit'],env:process.env});
-    badge.stdin.on('error',()=>{});badge.stdin.end(input);
-    badge.once('error',()=>{console.error('agent-badge: local activation required; run setup.');badgeDone=true;finish();});
-    badge.once('exit',()=>{badgeDone=true;finish();});
+    const entry=require(bootstrap);if(typeof entry.runBootstrap!=='function')throw new Error();
+    Promise.resolve(entry.runBootstrap({args:['--git-hook','--remaining-ms',String(remaining),'--deadline-ms',String(deadline)],input}))
+      .catch(()=>{console.error('agent-badge: local work queued; run setup or manual sync.');})
+      .finally(()=>{badgeDone=true;finish();});
   }catch{console.error('agent-badge: local activation required; run setup.');skip();}
 });
 `;
@@ -113,6 +114,9 @@ export async function planHooks(repository: RepositoryContext, runtime: RuntimeL
 }
 export async function applyHookPlan(plan: HookPlan): Promise<HookInstallResult> {
   if (plan.actionItems.length) return { status: 'action-required', actionItems: plan.actionItems };
+  return withIntegrationLease(plan.runtime.privateDir, () => applyHookPlanLocked(plan));
+}
+async function applyHookPlanLocked(plan: HookPlan): Promise<HookInstallResult> {
   const { resolveRepository } = await import('@legotin/agent-badge-core');
   const current = await resolveRepository(plan.repository.worktreeRoot);
   if (current.commonDir !== plan.repository.commonDir || current.hooksPath !== plan.repository.hooksPath) throw new Error('Git hook routing changed after planning.');
@@ -136,6 +140,9 @@ export async function applyHookPlan(plan: HookPlan): Promise<HookInstallResult> 
   return { status: 'installed', actionItems: plan.notices };
 }
 export async function removeHooks(repository: RepositoryContext): Promise<HookInstallResult> {
+  return withIntegrationLease(repository.privateDir, () => removeHooksLocked(repository));
+}
+async function removeHooksLocked(repository: RepositoryContext): Promise<HookInstallResult> {
   const ownership = await owned(repository.privateDir); if (!ownership) return { status: 'unchanged', actionItems: [] };
   if (!within(repository.commonDir, ownership.hook) && !within(repository.worktreeRoot, ownership.hook)) throw new Error('Unsafe hook ownership path.');
   const wrapper = await snapshot(ownership.hook), driver = await snapshot(join(repository.privateDir, 'git-hook.cjs'));

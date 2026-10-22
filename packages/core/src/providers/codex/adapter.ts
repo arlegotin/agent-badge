@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { readdir, realpath } from 'node:fs/promises';
+import { opendir, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { checkpointContinuationSchema, checkpointSchema, checkpointScopeSchema, parseProtocol, sourceDescriptorSchema } from '../../domain/capabilities.js';
 import type { Checkpoint, CheckpointScope, Diagnostic, ProviderAdapter, SourceDescriptor } from '../../domain/capabilities.js';
 import { findLatestCodexStateDatabase, readCodexInventory } from './codex-sql.js';
+import { resolveSourceEpoch, UNRESOLVED_SOURCE_EPOCH } from '../source-file.js';
 import { CODEX_READER_VERSION, CODEX_SOURCE_SCHEMA, DEFAULT_MAX_BYTES, codexContinuationSchema, emptyHash, parseCodexRollout, readRollout, rolloutEpoch } from './reader.js';
 
 export interface CodexAdapterOptions {
@@ -39,8 +40,8 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): ProviderA
         const paths=new Set<string>(); let inventoryUnsupported=false; let discoveryPartial=false;
         const walk=async (directory:string,depth=0):Promise<void>=> {
           ctx.signal.throwIfAborted(); if(depth>16 || paths.size>=10000) {discoveryPartial=true;return;}
-          let entries; try {entries=await readdir(directory,{withFileTypes:true});} catch(error) {if((error as NodeJS.ErrnoException).code!=='ENOENT') discoveryPartial=true;return;}
-          for(const entry of entries) {ctx.signal.throwIfAborted(); if(paths.size>=10000) {discoveryPartial=true;break;}
+          let entries; try {entries=await opendir(directory);} catch(error) {if((error as NodeJS.ErrnoException).code!=='ENOENT') discoveryPartial=true;return;}
+          for await(const entry of entries) {ctx.signal.throwIfAborted(); if(paths.size>=10000) {discoveryPartial=true;break;}
             if(entry.isDirectory()) await walk(join(directory,entry.name),depth+1);
             else if(entry.isFile() && /\.jsonl(?:\.zst)?$/.test(entry.name)) paths.add(join(directory,entry.name));
           }
@@ -56,7 +57,7 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): ProviderA
         for(const path of [...paths].sort()) {
           ctx.signal.throwIfAborted();
           try {
-            const epoch=await rolloutEpoch(path);
+            const epoch=ctx.lazyEpoch?{identity:path,generation:UNRESOLVED_SOURCE_EPOCH}:await rolloutEpoch(path);
             if(!sources.has(epoch.identity)) sources.set(epoch.identity,{provider:'codex',instanceKey:root,root:epoch.identity,
               schema:path.endsWith('.zst')?'codex-compressed-unsupported':CODEX_SOURCE_SCHEMA,
               generation:epoch.generation,readerVersion:CODEX_READER_VERSION,sourceIdentity:epoch.identity});
@@ -71,7 +72,7 @@ export function createCodexAdapter(options: CodexAdapterOptions = {}): ProviderA
       return [...sources.values()];
     },
     async *scan(input, inputCheckpoint, signal, inputScope) {
-      const discoveredSource=parseProtocol(sourceDescriptorSchema,input); let source=discoveredSource; const scope=parseProtocol(checkpointScopeSchema,inputScope);
+      const discoveredSource=await resolveSourceEpoch(parseProtocol(sourceDescriptorSchema,input),signal); let source=discoveredSource; const scope=parseProtocol(checkpointScopeSchema,inputScope);
       const initial=makeCheckpoint(source,scope); let nextCheckpoint=initial;
       if(source.provider!=='codex' || source.schema!==CODEX_SOURCE_SCHEMA || source.readerVersion!==CODEX_READER_VERSION) {
         yield {source,observations:[],nextCheckpoint,outcome:source.schema==='codex-unavailable'?'unavailable':'unsupported',diagnostics:[diagnostic(source.schema==='codex-unavailable'?'unavailable-source':'unsupported-source')]};return;

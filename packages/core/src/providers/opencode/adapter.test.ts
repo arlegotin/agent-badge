@@ -99,7 +99,8 @@ it.each(["1.19.3", "2.1.2"])(
     const original = await openCodeExport(version);
     const value = structuredClone(original);
     value.info.projectID = "shared-across-clones";
-    value.info.directory = "/synthetic/other-worktree";
+    if ('location' in value.info) value.info.location.directory = "/synthetic/other-worktree";
+    else value.info.directory = "/synthetic/other-worktree";
     value.info.fork = { sessionID: "synthetic-parent", boundary: 1 };
     value.messages.push(structuredClone(value.messages[0]));
     await writeFile(f.path, JSON.stringify(value));

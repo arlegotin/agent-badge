@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, readdir, realpath } from "node:fs/promises";
+import { lstat, opendir, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -20,6 +20,8 @@ import {
   emptyHash,
   readSourceFile,
   sourceFileEpoch,
+  resolveSourceEpoch,
+  UNRESOLVED_SOURCE_EPOCH,
 } from "../source-file.js";
 import {
   GEMINI_JSONL_SCHEMA,
@@ -183,8 +185,8 @@ export function createGeminiAdapter(
               partial = true;
             return;
           }
-          const entries = await readdir(directory, { withFileTypes: true });
-          for (const entry of entries) {
+          const entries = await opendir(directory);
+          for await (const entry of entries) {
             ctx.signal.throwIfAborted();
             if (++visited > 20000 || paths.length >= 10000) {
               partial = true;
@@ -216,7 +218,7 @@ export function createGeminiAdapter(
         }
         for (const path of paths.sort())
           try {
-            const epoch = await sourceFileEpoch(path);
+            const epoch = ctx.lazyEpoch ? {identity:path,generation:UNRESOLVED_SOURCE_EPOCH} : await sourceFileEpoch(path);
             if (!inside(root, epoch.identity)) {
               partial = true;
               continue;
@@ -247,7 +249,7 @@ export function createGeminiAdapter(
       return [...sources.values()];
     },
     async *scan(input, inputCheckpoint, signal, inputScope) {
-      const discovered = parseProtocol(sourceDescriptorSchema, input),
+      const discovered = await resolveSourceEpoch(parseProtocol(sourceDescriptorSchema, input),signal),
         scope = parseProtocol(checkpointScopeSchema, inputScope);
       let source = discovered;
       const initial = makeCheckpoint(source, scope);

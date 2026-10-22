@@ -39,6 +39,20 @@ test('real approved automatic entry durably captures a targeted source while rou
   spawnSync(node, [f.bootstrap, '--hook', 'codex'], { cwd: f.cwd, input: JSON.stringify({ hook_event_name: 'Stop', transcript_path: outside }), encoding: 'utf8', timeout: 3500 });
   expect((await store.pending()).length).toBe(1);
 });
+test('installed native provider locator reaches the approved worker and durably captures usage', async () => {
+  const f = await fixture(), source = join(f.home, 'sessions', 'native-entry.jsonl');
+  await writeFile(source, codexRollout({ single: true }).replaceAll('/synthetic/repo', f.cwd));
+  const hooks = JSON.parse(await readFile(join(f.cwd, '.codex/hooks.json'), 'utf8'));
+  const command = hooks.hooks.Stop.at(-1).hooks[0].command;
+  const result = spawnSync('/bin/sh', ['-c', command], { cwd: f.cwd,
+    input: JSON.stringify({ hook_event_name: 'Stop', transcript_path: source, last_assistant_message: 'PRIVATE_NATIVE_CANARY' }),
+    encoding: 'utf8', timeout: 3500 });
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stderr).not.toContain('PRIVATE_NATIVE_CANARY');
+  const store = await openStore(f.plan.repository);
+  expect(await store.pending()).toHaveLength(1);
+  expect((await store.journal()).flatMap(entry => entry.observations)).toHaveLength(1);
+});
 test('CPU-blocked activation-worker import is killed within the original automatic deadline', async () => {
   const f = await fixture(), entered = join(f.root, 'entered'); await writeFile(join(f.installed, 'dist/integration/runtime-worker.js'), `import {writeFileSync} from 'node:fs';writeFileSync(${JSON.stringify(entered)},'entered');while(true) {}`);
   const start = performance.now();

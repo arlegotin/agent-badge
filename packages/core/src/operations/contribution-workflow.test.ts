@@ -11,6 +11,12 @@ const version = '2.0.0-next.0';
 const pin = { manifest: JSON.stringify({ private:true, dependencies:{'@legotin/agent-badge':version} }), lock: JSON.stringify({lockfileVersion:3,packages:{'':{dependencies:{'@legotin/agent-badge':version}},'node_modules/@legotin/agent-badge':{version,resolved:'https://registry.npmjs.org/badge.tgz',integrity:'sha512-c3ludGhldGlj'}}}) };
 const options = { repositoryId:'12345678-1234-4234-8234-123456789abc',repositoryUrl:'https://github.com/example/repo',defaultBranch:'trunk',runtimeVersion:version,pin };
 const execute = promisify(execFile);
+test.each(['99 99 99 99 99', '/ * * * *', '*/0 * * * *', '0 0 0 * *', '0 24 * * *', '0 0 * 13 *', '0 0 * * 7', '5-2 * * * *', '*/61 * * * *', '0,,1 * * * *'])('rejects invalid cron schedule %s', async schedule => {
+ await expect(generateContributionWorkflow({...options, schedule})).rejects.toThrow('invalid-record');
+});
+test.each(['*/5 0-23/2 1,15 1-12 0-6', '0 0 * * *'])('accepts bounded GitHub cron schedule %s', async schedule => {
+ expect(yaml.load(await generateContributionWorkflow({...options, schedule})).on.schedule).toEqual([{cron:schedule}]);
+});
 test('workflow parses and guards dispatch ref before trusted runtime installation or write', async () => {
  const workflow = yaml.load(await generateContributionWorkflow(options));
  expect(workflow.on.push.branches).toEqual(['trunk']);

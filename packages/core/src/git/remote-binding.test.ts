@@ -93,6 +93,15 @@ describe("private routing consent", () => {
 });
 
 describe("canonical remote destination", () => {
+  it("keeps native Git protocol, host, port and path separate from SSH identities", () => {
+    expect(canonicalRemoteUrl("git://EXAMPLE.invalid:9419/~/Team/repo.git")).toBe("git://example.invalid:9419/~/Team/repo.git");
+    expect(canonicalRemoteUrl("git://github.com/team/repo.git")).toBe("git://github.com/team/repo.git");
+    expect(canonicalRemoteUrl("git://127.0.0.1:52628/remote.git")).not.toBe(canonicalRemoteUrl("ssh://git//127.0.0.1:52628/remote.git"));
+    expect(canonicalRemoteUrl("git://example.invalid/team/repo.git")).not.toBe(canonicalRemoteUrl("example.invalid:/team/repo.git"));
+  });
+  it.each(["ftp://example.invalid/repo", "custom+git://example.invalid/repo", "git://user@example.invalid/repo", "git://example.invalid/a/../repo", "git://example.invalid/repo?token=x"])("rejects unknown URL schemes or ambiguous native Git routing %s", url => {
+    expect(canonicalRemoteUrl(url)).toBeNull();
+  });
   it.each([
     ["https://user:secret@GITHUB.com/team/repo.git", "github.com/team/repo"],
     ["git@github.com:team/repo.git", "github.com/team/repo"],

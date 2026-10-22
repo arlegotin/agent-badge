@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
-import { readdir, realpath } from 'node:fs/promises';
+import { opendir, realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { checkpointContinuationSchema, checkpointSchema, checkpointScopeSchema, parseProtocol, sourceDescriptorSchema } from '../../domain/capabilities.js';
 import type { Checkpoint, CheckpointScope, Diagnostic, ProviderAdapter, SourceDescriptor } from '../../domain/capabilities.js';
-import { DEFAULT_MAX_BYTES, emptyHash, readSourceFile, sourceFileEpoch } from '../source-file.js';
+import { DEFAULT_MAX_BYTES, emptyHash, readSourceFile, sourceFileEpoch, resolveSourceEpoch, UNRESOLVED_SOURCE_EPOCH } from '../source-file.js';
 import { CLAUDE_READER_VERSION, CLAUDE_SOURCE_SCHEMA, claudeContinuationSchema, parseClaudeTranscript } from './reader.js';
 export interface ClaudeAdapterOptions {
   environment?:Readonly<Record<string,string|undefined>>;
@@ -32,8 +32,8 @@ export function createClaudeAdapter(options:ClaudeAdapterOptions={}):ProviderAda
         const paths=new Set<string>();let partial=false,entriesVisited=0;
         const walk=async(directory:string,depth=0):Promise<void>=>{
           ctx.signal.throwIfAborted();if(depth>16||entriesVisited>=20000||paths.size>=10000){partial=true;return;}
-          let entries;try{entries=await readdir(directory,{withFileTypes:true});}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')partial=true;return;}
-          for(const entry of entries){ctx.signal.throwIfAborted();if(++entriesVisited>20000||paths.size>=10000){partial=true;break;}
+          let entries;try{entries=await opendir(directory);}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')partial=true;return;}
+          for await(const entry of entries){ctx.signal.throwIfAborted();if(++entriesVisited>20000||paths.size>=10000){partial=true;break;}
             if(entry.isDirectory())await walk(join(directory,entry.name),depth+1);
             else if(entry.isFile()&&entry.name.endsWith('.jsonl'))paths.add(join(directory,entry.name));
           }
@@ -41,7 +41,7 @@ export function createClaudeAdapter(options:ClaudeAdapterOptions={}):ProviderAda
         await walk(join(root,'projects'));
         for(const path of [...paths].sort()) {
           ctx.signal.throwIfAborted();
-          try{const epoch=await sourceFileEpoch(path);
+          try{const epoch=ctx.lazyEpoch?{identity:path,generation:UNRESOLVED_SOURCE_EPOCH}:await sourceFileEpoch(path);
             const localPath=relative(root,epoch.identity);
             if(localPath==='..'||localPath.startsWith('..'+sep)||isAbsolute(localPath)){partial=true;continue;}
             if(!sources.has(epoch.identity))sources.set(epoch.identity,descriptor(root,epoch.identity,CLAUDE_SOURCE_SCHEMA,epoch.generation));
@@ -52,7 +52,7 @@ export function createClaudeAdapter(options:ClaudeAdapterOptions={}):ProviderAda
       return [...sources.values()];
     },
     async *scan(input,inputCheckpoint,signal,inputScope) {
-      const discovered=parseProtocol(sourceDescriptorSchema,input),scope=parseProtocol(checkpointScopeSchema,inputScope);let source=discovered;
+      const discovered=await resolveSourceEpoch(parseProtocol(sourceDescriptorSchema,input),signal),scope=parseProtocol(checkpointScopeSchema,inputScope);let source=discovered;
       const initial=makeCheckpoint(source,scope);
       if(source.provider!=='claude'||source.schema!==CLAUDE_SOURCE_SCHEMA||source.readerVersion!==CLAUDE_READER_VERSION) {
         const unavailable=source.schema==='claude-unavailable';yield{source,observations:[],nextCheckpoint:initial,outcome:unavailable?'unavailable':'unsupported',diagnostics:[diagnostic(unavailable?'unavailable-source':'unsupported-source')]};return;

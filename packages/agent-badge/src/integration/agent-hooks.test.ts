@@ -8,8 +8,7 @@ import { planAgentHooks, applyAgentHookPlan, removeAgentHooks } from './agent-ho
 import { bootstrapSource } from './templates.js';
 import { acquireLock } from '@legotin/agent-badge-core/storage/lock';
 const roots: string[] = [];
-// Retained Node22 Vitest needs its old addon; automatic child processes still
-// run the supported explicit toolchain, including shell/provider PATH lookup.
+// Shell/provider children use the same explicitly selected supported runtime.
 if (process.env.AGENT_BADGE_TEST_NODE) process.env.PATH = dirname(process.env.AGENT_BADGE_TEST_NODE) + ':' + process.env.PATH;
 afterEach(async () => { await Promise.all(roots.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function fixture() {
@@ -92,6 +91,19 @@ test('locator Git lookup includes its own helper cleanup and deducted elapsed ti
   await writeFile(join(bin, 'git'), `#!${process.execPath}\nsetTimeout(()=>{const r=require('node:child_process').spawnSync(${JSON.stringify(realGit)},process.argv.slice(2),{stdio:'inherit'});process.exit(r.status);},250);`, { mode: 0o755 });
   const r = spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH }, input: JSON.stringify({ hook_event_name: 'Stop', transcript_path: '/synthetic/a.jsonl' }), encoding: 'utf8', timeout: 3500 });
   expect(r.status, r.stderr).toBe(0); expect(JSON.parse(await readFile(f.output, 'utf8')).timeoutMs).toBeLessThan(1750);
+});
+
+test('provider locator deducts synchronous bootstrap loading from its absolute deadline', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd));
+  const bootstrap = join(f.privateDir, 'bootstrap.cjs');
+  const bytes = await readFile(bootstrap, 'utf8');
+  await writeFile(bootstrap, bytes.replace('\n', '\nconst loadingUntil=performance.now()+400;while(performance.now()<loadingUntil){};\n'));
+  const result = spawnSync('/bin/sh', ['-c', await command(f.cwd, 'codex')], {
+    cwd: f.cwd, input: JSON.stringify({ hook_event_name: 'Stop', transcript_path: '/synthetic/a.jsonl' }),
+    encoding: 'utf8', timeout: 3500,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  expect(JSON.parse(await readFile(f.output, 'utf8')).timeoutMs).toBeLessThan(1600);
 });
 
 test('Codex linked-worktree hook discovery requires primary-checkout integration and never edits that checkout', async () => {

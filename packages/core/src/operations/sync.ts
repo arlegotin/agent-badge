@@ -18,6 +18,7 @@ import type { PriceCatalog } from "../pricing/catalog.js";
 import type { LocalStore, TransportState } from "../storage/store.js";
 
 export interface SyncOptions {
+  operationMode?: 'automatic' | 'manual';
   repository: RepositoryContext;
   binding: RemoteBinding;
   store: LocalStore;
@@ -32,14 +33,20 @@ export interface SyncOptions {
   /** Absolute wall-clock milliseconds. Parent supervisor owns hard CPU enforcement. */
   deadline: number;
   maxRetries?: number;
+  /** Automatic callers can request a checked unchanged summary without loading historical records. */
+  snapshotMode?: 'full' | 'summary';
 }
 export interface SyncResult {
+  reason?: 'automatic-local-transport';
   status: "synced" | "unchanged" | "queued" | "conflict" | "unsupported";
   confirmedCommit: string | null;
   acknowledgedHashes: string[];
   /** Only validated fetched state; later explicit controls/configure must use its causal heads. */
   accepted: AcceptedLedger | null;
   collection: CollectionResult | null;
+  /** Automatic bounded drains retain exact outstanding work after confirmation. */
+  remainingPendingCount?:number;
+  deferredUnitCount?:number;
 }
 /** Immutable union; accepted data-branch metadata is authoritative on every retry. */
 export async function syncUsage(options: SyncOptions): Promise<SyncResult> {
@@ -84,7 +91,10 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
     if (error instanceof ProtocolError)
       result.status =
         error.message === "repository-mismatch" ? "conflict" : "unsupported";
-    else if (error instanceof TransportError && error.reason !== "unavailable")
+    else if (error instanceof TransportError && error.reason === 'automatic-local-transport') {
+      result.status = 'unsupported';
+      result.reason = error.reason;
+    } else if (error instanceof TransportError && error.reason !== "unavailable")
       result.status = "conflict";
     return result;
   };
@@ -107,11 +117,24 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
         )
           return { ...result, status: "conflict" };
         transport = await DataTransport.open({
+          operationMode: options.operationMode,
           repository: options.repository,
           binding,
           signal,
           deadline: options.deadline,
+          indexMode:options.snapshotMode==='summary'?'lazy':'full',
+          priorCommit:prior?.commit??undefined,
+          onValidatedStage:confirmAccepted,
         });
+        if (options.snapshotMode === 'summary' && options.collect === 'none' && !change && !importedRecords.length &&
+            !options.initialize && prior?.commit && !(await options.store.pendingCount())) {
+          const tip = await transport.remoteTip();
+          if (!tip) throw new TransportError('history-rewritten');
+          if (tip === prior.commit) {
+            await transport.verifyAnchor(prior.commit);
+            return { ...result, status: 'unchanged', confirmedCommit: prior.commit };
+          }
+        }
         async function accept(): Promise<AcceptedLedger | null> {
           const tip = await transport!.remoteTip();
           if (!tip) {
@@ -125,13 +148,17 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
             commit: null,
           });
           const accepted = await transport!.fetch();
+          await confirmAccepted(accepted);
+          return accepted;
+        }
+        async function confirmAccepted(accepted:AcceptedLedger):Promise<void>{
           if (accepted.meta.repositoryId !== binding.repositoryId)
             throw new ProtocolError("repository-mismatch");
           if (prior?.commit)
             await transport!.assertDescendant(
               accepted.commit,
               prior.commit,
-              accepted.artifacts
+              accepted.indexed?{has:path=>accepted.indexed!.hasPath(path)}:accepted.artifacts
             );
           await transport!.anchor(accepted.commit);
           const state: TransportState = {
@@ -140,11 +167,12 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
           };
           await options.store.recordAcceptedLedger(state);
           prior = state;
-          result.accepted = accepted;
+          result.accepted = options.snapshotMode==='summary'?null:accepted;
           result.confirmedCommit = accepted.commit;
-          return accepted;
         }
         let accepted = await accept();
+        if(options.snapshotMode==='summary'&&!change&&!importedRecords.length&&accepted?.rebuilt)
+          return {...result,confirmedCommit:accepted.commit,remainingPendingCount:await options.store.pendingCount()};
         // Empty ledgers provide no records for reduceLedger to catch a UUID change.
         // Configure may change policy, never the approved binding/accepted repository identity.
         if (change && (parseLedgerMeta(change.meta).repositoryId !== binding.repositoryId ||
@@ -174,8 +202,21 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
             signal,
           });
         signal.throwIfAborted();
-        const localPending = await options.store.pending();
+        const bounded=options.snapshotMode==='summary'&&!change&&!importedRecords.length;
+        const selection=bounded?await options.store.pendingBatch(128,512*1024):null;
+        const localPending = selection?.records ?? await options.store.pending();
+        if(selection?.deferredUnitCount)result.deferredUnitCount=selection.deferredUnitCount;
+        if(bounded&&!localPending.length&&await options.store.pendingCount())return {...result,remainingPendingCount:await options.store.pendingCount()};
         const localHashes = localPending.map(recordHash).sort();
+        if(bounded&&accepted){
+          const present=accepted.indexed?localHashes.filter(hash=>accepted!.indexed!.hasHashes([hash])):
+            localHashes.filter(hash=>accepted!.ledger.recordHashes.includes(hash));
+          if(present.length){
+            signal.throwIfAborted();await options.store.acknowledge(present);
+            const remainingPendingCount=await options.store.pendingCount();
+            return {...result,status:remainingPendingCount?'queued':'unchanged',confirmedCommit:accepted.commit,acknowledgedHashes:present,remainingPendingCount};
+          }
+        }
         const pending = [...localPending, ...importedRecords];
         const hashes = pending.map(recordHash).sort();
         const confirmed = async (
@@ -183,16 +224,18 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
           wrote: boolean
         ): Promise<SyncResult | null> => {
           if (change && contentHash(snapshot.meta) !== contentHash(change.meta)) return null;
-          const included = new Set(snapshot.ledger.recordHashes);
-          if (!hashes.every((hash) => included.has(hash))) return null;
+          if(snapshot.indexed){if(!snapshot.indexed.hasHashes(hashes))return null;}
+          else {const included=new Set(snapshot.ledger.recordHashes);if(!hashes.every(hash=>included.has(hash)))return null;}
           signal.throwIfAborted();
           await options.store.acknowledge(localHashes);
+          const remainingPendingCount=bounded?await options.store.pendingCount():0;
           return {
             ...result,
-            status: wrote ? "synced" : "unchanged",
+            status: remainingPendingCount ? 'queued' : wrote ? "synced" : "unchanged",
             confirmedCommit: snapshot.commit,
-            accepted: snapshot,
+            accepted: options.snapshotMode==='summary'?null:snapshot,
             acknowledgedHashes: localHashes,
+            ...(bounded?{remainingPendingCount}:{}),
           };
         };
         if (accepted) {
@@ -209,15 +252,10 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
             catalog = accepted.catalog;
           }
           if (change) { meta = change.meta; catalog = change.catalog; }
-          const ledger = reduceLedger(
-            [...(accepted?.records ?? []), ...pending],
-            meta
-          );
-          const artifacts = renderArtifacts(ledger, meta, catalog);
-          const commit = await transport!.commit(
-            artifacts,
-            accepted?.commit ?? null
-          );
+          let commit:string;
+          if(accepted?.indexed&&!change)commit=await transport!.commitExtension(accepted.indexed.extend(pending));
+          else {const ledger=reduceLedger([...(accepted?.records??[]),...pending],meta);
+            commit=await transport!.commit(renderArtifacts(ledger,meta,catalog),accepted?.commit??null);}
           // Persist attempted first creation before send: an indeterminate outcome cannot permit reseeding.
           if (!prior) {
             prior = { ...identity, commit: null };
@@ -239,6 +277,9 @@ export async function synchronizeTransaction(options: SyncOptions, change?: Meta
         return result;
       } catch (error) {
         return fail(error);
+      } finally {
+        // Cache publication is covered by the same owning lease as authority.
+        await transport?.closeCache();
       }
     });
   } catch (error) {

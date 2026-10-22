@@ -1,4 +1,5 @@
 import { resolveRepository } from '../git/context.js';
+import type { RepositoryContext } from '../git/context.js';
 import { openStore } from '../storage/store.js';
 import { collectUsage } from '../collection/collect.js';
 import type { CollectionResult } from '../collection/collect.js';
@@ -10,17 +11,23 @@ import { syncUsage } from './sync.js';
 import type { RepositoryOperationRequest } from './runner.js';
 import type { WorkerContext, WorkerSummary } from './worker-protocol.js';
 
-/** Provisional Task10 bounds; Task17 replaces the large warm-prefix barrier with
- * verified indexes. Scan chunks exceed the readers' 256KiB maximum line size. */
-const automaticLimits = { maxSources: 16, maxSourceBytes: 2 * 1024 * 1024 };
+/** Bounded parsing and fair source slices; complete streaming prefix verification
+ * remains required for appends. The supervisor owns the total wall-clock budget. */
+const automaticLimits = { maxSources: 16 };
 const automaticScanBytes = 512 * 1024;
+const verifiedRepositories=new WeakSet<RepositoryContext>();
+/** In-process verification only; serialized IPC cannot supply this authority. */
+export async function resolveWorkerRepository(cwd:string,context:Pick<WorkerContext,'deadline'|'signal'>):Promise<RepositoryContext>{
+  const repository=await resolveRepository(cwd,context);verifiedRepositories.add(repository);return repository;
+}
 /** Runtime-owned worker. Task11 supplies trusted activation/pin/binding state. */
-export async function runOperation(input: RepositoryOperationRequest & { mode: 'automatic' | 'manual' }, context: WorkerContext): Promise<WorkerSummary> {
+export async function runOperation(input: RepositoryOperationRequest & { mode: 'automatic' | 'manual' }, context: WorkerContext,verified?:RepositoryContext): Promise<WorkerSummary> {
   const queued: WorkerSummary = { status: 'queued', acknowledgedCount: 0, queuedCount: null, pendingReconciliation: false };
   const automatic = input.mode === 'automatic';
-  const repository = await resolveRepository(input.cwd);
+  if(verified&&!verifiedRepositories.has(verified))return {...queued,status:'conflict'};
+  const repository = verified ?? await resolveWorkerRepository(input.cwd,context);
   if (repository.privateDir !== input.privateDir) return { ...queued, status: 'conflict' };
-  const store = await openStore(repository, { supervisedLeaseToken: context.leaseToken });
+  const store = await openStore(repository, { supervisedLeaseToken: context.leaseToken, ...(automatic?{rebuildBudget:context}:{}) });
   return store.withLock(context.signal, async () => {
     if (automatic && (input.initialize || input.collect === 'full')) {
       await store.recordReconciliationPending(true);
@@ -39,10 +46,14 @@ export async function runOperation(input: RepositoryOperationRequest & { mode: '
     if (input.synchronize === false) {
       const partial = !captured || captured.cancelled || captured.pendingReconciliation || captured.diagnostics.length > 0;
       if (input.collect === 'full' && captured && !partial && captured.sourceOutcomes.every(source => ['complete','empty','disabled'].includes(source.outcome))) await store.recordReconciliationPending(false);
-      return { ...queued, status: partial ? 'queued' : 'unchanged', queuedCount: (await store.pending()).length, pendingReconciliation: await store.reconciliationPending() };
+      return { ...queued, status: partial ? 'queued' : 'unchanged', queuedCount: await store.pendingCount(), pendingReconciliation: await store.reconciliationPending() };
     }
-    if (input.binding.status !== 'bound') return { ...queued, queuedCount: (await store.pending()).length, pendingReconciliation: await store.reconciliationPending() };
+    if (input.binding.status !== 'bound') return { ...queued, queuedCount: await store.pendingCount(), pendingReconciliation: await store.reconciliationPending() };
+    // A later transport deadline must not invalidate completed local collection.
+    // Keep the same owning lease; reopening only reads the published generation.
+    if(captured)await store.flushDerivedIndex();
     const result = await syncUsage({ repository, store, binding: input.binding, signal: context.signal, deadline: context.deadline,
+      operationMode: input.mode, snapshotMode: automatic ? 'summary' : 'full',
       collect: captured || input.collect === 'none' ? 'none' : 'incremental', collection,
       initialize: automatic ? undefined : input.initialize });
     const collected = captured ?? result.collection;
@@ -50,7 +61,8 @@ export async function runOperation(input: RepositoryOperationRequest & { mode: '
         collected && !collected.cancelled && !collected.pendingReconciliation && !collected.diagnostics.length &&
         collected.sourceOutcomes.every(source => source.outcome === 'complete' || source.outcome === 'disabled' || source.outcome === 'empty'))
       await store.recordReconciliationPending(false);
-    return { status: result.status, acknowledgedCount: result.acknowledgedHashes.length, queuedCount: (await store.pending()).length,
+    return { status: result.status, ...(result.reason ? { reason: result.reason } : {}), acknowledgedCount: result.acknowledgedHashes.length, queuedCount: await store.pendingCount(),
+      ...(result.deferredUnitCount?{oversizedPendingUnits:result.deferredUnitCount}:{}),
       pendingReconciliation: await store.reconciliationPending() };
   });
 }

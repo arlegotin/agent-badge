@@ -1,6 +1,6 @@
 # Repository-native agent-badge Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking. Implementation is approved and complete through Tasks 1–16 on the refactor branch. Task 17 performance/legacy deletion and Task 18 candidate artifact/release preparation remain; publishing/deployment are not authorized. External hosted/Linux/Windows/private-image gates remain unverified.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking. Implementation is approved and complete through Tasks 1–16 on the refactor branch. Task 17 is implemented and locally verified, pending independent review with the recorded latency exception. Task 18 candidate artifact/release preparation remains; publishing/deployment are not authorized. External hosted/Linux/Windows/private-image gates remain unverified.
 
 **Goal:** Replace the Gist/global-runtime architecture with accurate local collection,
 a repository-owned usage ledger and SVG, and automatic synchronization for repository writers.
@@ -436,11 +436,21 @@ Add `scripts/bench/collection.ts` and `packages/agent-badge/src/commands/repo-na
 aliases for v1 publish/refresh/Gist commands. A detected v1 installation receives an
 explicit unsupported/reinitialize message, not an automatic opaque-total migration.
 
-- [ ] Add end-to-end acceptance scenarios from every row in spec §11: concurrent machines/worktrees, copied histories, offline restart, failed user code push, rebase/squash, removed worktree, corrupt remote, private local state, and explicit old-install handling.
-- [ ] Add privacy canaries to JSON/SVG/report/envelope filenames/Git author/error output. Test hostile refs/labels/paths, symlink/submodule data-tree entries, 256 KiB object and 10 MiB envelope limits, and controlled conflict exhaustion.
-- [ ] Run the new vertical path, then delete old modules and tests whose only behavior is obsolete. Remove Octokit/sql.js/native test addon dependencies if no retained module uses them; regenerate lockfile deliberately.
-- [ ] Benchmark 100,000 units / 10,000 active streams, cold backfill and warm no-op/append paths. Publish environment/memory/time results; require unchanged hook p95 below 250 ms and hard automatic deadline enforcement. Optimize measured bottlenecks without weakening accounting.
-- [ ] Run `npm run typecheck`, `npm run build`, `npm test -- --run`, `npm run docs:check`, `npm run pack:check`, and hermetic `npm run smoke:pack`. Commit deletion and validation evidence; do not mark live hosted/private-image checks passed if still pending.
+- [x] Add end-to-end acceptance scenarios from every row in spec §11: concurrent machines/worktrees, copied histories, offline restart, failed user code push, rebase/squash, removed worktree, corrupt remote, private local state, and explicit old-install handling.
+- [x] Add privacy canaries to JSON/SVG/report/envelope filenames/Git author/error output. Test hostile refs/labels/paths, symlink/submodule data-tree entries, 256 KiB object and 10 MiB envelope limits, and controlled conflict exhaustion.
+- [x] Run the new vertical path, then delete old modules and tests whose only behavior is obsolete. Remove Octokit/sql.js/native test addon dependencies if no retained module uses them; regenerate lockfile deliberately.
+- [x] Benchmark 100,000 units / 10,000 active streams, cold backfill and warm no-op/append paths. Publish environment/memory/time results and enforce the hard automatic deadline. The250ms unchanged-hook p95 goal remains unmet: final installed pre-push measured382.28ms on Node24 and443.23ms on Node26. Controller Ruling68 accepts these measured prerelease results to avoid adding another trust mechanism solely for latency; retain250ms as an optimization goal, with no universal500ms guarantee or weakened accounting/discovery/current-authority checks.
+- [x] Run `npm run typecheck`, `npm run build`, `npm test -- --run`, `npm run docs:check`, `npm run pack:check`, and hermetic `npm run smoke:pack`. Commit deletion and validation evidence; do not mark live hosted/private-image checks passed if still pending.
+
+Local verification: Node24 and Node26 each cover67 test files/742 tests,741 passed
+and one existing opt-in OS-namespace test skipped. The Node24 initial broad run's
+eight failures are retained, with scoped fixes and passing affected-file covers;
+it was not rerun merely to obtain green. Exactly four loopback-fixture files ran
+outside the default sandbox with scrubbed environments; all other tests used the
+default sandbox. Both runtimes pass typecheck, clean build, docs, pack inspection
+and hermetic direct-runtime packed-install smoke. This does not prove the default
+registry initializer contract, hosted policy or private-image behavior. See
+[storage and performance evidence](../../maintainers/STORAGE-AND-PERFORMANCE.md).
 
 ## Task 18: Modernize release and prove the exact installable artifact
 

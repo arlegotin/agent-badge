@@ -129,3 +129,5 @@ export async function commitFixtureTree(fixture: GitFixture, cwd: string,
   }
   return (await fixture.git(cwd, ['commit-tree', await tree(root), ...(parent ? ['-p', parent] : []), '-m', 'Synthetic ledger fixture'])).trim();
 }
+
+/** Synthetic fixtures only; also used by isolated receiver-backed benchmark clients. */

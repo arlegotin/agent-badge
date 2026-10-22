@@ -30,6 +30,7 @@ export interface SetupOptions {
 }
 export interface OwnedChange { path: string; before: string | null; after: string }
 export interface SetupPlan {
+  rebind?:import('@legotin/agent-badge-core').TransportState;
   badge: { status: 'public-route' | 'unsupported-host'; privateImageSupport: 'unverified' };
   repository: RepositoryContext; declaration: Declaration; pin: RuntimePin; lockHash: string;
   changes: OwnedChange[]; activation: Activation; initialize: boolean;
@@ -129,6 +130,8 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
     (await core.verifyBinding(repository, local.binding)).status === 'valid' ? local.binding : null;
   const binding = options.target === undefined && priorBinding ? priorBinding :
     await core.bindRemote(repository, { repositoryId, declaredUrl, target: options.target });
+  const priorTransport=acceptedBytes?core.parseTransportState(JSON.parse(acceptedBytes)):null;
+  const rebind=priorTransport&&binding.status==='bound'&&priorTransport.canonicalPushUrl!==binding.canonicalPushUrl&&(options.target!==undefined||options.declaredUrl!==undefined)?priorTransport:undefined;
   const privatePolicy = core.parsePrivateAttributionPolicy(options.privatePolicy ?? local?.privatePolicy ?? {});
   // Historical inventory is useful only after a real membership check. Never enroll a prunable registration.
   const enrolled = new Map((local?.worktreeInventory ?? []).map(w => [w.path, w]));
@@ -179,8 +182,8 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const changes: OwnedChange[] = [];
   for (const [path, after] of Object.entries(owned)) { const before = await contents(join(repository.worktreeRoot, path)); if (before !== after) changes.push({ path, before, after }); }
   changes.push(...agentHooks.changes);
-  return { badge, repository, declaration, pin, lockHash, activation, changes, initialize: activation.initializeAllowed,
-    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json', 'hooks.json', 'git-hook.cjs', 'agent-hooks.pending.json', 'integration-locks/', repository.hooksPath + '/pre-push'], options, hooks, agentHooks };
+  return { badge, repository, declaration, pin, lockHash, activation, changes, initialize: activation.initializeAllowed,...(rebind?{rebind}:{}),
+    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json', 'hooks.json', 'git-hook.cjs', 'agent-hooks.pending.json', 'integration-locks/', repository.hooksPath + '/pre-push',...(rebind?['transport.json']:[])], options, hooks, agentHooks };
 }
 async function verifyRuntime(path: string, version: string) {
   const root = join(path, 'node_modules/@legotin/agent-badge');
@@ -206,6 +209,11 @@ export async function applySetup(plan: SetupPlan): Promise<SetupResult> {
     finally { await rm(stage, { recursive: true, force: true }); }
   }
 
+  if(plan.rebind){
+    if(plan.activation.binding.status!=='bound'||(plan.options.target===undefined&&plan.options.declaredUrl===undefined))throw new Error('Explicit destination approval required.');
+    const deadline=Date.now()+(plan.options.timeoutMs??120000),signal=AbortSignal.timeout(Math.max(1,deadline-Date.now()));
+    await core.rebindAcceptedRemote({repository:plan.repository,store:await core.openStore(plan.repository),binding:plan.activation.binding,expected:plan.rebind,signal,deadline});
+  }
   if (plan.initialize) {
     const intent = await loadSetupIntent(privateDir);
     if (intent && intent.repositoryId !== plan.declaration.repositoryId) throw new Error('Private setup intent identity mismatch.');

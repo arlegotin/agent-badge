@@ -1,6 +1,6 @@
 # Repository-native agent-badge: breaking redesign
 
-Status: approved and implemented through Tasks 1–16 on the refactor branch; Task 17 performance/legacy removal and Task 18 candidate artifact/release preparation remain. No replacement release or deployment has occurred. Hosted GitHub policy, Linux/Windows and authenticated private-image gates remain unverified.
+Status: approved and implemented through Tasks 1–16 on the refactor branch. Task 17 performance/legacy removal is implemented and locally verified, pending independent review; its measured latency exception is recorded in §14. Task 18 candidate artifact/release preparation remains. No replacement release or deployment has occurred. Hosted GitHub policy, Linux/Windows and authenticated private-image gates remain unverified.
 Research date: 2026-10-22. Baseline: `d209a47` / npm packages `1.1.20`.
 Working branch: `refactor/repo-native-agent-badge`.
 
@@ -413,7 +413,13 @@ Unknown/new hook configuration schemas are reported, not rewritten heuristically
 
 Automatic execution has a hard two-second wall-clock budget, including lock waits,
 collection, and transport. Unchanged local hooks target p95 below 250 ms on the
-published synthetic benchmark. Full backfill is an explicit/setup task and never
+published synthetic benchmark. Task17 measured this goal as unmet: final installed
+pre-push p95 was 382.28 ms on Node 24 and 443.23 ms on Node 26 at 100k units/10k native
+sources. Controller Ruling 68 accepts these measured results for this prerelease,
+prioritizing maintenance cost and risk over another discovery/startup trust
+mechanism. This is no universal 500 ms guarantee; 250 ms remains an optimization goal,
+and the hard two-second limit, full inventory/current-remote checks and accounting
+invariants remain unchanged. Full backfill is an explicit/setup task and never
 runs unbounded inside `pre-push`. Automatic failures return success for agent-badge's
 part and emit one concise redacted status line. Manual commands have a configurable
 deadline, meaningful nonzero exit status, and a detailed report. Kill complete child
@@ -421,6 +427,12 @@ process groups on timeout; do not leave fetch/push children behind. Persistent
 queues make two seconds a latency cap, not a claim that every slow network sync fits.
 The lightweight hook launcher supervises a worker process, so CPU-bound parsing or
 reduction cannot defeat the deadline by blocking an in-process abort handler.
+Automatic publication refuses local paths/file URLs after verifying the expanded
+route: their receive-pack shares the supervised client group, and a forced stop
+can strand a remote reference lock. Capture and confirmed-history reads/receipts
+continue. Explicit manual local sync remains available with its cancellation
+limitation; the tool never deletes a remote lock. Hosted receivers run outside
+the local worker group.
 
 No background auto-updating executable code. `upgrade` updates the pinned runtime,
 schemas, and managed files deliberately; normal usage maintenance is automatic.
@@ -533,8 +545,11 @@ boundary. Redact captured Git/provider errors; they can contain paths and creden
 Use local-only source fixtures; never inspect actual user prompts during validation.
 
 Observation history grows. Benchmark at 100,000 units and 10,000 active streams.
-Batch all changed observations into one transaction per sync, use prefix sharding,
-incremental indexes, and no-op detection. Do not promise bounded Git history or
+Automatic synchronization uses one closure-complete bounded transaction per call,
+targeting 128 records and 512 KiB while reporting exact remaining pending work.
+Imported envelopes and explicit metadata operations remain atomic; oversized
+indivisible groups defer without blocking independent groups. Use prefix sharding,
+validated disposable incremental indexes, and no-op detection. Do not promise bounded Git history or
 silently prune evidence. A later explicit compaction command can remove superseded
 snapshots from the current tree while retaining content in history; history rewriting
 and destructive pruning are separate maintenance operations requiring deliberate use.

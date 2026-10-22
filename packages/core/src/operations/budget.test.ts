@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { createOperationBudget } from './budget.js';
 import { superviseOperation } from './supervisor.js';
+import { parseWorkerSummary } from './worker-protocol.js';
 import { acquireLock } from '../storage/lock.js';
 
 const roots: string[] = [];
@@ -16,6 +17,17 @@ async function fixture(body: string) {
 }
 const moduleUrl = (path: string) => pathToFileURL(join(process.cwd(), 'packages/core/src', path)).href;
 const success = `{status:'unchanged',acknowledgedCount:0,queuedCount:0,pendingReconciliation:false}`;
+
+test('worker sees the usable deadline with supervisor cleanup reserved inside the total budget',async()=>{
+  const {root,worker}=await fixture(`import{writeFile}from'node:fs/promises';export async function runOperation(input,context){await writeFile(input.marker,String(context.deadline));return ${success}}`);
+  const budget=createOperationBudget('automatic'),marker=join(root,'deadline');
+  try {
+    expect((await superviseOperation({worker,input:{marker},budget})).status).toBe('unchanged');
+    const workerDeadline=Number(await readFile(marker,'utf8'));
+    expect(budget.deadline-workerDeadline).toBeGreaterThanOrEqual(90);
+    expect(budget.deadline-workerDeadline).toBeLessThanOrEqual(110);
+  }finally {budget.dispose();}
+});
 
 test('automatic budget caps caller timeouts and manual cancellation returns an actionable failure', async () => {
   const budget = createOperationBudget('automatic', 9000);
@@ -115,4 +127,41 @@ test('completed targeted sync reports durable broad reconciliation pending in on
   const result = await superviseOperation({ worker, input: {}, budget, onDiagnostic: line => diagnostics.push(line) });
   budget.dispose(); expect(result.status).toBe('unchanged'); expect(result.exitCode).toBe(0);
   expect(result.diagnostic).toContain('reconciliation pending'); expect(diagnostics).toEqual([result.diagnostic]);
+});
+
+test('automatic local transport refusal survives bounded IPC with a static actionable diagnostic', async () => {
+  const { worker } = await fixture(`export async function runOperation(){return {status:'unsupported',reason:'automatic-local-transport',acknowledgedCount:0,queuedCount:1,pendingReconciliation:false}}`);
+  const budget = createOperationBudget('automatic');
+  try {
+    const result = await superviseOperation({ worker, input: {}, budget });
+    expect(result.reason).toBe('automatic-local-transport');
+    expect(result.exitCode).toBe(0);
+    expect(result.diagnostic).toBe('agent-badge: local/file automatic publication unsupported; run manual sync');
+    expect(parseWorkerSummary({ ...result, reason: '/private/synthetic/secret' })).toBeNull();
+  } finally { budget.dispose(); }
+});
+
+test('independent fixture receiver survives a client deadline, finishes its locked transaction, and is stopped by its owner', async () => {
+  const { createBareRemoteFixture, startFixtureGitDaemon } = await import('@agent-badge/testkit');
+  const f = await createBareRemoteFixture(), daemon = await startFixtureGitDaemon(f);
+  const marker = join(f.root, 'receiver.json'), release = join(f.root, 'release'), workerPid = join(f.root, 'worker.pid');
+  await writeFile(join(f.remote, 'hooks/reference-transaction'), `#!${process.execPath}\nconst fs=require('node:fs');if(process.argv[2]==='prepared'){fs.writeFileSync(${JSON.stringify(marker)},JSON.stringify({receiver:process.ppid,hook:process.pid}));const deadline=Date.now()+10000;while(!fs.existsSync(${JSON.stringify(release)})&&Date.now()<deadline)Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);}\n`, { mode: 0o700 });
+  const { worker } = await fixture(`import{writeFile}from'node:fs/promises';import{runGit}from ${JSON.stringify(moduleUrl('git/process.ts'))};export async function runOperation(input,context){await writeFile(input.workerPid,String(process.pid));await runGit(['push',input.remote,'HEAD:refs/heads/agent-badge/data'],{cwd:input.cwd,signal:context.signal,timeoutMs:context.deadline-Date.now()});return ${success}}`);
+  const budget = createOperationBudget('automatic', 1400);
+  try {
+    const result = await superviseOperation({ worker, budget, input: { cwd: f.clones[0], remote: daemon.url, workerPid } });
+    expect(result.status).toBe('queued');
+    const observed = JSON.parse(await readFile(marker, 'utf8'));
+    const stoppedWorker = Number(await readFile(workerPid, 'utf8'));
+    expect(() => process.kill(stoppedWorker, 0)).toThrow();
+    function alive(pid: number) { try { process.kill(pid, 0); return true; } catch { return false; } }
+    expect(alive(observed.receiver)).toBe(true); expect(alive(observed.hook)).toBe(true);
+    expect((await readFile(join(f.remote, 'refs/heads/agent-badge/data.lock'), 'utf8')).trim()).toMatch(/^[a-f0-9]{40}$/);
+    await writeFile(release, 'finish');
+    const expected = (await f.git(f.clones[0], ['rev-parse', 'HEAD'])).trim();
+    await expect.poll(async () => (await f.git(f.remote, ['rev-parse', 'refs/heads/agent-badge/data']).catch(() => '')).trim()).toBe(expected);
+    await expect(readFile(join(f.remote, 'refs/heads/agent-badge/data.lock'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await daemon.stop();
+    await expect(f.git(f.root, ['ls-remote', daemon.url])).rejects.toThrow();
+  } finally { budget.dispose(); await writeFile(release, 'finish'); await daemon.stop(); await f.cleanup(); }
 });
