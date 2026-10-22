@@ -1,6 +1,7 @@
 import { lstat, mkdir, readFile, rename, rm, open, link } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parse as parseToml } from '@iarna/toml';
+import { acquireLock } from '@legotin/agent-badge-core/storage/lock';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { json } from './manifest.js';
 import type { OwnedChange } from './setup.js';
@@ -90,6 +91,21 @@ async function recoverable(cwd: string, intent: ProviderIntent) {
   for (const c of intent.changes) { const actual = await contents(join(cwd, c.path)); if (actual !== c.before && actual !== c.after) return false; }
   return true;
 }
+/** Reuse the existing private lease in a separate namespace so usage-store lock
+ * owners can invoke provider removal without reentering their own lock. */
+async function withProviderLease(privateDir: string, task: () => Promise<AgentHookResult>): Promise<AgentHookResult> {
+  const directory = join(privateDir, 'integration-locks');
+  await safeParents(join(directory, 'operation.lock')); await mkdir(directory, { recursive: true, mode: 0o700 });
+  let release: () => Promise<void>;
+  try { release = await acquireLock(directory, AbortSignal.timeout(2000)); }
+  catch (error) {
+    if ((error as { code?: string }).code === 'store-busy') return { status: 'action-required', actionItems: ['Provider integration is busy or its previous owner cannot be verified. Stop concurrent setup/uninstall and retry; stale lease recovery requires proving owner death.'] };
+    throw error;
+  }
+  try { return await task(); } finally { await release(); }
+}
+/** Called only while holding the common-directory integration lease, including
+ * cleanup. A second recovery cannot unlink a later caller's new intent. */
 async function finishTransaction(cwd: string, privateDir: string, intent: ProviderIntent) {
   if (!await recoverable(cwd, intent)) throw new Error('Interrupted provider files changed; reconcile before recovery.');
   for (const c of intent.changes) {
@@ -156,6 +172,9 @@ export async function planAgentHooks(cwd: string, context?: RepositoryContext): 
   return { cwd: resolve(cwd), privateDir: repository.privateDir, pending: null, changes, actionItems, notices };
 }
 export async function applyAgentHookPlan(plan: AgentHookPlan): Promise<AgentHookResult> {
+  return withProviderLease(plan.privateDir, () => applyAgentHookPlanLocked(plan));
+}
+async function applyAgentHookPlanLocked(plan: AgentHookPlan): Promise<AgentHookResult> {
   for (const c of plan.changes) if (await contents(join(plan.cwd, c.path)) !== c.before) throw new Error('Agent hook files changed after planning.');
   if (!equal(await loadPending(plan.privateDir), plan.pending)) throw new Error('Provider recovery intent changed after planning.');
   if (plan.pending) {
@@ -172,11 +191,14 @@ export async function applyAgentHookPlan(plan: AgentHookPlan): Promise<AgentHook
     'Provider hooks require Node 24 or 26 on provider PATH and explicit native project trust/hook review; restart the provider after review.'] };
 }
 export async function removeAgentHooks(cwd: string): Promise<AgentHookResult> {
-  const repository = await (await import('@legotin/agent-badge-core')).resolveRepository(cwd); cwd = repository.worktreeRoot;
-  const pending = await loadPending(repository.privateDir);
+  const repository = await (await import('@legotin/agent-badge-core')).resolveRepository(cwd);
+  return withProviderLease(repository.privateDir, () => removeAgentHooksLocked(repository.worktreeRoot, repository.privateDir));
+}
+async function removeAgentHooksLocked(cwd: string, privateDir: string): Promise<AgentHookResult> {
+  const pending = await loadPending(privateDir);
   if (pending) {
     if (!await recoverable(cwd, pending)) return { status: 'action-required', actionItems: ['Interrupted provider files changed; reconcile before removal.'] };
-    await finishTransaction(cwd, repository.privateDir, pending);
+    await finishTransaction(cwd, privateDir, pending);
     if (pending.kind === 'remove') return { status: 'removed', actionItems: [] };
   }
   const prior = await ownership(cwd); if (!prior.entries.length) return { status: 'unchanged', actionItems: [] };
@@ -194,7 +216,7 @@ export async function removeAgentHooks(cwd: string): Promise<AgentHookResult> {
   // Preserve manifest if any edited entry needs user reconciliation.
   if (actionItems.length) return { status: 'action-required', actionItems };
   const intent: ProviderIntent = { schemaVersion: 1, kind: 'remove', worktreeRoot: cwd, changes: [...changes, { path: ownershipPath, before: await contents(join(cwd, ownershipPath)), after: null }], actionItems: [], notices: [] };
-  await atomic(join(repository.privateDir, pendingName), json(intent), 0o600, true);
-  await finishTransaction(cwd, repository.privateDir, intent);
+  await atomic(join(privateDir, pendingName), json(intent), 0o600, true);
+  await finishTransaction(cwd, privateDir, intent);
   return { status: 'removed', actionItems: [] };
 }

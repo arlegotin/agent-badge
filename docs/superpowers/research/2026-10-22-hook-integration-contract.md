@@ -153,6 +153,20 @@ unrelated matching command. The TOML adapter uses the exact declared
 `@iarna/toml@2.2.5` parser to detect semantic root `hooks` keys in table, inline,
 dotted and quoted forms, preserving original TOML bytes and native trust settings.
 
+Provider apply/remove holds core's existing private `acquireLock` lease across
+plan revalidation, intent publication, every recovery write and final intent
+cleanup. The dedicated common-directory namespace is
+`<common>/agent-badge/integration-locks/`, separate from usage-store leases.
+An older recovery therefore cannot delete a new worktree's later intent.
+Read-only planning stays unlocked; stale plans are rejected after acquisition.
+The existing two-second acquisition bound and namespace/death proof rules apply;
+busy or unverifiable owners yield an action item and no config mutation. No age
+or hostname alone permits stale recovery. Normal release deletes operation.lock
+and leaves the empty private directory. Task16/17 cleanup must preserve live or
+unverifiable operation.lock/recovery.lock/lease staging records until owner death
+is independently proven; a denied namespace probe remains conservative.
+`@legotin/agent-badge-core/storage/lock` exposes this existing lightweight seam.
+
 `removeAgentHooks` first completes an exact pending installation before removing
 its owned entries, or resumes a pending removal including the manifest tombstone.
 It retains unrelated handlers and leaves the provider JSON files in place.

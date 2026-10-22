@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { planAgentHooks, applyAgentHookPlan, removeAgentHooks } from './agent-hooks.js';
 import { bootstrapSource } from './templates.js';
+import { acquireLock } from '@legotin/agent-badge-core/storage/lock';
 const roots: string[] = [];
 // Retained Node22 Vitest needs its old addon; automatic child processes still
 // run the supported explicit toolchain, including shell/provider PATH lookup.
@@ -173,17 +174,21 @@ test('a pending common-directory provider transaction stays bound to its origina
   await applyAgentHookPlan(await planAgentHooks(f.cwd));
 });
 
-test('concurrent worktree plans cannot overwrite the first published provider intent', async () => {
+test('concurrent worktree plans publish and clean provider intents sequentially', async () => {
   const f = await fixture(); spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], { cwd: f.cwd });
   const linked = join(f.cwd, 'linked'); spawnSync('git', ['worktree', 'add', '-qb', 'linked', linked], { cwd: f.cwd });
-  const plans = [await planAgentHooks(f.cwd), await planAgentHooks(linked)], link = fs.link; let count = 0, release!: () => void;
-  const barrier = new Promise<void>(resolve => { release = resolve; });
-  const fault = vi.spyOn(fs, 'link').mockImplementation(async (from, to) => { if (String(to) === join(f.privateDir, 'agent-hooks.pending.json')) { if (++count === 2) release(); await barrier; } return link(from, to); }); syncBuiltinESMExports();
-  let results: PromiseSettledResult<unknown>[];
-  try { results = await Promise.allSettled(plans.map(p => applyAgentHookPlan(p))); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
-  expect(results!.filter(r => r.status === 'fulfilled')).toHaveLength(1); const winner = results!.findIndex(r => r.status === 'fulfilled');
-  expect(JSON.parse(await readFile(join(plans[winner].cwd, '.codex/hooks.json'), 'utf8')).hooks.Stop).toHaveLength(1);
-  await expect(readFile(join(plans[1 - winner].cwd, '.codex/hooks.json'))).rejects.toThrow();
+  const plans = [await planAgentHooks(f.cwd), await planAgentHooks(linked)], link = fs.link; let count = 0, firstEntered!: () => void, release!: () => void, contested!: () => void, secondStarted = false;
+  const ready = new Promise<void>(r => { firstEntered = r; }), gate = new Promise<void>(r => { release = r; }), waiting = new Promise<void>(r => { contested = r; });
+  const fault = vi.spyOn(fs, 'link').mockImplementation(async (from, to) => {
+    if (String(to) === join(f.privateDir, 'agent-hooks.pending.json')) { if (++count === 1) { firstEntered(); await gate; } }
+    if (secondStarted && String(to) === join(f.privateDir, 'integration-locks/operation.lock')) contested();
+    return link(from, to);
+  }); syncBuiltinESMExports();
+  let first: Promise<unknown> | undefined, second: Promise<unknown> | undefined;
+  try { first = applyAgentHookPlan(plans[0]); await ready; secondStarted = true; second = applyAgentHookPlan(plans[1]); await waiting; expect(count).toBe(1); release(); await Promise.all([first, second]); }
+  finally { release(); await Promise.allSettled([first, second]); fault.mockRestore(); syncBuiltinESMExports(); }
+  for (const plan of plans) expect(JSON.parse(await readFile(join(plan.cwd, '.codex/hooks.json'), 'utf8')).hooks.Stop).toHaveLength(1);
+  await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow();
 });
 
 test('interrupted provider removal resumes its exact tombstone transaction', async () => {
@@ -192,4 +197,55 @@ test('interrupted provider removal resumes its exact tombstone transaction', asy
   try { await expect(removeAgentHooks(f.cwd)).rejects.toThrow('remove interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
   expect((await planAgentHooks(f.cwd)).actionItems.join()).toMatch(/removal/);
   expect((await removeAgentHooks(f.cwd)).status).toBe('removed'); await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow(); await expect(readFile(join(f.cwd, '.agent-badge/agent-hooks.json'))).rejects.toThrow();
+});
+
+test.each(['apply', 'remove'] as const)('a stale concurrent %s recovery cannot delete a new worktree intent after the first recovery finishes', async mode => {
+  const f = await fixture(); spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], { cwd: f.cwd });
+  const linked = join(f.cwd, 'linked'); spawnSync('git', ['worktree', 'add', '-qb', 'linked', linked], { cwd: f.cwd });
+  const bPlan = await planAgentHooks(linked), pendingPath = join(f.privateDir, 'agent-hooks.pending.json'), rm = fs.rm, rename = fs.rename, link = fs.link;
+  const seed = vi.spyOn(fs, 'rm').mockImplementation(async (path, options) => { if (String(path) === pendingPath) throw new Error('seed interrupted cleanup'); return rm(path, options); }); syncBuiltinESMExports();
+  try { await expect(applyAgentHookPlan(await planAgentHooks(f.cwd))).rejects.toThrow('seed interrupted cleanup'); } finally { seed.mockRestore(); syncBuiltinESMExports(); }
+  const recovery = await planAgentHooks(f.cwd), initialIntent = await readFile(pendingPath, 'utf8');
+  let firstAtCleanup!: () => void, secondAtCleanup!: () => void, blockedLease!: () => void, releaseFirst!: () => void, releaseSecond!: () => void;
+  const firstReady = new Promise<void>(r => { firstAtCleanup = r; }), secondReady = new Promise<'cleanup'>(r => { secondAtCleanup = () => r('cleanup'); });
+  const blocked = new Promise<'lease'>(r => { blockedLease = () => r('lease'); }), firstGate = new Promise<void>(r => { releaseFirst = r; }), secondGate = new Promise<void>(r => { releaseSecond = r; });
+  let cleanupCount = 0, secondStarted = false, bInterrupted = false;
+  const cleanup = vi.spyOn(fs, 'rm').mockImplementation(async (path, options) => {
+    if (String(path) === pendingPath && await readFile(pendingPath, 'utf8').catch(() => '') === initialIntent) { if (++cleanupCount === 1) { firstAtCleanup(); await firstGate; } else if (cleanupCount === 2) { secondAtCleanup(); await secondGate; } }
+    return rm(path, options);
+  });
+  const lease = vi.spyOn(fs, 'link').mockImplementation(async (from, to) => { if (secondStarted && String(to) === join(f.privateDir, 'integration-locks/operation.lock')) blockedLease(); return link(from, to); });
+  const publication = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { await rename(from, to); if (!bInterrupted && String(to) === join(linked, '.codex/hooks.json')) { bInterrupted = true; throw new Error('B interrupted'); } }); syncBuiltinESMExports();
+  const outcome = (promise: Promise<unknown>) => promise.then(() => null, e => e as Error);
+  let a1: Promise<Error | null> | undefined, a2: Promise<Error | null> | undefined;
+  try {
+    const recover = () => mode === 'apply' ? applyAgentHookPlan(recovery) : removeAgentHooks(f.cwd);
+    a1 = outcome(recover()); await firstReady;
+    secondStarted = true; a2 = outcome(recover()); await Promise.race([secondReady, blocked]);
+    releaseFirst(); expect(await a1).toBeNull();
+    expect((await outcome(applyAgentHookPlan(bPlan)))?.message).toBe('B interrupted');
+    const newIntent = await readFile(pendingPath, 'utf8'); expect(JSON.parse(newIntent).worktreeRoot).toBe(linked);
+    releaseSecond(); await a2;
+    expect(await readFile(pendingPath, 'utf8')).toBe(newIntent);
+  } finally { releaseFirst(); releaseSecond(); await Promise.all([a1, a2]); cleanup.mockRestore(); lease.mockRestore(); publication.mockRestore(); syncBuiltinESMExports(); }
+  await applyAgentHookPlan(await planAgentHooks(linked));
+  expect(JSON.parse(await readFile(join(linked, '.codex/hooks.json'), 'utf8')).hooks.Stop).toHaveLength(1);
+}, 10000);
+
+test('live provider lease gives bounded apply/remove actions without mutating config or intent', async () => {
+  const f = await fixture(), plan = await planAgentHooks(f.cwd), directory = join(f.privateDir, 'integration-locks'); await mkdir(directory);
+  const release = await acquireLock(directory, AbortSignal.timeout(500), async () => null);
+  try {
+    for (const result of [await applyAgentHookPlan(plan), await removeAgentHooks(f.cwd)]) { expect(result.status).toBe('action-required'); expect(result.actionItems.join()).toMatch(/busy|owner cannot be verified/); }
+    await expect(readFile(join(f.cwd, '.codex/hooks.json'))).rejects.toThrow(); await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow();
+  } finally { await release(); }
+  expect((await applyAgentHookPlan(plan)).status).toBe('configured-needs-trust');
+}, 10000);
+
+test('unknown provider lease namespace is never reclaimed by age', async () => {
+  const f = await fixture(), plan = await planAgentHooks(f.cwd), directory = join(f.privateDir, 'integration-locks'); await mkdir(directory);
+  const bytes = JSON.stringify({ schemaVersion: 1, host: 'synthetic-unverifiable-host', namespace: null, pid: 99999999, token: '11111111-1111-4111-8111-111111111111', startedAt: 1 });
+  const path = join(directory, 'operation.lock'); await writeFile(path, bytes);
+  const result = await applyAgentHookPlan(plan); expect(result.status).toBe('action-required'); expect(result.actionItems.join()).toMatch(/proving owner death/); expect(await readFile(path, 'utf8')).toBe(bytes);
+  await expect(readFile(join(f.cwd, '.codex/hooks.json'))).rejects.toThrow();
 });

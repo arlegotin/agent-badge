@@ -10,6 +10,7 @@ export default defineConfig({
       "@legotin/agent-badge-core/operations/budget": `${rootDir}packages/core/src/operations/budget.ts`,
       "@legotin/agent-badge-core/operations/supervisor": `${rootDir}packages/core/src/operations/supervisor.ts`,
       "@legotin/agent-badge-core/operations/worker": `${rootDir}packages/core/src/operations/worker-sync.ts`,
+      "@legotin/agent-badge-core/storage/lock": `${rootDir}packages/core/src/storage/lock.ts`,
       "@legotin/agent-badge-core/operations/runner": `${rootDir}packages/core/src/operations/runner.ts`,
       "@legotin/agent-badge-core": `${rootDir}packages/core/src/index.ts`,
       "@agent-badge/core": `${rootDir}packages/core/src/index.ts`,

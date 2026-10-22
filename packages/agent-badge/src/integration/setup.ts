@@ -154,7 +154,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   for (const [path, after] of Object.entries(owned)) { const before = await contents(join(repository.worktreeRoot, path)); if (before !== after) changes.push({ path, before, after }); }
   changes.push(...agentHooks.changes);
   return { repository, declaration, pin, lockHash, activation, changes, initialize: activation.initializeAllowed,
-    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json', 'hooks.json', 'git-hook.cjs', 'agent-hooks.pending.json', repository.hooksPath + '/pre-push'], options, hooks, agentHooks };
+    privateChanges: [`runtime/${lockHash}`, 'setup-intent.json', 'bootstrap.cjs', 'local.json', 'hooks.json', 'git-hook.cjs', 'agent-hooks.pending.json', 'integration-locks/', repository.hooksPath + '/pre-push'], options, hooks, agentHooks };
 }
 async function verifyRuntime(path: string, version: string) {
   const root = join(path, 'node_modules/@legotin/agent-badge');

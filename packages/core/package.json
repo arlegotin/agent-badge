@@ -38,6 +38,10 @@
     "./operations/worker": {
       "types": "./dist/operations/worker-sync.d.ts",
       "import": "./dist/operations/worker-sync.js"
+    },
+    "./storage/lock": {
+      "types": "./dist/storage/lock.d.ts",
+      "import": "./dist/storage/lock.js"
     }
   },
   "files": [
