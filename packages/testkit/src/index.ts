@@ -18,3 +18,9 @@ export {
   type CreateRepoFixtureOptions,
   type RepoFixture
 } from "./repo-fixtures.js";
+export {
+  createBareRemoteFixture,
+  snapshotUserCheckout,
+  type GitFixture,
+  type CheckoutSnapshot
+} from "./git-fixtures.js";
