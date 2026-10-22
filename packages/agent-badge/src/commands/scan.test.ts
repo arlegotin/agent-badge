@@ -502,7 +502,7 @@ describe.sequential("runScanCommand", () => {
     }
   });
 
-  it("registers the scan CLI command and forwards include or exclude session flags", async () => {
+  it("refuses legacy scans and override writes without approved activation", async () => {
     const fixture = await createScanFixture();
 
     try {
@@ -527,21 +527,12 @@ describe.sequential("runScanCommand", () => {
         ])
       );
 
-      await program.parseAsync([
-        "node",
-        "agent-badge",
-        "scan",
-        "--include-session",
-        "codex:ambiguous-include",
-        "--exclude-session",
-        "claude:ambiguous-exclude"
-      ]);
-
-      expect((await readStateFile(fixture.statePath)).overrides.ambiguousSessions)
-        .toMatchObject({
-          "codex:ambiguous-include": "include",
-          "claude:ambiguous-exclude": "exclude"
-        });
+      await expect(program.parseAsync([
+        "node", "agent-badge", "scan", "--include-session", "codex:ambiguous-include",
+        "--exclude-session", "claude:ambiguous-exclude"
+      ])).rejects.toThrow("needs-setup");
+      expect(runFullBackfillScanMock).not.toHaveBeenCalled();
+      expect((await readStateFile(fixture.statePath)).overrides.ambiguousSessions).toEqual({});
     } finally {
       await fixture.cleanup();
     }

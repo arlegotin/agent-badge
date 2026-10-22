@@ -4,19 +4,17 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Command } from "commander";
-import {
-  resolveGitHubCliToken,
-  type AgentBadgeRefreshMode
-} from "@legotin/agent-badge-core";
+import type { AgentBadgeRefreshMode } from "@legotin/agent-badge-core";
+import { assertSupportedNode } from "../integration/manifest.js";
 
-import { runConfigCommand } from "../commands/config.js";
-import { runInitCommand } from "../commands/init.js";
-import { runDoctorCommand } from "../commands/doctor.js";
-import { runPublishCommand } from "../commands/publish.js";
-import { runRefreshCommand } from "../commands/refresh.js";
-import { runScanCommand } from "../commands/scan.js";
-import { runStatusCommand } from "../commands/status.js";
-import { runUninstallCommand } from "../commands/uninstall.js";
+async function legacy() {
+  const { checkActivation } = await import("../integration/runtime.js");
+  let approved = false;
+  try { approved = (await checkActivation({ cwd: process.cwd() })).status === "approved"; } catch { /* missing or unsafe activation */ }
+  if (!approved) throw new Error("agent-badge: needs-setup; run explicit setup to approve this runtime.");
+  return import("../commands/index.js");
+}
+async function resolver() { return (await import("@legotin/agent-badge-core")).resolveGitHubCliToken; }
 
 type ReportedCliError = Error & {
   alreadyReported?: boolean;
@@ -79,16 +77,24 @@ export function buildProgram(): Command {
     .description("Track and publish privacy-safe AI usage badges for repositories.")
     .version(resolveCliVersion(), "--version", "print the installed CLI version");
 
-  program
-    .command("init")
-    .description("Initialize agent-badge in the current repository.")
-    .option("--gist-id <id>", "Connect an existing public GitHub Gist id.")
-    .action(async (options: { gistId?: string }) => {
-      await runInitCommand({
-        gistId: options.gistId,
-        ghCliTokenResolver: resolveGitHubCliToken
+  for (const name of ["init", "setup"]) {
+    program.command(name)
+      .description("Install and explicitly activate repository-owned agent-badge setup.")
+      .option("--target <remote>", "Explicitly approve a Git remote destination.")
+      .option("--repository-url <url>", "Public repository URL for the tracked declaration.")
+      .option("--runtime-version <version>", "Exact runtime version to install.")
+      .option("--dry-run", "Print exact owned file changes without applying setup.")
+      .action(async (options: { target?: string; repositoryUrl?: string; runtimeVersion?: string; dryRun?: boolean }) => {
+        const { planSetup, applySetup } = await import("../integration/setup.js");
+        const plan = await planSetup({ target: options.target, declaredUrl: options.repositoryUrl, runtimeVersion: options.runtimeVersion ?? resolveCliVersion() });
+        console.log(JSON.stringify({ changes: plan.changes, privateChanges: plan.privateChanges }, null, 2));
+        if (!options.dryRun) {
+          const result = await applySetup(plan);
+          console.log(`agent-badge: runtime ${result.runtimeVersion}; usage ${result.status}; coverage may be partial.`);
+          process.exitCode = result.operation.exitCode;
+        }
       });
-    });
+  }
 
   program
     .command("scan")
@@ -110,7 +116,7 @@ export function buildProgram(): Command {
         includeSession: string[];
         excludeSession: string[];
       }) => {
-        await runScanCommand({
+        await (await legacy()).runScanCommand({
           includeSession: options.includeSession,
           excludeSession: options.excludeSession
         });
@@ -121,8 +127,8 @@ export function buildProgram(): Command {
     .command("publish")
     .description("Publish aggregate badge JSON to the configured remote target.")
     .action(async () => {
-      await runPublishCommand({
-        ghCliTokenResolver: resolveGitHubCliToken
+      await (await legacy()).runPublishCommand({
+        ghCliTokenResolver: await resolver()
       });
     });
 
@@ -151,11 +157,11 @@ export function buildProgram(): Command {
           );
         }
 
-        await runRefreshCommand({
+        await (await legacy()).runRefreshCommand({
           hook: parseRefreshHook(options.hook),
           hookPolicy: hookPolicy ?? (options.failSoft ? "fail-soft" : undefined),
           forceFull: options.forceFull ?? false,
-          ghCliTokenResolver: resolveGitHubCliToken
+          ghCliTokenResolver: await resolver()
         });
       }
     );
@@ -164,7 +170,7 @@ export function buildProgram(): Command {
     .command("status")
     .description("Print the current persisted badge, provider, and publish state.")
     .action(async () => {
-      await runStatusCommand();
+      await (await legacy()).runStatusCommand();
     });
 
   program
@@ -173,10 +179,10 @@ export function buildProgram(): Command {
     .option("--json", "Print a machine-readable result object.")
     .option("--probe-write", "Validate gist write credentials with a no-op update.")
     .action(async (options: { json?: boolean; probeWrite?: boolean }) => {
-      await runDoctorCommand({
+      await (await legacy()).runDoctorCommand({
         json: options.json ?? false,
         probeWrite: options.probeWrite ?? false,
-        ghCliTokenResolver: resolveGitHubCliToken
+        ghCliTokenResolver: await resolver()
       });
     });
 
@@ -198,14 +204,14 @@ export function buildProgram(): Command {
         purgeCache?: boolean;
         force?: boolean;
       }) => {
-        await runUninstallCommand({
+        await (await legacy()).runUninstallCommand({
           purgeRemote: options.purgeRemote ?? false,
           purgeConfig: options.purgeConfig ?? false,
           purgeState: options.purgeState ?? false,
           purgeLogs: options.purgeLogs ?? true,
           purgeCaches: options.purgeCache ?? true,
           force: options.force ?? false,
-          ghCliTokenResolver: resolveGitHubCliToken
+          ghCliTokenResolver: await resolver()
         });
       }
     );
@@ -214,7 +220,7 @@ export function buildProgram(): Command {
     .command("config")
     .description("View or update supported post-init agent-badge settings.")
     .action(async () => {
-      await runConfigCommand({
+      await (await legacy()).runConfigCommand({
         action: "get"
       });
     });
@@ -223,7 +229,7 @@ export function buildProgram(): Command {
     .command("get [key]")
     .description("Print the current value for a supported config key.")
     .action(async (key?: string) => {
-      await runConfigCommand({
+      await (await legacy()).runConfigCommand({
         action: "get",
         key
       });
@@ -233,7 +239,7 @@ export function buildProgram(): Command {
     .command("set <key> <value>")
     .description("Update a supported config key.")
     .action(async (key: string, value: string) => {
-      await runConfigCommand({
+      await (await legacy()).runConfigCommand({
         action: "set",
         key,
         value
@@ -243,14 +249,16 @@ export function buildProgram(): Command {
   return program;
 }
 
-export async function run(argv: string[] = process.argv): Promise<void> {
-  await buildProgram().parseAsync(argv);
+export async function run(argv: string[] = process.argv, options: { nodeVersion?: string } = {}): Promise<void> {
+  assertSupportedNode(options.nodeVersion);
+  await buildProgram().exitOverride().parseAsync(argv);
 }
 
 export function handleRunError(
   error: unknown,
   stderr: Pick<typeof console, "error"> = console
 ): void {
+  if ((error as { code?: string })?.code === "commander.helpDisplayed" || (error as { code?: string })?.code === "commander.version") return;
   const message = error instanceof Error ? error.message : String(error);
 
   if ((error as ReportedCliError | null)?.alreadyReported !== true) {

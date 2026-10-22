@@ -2,9 +2,9 @@ import { resolveRepository } from '../git/context.js';
 import { openStore } from '../storage/store.js';
 import { collectUsage } from '../collection/collect.js';
 import type { CollectionResult } from '../collection/collect.js';
-import { parseSharedPolicy } from '../domain/policy.js';
 import { createCodexAdapter } from '../providers/codex/adapter.js';
 import { createClaudeAdapter } from '../providers/claude/adapter.js';
+import { loadCapturePolicy } from './capture-policy.js';
 import { syncUsage } from './sync.js';
 import type { RepositoryOperationRequest } from './runner.js';
 import type { WorkerContext, WorkerSummary } from './worker-protocol.js';
@@ -30,10 +30,12 @@ export async function runOperation(input: RepositoryOperationRequest & { mode: '
     } } : {}) };
     let captured: CollectionResult | null = null;
     if (input.capturePolicy && input.collect !== 'none') {
-      const policy = parseSharedPolicy(input.capturePolicy);
-      if (input.binding.status !== 'bound' || policy.repositoryId !== input.binding.repositoryId) return { ...queued, status: 'conflict' };
+      const repositoryId = input.binding.status === 'bound' ? input.binding.repositoryId : input.repositoryId;
+      if (!repositoryId || (input.repositoryId && input.repositoryId !== repositoryId)) return { ...queued, status: 'conflict' };
+      const policy = await loadCapturePolicy(repository, store, input.capturePolicy, repositoryId, context);
       captured = await collectUsage({ ...collection, repository, store, policy, signal: context.signal });
     }
+    if (input.binding.status !== 'bound') return { ...queued, queuedCount: (await store.pending()).length, pendingReconciliation: await store.reconciliationPending() };
     const result = await syncUsage({ repository, store, binding: input.binding, signal: context.signal, deadline: context.deadline,
       collect: captured || input.collect === 'none' ? 'none' : 'incremental', collection,
       initialize: automatic ? undefined : input.initialize });

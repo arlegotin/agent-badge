@@ -1,160 +1,40 @@
-import { readFile } from "node:fs/promises";
-import { mkdtemp, rm, symlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFile, mkdtemp, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
+import { afterEach, expect, test } from 'vitest';
+import { isDirectExecution, runCreateAgentBadge } from './index.js';
+const roots: string[] = [];
+afterEach(async () => { await Promise.all(roots.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
+const target = process.env.AGENT_BADGE_TEST_NODE ?? process.execPath;
+async function fixture() { const root = await mkdtemp(join(tmpdir(), 'agent-badge-initializer-')); roots.push(root); return root; }
 
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-import { isDirectExecution } from "./index.js";
-
-const originalArgv = [...process.argv];
-const originalExitCode = process.exitCode;
-const originalCwd = process.cwd();
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.resetModules();
-  vi.doUnmock("@legotin/agent-badge");
-  process.argv = [...originalArgv];
-  process.exitCode = originalExitCode;
-  process.chdir(originalCwd);
+test('recognizes a symlinked executable and missing argv', async () => {
+  const root = await fixture(), link = join(root, 'initializer'); await symlink(new URL('./index.ts', import.meta.url), link);
+  expect(isDirectExecution([process.execPath, link])).toBe(true); expect(isDirectExecution([process.execPath])).toBe(false);
+});
+test('unsupported Node rejects before importing the shared CLI or discovering a repository', async () => {
+  await expect(runCreateAgentBadge({ nodeVersion: '22.14.0', argv: [] })).rejects.toThrow('Node 24 or 26');
 });
 
-describe("create-agent-badge entrypoint", () => {
-  it("declares a node shebang for the published bin entry", async () => {
-    const source = await readFile(new URL("./index.ts", import.meta.url), "utf8");
+test.each([{ args: ['--help'] }, { args: ['--version'] }, { args: ['--definitely-invalid'] }, { args: ['setup', '--definitely-invalid'] }])('packed executable arguments %j have no operational side effects', async ({ args }) => {
+  const root = await fixture(), bin = join(root, 'bin'), marker = join(root, 'subprocess-ran'); await import('node:fs/promises').then(m => m.mkdir(bin));
+  for (const command of ['git', 'npm', 'gh']) await writeFile(join(bin, command), '#!/bin/sh\necho forbidden > "' + marker + '"\nexit 97\n', { mode: 0o700 });
+  let stdout = '', code = 0;
+  try { stdout = execFileSync(target, [new URL('../dist/index.js', import.meta.url).pathname, ...args], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, HOME: root, PATH: bin, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' } }); }
+  catch (error) { code = (error as { status: number }).status; }
+  expect(code).toBe(args.includes('--help') || args.includes('--version') ? 0 : 1);
+  expect((await readdir(root)).sort()).toEqual(['bin']);
+  if (args[0] === '--help') expect(stdout).toContain('setup');
+  if (args[0] === '--version') expect(stdout).toMatch(/^\d+\.\d+\.\d+/);
+});
 
-    expect(source.startsWith("#!/usr/bin/env node\n")).toBe(true);
-  });
-
-  it("treats a symlinked bin path as direct execution", async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), "create-agent-badge-cli-"));
-    const symlinkPath = join(tempRoot, "create-agent-badge");
-    const mainPath = new URL("./index.ts", import.meta.url);
-
-    try {
-      await symlink(mainPath, symlinkPath);
-
-      expect(isDirectExecution([process.execPath, symlinkPath])).toBe(true);
-    } finally {
-      await rm(tempRoot, { recursive: true, force: true });
-    }
-  });
-
-  it("returns false when no entry path is supplied", () => {
-    expect(isDirectExecution([process.execPath])).toBe(false);
-  });
-
-  it("delegates to runInitCommand with the GitHub CLI token resolver", async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), "create-agent-badge-run-"));
-    const runInitCommand = vi.fn().mockResolvedValue({
-      preflight: {
-        packageManager: {
-          name: "npm"
-        }
-      }
-    });
-    const resolveGitHubCliToken = vi.fn();
-
-    try {
-      process.chdir(tempRoot);
-      const cwd = process.cwd();
-
-      vi.doMock("@legotin/agent-badge", () => ({
-        runInitCommand,
-        resolveGitHubCliToken
-      }));
-
-      const module = await import(new URL("./index.ts?run-create-agent-badge", import.meta.url).href);
-
-      const result = await module.runCreateAgentBadge({
-        env: {
-          TEST_ENV: "1"
-        }
-      });
-
-      expect(runInitCommand).toHaveBeenCalledWith({
-        cwd,
-        env: {
-          TEST_ENV: "1"
-        },
-        ghCliTokenResolver: resolveGitHubCliToken
-      });
-      expect(result).toEqual({
-        preflight: {
-          packageManager: {
-            name: "npm"
-          }
-        }
-      });
-    } finally {
-      await rm(tempRoot, { recursive: true, force: true });
-    }
-  });
-
-  it("does not require a target package.json after initialization", async () => {
-    const tempRoot = await mkdtemp(
-      join(tmpdir(), "create-agent-badge-no-package-json-")
-    );
-    const runInitCommand = vi.fn().mockResolvedValue({
-      preflight: {
-        packageManager: {
-          name: "pnpm"
-        }
-      }
-    });
-
-    try {
-      process.chdir(tempRoot);
-
-      vi.doMock("@legotin/agent-badge", () => ({
-        runInitCommand,
-        resolveGitHubCliToken: vi.fn()
-      }));
-
-      const module = await import(
-        new URL(
-          "./index.ts?run-create-agent-badge-no-package-json",
-          import.meta.url
-        ).href
-      );
-
-      await expect(module.runCreateAgentBadge()).resolves.toEqual({
-        preflight: {
-          packageManager: {
-            name: "pnpm"
-          }
-        }
-      });
-    } finally {
-      await rm(tempRoot, { recursive: true, force: true });
-    }
-  });
-
-  it("prints direct execution errors and sets process.exitCode", async () => {
-    vi.doMock("@legotin/agent-badge", () => ({
-      runInitCommand: vi.fn().mockRejectedValue(new Error("direct execution failed")),
-      resolveGitHubCliToken: vi.fn()
-    }));
-
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    process.argv = [
-      process.execPath,
-      fileURLToPath(new URL("./index.ts", import.meta.url))
-    ];
-    process.exitCode = undefined;
-
-    const directExecutionModule = new URL(
-      "./index.ts?direct-execution",
-      import.meta.url
-    ).href;
-
-    await import(directExecutionModule);
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(errorSpy).toHaveBeenCalledWith("direct execution failed");
-    expect(process.exitCode).toBe(1);
-  });
+test.each(['../dist/index.js', '../../agent-badge/dist/cli/main.js'])('executable %s rejects unsupported Node before loading operational code', async entry => {
+  const root = await fixture(), path = new URL(entry, import.meta.url).pathname;
+  const code = "const entry=process.argv[1];process.argv=[process.execPath,entry];Object.defineProperty(process.versions,'node',{value:'22.14.0'});import(require('node:url').pathToFileURL(entry).href);";
+  let result;
+  try { execFileSync(process.execPath, ['-e', code, path], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, PATH: '', HOME: root } }); }
+  catch (error) { result = error as { status: number; stderr: string }; }
+  expect(result?.status).toBe(1); expect(String(result?.stderr)).toContain('Node 24 or 26');
+  expect(String(result?.stderr)).not.toContain('SQLite'); expect(await readdir(root)).toEqual([]);
 });

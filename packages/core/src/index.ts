@@ -39,3 +39,5 @@ export type { SyncOptions, SyncResult } from './operations/sync.js';
 export * from './operations/configure.js';
 export * from './operations/budget.js';
 export * from './operations/runner.js';
+
+export { loadCapturePolicy } from './operations/capture-policy.js';

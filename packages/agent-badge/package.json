@@ -34,6 +34,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/main.d.ts",
+      "import": "./dist/cli/main.js"
+    },
+    "./integration/runtime": {
+      "types": "./dist/integration/runtime.d.ts",
+      "import": "./dist/integration/runtime.js"
+    },
+    "./integration/setup": {
+      "types": "./dist/integration/setup.d.ts",
+      "import": "./dist/integration/setup.js"
     }
   },
   "files": [

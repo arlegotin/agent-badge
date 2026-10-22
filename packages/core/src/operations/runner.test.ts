@@ -134,3 +134,32 @@ test.each(['provider-only', 'exact-source'] as const)('manual full mode with a %
   budget.dispose(); expect(result.status).toBe('unchanged');
   expect(result.pendingReconciliation).toBe(true); expect(await store.reconciliationPending()).toBe(true);
 });
+
+test('offline capture loads the latest anchored accepted policy rather than stale activation policy', async () => {
+  const { f, repository, binding, store, options } = await fixture();
+  const { configureRepository, metadataRevision } = await import('./configure.js');
+  const changed = { ...meta, policy: { ...policy, disabledProviders: ['codex' as const] } };
+  expect((await configureRepository({ ...options, expectedMetadataRevision: metadataRevision(meta), meta: changed, catalog: defaultCatalog, writeDeclaration: async () => {} })).status).toBe('configured');
+  const root = join(f.root, 'disabled-codex'), path = join(root, 'sessions', 'new.jsonl');
+  await mkdir(join(root, 'sessions'), { recursive: true });
+  await writeFile(path, codexRollout({ single: true }).replaceAll('/synthetic/repo', repository.worktreeRoot));
+  await rename(f.remote, f.remote + '.offline');
+  const budget = createOperationBudget('automatic');
+  const result = await runRepositoryOperation({ budget, request: { cwd: repository.worktreeRoot, privateDir: repository.privateDir,
+    binding, capturePolicy: policy, collect: 'incremental', collection: { roots: { codex: [root] }, target: { provider: 'codex', sourceIdentity: path } } } });
+  budget.dispose(); expect(result.status).toBe('queued'); expect(await store.pending()).toEqual([]); expect(await store.journal()).toEqual([]);
+});
+
+test('unbound activation captures local usage without any remote operation', async () => {
+  const f = await createBareRemoteFixture(); fixtures.push(f);
+  const repository = await resolveRepository(f.clones[0]), store = await openStore(repository);
+  const root = join(f.root, 'unbound-codex'), path = join(root, 'sessions', 'new.jsonl');
+  await mkdir(join(root, 'sessions'), { recursive: true });
+  await writeFile(path, codexRollout({ single: true }).replaceAll('/synthetic/repo', repository.worktreeRoot));
+  const budget = createOperationBudget('automatic');
+  const result = await runRepositoryOperation({ budget, request: { cwd: repository.worktreeRoot, privateDir: repository.privateDir,
+    repositoryId, binding: { status: 'unbound', reason: 'destination-mismatch' }, capturePolicy: policy, collect: 'incremental',
+    collection: { roots: { codex: [root] }, target: { provider: 'codex', sourceIdentity: path } } } });
+  budget.dispose(); expect(result.status).toBe('queued'); expect(await store.pending()).toHaveLength(1);
+  expect(await store.transportState()).toBeNull();
+});

@@ -26,6 +26,12 @@ const transportStateSchema = z.object({ schemaVersion: z.literal(1), repositoryI
   commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/).nullable() }).strict();
 /** Private monotonic presence/accepted snapshot evidence; never a public artifact. */
 export type TransportState = z.infer<typeof transportStateSchema>;
+/** Read-only setup planning validates the same durable transport schema without opening a mutable store. */
+export function parseTransportState(input: unknown): TransportState {
+  const parsed = transportStateSchema.safeParse(input);
+  if (!parsed.success) throw new StoreError('invalid-durable-data');
+  return parsed.data;
+}
 const pendingConfigurationSchema = z.object({ schemaVersion: z.literal(1), metadataRevision: digestSchema }).strict();
 /** Uncertain declaration repair evidence; compare actual declaration against current accepted metadata. */
 export type PendingConfiguration = z.infer<typeof pendingConfigurationSchema>;
@@ -133,9 +139,7 @@ class Store implements LocalStore {
     let data: unknown;
     try { data = JSON.parse(await readPrivateFile(join(this.root, 'transport.json'), 16384)); }
     catch (error) { if (hasCode(error, 'ENOENT')) return null; throw new StoreError('invalid-durable-data'); }
-    const parsed = transportStateSchema.safeParse(data);
-    if (!parsed.success) throw new StoreError('invalid-durable-data');
-    return parsed.data;
+    return parseTransportState(data);
   }
   async transportState(): Promise<TransportState | null> {
     return this.operation(() => this.readTransportState());
