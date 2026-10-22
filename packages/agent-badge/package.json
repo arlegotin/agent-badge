@@ -60,6 +60,7 @@
     "dist"
   ],
   "dependencies": {
+    "@iarna/toml": "2.2.5",
     "@legotin/agent-badge-core": "^1.1.20",
     "commander": "^14.0.0"
   }

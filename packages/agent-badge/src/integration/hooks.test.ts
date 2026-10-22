@@ -1,5 +1,7 @@
-import { afterEach, expect, test } from 'vitest';
-import { spawnSync } from 'node:child_process';
+import { afterEach, expect, test, vi } from 'vitest';
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { resolveRepository } from '@legotin/agent-badge-core';
@@ -153,4 +155,74 @@ test('ownership detects changed non-UTF8 backup bytes without silently restoring
   await applyHookPlan(await planHooks(f.ctx, f.runtime));
   await writeFile(join(f.ctx.hooksPath, '.agent-badge-user-pre-push'), Buffer.from([254]));
   await expect(removeHooks(f.ctx)).rejects.toThrow(/backup modified/);
+});
+
+test.each([undefined, '#!/bin/sh\nexit 7\n'])('installed driver handles an open stdin pipe with original=%s', async hook => {
+  const f = await fixture(hook); await applyHookPlan(await planHooks(f.ctx, f.runtime));
+  const entered = join(f.root, 'driver-start'), preload = join(f.root, 'start.cjs');
+  await writeFile(preload, `require('node:fs').writeFileSync(${JSON.stringify(entered)},process.hrtime.bigint().toString());`);
+  // Measure the actual installed driver independently of host Node startup.
+  const child = spawn(process.execPath, ['--require', preload, join(f.ctx.privateDir, 'git-hook.cjs'), hook ? join(f.ctx.hooksPath, '.agent-badge-user-pre-push') : ''], { cwd: f.cwd, stdio: ['pipe', 'ignore', 'pipe'] });
+  let stderr = ''; child.stderr.on('data', chunk => stderr += chunk);
+  const result = await new Promise<number | null>((resolve, reject) => { const timer = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('open input blocked driver')); }, 2600); child.once('exit', code => { clearTimeout(timer); resolve(code); }); });
+  const elapsed = Number(process.hrtime.bigint() - BigInt(await readFile(entered, 'utf8'))) / 1e6;
+  expect(result).toBe(hook ? 7 : 0); expect(elapsed).toBeLessThan(hook ? 1000 : 2150);
+  await expect(readFile(f.receipt)).rejects.toThrow(); expect(stderr).not.toContain('refs');
+});
+
+test('oversized stdin reaches the complete user consumer without retaining or invoking Badge', async () => {
+  const f = await fixture('#!/bin/sh\n/bin/cat > large-input\nexit 3\n'); await applyHookPlan(await planHooks(f.ctx, f.runtime));
+  const input = Buffer.alloc(2 * 1024 * 1024 + 17, 97);
+  const r = spawnSync(f.hookPath, [], { cwd: f.cwd, input, encoding: 'utf8', timeout: 4000 });
+  expect(r.status, r.stderr).toBe(3); expect(await readFile(join(f.cwd, 'large-input'))).toEqual(input); await expect(readFile(f.receipt)).rejects.toThrow();
+});
+
+test('interruption at the original-hook rename retains durable intent and retries without losing delegation', async () => {
+  const f = await fixture('#!/bin/sh\n/bin/cat > recovered-input\nexit 4\n'); const plan = await planHooks(f.ctx, f.runtime);
+  const rename = fs.rename; const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { if (String(from) === f.hookPath) { await rename(from, to); throw new Error('interrupted after move'); } return rename(from, to); }); syncBuiltinESMExports();
+  try { await expect(applyHookPlan(plan)).rejects.toThrow('interrupted after move'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  expect(JSON.parse(await readFile(join(f.ctx.privateDir, 'hooks.json'), 'utf8')).phase).toBe('installing');
+  await applyHookPlan(await planHooks(f.ctx, f.runtime));
+  const r = spawnSync(f.hookPath, [], { cwd: f.cwd, input: 'recover refs\n', encoding: 'utf8', timeout: 3000 }); expect(r.status).toBe(4); expect(await readFile(join(f.cwd, 'recovered-input'), 'utf8')).toBe('recover refs\n');
+  await removeHooks(f.ctx); expect(await readFile(f.hookPath, 'utf8')).toContain('exit 4');
+});
+
+test('orphan backup without a hook or manifest requires reconciliation rather than installing without it', async () => {
+  const f = await fixture(); await writeFile(join(f.ctx.hooksPath, '.agent-badge-user-pre-push'), '#!/bin/sh\nexit 8\n');
+  const plan = await planHooks(f.ctx, f.runtime); expect(plan.actionItems.join()).toMatch(/backup.*reconcile/i); expect((await applyHookPlan(plan)).status).toBe('action-required');
+});
+
+test('Badge expiry leaves a complete user stream and its normal lifetime intact', async () => {
+  const f = await fixture('#!/bin/sh\n/bin/cat > slow-input\nexit 5\n'); await applyHookPlan(await planHooks(f.ctx, f.runtime));
+  const entered = join(f.root, 'slow-driver-start'), preload = join(f.root, 'start.cjs'); await writeFile(preload, `require('node:fs').writeFileSync(${JSON.stringify(entered)},process.hrtime.bigint().toString());`);
+  const child = spawn(process.execPath, ['--require', preload, join(f.ctx.privateDir, 'git-hook.cjs'), join(f.ctx.hooksPath, '.agent-badge-user-pre-push')], { cwd: f.cwd, stdio: ['pipe', 'ignore', 'pipe'] }); child.stderr.resume();
+  let exited = false; child.once('exit', () => { exited = true; });
+  const exit = new Promise<number | null>(resolve => child.once('exit', resolve)); child.stdin.write('before deadline\r\n');
+  const until = performance.now() + 1500; while (await readFile(entered).then(() => false, () => true)) { if (performance.now() > until) throw new Error('driver never started'); await new Promise(resolve => setTimeout(resolve, 5)); }
+  const elapsed = Number(process.hrtime.bigint() - BigInt(await readFile(entered, 'utf8'))) / 1e6;
+  await new Promise(resolve => setTimeout(resolve, Math.max(1, 2250 - elapsed))); expect(exited).toBe(false); child.stdin.end('after deadline\n');
+  expect(await exit).toBe(5); expect(await readFile(join(f.cwd, 'slow-input'), 'utf8')).toBe('before deadline\r\nafter deadline\n'); await expect(readFile(f.receipt)).rejects.toThrow();
+});
+
+test('streamed original hook signal is preserved while input remains open', async () => {
+  const f = await fixture('#!/bin/sh\nkill -TERM $$\n'); await applyHookPlan(await planHooks(f.ctx, f.runtime));
+  const r = spawnSync(f.hookPath, [], { cwd: f.cwd, input: 'refs\n', encoding: 'utf8', timeout: 3000 }); expect(r.signal).toBe('SIGTERM');
+});
+
+test('interrupted initial intent can be uninstalled before or after moving the original', async () => {
+  for (const afterMove of [false, true]) {
+    const f = await fixture('#!/bin/sh\nexit 6\n'), plan = await planHooks(f.ctx, f.runtime), rename = fs.rename;
+    const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { if (String(from) === f.hookPath) { if (afterMove) await rename(from, to); throw new Error('move interruption'); } return rename(from, to); }); syncBuiltinESMExports();
+    try { await expect(applyHookPlan(plan)).rejects.toThrow('move interruption'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+    expect((await removeHooks(f.ctx)).status).toBe('removed'); expect(await readFile(f.hookPath, 'utf8')).toBe('#!/bin/sh\nexit 6\n');
+    await expect(readFile(join(f.ctx.privateDir, 'hooks.json'))).rejects.toThrow();
+  }
+});
+
+test('interrupted wrapper upgrade retains prior owned hashes for retry', async () => {
+  const f = await fixture('#!/bin/sh\nexit 6\n'); await applyHookPlan(await planHooks(f.ctx, f.runtime));
+  const runtime = { ...f.runtime, nodePath: '/missing/next-approved-node' }, plan = await planHooks(f.ctx, runtime), rename = fs.rename;
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { if (String(to) === f.hookPath) throw new Error('upgrade interrupted'); return rename(from, to); }); syncBuiltinESMExports();
+  try { await expect(applyHookPlan(plan)).rejects.toThrow('upgrade interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  expect((await applyHookPlan(await planHooks(f.ctx, runtime))).status).toBe('installed'); await removeHooks(f.ctx); expect(await readFile(f.hookPath, 'utf8')).toBe('#!/bin/sh\nexit 6\n');
 });

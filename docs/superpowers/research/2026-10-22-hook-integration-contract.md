@@ -84,13 +84,25 @@ network work; timeout/offline/unbound results retain pending work. Large/full
 reconciliation stays manual. The OS may add process-start/scheduling overhead.
 
 Git pre-push uses the explicitly approved Node executable, including minimal GUI
-PATH. It buffers refs once and replays exact bytes to each executable. Buffering
-elapsed time counts against Badge's budget; time spent by an existing user hook
-remains the user's normal Git behavior. User interpreter arguments, environment,
+PATH. It starts the user executable immediately and pipes stdin to it with
+backpressure. Badge retains at most1MiB of input while waiting for EOF inside its
+deadline. Complete bounded input is replayed exactly to Badge. Oversize/expiry or
+an early user exit before EOF discards that copy and skips Badge's work, while the
+user receives its complete stream and keeps its normal lifetime/exit/signal.
+Without a user delegate, an open input is closed at the Badge deadline; no disk
+spool or unbounded in-memory capture is used. Intake elapsed time counts against
+Badge's budget; time spent by an existing user hook remains normal Git behavior.
+User interpreter arguments, environment,
 working directory and exit status are retained. An executable backup remains in
 the same directory under an extensionless name, preserving sibling imports and
 relative symlinks. Ignored nonexecutable hooks remain ignored. Exact original
 bytes, modes, symlink target and managed hashes are recorded privately.
+Private `hooks.json` is fsynced in `installing` phase before moving the original
+hook. Retry/removal recognizes the original in place, the exact backup after a
+move, and either previously owned or newly owned wrapper/driver hashes during an
+interrupted upgrade. Successful install changes the phase to `installed`. An
+orphan backup without ownership always requires reconciliation, even when the
+pre-push path is absent; it is never silently adopted or bypassed.
 The private Git driver also propagates an absolute monotonic millisecond deadline
 from `process.hrtime.bigint()` (same-host POSIX system monotonic clock) alongside
 remaining duration. Bootstrap validates a safe integer, rejects expired or
@@ -129,6 +141,26 @@ later unrelated changes. Successful configuration reports
 `configured-needs-trust`, never native trust approval. The Task11 setup plan
 includes these tracked changes and private hook effects, applies them during
 activation, and surfaces action items in CLI output and generated local README.
+
+Provider writes first publish/fsync private
+`<common>/agent-badge/agent-hooks.pending.json`. This bounded transaction records
+its exact owning worktree, kind (install/remove), and exact before/after bytes for
+the two provider configs and tracked ownership manifest. Atomic exclusive
+publication prevents concurrent plans from overwriting an existing intent.
+Recovery accepts only those exact before/after states; a third state or another
+worktree requires explicit reconciliation. It never infers ownership from an
+unrelated matching command. The TOML adapter uses the exact declared
+`@iarna/toml@2.2.5` parser to detect semantic root `hooks` keys in table, inline,
+dotted and quoted forms, preserving original TOML bytes and native trust settings.
+
+`removeAgentHooks` first completes an exact pending installation before removing
+its owned entries, or resumes a pending removal including the manifest tombstone.
+It retains unrelated handlers and leaves the provider JSON files in place.
+Successful nonempty uninstall removes both tracked ownership and private pending
+intent; ambiguous/edited recovery leaves intent and user files untouched. An
+empty ownership registry may remain for scaffold cleanup. `removeHooks` restores
+the original and clears the private driver/manifest even when initial installation
+stopped before or after its move; unknown orphan backups require manual action.
 
 Core's lightweight `operations/supervisor` and worker-only `operations/worker`
 subpaths support the single approved runtime worker. The parent derives lease

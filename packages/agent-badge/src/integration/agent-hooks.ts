@@ -1,5 +1,7 @@
-import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { lstat, mkdir, readFile, rename, rm, open, link } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { parse as parseToml } from '@iarna/toml';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { json } from './manifest.js';
 import type { OwnedChange } from './setup.js';
 import type { RepositoryContext } from '@legotin/agent-badge-core';
@@ -8,9 +10,12 @@ type Group = { hooks: { type: string; command?: string; [key: string]: unknown }
 type Configuration = { hooks?: Record<string, Group[]>; [key: string]: unknown };
 interface Entry { provider: Provider; path: string; event: string; group: Group }
 interface Ownership { schemaVersion: 1; entries: Entry[] }
-export interface AgentHookPlan { cwd: string; changes: OwnedChange[]; actionItems: string[]; notices: string[] }
+interface TransactionChange { path: string; before: string | null; after: string | null }
+interface ProviderIntent { schemaVersion: 1; kind: 'install' | 'remove'; worktreeRoot: string; changes: TransactionChange[]; actionItems: string[]; notices: string[] }
+export interface AgentHookPlan { cwd: string; privateDir: string; pending: ProviderIntent | null; changes: OwnedChange[]; actionItems: string[]; notices: string[] }
 export interface AgentHookResult { status: 'configured-needs-trust' | 'action-required' | 'removed' | 'unchanged'; actionItems: string[] }
 const ownershipPath = '.agent-badge/agent-hooks.json';
+const pendingName = 'agent-hooks.pending.json';
 const files: Record<Provider, string> = { codex: '.codex/hooks.json', claude: '.claude/settings.json' };
 const quote = (s: string) => "'" + s.replaceAll("'", "'\"'\"'") + "'";
 /** Fixed built-in-only locator. No tracked executable is loaded. Git lookup is a
@@ -61,11 +66,54 @@ async function ownership(cwd: string): Promise<Ownership> {
   return v;
 }
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+function inlineHooks(bytes: string | null): boolean { return bytes !== null && Object.hasOwn(parseToml(bytes), 'hooks'); }
+async function atomic(path: string, bytes: string, mode: number, exclusive = false) {
+  await safeParents(path); await mkdir(dirname(path), { recursive: true }); const stage = path + '.stage-' + randomUUID();
+  try { const h = await open(stage, 'wx', mode); try { await h.writeFile(bytes); await h.sync(); } finally { await h.close(); }
+    if (exclusive) await link(stage, path); else await rename(stage, path);
+    const parent = await open(dirname(path), 'r'); try { await parent.sync(); } finally { await parent.close(); }
+  } finally { await rm(stage, { force: true }); }
+}
+async function loadPending(privateDir: string): Promise<ProviderIntent | null> {
+  const path = join(privateDir, pendingName); await safeParents(path);
+  let bytes: string;
+  try { const s = await lstat(path); if (!s.isFile() || s.isSymbolicLink() || s.size > 8 * 1024 * 1024) throw new Error('Unsafe provider recovery intent.'); bytes = await readFile(path, 'utf8'); }
+  catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
+  const value = JSON.parse(bytes) as ProviderIntent;
+  if (value.schemaVersion !== 1 || !['install', 'remove'].includes(value.kind) || typeof value.worktreeRoot !== 'string' || !isAbsolute(value.worktreeRoot) || !Array.isArray(value.changes) || value.changes.length > 3 ||
+      value.changes.some(c => ![ownershipPath, ...Object.values(files)].includes(c.path) || (c.before !== null && typeof c.before !== 'string') || (c.after !== null && typeof c.after !== 'string') || (value.kind === 'install' && c.after === null)) ||
+      new Set(value.changes.map(c => c.path)).size !== value.changes.length || !Array.isArray(value.actionItems) || value.actionItems.some(s => typeof s !== 'string') || !Array.isArray(value.notices) || value.notices.some(s => typeof s !== 'string')) throw new Error('Invalid provider recovery intent.');
+  return value;
+}
+async function recoverable(cwd: string, intent: ProviderIntent) {
+  if (resolve(cwd) !== intent.worktreeRoot) return false;
+  for (const c of intent.changes) { const actual = await contents(join(cwd, c.path)); if (actual !== c.before && actual !== c.after) return false; }
+  return true;
+}
+async function finishTransaction(cwd: string, privateDir: string, intent: ProviderIntent) {
+  if (!await recoverable(cwd, intent)) throw new Error('Interrupted provider files changed; reconcile before recovery.');
+  for (const c of intent.changes) {
+    const path = join(cwd, c.path), actual = await contents(path); if (actual === c.after) continue;
+    if (actual !== c.before) throw new Error('Interrupted provider file changed before write.');
+    if (c.after === null) { await rm(path, { force: true }); const parent = await open(dirname(path), 'r'); try { await parent.sync(); } finally { await parent.close(); } }
+    else await atomic(path, c.after, 0o644);
+  }
+  await rm(join(privateDir, pendingName), { force: true });
+}
 
 /** JSON v1 shape adapters only. Inline Codex TOML is retained for manual review. */
 export async function planAgentHooks(cwd: string, context?: RepositoryContext): Promise<AgentHookPlan> {
-  const changes: OwnedChange[] = [], actionItems: string[] = [], notices: string[] = [], prior = await ownership(cwd), entries: Entry[] = [];
+  const changes: OwnedChange[] = [], actionItems: string[] = [], notices: string[] = [], entries: Entry[] = [];
   const repository = context ?? await (await import('@legotin/agent-badge-core')).resolveRepository(cwd);
+  cwd = repository.worktreeRoot;
+  const pending = await loadPending(repository.privateDir);
+  if (pending) {
+    if (pending.worktreeRoot !== cwd) return { cwd, privateDir: repository.privateDir, pending, changes: [], actionItems: ['Pending provider integration belongs to another worktree; reconcile it there first.'], notices: [] };
+    if (pending.kind === 'remove' || !await recoverable(cwd, pending)) return { cwd: resolve(cwd), privateDir: repository.privateDir, pending, changes: [], actionItems: ['Interrupted provider integration requires explicit removal/reconciliation; existing files were preserved.'], notices: [] };
+    for (const c of pending.changes) { const before = await contents(join(cwd, c.path)); if (before !== c.after) changes.push({ path: c.path, before, after: c.after! }); }
+    return { cwd: resolve(cwd), privateDir: repository.privateDir, pending, changes, actionItems: pending.actionItems, notices: [...pending.notices, 'Recovered exact interrupted provider configuration; native review remains required.'] };
+  }
+  const prior = await ownership(cwd);
   const primary = repository.worktrees[0];
   if (!primary || primary.bare || resolve(primary.path) !== resolve(repository.worktreeRoot)) {
     let configured = false;
@@ -73,7 +121,7 @@ export async function planAgentHooks(cwd: string, context?: RepositoryContext): 
       try {
         const root = parse(await contents(join(primary.path, files.codex)));
         const toml = await contents(join(primary.path, '.codex/config.toml'));
-        configured = !/^\s*\[\[?\s*hooks(?:\.|\s*\])/m.test(toml ?? '') && ['Stop', 'SubagentStop'].every(event => root.hooks?.[event]?.some(group => group.hooks.some(h => h.type === 'command' && h.command === command('codex'))));
+        configured = !inlineHooks(toml) && ['Stop', 'SubagentStop'].every(event => root.hooks?.[event]?.some(group => group.hooks.some(h => h.type === 'command' && h.command === command('codex'))));
       } catch { /* Unknown/unsafe primary configuration never proves activation. */ }
     }
     if (!configured) actionItems.push('Codex linked worktrees load primary-checkout hooks on the inspected source generation; primary-checkout setup and native trust/review are required. The primary checkout was not edited.');
@@ -83,7 +131,7 @@ export async function planAgentHooks(cwd: string, context?: RepositoryContext): 
     const file = files[provider]; let before: string | null = null, config: Configuration;
     try {
       if (provider === 'codex') { const toml = await contents(join(cwd, '.codex/config.toml'));
-        if (toml && /^\s*\[\[?\s*hooks(?:\.|\s*\])/m.test(toml)) { actionItems.push('Codex inline TOML hooks require manual integration/review; existing TOML was preserved.'); entries.push(...prior.entries.filter(e => e.provider === provider)); continue; }
+        if (inlineHooks(toml)) { actionItems.push('Codex inline TOML hooks require manual integration/review; existing TOML was preserved.'); entries.push(...prior.entries.filter(e => e.provider === provider)); continue; }
       }
       before = await contents(join(cwd, file)); config = parse(before);
     } catch { actionItems.push(`${provider === 'codex' ? 'Codex' : 'Claude'} hook schema/path unsupported; manually review local configuration.`); entries.push(...prior.entries.filter(e => e.provider === provider)); continue; }
@@ -105,19 +153,32 @@ export async function planAgentHooks(cwd: string, context?: RepositoryContext): 
   }
   const before = await contents(join(cwd, ownershipPath)), after = json({ schemaVersion: 1, entries });
   if (before !== after) changes.push({ path: ownershipPath, before, after });
-  return { cwd: resolve(cwd), changes, actionItems, notices };
+  return { cwd: resolve(cwd), privateDir: repository.privateDir, pending: null, changes, actionItems, notices };
 }
 export async function applyAgentHookPlan(plan: AgentHookPlan): Promise<AgentHookResult> {
   for (const c of plan.changes) if (await contents(join(plan.cwd, c.path)) !== c.before) throw new Error('Agent hook files changed after planning.');
-  for (const c of plan.changes) {
-    const target = join(plan.cwd, c.path); await safeParents(target); await mkdir(dirname(target), { recursive: true });
-    const stage = target + '.agent-badge-stage';
-    try { await writeFile(stage, c.after, { flag: 'wx', mode: 0o644 }); await rename(stage, target); } finally { await rm(stage, { force: true }); }
+  if (!equal(await loadPending(plan.privateDir), plan.pending)) throw new Error('Provider recovery intent changed after planning.');
+  if (plan.pending) {
+    if (plan.pending.kind === 'remove' || !await recoverable(plan.cwd, plan.pending)) return { status: 'action-required', actionItems: plan.actionItems };
+    await finishTransaction(plan.cwd, plan.privateDir, plan.pending);
+  } else if (plan.changes.length) {
+    const intent: ProviderIntent = { schemaVersion: 1, kind: 'install', worktreeRoot: plan.cwd, changes: plan.changes, actionItems: plan.actionItems, notices: plan.notices };
+    const bytes = json(intent); if (Buffer.byteLength(bytes) > 8 * 1024 * 1024) throw new Error('Provider recovery intent exceeds bound.');
+    // Link publishes only if absent; concurrent setup must never replace intent.
+    await atomic(join(plan.privateDir, pendingName), bytes, 0o600, true);
+    await finishTransaction(plan.cwd, plan.privateDir, intent);
   }
   return { status: plan.actionItems.length ? 'action-required' : 'configured-needs-trust', actionItems: [...plan.actionItems, ...plan.notices,
     'Provider hooks require Node 24 or 26 on provider PATH and explicit native project trust/hook review; restart the provider after review.'] };
 }
 export async function removeAgentHooks(cwd: string): Promise<AgentHookResult> {
+  const repository = await (await import('@legotin/agent-badge-core')).resolveRepository(cwd); cwd = repository.worktreeRoot;
+  const pending = await loadPending(repository.privateDir);
+  if (pending) {
+    if (!await recoverable(cwd, pending)) return { status: 'action-required', actionItems: ['Interrupted provider files changed; reconcile before removal.'] };
+    await finishTransaction(cwd, repository.privateDir, pending);
+    if (pending.kind === 'remove') return { status: 'removed', actionItems: [] };
+  }
   const prior = await ownership(cwd); if (!prior.entries.length) return { status: 'unchanged', actionItems: [] };
   const changes: OwnedChange[] = [], actionItems: string[] = [];
   for (const path of [...new Set(prior.entries.map(e => e.path))]) {
@@ -132,6 +193,8 @@ export async function removeAgentHooks(cwd: string): Promise<AgentHookResult> {
   }
   // Preserve manifest if any edited entry needs user reconciliation.
   if (actionItems.length) return { status: 'action-required', actionItems };
-  await applyAgentHookPlan({ cwd, changes, actionItems: [], notices: [] }); await rm(join(cwd, ownershipPath));
+  const intent: ProviderIntent = { schemaVersion: 1, kind: 'remove', worktreeRoot: cwd, changes: [...changes, { path: ownershipPath, before: await contents(join(cwd, ownershipPath)), after: null }], actionItems: [], notices: [] };
+  await atomic(join(repository.privateDir, pendingName), json(intent), 0o600, true);
+  await finishTransaction(cwd, repository.privateDir, intent);
   return { status: 'removed', actionItems: [] };
 }

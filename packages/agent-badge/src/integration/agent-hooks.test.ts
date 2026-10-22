@@ -1,4 +1,6 @@
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -114,4 +116,80 @@ test('locator timeout reaps a hung Git command and its helper without starting r
     expect(r.status).toBe(0); expect(performance.now() - start).toBeLessThan(2300); expect(r.stderr).toMatch(/lookup unavailable/);
     expect(() => process.kill(helperPid, 0)).toThrow(); await expect(readFile(f.output)).rejects.toThrow();
   } finally { try { process.kill(helperPid, 'SIGKILL'); } catch { /* Reaped by locator. */ } }
+});
+
+test.each(['.codex/hooks.json', '.claude/settings.json', '.agent-badge/agent-hooks.json'])('interrupted provider publication at %s recovers exact ownership without duplicate/adopted handlers', async obstructed => {
+  const f = await fixture(); await mkdir(join(f.cwd, '.claude')); const unrelated = { hooks: [{ type: 'command', command: 'echo user-owned', timeout: 5 }] };
+  await writeFile(join(f.cwd, '.claude/settings.json'), JSON.stringify({ hooks: { Stop: [unrelated] } }));
+  const plan = await planAgentHooks(f.cwd), rename = fs.rename;
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, obstructed)) throw new Error('interrupted provider publication'); return result; }); syncBuiltinESMExports();
+  try { await expect(applyAgentHookPlan(plan)).rejects.toThrow('interrupted provider publication'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  await applyAgentHookPlan(await planAgentHooks(f.cwd));
+  const config = JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')); expect(config.hooks.Stop).toHaveLength(2); expect(config.hooks.Stop[0]).toEqual(unrelated);
+  expect(JSON.parse(await readFile(join(f.cwd, '.codex/hooks.json'), 'utf8')).hooks.Stop).toHaveLength(1);
+  await removeAgentHooks(f.cwd);
+  expect(JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')).hooks.Stop).toEqual([unrelated]);
+});
+
+test.each(['hooks = { Stop = [] }', 'hooks.Stop = []', '["hooks"]\nStop = []', "['hooks']\nStop = []", '"hooks"."Stop" = []'])('parses TOML hook ownership for %s without changing bytes', async toml => {
+  const f = await fixture(); await mkdir(join(f.cwd, '.codex')); const bytes = '# keep bytes\r\n' + toml + '\r\n'; await writeFile(join(f.cwd, '.codex/config.toml'), bytes);
+  const plan = await planAgentHooks(f.cwd); expect(plan.actionItems.join()).toMatch(/inline TOML/); expect(plan.changes.some(c => c.path === '.codex/hooks.json')).toBe(false); expect(await readFile(join(f.cwd, '.codex/config.toml'), 'utf8')).toBe(bytes);
+});
+
+test('primary-checkout TOML hooks block a false linked-worktree configured claim', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); await writeFile(join(f.cwd, '.codex/config.toml'), 'hooks = { Stop = [] }\n');
+  spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], { cwd: f.cwd });
+  const linked = join(f.cwd, 'linked'); spawnSync('git', ['worktree', 'add', '-qb', 'linked', linked], { cwd: f.cwd });
+  expect((await planAgentHooks(linked)).actionItems.join()).toMatch(/primary.checkout.*setup/);
+});
+
+test('provider recovery refuses a third file state and preserves all user changes', async () => {
+  const f = await fixture(), plan = await planAgentHooks(f.cwd), rename = fs.rename;
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, '.codex/hooks.json')) throw new Error('interrupted'); return result; }); syncBuiltinESMExports();
+  try { await expect(applyAgentHookPlan(plan)).rejects.toThrow('interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  const file = join(f.cwd, '.codex/hooks.json'), user = JSON.parse(await readFile(file, 'utf8')); user.userChange = 'preserve'; const bytes = JSON.stringify(user); await writeFile(file, bytes);
+  expect((await applyAgentHookPlan(await planAgentHooks(f.cwd))).status).toBe('action-required'); expect((await removeAgentHooks(f.cwd)).status).toBe('action-required'); expect(await readFile(file, 'utf8')).toBe(bytes);
+});
+
+test('uninstall completes an exact interrupted install then removes only its owned handlers', async () => {
+  const f = await fixture(), plan = await planAgentHooks(f.cwd), rename = fs.rename;
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, '.claude/settings.json')) throw new Error('interrupted'); return result; }); syncBuiltinESMExports();
+  try { await expect(applyAgentHookPlan(plan)).rejects.toThrow('interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  expect((await removeAgentHooks(f.cwd)).status).toBe('removed');
+  for (const path of ['.codex/hooks.json', '.claude/settings.json']) expect(JSON.parse(await readFile(join(f.cwd, path), 'utf8')).hooks.Stop).toBeUndefined();
+  await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow(); await expect(readFile(join(f.cwd, '.agent-badge/agent-hooks.json'))).rejects.toThrow();
+});
+
+test('a pending common-directory provider transaction stays bound to its original worktree', async () => {
+  const f = await fixture(); spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], { cwd: f.cwd });
+  const linked = join(f.cwd, 'linked'); spawnSync('git', ['worktree', 'add', '-qb', 'linked', linked], { cwd: f.cwd });
+  const mainPlan = await planAgentHooks(f.cwd), otherPlan = await planAgentHooks(linked), rename = fs.rename;
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, '.codex/hooks.json')) throw new Error('interrupted'); return result; }); syncBuiltinESMExports();
+  try { await expect(applyAgentHookPlan(mainPlan)).rejects.toThrow('interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  const intent = await readFile(join(f.privateDir, 'agent-hooks.pending.json'), 'utf8');
+  await expect(applyAgentHookPlan(otherPlan)).rejects.toThrow(/intent changed/);
+  expect((await planAgentHooks(linked)).actionItems.join()).toMatch(/another worktree/); expect((await removeAgentHooks(linked)).status).toBe('action-required');
+  expect(await readFile(join(f.privateDir, 'agent-hooks.pending.json'), 'utf8')).toBe(intent); await expect(readFile(join(linked, '.claude/settings.json'))).rejects.toThrow();
+  await applyAgentHookPlan(await planAgentHooks(f.cwd));
+});
+
+test('concurrent worktree plans cannot overwrite the first published provider intent', async () => {
+  const f = await fixture(); spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'fixture'], { cwd: f.cwd });
+  const linked = join(f.cwd, 'linked'); spawnSync('git', ['worktree', 'add', '-qb', 'linked', linked], { cwd: f.cwd });
+  const plans = [await planAgentHooks(f.cwd), await planAgentHooks(linked)], link = fs.link; let count = 0, release!: () => void;
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const fault = vi.spyOn(fs, 'link').mockImplementation(async (from, to) => { if (String(to) === join(f.privateDir, 'agent-hooks.pending.json')) { if (++count === 2) release(); await barrier; } return link(from, to); }); syncBuiltinESMExports();
+  let results: PromiseSettledResult<unknown>[];
+  try { results = await Promise.allSettled(plans.map(p => applyAgentHookPlan(p))); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  expect(results!.filter(r => r.status === 'fulfilled')).toHaveLength(1); const winner = results!.findIndex(r => r.status === 'fulfilled');
+  expect(JSON.parse(await readFile(join(plans[winner].cwd, '.codex/hooks.json'), 'utf8')).hooks.Stop).toHaveLength(1);
+  await expect(readFile(join(plans[1 - winner].cwd, '.codex/hooks.json'))).rejects.toThrow();
+});
+
+test('interrupted provider removal resumes its exact tombstone transaction', async () => {
+  const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); const rename = fs.rename;
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, '.claude/settings.json')) throw new Error('remove interrupted'); return result; }); syncBuiltinESMExports();
+  try { await expect(removeAgentHooks(f.cwd)).rejects.toThrow('remove interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
+  expect((await planAgentHooks(f.cwd)).actionItems.join()).toMatch(/removal/);
+  expect((await removeAgentHooks(f.cwd)).status).toBe('removed'); await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow(); await expect(readFile(join(f.cwd, '.agent-badge/agent-hooks.json'))).rejects.toThrow();
 });
