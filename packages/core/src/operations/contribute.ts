@@ -81,6 +81,8 @@ export function contributionPath(envelope: ContributionEnvelope): string {
 export async function importContribution(input: unknown, options: ImportOptions): Promise<ImportResult> {
   const envelope = parseContribution(input);
   if (options.binding.status !== 'bound' || envelope.repositoryId !== options.binding.repositoryId) throw new ProtocolError('repository-mismatch');
-  const result = await synchronizeTransaction({ ...options, collect: 'none' }, undefined, envelope.records.map(entry => entry.record));
+  // Runtime allowlist: structurally assignable SyncOptions/JavaScript callers may carry bootstrap or collection inputs.
+  const { repository, binding, store, signal, deadline, maxRetries } = options;
+  const result = await synchronizeTransaction({ repository, binding, store, signal, deadline, maxRetries, collect: 'none' }, undefined, envelope.records.map(entry => entry.record));
   return { ...result, retrySource: 'contribution-envelope', retryRequired: result.status !== 'synced' && result.status !== 'unchanged' };
 }

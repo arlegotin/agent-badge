@@ -84,3 +84,19 @@ test('current accepted controls govern imported observations without reseeding m
  expect((await f.git(f.remote,['rev-parse','refs/heads/agent-badge/data'])).trim()).toBe(tip);
  // Multiple manual transactions use existing 20s operation budgets; preserve their cancellation reporting.
 },30000);
+
+test('an initializer carried by a SyncOptions variable cannot bootstrap through contribution import', async () => {
+ const f = await createBareRemoteFixture(); fixtures.push(f);
+ const repository = await core.resolveRepository(f.clones[0]);
+ const store = await core.openStore(repository,{processNamespace:async()=> 'synthetic'});
+ const binding = await core.bindRemote(repository,{repositoryId,declaredUrl:f.remote});
+ const syncOptions: core.SyncOptions = {repository,store,binding,collect:'incremental',
+  initialize:{meta,catalog:core.defaultCatalog},signal:AbortSignal.timeout(20000),deadline:Date.now()+20000};
+ const envelope = core.exportContribution({meta,records:[record]});
+ const imported = await core.importContribution(envelope,syncOptions);
+ const dataRef = await f.git(f.remote,['for-each-ref','--format=%(refname)','refs/heads/agent-badge/data']);
+ expect({status:imported.status,confirmedCommit:imported.confirmedCommit,dataRef}).toEqual({status:'queued',confirmedCommit:null,dataRef:''});
+ expect(imported.retryRequired).toBe(true);
+ expect(await store.transportState()).toBeNull();
+ expect(await store.journal()).toEqual([]);
+});
