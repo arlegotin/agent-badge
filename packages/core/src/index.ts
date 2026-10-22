@@ -28,3 +28,4 @@ export * from "./render/summary.js";
 export * from "./git/context.js";
 export * from "./git/remote-binding.js";
 export * from "./git/process.js";
+export * from "./storage/store.js";
