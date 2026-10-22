@@ -84,24 +84,26 @@ class Store implements LocalStore {
       finally { next(); }
     });
   }
+  private async readTransportState(): Promise<TransportState | null> {
+    let data: unknown;
+    try { data = JSON.parse(await readPrivateFile(join(this.root, 'transport.json'), 16384)); }
+    catch (error) { if (hasCode(error, 'ENOENT')) return null; throw new StoreError('invalid-durable-data'); }
+    const parsed = transportStateSchema.safeParse(data);
+    if (!parsed.success) throw new StoreError('invalid-durable-data');
+    return parsed.data;
+  }
   async transportState(): Promise<TransportState | null> {
-    return this.operation(async () => {
-      let data: unknown;
-      try { data = JSON.parse(await readPrivateFile(join(this.root, 'transport.json'), 16384)); }
-      catch (error) { if (hasCode(error, 'ENOENT')) return null; throw new StoreError('invalid-durable-data'); }
-      const parsed = transportStateSchema.safeParse(data);
-      if (!parsed.success) throw new StoreError('invalid-durable-data');
-      return parsed.data;
-    });
+    return this.operation(() => this.readTransportState());
   }
   async recordAcceptedLedger(input: TransportState): Promise<void> {
     const parsed = transportStateSchema.safeParse(input);
     if (!parsed.success) throw new StoreError('invalid-batch');
-    await this.withLock(AbortSignal.timeout(2000), async () => {
-      const prior = await this.transportState(), state = parsed.data;
+    // Read/check/merge/write share one queue slot, including reentrant lock owners.
+    await this.operation(async () => {
+      const prior = await this.readTransportState(), state = parsed.data;
       if (prior && (prior.repositoryId !== state.repositoryId || prior.canonicalPushUrl !== state.canonicalPushUrl || prior.dataRef !== state.dataRef))
         throw new StoreError('invalid-batch');
-      await this.operation(() => atomicFile(join(this.root, 'transport.json'), { ...state, commit: state.commit ?? prior?.commit ?? null }));
+      await atomicFile(join(this.root, 'transport.json'), { ...state, commit: state.commit ?? prior?.commit ?? null });
     });
   }
   async journal(): Promise<JournalEntry[]> { return this.operation(() => readJournal(join(this.root, 'journal'))); }

@@ -495,3 +495,31 @@ describe('private accepted ledger evidence',()=>{
    await writeFile(join(ctx.privateDir,'transport.json'),'{');await expect(store.transportState()).rejects.toThrow('invalid-durable-data');
  });
 });
+
+
+describe('reentrant accepted ledger transactions', () => {
+  test('concurrent different destinations cannot both establish first durable evidence', async () => {
+    const ctx = await context(); const store = await openStore(ctx);
+    const first = { schemaVersion: 1 as const, repositoryId, canonicalPushUrl: 'github.com/synthetic/first',
+      dataRef: 'refs/heads/agent-badge/data' as const, commit: null };
+    const results = await store.withLock(AbortSignal.timeout(2000), () => Promise.allSettled([
+      store.recordAcceptedLedger(first),
+      store.recordAcceptedLedger({ ...first, canonicalPushUrl: 'github.com/synthetic/second' })
+    ]));
+    expect(results.map(result => result.status)).toEqual(['fulfilled', 'rejected']);
+    if (results[1].status !== 'rejected') throw new Error('Expected rejected second destination');
+    expect(results[1].reason).toMatchObject({ code: 'invalid-batch' });
+    expect(await (await openStore(ctx)).transportState()).toEqual(first);
+  });
+
+  test('concurrent presence cannot erase a newly accepted commit under the same owner', async () => {
+    const ctx = await context(); const store = await openStore(ctx);
+    const state = { schemaVersion: 1 as const, repositoryId, canonicalPushUrl: 'github.com/synthetic/repo',
+      dataRef: 'refs/heads/agent-badge/data' as const, commit: 'a'.repeat(40) };
+    const results = await store.withLock(AbortSignal.timeout(2000), () => Promise.allSettled([
+      store.recordAcceptedLedger(state), store.recordAcceptedLedger({ ...state, commit: null })
+    ]));
+    expect(results.map(result => result.status)).toEqual(['fulfilled', 'fulfilled']);
+    expect(await (await openStore(ctx)).transportState()).toEqual(state);
+  });
+});
