@@ -346,10 +346,13 @@ Do not infer a destination from whichever remote was most recently pushed, accep
 arbitrary URL schemes from ledger data, or rewrite a user's remotes.
 
 1. Acquire a bounded lock in the Git common-directory store.
-2. Collect targeted changes. Durably journal sanitized observations before advancing
-   source checkpoints. A checkpoint can lag a durable observation; it cannot lead it.
-3. Fetch the data ref into a private namespace. Validate repository ID, protocol,
-   paths, object types, object sizes, and normalization/catalog compatibility.
+2. Fetch the data ref from the bound push destination into a private namespace.
+   Validate repository ID, protocol, paths, object types, object sizes, and
+   normalization/catalog compatibility. Durably retain presence/accepted-history
+   evidence and an object anchor; missing or rewritten accepted history requires recovery.
+3. Collect targeted changes using accepted remote policy. Durably journal sanitized
+   observations before advancing source checkpoints. A checkpoint can lag a durable
+   observation; it cannot lead it.
 4. Union accepted immutable observations and controls with the outbox. Reduce and
    render using the data branch's accepted policy/catalog.
 5. If the resulting tree is identical, record acknowledgement and finish without a commit.
@@ -364,11 +367,19 @@ arbitrary URL schemes from ledger data, or rewrite a user's remotes.
    before clearing them from the outbox. Handle “push succeeded, response lost” by
    inspecting the remote snapshot on the next attempt.
 
-Internal data-only pushes use a narrowly scoped recursion guard and a private,
-empty hooks directory for that invocation. They never invoke code hooks against
-the data branch. The user's original push runs all its hooks normally. Git signing
+Internal data-only pushes use a narrowly scoped recursion guard and a private
+hooks directory containing only an owned pre-push ref guard for that
+invocation. The guard requires exactly the intended data ref and candidate OID,
+and the advertised old OID must equal the accepted parent (all-zero only for
+explicit first creation). Ordinary one-ref fast-forward-only pushes use `--verify`,
+never force or leases. A deletion before advertisement therefore rejects before
+objects are sent; receive-pack compares the same old OID atomically when updating
+the ref, so a deletion after advertisement also cannot recreate it. They never
+invoke code hooks against the data branch. The user's original push runs all its hooks normally. Git signing
 rules are respected; if required signing cannot run noninteractively, queue and
-report the limitation. Do not silently change repository signing/protection policy.
+report the limitation. Configured signatures may expose public signer key or
+certificate identity even though author/committer fields use the fixed bot; this
+is not an anonymity guarantee. Do not silently change repository signing/protection policy.
 
 The user's index, working files, HEAD, code refs, stash, and upstream configuration
 must be byte-for-byte/unmodified across `sync`. Auto-sync can succeed even if a

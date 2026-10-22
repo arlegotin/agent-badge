@@ -33,3 +33,5 @@ export * from "./collection/collect.js";
 export * from "./collection/attribution.js";
 export * from "./collection/source-resolver.js";
 export type { AttributionMetadata, AttributionDecision } from "./collection/metadata.js";
+export * from './git/data-transport.js';
+export * from './operations/sync.js';

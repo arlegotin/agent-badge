@@ -482,3 +482,16 @@ describe('scan-resolved checkpoint candidates', () => {
     expect((await store.journal()).length).toBe(2);
   });
 });
+
+describe('private accepted ledger evidence',()=>{
+ test('presence never erases accepted history and destination changes fail closed',async()=>{
+   const ctx=await context(),store=await openStore(ctx);const state={schemaVersion:1 as const,repositoryId,canonicalPushUrl:'github.com/synthetic/repo',dataRef:'refs/heads/agent-badge/data' as const,commit:null};
+   expect(await store.transportState()).toBeNull();await store.recordAcceptedLedger(state);await store.recordAcceptedLedger({...state,commit:'a'.repeat(40)});await store.recordAcceptedLedger(state);
+   expect((await (await openStore(ctx)).transportState())?.commit).toBe('a'.repeat(40));await expect(store.recordAcceptedLedger({...state,canonicalPushUrl:'github.com/synthetic/other'})).rejects.toThrow('invalid-batch');
+   expect((await store.transportState())?.canonicalPushUrl).toBe('github.com/synthetic/repo');
+ });
+ test('future or corrupt transport evidence cannot become fresh initialization',async()=>{
+   const ctx=await context(),store=await openStore(ctx);await writeFile(join(ctx.privateDir,'transport.json'),JSON.stringify({schemaVersion:999}));await expect(store.transportState()).rejects.toThrow('invalid-durable-data');
+   await writeFile(join(ctx.privateDir,'transport.json'),'{');await expect(store.transportState()).rejects.toThrow('invalid-durable-data');
+ });
+});

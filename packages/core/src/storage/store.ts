@@ -1,8 +1,9 @@
+import { z } from 'zod';
 import { isDeepStrictEqual } from 'node:util';
 import fs from 'node:fs/promises';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { join, resolve } from 'node:path';
-import { digestSchema } from '../domain/capabilities.js';
+import { digestSchema, repositoryIdSchema } from '../domain/capabilities.js';
 import type { ScanBatch, SourceDescriptor, Checkpoint } from '../domain/capabilities.js';
 import { parsePublicRecord } from '../domain/ledger.js';
 import type { PublicRecord } from '../domain/ledger.js';
@@ -20,7 +21,15 @@ import type { CheckpointScope } from './checkpoints.js';
 export { StoreError } from './atomic-file.js';
 export type { JournalEntry } from './journal.js';
 export type { CheckpointScope } from './checkpoints.js';
+const transportStateSchema = z.object({ schemaVersion: z.literal(1), repositoryId: repositoryIdSchema,
+  canonicalPushUrl: z.string().min(1).max(4096), dataRef: z.literal('refs/heads/agent-badge/data'),
+  commit: z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/).nullable() }).strict();
+/** Private monotonic presence/accepted snapshot evidence; never a public artifact. */
+export type TransportState = z.infer<typeof transportStateSchema>;
 export interface LocalStore {
+  transportState(): Promise<TransportState | null>;
+  /** null marks a seen ref before validation; it never clears an accepted commit or changes identity. */
+  recordAcceptedLedger(state: TransportState): Promise<void>;
   /** Optional attribution metadata is collector-owned private provenance, never provider or outbound data. */
   commitBatch(source: SourceDescriptor, batch: ScanBatch, records: readonly PublicRecord[], attribution?: AttributionMetadata): Promise<void>;
   pending(): Promise<PublicRecord[]>;
@@ -73,6 +82,26 @@ class Store implements LocalStore {
       await previous;
       try { await assertDirectory(this.root); return await task(); }
       finally { next(); }
+    });
+  }
+  async transportState(): Promise<TransportState | null> {
+    return this.operation(async () => {
+      let data: unknown;
+      try { data = JSON.parse(await readPrivateFile(join(this.root, 'transport.json'), 16384)); }
+      catch (error) { if (hasCode(error, 'ENOENT')) return null; throw new StoreError('invalid-durable-data'); }
+      const parsed = transportStateSchema.safeParse(data);
+      if (!parsed.success) throw new StoreError('invalid-durable-data');
+      return parsed.data;
+    });
+  }
+  async recordAcceptedLedger(input: TransportState): Promise<void> {
+    const parsed = transportStateSchema.safeParse(input);
+    if (!parsed.success) throw new StoreError('invalid-batch');
+    await this.withLock(AbortSignal.timeout(2000), async () => {
+      const prior = await this.transportState(), state = parsed.data;
+      if (prior && (prior.repositoryId !== state.repositoryId || prior.canonicalPushUrl !== state.canonicalPushUrl || prior.dataRef !== state.dataRef))
+        throw new StoreError('invalid-batch');
+      await this.operation(() => atomicFile(join(this.root, 'transport.json'), { ...state, commit: state.commit ?? prior?.commit ?? null }));
     });
   }
   async journal(): Promise<JournalEntry[]> { return this.operation(() => readJournal(join(this.root, 'journal'))); }

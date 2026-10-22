@@ -306,11 +306,11 @@ SyncOptions includes bound destination, store, collect mode, AbortSignal, deadli
 max retries. SyncResult is `synced | unchanged | queued | conflict | unsupported`
 plus confirmed remote commit and acknowledged hashes, never optimistic success.
 
-- [ ] Write real two/three-clone races, simultaneous ref creation, stale writer, lost push response, accepted push then local crash, no-op replay, and remote deletion tests. Require union totals with no lost records and no force push.
-- [ ] Add byte-identical user index/worktree/HEAD snapshots, partial staging, merge/rebase in progress, detached HEAD, wrong UUID, unsafe tree entry, oversized blob, incompatible protocol/catalog, and remote URL change tests.
-- [ ] Run `npm test -- --run packages/core/src/git/data-transport.test.ts packages/core/src/operations/sync.test.ts`; implement fetch/validate/union/reduce/render/private-index/commit/push/acknowledge.
-- [ ] Use bot author/committer metadata, explicit one-ref refspecs, isolated hooks for internal data pushes, and caller deadlines. Compare actual pushed/fetched inclusion before acknowledgement; retain queue on indeterminate outcomes.
-- [ ] Run all Git/storage/ledger integration tests; commit the first complete local-source-to-data-branch vertical slice.
+- [x] Write real two/three-clone races, simultaneous ref creation, stale writer, lost push response, accepted push then local crash, no-op replay, and remote deletion tests. Require union totals with no lost records and no force push.
+- [x] Add byte-identical user index/worktree/HEAD snapshots, partial staging, merge/rebase in progress, detached HEAD, wrong UUID, unsafe tree entry, oversized blob, incompatible protocol/catalog, and remote URL change tests.
+- [x] Run `npm test -- --run packages/core/src/git/data-transport.test.ts packages/core/src/operations/sync.test.ts`; implement fetch/validate/union/reduce/render/private-index/commit/push/acknowledge.
+- [x] Use bot author/committer metadata, explicit one-ref refspecs, invocation-private hooks containing only the owned pre-push advertised-old-OID/candidate guard, `--verify` with ordinary FF-only push (no force/lease), and caller deadlines. Compare actual pushed/fetched inclusion before acknowledgement; retain queue on indeterminate outcomes.
+- [x] Run all Git/storage/ledger integration tests; commit the first complete local-source-to-data-branch vertical slice.
 
 ## Task 10: Add policy changes, budgets, and recovery results
 

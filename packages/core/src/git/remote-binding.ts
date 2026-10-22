@@ -23,6 +23,8 @@ export interface BoundRemote {
   readonly status: "bound";
   readonly repositoryId: string;
   readonly remoteName: string;
+  readonly fetchUrl: string;
+  readonly pushUrl: string;
   readonly canonicalFetchUrl: string;
   readonly canonicalPushUrl: string;
   readonly dataRef: typeof DATA_REF;
@@ -86,12 +88,13 @@ export function canonicalRemoteUrl(value: string, cwd?: string): string | null {
   return `${protocol}://${account ? `${account}@` : ""}${host}${port ? `:${port}` : ""}/${path}`;
 }
 
-async function routing(ctx: RepositoryContext, remoteName: string): Promise<{ fetch: string; push: string } | BindingReason> {
-  const deadline = Date.now() + 2000;
+export interface BindingBudget { readonly signal?: AbortSignal; readonly deadline?: number }
+async function routing(ctx: RepositoryContext, remoteName: string, budget: BindingBudget = {}): Promise<{ fetch: string; push: string; fetchUrl: string; pushUrl: string } | BindingReason> {
+  const deadline = budget.deadline ?? Date.now() + 2000;
   async function urls(push: boolean): Promise<string[] | null> {
     const remaining = deadline - Date.now();
     if (remaining <= 0) return null;
-    const result = await runGit(["remote", "get-url", ...(push ? ["--push"] : []), "--all", remoteName], { cwd: ctx.worktreeRoot, timeoutMs: remaining });
+    const result = await runGit(["remote", "get-url", ...(push ? ["--push"] : []), "--all", remoteName], { cwd: ctx.worktreeRoot, timeoutMs: remaining, signal: budget.signal });
     return result.status === "ok" ? result.stdout.replace(/\r?\n$/, "").split(/\r?\n/) : null;
   }
   const fetch = await urls(false);
@@ -102,7 +105,7 @@ async function routing(ctx: RepositoryContext, remoteName: string): Promise<{ fe
   const canonicalFetch = canonicalRemoteUrl(fetch[0], ctx.worktreeRoot);
   const canonicalPush = canonicalRemoteUrl(push[0], ctx.worktreeRoot);
   if (!canonicalFetch || !canonicalPush) return "unsafe-url";
-  return { fetch: canonicalFetch, push: canonicalPush };
+  return { fetch: canonicalFetch, push: canonicalPush, fetchUrl: fetch[0], pushUrl: push[0] };
 }
 
 function evidenceFailure(repositoryId: string, push: string, evidence?: VerifiedLedgerEvidence | null): BindingReason | null {
@@ -122,16 +125,22 @@ export async function bindRemote(ctx: RepositoryContext, requested: BindingReque
   if (requested.target === undefined && urls.push !== declared) return { status: "unbound", reason: "destination-mismatch" };
   const failure = evidenceFailure(requested.repositoryId, urls.push, requested.ledgerEvidence);
   if (failure) return { status: "rejected", reason: failure };
-  return { status: "bound", repositoryId: requested.repositoryId, remoteName, canonicalFetchUrl: urls.fetch, canonicalPushUrl: urls.push, dataRef: DATA_REF, ledgerEvidence: requested.ledgerEvidence ? { ...requested.ledgerEvidence } : null };
+  return { status: "bound", repositoryId: requested.repositoryId, remoteName, fetchUrl: urls.fetchUrl, pushUrl: urls.pushUrl, canonicalFetchUrl: urls.fetch, canonicalPushUrl: urls.push, dataRef: DATA_REF, ledgerEvidence: requested.ledgerEvidence ? { ...requested.ledgerEvidence } : null };
 }
 
 /** Verifies stored consent against current local routing; performs no remote I/O. */
-export async function verifyBinding(ctx: RepositoryContext, binding: RemoteBinding): Promise<BindingCheck> {
+export async function verifyBinding(ctx: RepositoryContext, binding: RemoteBinding, budget: BindingBudget = {}): Promise<BindingCheck> {
+  const result = await resolvePushDestination(ctx, binding, budget);
+  return result.status === "valid" ? { status: "valid" } : result;
+}
+
+/** Private executable route; canonical keys must never be used as transport URLs. */
+export async function resolvePushDestination(ctx: RepositoryContext, binding: RemoteBinding, budget: BindingBudget = {}): Promise<BindingCheck & { readonly pushUrl?: string }> {
   if (binding.status !== "bound") return { status: "suspended", reason: binding.reason };
   if (!UUID.test(binding.repositoryId) || binding.dataRef !== DATA_REF || !/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(binding.remoteName)) return { status: "suspended", reason: "invalid-request" };
-  const urls = await routing(ctx, binding.remoteName);
+  const urls = await routing(ctx, binding.remoteName, budget);
   if (typeof urls === "string") return { status: "suspended", reason: urls };
-  if (urls.fetch !== binding.canonicalFetchUrl || urls.push !== binding.canonicalPushUrl) return { status: "suspended", reason: "routing-changed" };
+  if (urls.fetch !== binding.canonicalFetchUrl || urls.push !== binding.canonicalPushUrl || urls.fetchUrl !== binding.fetchUrl || urls.pushUrl !== binding.pushUrl) return { status: "suspended", reason: "routing-changed" };
   const failure = evidenceFailure(binding.repositoryId, urls.push, binding.ledgerEvidence);
-  return failure ? { status: "suspended", reason: failure } : { status: "valid" };
+  return failure ? { status: "suspended", reason: failure } : { status: "valid", pushUrl: urls.pushUrl };
 }

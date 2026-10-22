@@ -102,3 +102,30 @@ export async function snapshotUserCheckout(cwd: string): Promise<CheckoutSnapsho
   await walk(cwd);
   return { head, headRef, index, refs, files };
 }
+
+/** Constructs untrusted synthetic trees directly, including entries normal checkout cannot create. */
+export async function commitFixtureTree(fixture: GitFixture, cwd: string,
+  entries: readonly { path: string; content: string; mode?: string }[], parent?: string): Promise<string> {
+  interface Directory { children: Map<string, Directory | { content: string; mode: string }> }
+  const root: Directory = { children: new Map() };
+  for (const entry of entries) {
+    const parts = entry.path.split('/'); let directory = root;
+    for (const part of parts.slice(0, -1)) {
+      let child = directory.children.get(part);
+      if (!child) { child = { children: new Map() }; directory.children.set(part, child); }
+      if (!('children' in child)) throw new Error('Invalid synthetic tree');
+      directory = child;
+    }
+    directory.children.set(parts.at(-1)!, { content: entry.content, mode: entry.mode ?? '100644' });
+  }
+  async function tree(directory: Directory): Promise<string> {
+    const lines: string[] = [];
+    for (const [name, child] of directory.children) {
+      const nested = 'children' in child;
+      const oid = nested ? await tree(child) : (await fixture.git(cwd, ['hash-object', '-w', '--stdin'], child.content)).trim();
+      lines.push(`${nested ? '040000 tree' : `${child.mode} blob`} ${oid}\t${name}\0`);
+    }
+    return (await fixture.git(cwd, ['mktree', '-z'], lines.join(''))).trim();
+  }
+  return (await fixture.git(cwd, ['commit-tree', await tree(root), ...(parent ? ['-p', parent] : []), '-m', 'Synthetic ledger fixture'])).trim();
+}
