@@ -32,7 +32,6 @@ import {
   type RunFullBackfillScanResult
 } from "@legotin/agent-badge-core";
 
-import { buildProgram } from "../cli/main.js";
 
 import { runScanCommand } from "./scan.js";
 
@@ -502,39 +501,5 @@ describe.sequential("runScanCommand", () => {
     }
   });
 
-  it("refuses legacy scans and override writes without approved activation", async () => {
-    const fixture = await createScanFixture();
 
-    try {
-      runFullBackfillScanMock.mockResolvedValueOnce(
-        createScanResult(fixture.repo.root)
-      );
-
-      process.chdir(fixture.repo.root);
-
-      const program = buildProgram();
-      const scanCommand = program.commands.find(
-        (command) => command.name() === "scan"
-      );
-
-      expect(scanCommand?.description()).toBe(
-        "Scan local agent history and report attributed usage."
-      );
-      expect(scanCommand?.options.map((option) => option.flags)).toEqual(
-        expect.arrayContaining([
-          "--include-session <provider:sessionId>",
-          "--exclude-session <provider:sessionId>"
-        ])
-      );
-
-      await expect(program.parseAsync([
-        "node", "agent-badge", "scan", "--include-session", "codex:ambiguous-include",
-        "--exclude-session", "claude:ambiguous-exclude"
-      ])).rejects.toThrow("needs-setup");
-      expect(runFullBackfillScanMock).not.toHaveBeenCalled();
-      expect((await readStateFile(fixture.statePath)).overrides.ambiguousSessions).toEqual({});
-    } finally {
-      await fixture.cleanup();
-    }
-  });
 });

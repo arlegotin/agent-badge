@@ -17,6 +17,8 @@ export interface RepositoryOperationRequest {
   privateDir: string;
   binding: RemoteBinding;
   collect: 'none' | 'incremental' | 'full';
+  /** Explicit manual collection only; false forbids transport. */
+  synchronize?: boolean;
   collection?: Pick<CollectOptions, 'roots' | 'target' | 'privatePolicy'>;
   /** Last accepted anchored policy or explicitly trusted activation policy; private
    * capture uses this before network access, without promoting it to remote metadata. */

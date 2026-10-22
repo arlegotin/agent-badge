@@ -1,154 +1,35 @@
-import { readFile } from "node:fs/promises";
-import { mkdtemp, rm, symlink } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { mkdtemp, readdir, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, expect, test, vi } from 'vitest';
+import { buildProgram, handleRunError, isDirectExecution } from './main.js';
+afterEach(() => { process.exitCode=undefined; vi.restoreAllMocks(); });
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+test('runtime exposes the complete repository-native contract with no legacy aliases', () => {
+  const commands = buildProgram().commands.map(c=>c.name()).sort();
+  expect(commands).toEqual(['collect','configure','contribute','doctor','exclude','explain','import','include','init','setup','status','sync','uninstall','upgrade']);
+});
 
-import { buildProgram, handleRunError, isDirectExecution } from "./main.js";
-
-function findCommand(name: string) {
-  return buildProgram().commands.find((command) => command.name() === name);
-}
-
-describe("buildProgram", () => {
-  afterEach(() => {
-    process.exitCode = undefined;
-  });
-
-  it("declares a node shebang for the published bin entry", async () => {
-    const source = await readFile(new URL("./main.ts", import.meta.url), "utf8");
-
-    expect(source.startsWith("#!/usr/bin/env node\n")).toBe(true);
-  });
-
-  it("treats a symlinked bin path as direct execution", async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), "agent-badge-cli-"));
-    const symlinkPath = join(tempRoot, "agent-badge");
-    const mainPath = new URL("./main.ts", import.meta.url);
-
-    try {
-      await symlink(mainPath, symlinkPath);
-
-      expect(isDirectExecution([process.execPath, symlinkPath])).toBe(true);
-    } finally {
-      await rm(tempRoot, { recursive: true, force: true });
+test('help version and invalid options have no repository side effects', async () => {
+  const cwd = await mkdtemp(join(tmpdir(),'agent-badge-cli-'));
+  try {
+    const output: string[] = [];
+    for (const args of [['--help'],['--version'],['status','--unknown']]) {
+      const program = buildProgram({cwd,write:line=>output.push(line)}).exitOverride();
+      for(const command of [program,...program.commands])command.configureOutput({writeOut:line=>output.push(line),writeErr:line=>output.push(line)});
+      await expect(program.parseAsync(args,{from:'user'})).rejects.toBeDefined();
+      expect(await readdir(cwd)).toEqual([]);
     }
-  });
+    expect(output.join('')).toContain('collect');
 
-  it("sets the CLI name", () => {
-    const program = buildProgram();
+  } finally { await rm(cwd,{recursive:true,force:true}); }
+});
 
-    expect(program.name()).toBe("agent-badge");
-  });
-
-  it("registers a top-level --version option", () => {
-    const program = buildProgram();
-    const optionFlags = program.options.map((option) => option.flags);
-
-    expect(optionFlags).toContain("--version");
-  });
-
-  it("registers the init command", () => {
-    const program = buildProgram();
-    const commandNames = program.commands.map((command) => command.name());
-
-    expect(commandNames).toContain("init");
-  });
-
-  it("registers the publish command", () => {
-    const program = buildProgram();
-    const commandNames = program.commands.map((command) => command.name());
-
-    expect(commandNames).toContain("publish");
-  });
-
-  it("registers the doctor command", () => {
-    const program = buildProgram();
-    const commandNames = program.commands.map((command) => command.name());
-
-    expect(commandNames).toContain("doctor");
-  });
-
-  it("registers the refresh, status, uninstall, and config commands", () => {
-    const program = buildProgram();
-    const commandNames = program.commands.map((command) => command.name());
-
-    expect(commandNames).toContain("refresh");
-    expect(commandNames).toContain("status");
-    expect(commandNames).toContain("uninstall");
-    expect(commandNames).toContain("config");
-  });
-
-  it("registers refresh hook and recovery options", () => {
-    const refreshCommand = findCommand("refresh");
-    const optionFlags = refreshCommand?.options.map((option) => option.flags);
-
-    expect(optionFlags).toContain("--hook <name>");
-    expect(optionFlags).toContain("--hook-policy <mode>");
-    expect(optionFlags).toContain("--fail-soft");
-    expect(optionFlags).toContain("--force-full");
-  });
-
-  it("registers config get and set subcommands", () => {
-    const configCommand = findCommand("config");
-    const subcommandNames = configCommand?.commands.map((command) =>
-      command.name()
-    );
-
-    expect(subcommandNames).toContain("get");
-    expect(subcommandNames).toContain("set");
-  });
-
-  it("registers doctor output and recovery options", () => {
-    const doctorCommand = findCommand("doctor");
-    const optionFlags = doctorCommand?.options.map((option) => option.flags);
-
-    expect(optionFlags).toContain("--json");
-    expect(optionFlags).toContain("--probe-write");
-  });
-
-  it("registers uninstall purge options", () => {
-    const uninstallCommand = findCommand("uninstall");
-    const optionFlags = uninstallCommand?.options.map((option) => option.flags);
-
-    expect(optionFlags).toEqual(
-      expect.arrayContaining([
-        "--purge-remote",
-        "--purge-config",
-        "--purge-state",
-        "--purge-logs",
-        "--purge-cache",
-        "--force"
-      ])
-    );
-  });
-
-  it("does not reprint errors that commands already reported", () => {
-    const stderr = {
-      error: vi.fn()
-    };
-    const error = new Error("sanitized failure");
-
-    Object.defineProperty(error, "alreadyReported", {
-      value: true,
-      configurable: true
-    });
-
-    handleRunError(error, stderr);
-
-    expect(stderr.error).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(1);
-  });
-
-  it("prints unreported fatal errors", () => {
-    const stderr = {
-      error: vi.fn()
-    };
-
-    handleRunError(new Error("fatal failure"), stderr);
-
-    expect(stderr.error).toHaveBeenCalledWith("fatal failure");
-    expect(process.exitCode).toBe(1);
-  });
+test('symlinked bin executes directly and errors never echo untrusted provider diagnostics', async () => {
+  const root = await mkdtemp(join(tmpdir(),'agent-badge-bin-'));
+  try { const link=join(root,'badge'); await symlink(new URL('./main.ts',import.meta.url),link); expect(isDirectExecution([process.execPath,link])).toBe(true); }
+  finally { await rm(root,{recursive:true,force:true}); }
+  const error=vi.fn(); handleRunError(new Error('/private/provider/secret token=credential'),{error});
+  expect(error.mock.calls.flat().join('')).not.toMatch(/secret|credential|\/private/);
+  expect(process.exitCode).toBe(1);
 });

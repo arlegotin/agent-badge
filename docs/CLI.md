@@ -1,202 +1,63 @@
-# CLI Reference
+# CLI reference
 
-Commands below are shown as `agent-badge ...` for readability. The default setup model is: install the shared runtime once per machine, then run `npm init agent-badge@latest` or `agent-badge init` in each repo. Use `agent-badge` directly when the shared runtime is available via a global or user-scoped install on `PATH`. If you explicitly install `@legotin/agent-badge` inside the repo instead, use your package manager's exec wrapper for that alternative path.
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Candidate artifacts and external release gates remain pending.
 
-## Command Summary
+Examples assume a verified candidate runtime on PATH, or replace `agent-badge` with `node .agent-badge/run.cjs` after activation. Help, version and invalid argument parsing do not install, collect, probe credentials or change files. There are no compatibility aliases for removed commands.
 
-| Command | Purpose |
+| Command | Behavior |
 | --- | --- |
-| `init` | Write minimal repo-owned wiring and connect or reuse the publish gist. |
-| `scan` | Run a full attribution report and optionally resolve ambiguous sessions. |
-| `publish` | Publish aggregate badge JSON to the configured gist target. |
-| `refresh` | Refresh persisted totals and publish only when needed. |
-| `status` | Show current local, shared, and publish state. |
-| `doctor` | Inspect setup, auth, gist wiring, and README or hook health. |
-| `config` | Read or update supported config keys. |
-| `uninstall` | Remove repo wiring and optionally purge local or remote state. |
+| `init` | Plan/install repository setup, activate locally, manually collect history and attempt initial data transaction; idempotent. |
+| `setup` | Explicit local approval/repair of existing owned runtime and integrations. |
+| `collect` | Local normalization, attribution and durable queue; `--full` requests manual historical reconciliation. No remote transaction. |
+| `sync` | Incremental capture and bounded Git synchronization. |
+| `status` | Local accounting, queue, provider outcomes, accepted sync commit and configuration state; no network. |
+| `doctor` | Required setup/runtime/hook/schema checks and local capabilities; `--remote` opts into bounded remote read/route validation. |
+| `explain` | Redacted private attribution/provenance for an opaque local observation ID; never publishes explanations. |
+| `include` | Explicit opaque observation ID or public unit key; approve cached attribution and persist a causal include against current accepted control heads. |
+| `exclude` | Explicit opaque observation ID or public unit key; persist a causal exclude for the unit and cached copies. |
+| `contribute` | Write a strict sanitized public contribution plus causal/unit evidence for normal PR staging. |
+| `import` | Strict public contribution batches or an explicitly selected private normalized source. |
+| `upgrade` | Deliberate exact runtime approval and optional supported metadata/catalog request. |
+| `configure` | Explicit shared metadata/catalog change with expected metadata revision conflict detection. |
+| `uninstall` | Deactivate owned approval and remove owned integrations; retain ledger, journals, unknown files and leases. |
 
-## Global Options
+All commands accept `--json`. Results use `schemaVersion: 1`, a `command` discriminator and static status fields. Counts distinguish known data from unknown completeness. JSON never dumps accepted ledger bodies, source paths, native IDs or provider errors. `explain` stays redacted. `status.localUnits` exposes opaque local IDs for explanation/control; `metadataRevision` identifies current accepted metadata for configure requests. Public contribution output paths are safe managed digest paths.
 
-```bash
-agent-badge --version
+```sh
 agent-badge --help
+agent-badge --version
+agent-badge init --runtime-version <candidate-version> --dry-run
+agent-badge setup --target upstream --json
+agent-badge collect --full --json
+agent-badge sync --json
+agent-badge status --json
+agent-badge doctor --json
+agent-badge doctor --remote --json
+agent-badge explain <local-id> --json
+agent-badge exclude <local-id-or-unit-key> --json
+agent-badge include <local-id-or-unit-key> --json
+agent-badge contribute --hash <record-digest> --json
+agent-badge import --file .agent-badge/contributions/<digest>.json --json
+agent-badge import --normalized-source /synthetic/private/source.json --json
+agent-badge configure --from-file /synthetic/private/configuration.json --json
+agent-badge upgrade --runtime-version <candidate-version> --dry-run --json
+agent-badge uninstall --json
 ```
 
-- `--version` prints the installed shared runtime version.
-- `--help` prints top-level command help.
+`init`/`setup` accept `--repository-url`, `--target`, `--runtime-version`, `--dry-run`, `--import-workflow` and `--new-repository`. Standalone `--new-repository` requires a fresh clone with no private Badge state and an explicit destination URL. It never resets a foreign existing data ledger. [Fork semantics](FAQ.md).
 
-## `init`
+Trusted CI imports accepted default-branch blobs, not a proposal checkout's executable code:
 
-```bash
-agent-badge init [--gist-id <id>]
+```sh
+agent-badge import --accepted-ref <accepted-commit-oid> --default-branch <actual-default-branch> --repository-id <repository-uuid> --repository-url https://github.com/example/repo --json
 ```
 
-| Option | Meaning |
-| --- | --- |
-| `--gist-id <id>` | Reuse an existing public gist instead of creating one automatically. |
+Use exactly one of `--file`, `--accepted-ref` or `--normalized-source`. Public envelopes are `kind: "agent-badge/contribution", schemaVersion: 1`; private producer envelopes are `kind: "agent-badge/normalized-source", schemaVersion: 1`. Native exports are never guessed or wrapped. [Normalized producer contract](superpowers/specs/2026-10-22-provider-capabilities-and-normalized-imports.md).
 
-Run `init` in each repo you want to badge. Installing the shared runtime is a separate machine-level step covered in [INSTALL.md](INSTALL.md).
+Accepted history streams one self-contained envelope per atomic ledger batch. `confirmedEnvelopes`, `confirmedCommit`, `complete`, `retryRequired`, `retrySource` and static `failure` describe progress. Completion requires verified EOF and every batch confirmed. A later malformed or timed-out batch does not roll back earlier accepted commits; incomplete progress returns nonzero. Retain the accepted immutable files as durable retry input. Replay and ordinary reconciliation confirm already accepted records. Per-envelope bounds are not historical ceilings; no manual archival/deletion workaround is required.
 
-Expected terminal endings:
+Include/exclude require successful current accepted-ledger validation. Offline, unbound or wrong-target requests refuse with `current-ledger-required`; the requested inclusion/exclusion was not deferred or applied. A persisted control retains its original causal heads through retries. If a concurrent later control defeats the requested inclusion/exclusion, the command returns conflict with `recordConfirmed` true instead of silently rebasing intent. Concurrent later exclusions cannot be silently superseded by routine sync or unchanged saved attribution. Remote-only unit keys use source-free private control intent, never fabricated provider observations.
 
-```text
-- Publish target: created public gist
-- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
-```
+Exit codes: `0` completed requested operation; `1` incomplete/queued/unavailable/setup action required; `2` causal/identity/metadata conflict or wrong destination; `3` unsupported data/schema; `4` accepted configuration differs from the local declaration; `64` invalid CLI arguments. Explicit operation results and coverage are separate: partial provider coverage can accompany a confirmed sync. Doctor returns nonzero for failing required checks. A successful read does not prove write permission, branch-rule acceptance, signing capability, native trust or private image rendering; those checks remain unverified.
 
-or:
-
-```text
-- Publish target: deferred
-- Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
-- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish.
-```
-
-Additional valid `- Publish target:` outcomes are `connected existing gist` and `reused existing gist`.
-When publish succeeds but the shared runtime is missing or broken, `- Setup:` reports that the live badge published but shared runtime repair is still required before relying on pre-push refresh.
-
-## `scan`
-
-```bash
-agent-badge scan [--include-session <provider:sessionId>] [--exclude-session <provider:sessionId>]
-```
-
-| Option | Meaning |
-| --- | --- |
-| `--include-session <provider:sessionId>` | Persist an include override for an ambiguous session in the current scan. |
-| `--exclude-session <provider:sessionId>` | Persist an exclude override for an ambiguous session in the current scan. |
-
-Representative output:
-
-```text
-Repo: openai/agent-badge (agent-badge)
-Scanned Sessions: 3
-Deduped Sessions: 3
-Override Actions Applied:
-- codex:ambiguous-session => include
-
-Included Totals
-- Combined: 1 sessions, 120 tokens
-- codex: 1 sessions, 120 tokens
-- claude: 0 sessions, 0 tokens
-- Counts: included=1, ambiguous=1, excluded=1
-
-Ambiguous Sessions
-- codex:ambiguous-session | provider=codex | evidence=normalized-cwd | reason=Ambiguous because only weak evidence matched the current repo
-
-Excluded Sessions
-- claude:excluded-session | provider=claude | evidence=transcript-correlation | reason=Excluded because no attribution evidence matched the current repo
-```
-
-## `publish`
-
-```bash
-agent-badge publish
-```
-
-Publishes aggregate badge JSON to the configured gist target immediately. Use this when you want a direct publish instead of waiting for `refresh`.
-
-If the gist is not configured yet, the command exits with:
-
-```text
-Publish is not configured. Run `agent-badge init` or re-run init with `--gist-id <id>` first.
-```
-
-## `refresh`
-
-```bash
-agent-badge refresh [--hook pre-push] [--hook-policy <fail-soft|strict>] [--fail-soft] [--force-full]
-```
-
-| Option | Meaning |
-| --- | --- |
-| `--hook pre-push` | Run refresh in the supported hook mode. |
-| `--hook-policy <fail-soft|strict>` | Force the hook behavior explicitly. |
-| `--fail-soft` | Return a structured soft failure instead of throwing. |
-| `--force-full` | Ignore incremental cache state and rebuild from a full scan. |
-
-Notes:
-
-- `--fail-soft` cannot be combined with `--hook-policy strict`
-- the managed pre-push hook uses `agent-badge refresh --hook pre-push --hook-policy fail-soft || true` by default
-
-When a stale publish is repaired successfully, refresh reports:
-
-```text
-- Recovery result: healthy after agent-badge refresh
-```
-
-## `status`
-
-```bash
-agent-badge status
-```
-
-Representative healthy output:
-
-```text
-agent-badge status
-- Totals: 5 sessions, 610 tokens
-- Providers: codex=enabled, claude=enabled
-- Publish: published | gist configured=yes | last published=2026-03-30T19:10:00.000Z | gistId=gist_789 | lastPublishedHash=hash_789
-- Pre-push policy: fail-soft
-- Live badge trust: current
-- Last successful badge update: 2026-03-30T19:10:00.000Z
-- Shared mode: shared | health=healthy | contributors=2
-```
-
-## `doctor`
-
-```bash
-agent-badge doctor [--json] [--probe-write]
-```
-
-| Option | Meaning |
-| --- | --- |
-| `--json` | Emit the full machine-readable result object. |
-| `--probe-write` | Validate gist write credentials with a no-op update. |
-
-Use `--json` for automation and `--probe-write` when auth looks present but publish still fails.
-
-## `config`
-
-```bash
-agent-badge config
-agent-badge config get [key]
-agent-badge config set <key> <value>
-```
-
-Supported keys live in [CONFIGURATION.md](CONFIGURATION.md).
-
-Examples:
-
-```bash
-agent-badge config get badge.mode
-agent-badge config set badge.mode tokens
-agent-badge config set refresh.prePush.mode strict
-```
-
-## `uninstall`
-
-```bash
-agent-badge uninstall [--purge-remote] [--purge-config] [--purge-state] [--purge-logs] [--purge-cache] [--force]
-```
-
-| Option | Meaning |
-| --- | --- |
-| `--purge-remote` | Delete the configured gist and clear the local gist association. |
-| `--purge-config` | Delete `.agent-badge/config.json`. |
-| `--purge-state` | Delete `.agent-badge/state.json`. |
-| `--purge-logs` | Delete `.agent-badge/logs`. Enabled by default. |
-| `--purge-cache` | Delete `.agent-badge/cache`. Enabled by default. |
-| `--force` | Preserve progress by ignoring non-fatal cleanup failures. |
-
-Default uninstall behavior is conservative:
-
-```text
-- uninstall: start
-- default: preserve config/state/remote unless purge flags are set
-- remote: preserved
-```
-
-Use [UNINSTALL.md](UNINSTALL.md) for rollback-oriented guidance.
+Status exposes primary `state` plus overlapping `states`: `recorded`, `pending`, `synced`, `partial`, `conflicted`; unavailable and unsupported data are distinct. `lastConfirmedSync` is a commit, not a cache-refresh time. Pending configuration is uncertainty; `drift` compares the actual declaration with accepted metadata. Older branches can have an absent declaration while retaining approved private activation.

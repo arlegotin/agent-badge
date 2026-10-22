@@ -21,7 +21,7 @@ async function snapshot(path: string): Promise<Snapshot | null> {
   } catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
 }
 function same(a: unknown, b: unknown) { return JSON.stringify(a) === JSON.stringify(b); }
-function matchesOwned(file: Snapshot | null, hash: string, previous?: string) { return file?.kind === 'file' && (file.hash === hash || file.hash === previous); }
+function matchesOwned(file: Snapshot | null, hash: string, previous?: string, mode?: number) { return file?.kind === 'file' && (mode === undefined || file.mode === mode) && (file.hash === hash || file.hash === previous); }
 async function owned(privateDir: string): Promise<HookOwnership | null> {
   const s = await snapshot(join(privateDir, 'hooks.json')); if (!s) return null;
   if (s.kind !== 'file') throw new Error('Unsafe hook ownership.');
@@ -95,7 +95,7 @@ export async function planHooks(repository: RepositoryContext, runtime: RuntimeL
   const backupState = await snapshot(join(dirname(hook), '.agent-badge-user-pre-push'));
   if (!ownership && backupState) actionItems.push('Hook backup already exists; reconcile it before setup.');
   const originalInPlace = ownership?.phase === 'installing' && same(before, ownership.original) && backupState === null;
-  if (ownership && before && !originalInPlace && !matchesOwned(before, ownership.wrapperHash, ownership.phase === 'installing' ? ownership.previousWrapperHash : undefined)) actionItems.push('Owned hook was modified; reconcile it before setup.');
+  if (ownership && before && !originalInPlace && !matchesOwned(before, ownership.wrapperHash, ownership.phase === 'installing' ? ownership.previousWrapperHash : undefined, 0o755)) actionItems.push('Owned hook was modified; reconcile it before setup.');
   if (ownership?.phase === 'installing' && !originalInPlace && ownership.backup && !same(backupState, ownership.original)) actionItems.push('Interrupted hook backup changed; reconcile it before setup.');
   if (!ownership && before) {
     const bytes = before.kind === 'symlink' ? await readFile(hook, 'utf8') : before.bytes;
@@ -122,7 +122,7 @@ export async function applyHookPlan(plan: HookPlan): Promise<HookInstallResult> 
   if (plan.ownership?.backup && !originalInPlace && !same(await snapshot(plan.ownership.backup), plan.ownership.original)) throw new Error('User hook backup modified.');
   const driverPath = join(plan.runtime.privateDir, 'git-hook.cjs');
   const driver = await snapshot(driverPath);
-  if (driver && (!plan.ownership || !matchesOwned(driver, plan.ownership.driverHash, plan.ownership.phase === 'installing' ? plan.ownership.previousDriverHash : undefined))) throw new Error('Owned hook driver modified.');
+  if (driver && (!plan.ownership || !matchesOwned(driver, plan.ownership.driverHash, plan.ownership.phase === 'installing' ? plan.ownership.previousDriverHash : undefined, 0o600))) throw new Error('Owned hook driver modified.');
   if (plan.ownership?.phase !== 'installing' && plan.ownership && plan.before?.bytes === plan.wrapper && driver?.bytes === gitDriverSource) return { status: 'unchanged', actionItems: plan.notices };
   const backup = plan.ownership ? plan.ownership.backup : (plan.before ? join(dirname(plan.hook), '.agent-badge-user-pre-push') : null);
   const ownership: HookOwnership = { schemaVersion: 1, phase: 'installed', hook: plan.hook, backup, original: plan.ownership ? plan.ownership.original : plan.before, wrapperHash: digest(plan.wrapper), driverHash: digest(gitDriverSource), delegate: plan.delegate };
@@ -140,18 +140,28 @@ export async function removeHooks(repository: RepositoryContext): Promise<HookIn
   if (!within(repository.commonDir, ownership.hook) && !within(repository.worktreeRoot, ownership.hook)) throw new Error('Unsafe hook ownership path.');
   const wrapper = await snapshot(ownership.hook), driver = await snapshot(join(repository.privateDir, 'git-hook.cjs'));
   if (ownership.phase === 'installing' && same(wrapper, ownership.original) && (!ownership.backup || await snapshot(ownership.backup) === null)) {
-    if (driver && !matchesOwned(driver, ownership.driverHash, ownership.previousDriverHash)) throw new Error('Owned hook driver modified.');
+    if (driver && !matchesOwned(driver, ownership.driverHash, ownership.previousDriverHash, 0o600)) throw new Error('Owned hook driver modified.');
     await rm(join(repository.privateDir, 'git-hook.cjs'), { force: true }); await rm(join(repository.privateDir, 'hooks.json'));
     return { status: 'removed', actionItems: [] };
   }
   if (ownership.phase === 'installing' && wrapper === null && ownership.backup && same(await snapshot(ownership.backup), ownership.original)) {
-    if (driver && !matchesOwned(driver, ownership.driverHash, ownership.previousDriverHash)) throw new Error('Owned hook driver modified.');
+    if (driver && !matchesOwned(driver, ownership.driverHash, ownership.previousDriverHash, 0o600)) throw new Error('Owned hook driver modified.');
     await rename(ownership.backup, ownership.hook); await rm(join(repository.privateDir, 'git-hook.cjs'), { force: true }); await rm(join(repository.privateDir, 'hooks.json'));
     return { status: 'removed', actionItems: [] };
   }
-  if (!matchesOwned(wrapper, ownership.wrapperHash, ownership.phase === 'installing' ? ownership.previousWrapperHash : undefined) || (driver && !matchesOwned(driver, ownership.driverHash, ownership.phase === 'installing' ? ownership.previousDriverHash : undefined))) throw new Error('Owned hook modified; reconcile before removal.');
+  if (!matchesOwned(wrapper, ownership.wrapperHash, ownership.phase === 'installing' ? ownership.previousWrapperHash : undefined, 0o755) || (driver && !matchesOwned(driver, ownership.driverHash, ownership.phase === 'installing' ? ownership.previousDriverHash : undefined, 0o600))) throw new Error('Owned hook modified; reconcile before removal.');
   if (ownership.backup && !same(await snapshot(ownership.backup), ownership.original)) throw new Error('User hook backup modified.');
   if (ownership.backup) await rename(ownership.backup, ownership.hook); else await rm(ownership.hook);
   await rm(join(repository.privateDir, 'git-hook.cjs'), { force: true }); await rm(join(repository.privateDir, 'hooks.json'));
   return { status: 'removed', actionItems: [] };
+}
+
+/** Read-only effective execution check using this owner's snapshots and expected bytes. */
+export async function inspectHooks(repository: RepositoryContext, runtime: RuntimeLocation): Promise<HookInstallResult> {
+  const plan = await planHooks(repository, runtime);
+  if (plan.actionItems.length || !plan.ownership || plan.ownership.phase === 'installing' || plan.before?.bytes !== plan.wrapper ||
+      plan.before.kind !== 'file' || plan.before.mode !== 0o755) return { status: 'action-required', actionItems: ['Effective Git hook requires explicit setup/reconciliation.'] };
+  const driver = await snapshot(join(runtime.privateDir, 'git-hook.cjs'));
+  if (!driver || driver.bytes !== gitDriverSource || !matchesOwned(driver, plan.ownership.driverHash, undefined, 0o600)) return { status: 'action-required', actionItems: ['Effective hook driver requires explicit setup/reconciliation.'] };
+  return { status: 'unchanged', actionItems: plan.notices };
 }

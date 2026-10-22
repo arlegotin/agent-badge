@@ -1,42 +1,13 @@
-export {
-  runConfigCommand,
-  type ConfigCommandResult,
-  type RunConfigCommandOptions
-} from "./config.js";
-export {
-  runInitCommand,
-  type InitCommandResult,
-  type RunInitCommandOptions
-} from "./init.js";
-export {
-  runPublishCommand,
-  type PublishCommandResult,
-  type RunPublishCommandOptions
-} from "./publish.js";
-export {
-  runRefreshCommand,
-  type RefreshCommandResult,
-  type RunRefreshCommandOptions
-} from "./refresh.js";
-export {
-  runScanCommand,
-  type RunScanCommandOptions,
-  type ScanCommandResult
-} from "./scan.js";
-export {
-  runStatusCommand,
-  type RunStatusCommandOptions,
-  type StatusCommandResult
-} from "./status.js";
-export {
-  runDoctorCommand,
-  type DoctorCommandResult,
-  type RunDoctorCommandOptions
-} from "./doctor.js";
-export {
-  runUninstallCommand,
-  type RunUninstallCommandOptions,
-  type UninstallCommandResult
-} from "./uninstall.js";
-export { runContributeCommand, type ContributeCommandOptions } from './contribute.js';
-export { runImportCommand, type ImportCommandOptions, type ImportCommandSummary } from './import.js';
+export {runInitCommand,type InitCommandOptions} from './init.js';
+export {runCollectCommand} from './collect.js';
+export {runSyncCommand} from './sync.js';
+export {runStatusCommand} from './status.js';
+export {runDoctorCommand} from './doctor.js';
+export {runExplainCommand} from './explain.js';
+export {runControlCommand} from './controls.js';
+export {runConfigureCommand} from './configure.js';
+export {runUpgradeCommand} from './upgrade.js';
+export {runUninstallCommand} from './uninstall.js';
+export {runContributeCommand,type ContributeCommandOptions} from './contribute.js';
+export {runImportCommand,type ImportCommandOptions,type ImportCommandSummary} from './import.js';
+export {runNormalizedImportCommand} from './normalized-import.js';

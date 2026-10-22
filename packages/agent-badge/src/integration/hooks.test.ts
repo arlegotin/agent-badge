@@ -226,3 +226,10 @@ test('interrupted wrapper upgrade retains prior owned hashes for retry', async (
   try { await expect(applyHookPlan(plan)).rejects.toThrow('upgrade interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
   expect((await applyHookPlan(await planHooks(f.ctx, runtime))).status).toBe('installed'); await removeHooks(f.ctx); expect(await readFile(f.hookPath, 'utf8')).toBe('#!/bin/sh\nexit 6\n');
 });
+
+test.each(['wrapper','driver'] as const)('removal refuses changed owned %s mode and retains ownership evidence',async kind=>{
+ const f=await fixture('#!/bin/sh\nexit 0\n');await applyHookPlan(await planHooks(f.ctx,f.runtime));
+ const path=kind==='wrapper'?f.hookPath:join(f.ctx.privateDir,'git-hook.cjs');await chmod(path,kind==='wrapper'?0o644:0o700);
+ const before=await readFile(path,'utf8');await expect(removeHooks(f.ctx)).rejects.toThrow(/modified/);
+ expect(await readFile(path,'utf8')).toBe(before);expect(JSON.parse(await readFile(join(f.ctx.privateDir,'hooks.json'),'utf8')).schemaVersion).toBe(1);
+});

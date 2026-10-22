@@ -260,3 +260,17 @@ test('standalone fork receives a fresh UUID without resetting an activated commo
  await applySetup(standalone);
  await expect(planSetup({...options,cwd,newRepository:true})).rejects.toThrow(/fresh clone/);
 });
+
+test.each(['https://github.com/example/repo.git','git@github.com:example/repo.git'])('setup embeds a stable public badge/report route for supported GitHub identity %s',async remote=>{
+ const f=await fixture(),cwd=f.clones[0];await f.git(cwd,['remote','set-url','origin',remote]);
+ const first=await planSetup({...options,cwd});
+ const readme=first.changes.find(c=>c.path==='README.md')!.after;
+ expect(readme).toContain('[![AI usage](https://raw.githubusercontent.com/example/repo/refs/heads/agent-badge/data/badge.svg)](https://github.com/example/repo/tree/agent-badge/data)');
+ await applySetup(first);const repeated=await planSetup({...options,cwd});expect(repeated.changes.find(c=>c.path==='README.md')).toBeUndefined();
+ expect((await readFile(join(cwd,'README.md'),'utf8')).match(/raw\.githubusercontent\.com/g)).toHaveLength(1);
+ expect(first.badge).toEqual({status:'public-route',privateImageSupport:'unverified'});
+});
+test('non-GitHub setup never guesses a GitHub image URL or claims private rendering',async()=>{
+ const f=await fixture(),cwd=f.clones[0];const plan=await planSetup({...options,cwd,declaredUrl:'https://git.example/example/repo'});
+ expect(plan.changes.find(c=>c.path==='README.md')!.after).not.toContain('raw.githubusercontent.com');expect(plan.badge).toEqual({status:'unsupported-host',privateImageSupport:'unverified'});
+});

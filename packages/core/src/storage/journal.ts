@@ -47,7 +47,7 @@ export function validateAttributionAssociations(entry: JournalEntry, previous: r
   if (entry.attribution.decisions.some(decision => !known.has(decision.observationHash)))
     throw new StoreError('invalid-durable-data');
 }
-export async function readJournal(directory: string): Promise<JournalEntry[]> {
+export async function readJournal(directory: string, readOnly = false): Promise<JournalEntry[]> {
   await assertDirectory(directory);
   const names = (await fs.readdir(directory)).sort();
   const entries: JournalEntry[] = [];
@@ -55,7 +55,7 @@ export async function readJournal(directory: string): Promise<JournalEntry[]> {
     if (/^\.tmp-[a-f0-9-]{36}$/.test(name)) continue; // incomplete unpublished writes
     if (!/^[0-9]{16}\.json$/.test(name)) throw new StoreError('invalid-durable-data');
     let value: unknown;
-    try { value = JSON.parse(await readPrivateFile(join(directory, name))); }
+    try { value = JSON.parse(await readPrivateFile(join(directory, name), undefined, readOnly)); }
     catch (error) { if (error instanceof SyntaxError) throw new StoreError('invalid-durable-data'); throw error; }
     const entry = validateEntry(value);
     if (entry.sequence !== entries.length + 1 || name !== journalName(entry.sequence)) throw new StoreError('invalid-durable-data');

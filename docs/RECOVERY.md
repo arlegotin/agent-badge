@@ -1,109 +1,17 @@
-# Recovery Runbook
+# Recovery
 
-This is the canonical operator runbook for publish failures and shared-state repair.
+Start with local `status --json` and `doctor --json`. Inspect static states, accepted commit, queue and actual declaration drift. `doctor --remote` explicitly opts into bounded remote reads; it proves neither write permission nor hosted image rendering. Do not delete private state as a first repair.
 
-Commands below are shown as `agent-badge ...` for readability. Use them directly when the shared runtime is on your `PATH`. If you chose the direct package-install path instead, use the matching package manager exec form from [INSTALL.md](INSTALL.md).
+Offline or failed sync retains local usage. Retry `sync` after normal Git authentication/routing is repaired; use `collect --full` for explicit historical reconciliation. Automatic wakeups have a two-second total budget and can leave cold/large/incomplete work pending. Unknown coverage is not proof that a scan completed.
 
-## Read The Signals First
+A missing/replaced `agent-badge/data` after accepted-history evidence is a conflict, not permission to initialize again. Preserve private accepted anchors, journals and remote backups across writers. Investigate deletion/rewrite and compare independently held evidence. Recovery requires deliberate repository-owner reconciliation; never silently reseed a deleted ledger from one possibly stale machine or call a single backup complete repository history.
 
-Use these read-only commands before you repair anything:
+Pending configuration is uncertainty. Compare the actual local declaration with current accepted metadata. A confirmed remote edit plus failed local write is drift; explicit setup repairs from accepted authority. A stale configuration request must be recreated against the current metadata revision, not retried as a silent override.
 
-```bash
-agent-badge status
-agent-badge doctor
-```
+For interrupted setup, retry explicit setup to reuse the UUID/pin intent or explicitly uninstall. A strict private setup intent is durable before first tracked publication; it is not runtime approval. For interrupted provider edits, preserve `agent-hooks.pending.json` and its exact snapshots. Owning APIs recover only before/after states; edited third states and unknown/live leases require local reconciliation. Never remove a lease merely because it is old.
 
-Look for the exact recovery wording in `- Recovery:` or `Recovery path:`.
+For incomplete accepted contribution imports, retain immutable accepted files and retry the same trusted input. Earlier confirmed envelopes remain accepted; retries deduplicate by validated records. Completion requires verified EOF and every batch confirmed. Do not delete/archive history to bypass a run budget or fabricate a source checkpoint for a public contribution.
 
-## Symptom Map
+A missing/deleted worktree can retain exact journaled per-observation proof. Automatic inventory does not authorize unseen history at a reused path. Resolve remaining ambiguity through an explicit private mapping/override/historical assertion and current causal controls; do not invent cwd provenance.
 
-| Symptom | Recovery path | Notes |
-| --- | --- | --- |
-| `Live badge trust: stale after failed publish` | `agent-badge refresh` | Restore GitHub auth first if auth is missing. |
-| Missing or broken gist target | `agent-badge init --gist-id <id>` | Use a valid public gist. |
-| `missing-local-contributor` / orphaned local publisher | `agent-badge refresh` | Recreates the local contributor record in shared mode. |
-| Partial shared metadata / missing shared overrides | `agent-badge init` | Repairs shared publish metadata on the existing gist. |
-| Stale contributors, conflicting observations, or original-publisher migration | team coordination | Other contributors, or the original publisher machine, must run the supported command. |
-
-## stale after failed publish
-
-Typical signals:
-
-- `agent-badge status` shows `Live badge trust: stale after failed publish`
-- `agent-badge status` shows `- Recovery: Restore GitHub auth, then run agent-badge refresh`
-- `agent-badge doctor` shows the same `Recovery path`
-
-Recovery path:
-
-1. Restore GitHub auth in the shell where you are running the CLI.
-2. Run:
-
-```bash
-agent-badge refresh
-```
-
-3. Verify the repo is healthy again:
-
-```bash
-agent-badge status
-agent-badge doctor
-```
-
-Expected healthy result:
-
-- `Shared mode: shared | health=healthy`
-- no stale publish warning
-- no follow-up recovery line for the same issue
-
-## Gist Target Repair
-
-Recovery path:
-
-```bash
-agent-badge init --gist-id <id>
-```
-
-Use a public gist that you own. Re-run `agent-badge status` afterward to confirm the publish target is connected.
-
-## missing local contributor
-
-Recovery path:
-
-```bash
-agent-badge refresh
-```
-
-This recreates the current machine's shared contributor file without manual edits to `.agent-badge/state.json`.
-
-## Partial Shared Metadata
-
-Recovery path:
-
-```bash
-agent-badge init
-```
-
-That reruns the supported metadata repair flow on the existing gist and should bring shared mode back to a healthy state.
-
-## Team Coordination States
-
-### stale contributors
-
-Recovery path:
-
-- Ask stale contributors to run `agent-badge refresh` on their machines.
-
-### conflicting observations
-
-Recovery path:
-
-- Ask the contributors who recently published to rerun `agent-badge refresh`.
-- Re-run `agent-badge doctor` after they publish again.
-
-### original-publisher migration
-
-Recovery path:
-
-- Run `agent-badge init` on the original publisher machine first.
-
-That preserves the existing gist-backed badge URL while seeding shared contributor state from the machine that already has the trusted local history.
+[Uninstall](UNINSTALL.md) · [Troubleshooting](TROUBLESHOOTING.md) · [Git transport contract](superpowers/research/2026-10-22-git-data-transport.md).

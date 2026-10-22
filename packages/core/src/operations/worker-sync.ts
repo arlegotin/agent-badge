@@ -36,6 +36,11 @@ export async function runOperation(input: RepositoryOperationRequest & { mode: '
       const policy = await loadCapturePolicy(repository, store, input.capturePolicy, repositoryId, context);
       captured = await collectUsage({ ...collection, repository, store, policy, signal: context.signal });
     }
+    if (input.synchronize === false) {
+      const partial = !captured || captured.cancelled || captured.pendingReconciliation || captured.diagnostics.length > 0;
+      if (input.collect === 'full' && captured && !partial && captured.sourceOutcomes.every(source => ['complete','empty','disabled'].includes(source.outcome))) await store.recordReconciliationPending(false);
+      return { ...queued, status: partial ? 'queued' : 'unchanged', queuedCount: (await store.pending()).length, pendingReconciliation: await store.reconciliationPending() };
+    }
     if (input.binding.status !== 'bound') return { ...queued, queuedCount: (await store.pending()).length, pendingReconciliation: await store.reconciliationPending() };
     const result = await syncUsage({ repository, store, binding: input.binding, signal: context.signal, deadline: context.deadline,
       collect: captured || input.collect === 'none' ? 'none' : 'incremental', collection,

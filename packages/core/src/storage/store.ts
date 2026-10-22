@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { digestSchema, repositoryIdSchema } from '../domain/capabilities.js';
 import type { ScanBatch, SourceDescriptor, Checkpoint } from '../domain/capabilities.js';
 import { parsePublicRecord } from '../domain/ledger.js';
-import type { PublicRecord } from '../domain/ledger.js';
+import type { ControlRecord, PublicRecord } from '../domain/ledger.js';
 import type { RepositoryContext } from '../git/context.js';
 import { recordHash } from '../ledger/canonical-json.js';
 import { assertDirectory, atomicFile, hasCode, ioError, privateDirectory, readPrivateFile, StoreError, syncDirectory } from './atomic-file.js';
@@ -15,6 +15,7 @@ import type { ProcessNamespaceProbe } from './lock.js';
 import { appendJournal, readJournal, validateEntry, validateAttributionAssociations } from './journal.js';
 import type { AttributionMetadata } from '../collection/metadata.js';
 import type { JournalEntry } from './journal.js';
+import { readControls, writeControl } from './controls.js';
 import { latestCheckpoint, latestCheckpointCandidate, writeCheckpoint } from './checkpoints.js';
 import type { CheckpointScope } from './checkpoints.js';
 
@@ -37,6 +38,8 @@ const pendingConfigurationSchema = z.object({ schemaVersion: z.literal(1), metad
 export type PendingConfiguration = z.infer<typeof pendingConfigurationSchema>;
 const reconciliationSchema = z.object({ schemaVersion: z.literal(1), pending: z.boolean(), automaticSourceOffset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) }).strict();
 export interface LocalStore {
+  controls(): Promise<ControlRecord[]>;
+  commitControl(record: ControlRecord): Promise<void>;
   reconciliationPending(): Promise<boolean>;
   automaticSourceOffset(): Promise<number>;
   recordAutomaticSourceOffset(offset: number): Promise<void>;
@@ -61,6 +64,40 @@ export interface LocalStore {
   invalidateCache(): Promise<void>;
 }
 export interface StoreOptions { readonly processNamespace?: ProcessNamespaceProbe; readonly supervisedLeaseToken?: string }
+export interface StoreSnapshot {
+  controls: ControlRecord[];
+  entries: JournalEntry[];
+  pending: PublicRecord[];
+  transport: TransportState | null;
+  pendingConfiguration: PendingConfiguration | null;
+  reconciliationPending: boolean;
+}
+/** Validated, conservatively stale reporting view. No leases, chmod or repair. */
+export async function readStoreSnapshot(ctx: RepositoryContext): Promise<StoreSnapshot> {
+  if (resolve(ctx.privateDir) !== join(await fs.realpath(ctx.commonDir), 'agent-badge')) throw new StoreError('unsafe-store-path');
+  const empty: StoreSnapshot = { controls: [], entries: [], pending: [], transport: null, pendingConfiguration: null, reconciliationPending: false };
+  try { await assertDirectory(ctx.privateDir); } catch (error) { if (hasCode(error, 'ENOENT')) return empty; throw ioError(error); }
+  async function data(name: string): Promise<unknown | null> {
+    try { return JSON.parse(await readPrivateFile(join(ctx.privateDir, name), undefined, true)); }
+    catch (error) { if (hasCode(error, 'ENOENT')) return null; throw ioError(error); }
+  }
+  const acknowledged = await data('acknowledged.json');
+  if (acknowledged !== null && (acknowledged as { schemaVersion?: unknown }).schemaVersion !== 1) throw new StoreError('unsupported-durable-schema');
+  const parsedAck = z.object({ schemaVersion: z.literal(1), hashes: z.array(digestSchema) }).strict().safeParse(acknowledged ?? { schemaVersion: 1, hashes: [] });
+  if (!parsedAck.success) throw new StoreError('invalid-durable-data');
+  let entries: JournalEntry[];
+  try { entries = await readJournal(join(ctx.privateDir, 'journal'), true); } catch (error) { if (!hasCode(error, 'ENOENT')) throw error; entries = []; }
+  const controls = await readControls(ctx.privateDir);
+  const records = new Map<string, PublicRecord>(), hashes = new Set(parsedAck.data.hashes);
+  for (const record of [...entries.flatMap(entry => entry.records), ...controls]) if (!hashes.has(recordHash(record))) records.set(recordHash(record), record);
+  const transport = await data('transport.json'), configuration = await data('pending-configuration.json'), reconciliation = await data('reconciliation.json');
+  for (const value of [transport, configuration, reconciliation]) if (value !== null && typeof value === 'object' && 'schemaVersion' in value && value.schemaVersion !== 1) throw new StoreError('unsupported-durable-schema');
+  const pending = configuration === null ? null : pendingConfigurationSchema.safeParse(configuration);
+  const reconciled = reconciliationSchema.safeParse(reconciliation ?? { schemaVersion: 1, pending: false, automaticSourceOffset: 0 });
+  if ((pending && !pending.success) || !reconciled.success) throw new StoreError('invalid-durable-data');
+  return { controls, entries, pending: [...records.values()], transport: transport === null ? null : parseTransportState(transport),
+    pendingConfiguration: pending?.success ? pending.data : null, reconciliationPending: reconciled.data.pending };
+}
 export async function openStore(ctx: RepositoryContext, options: StoreOptions = {}): Promise<LocalStore> {
   try {
     const common = await fs.realpath(ctx.commonDir);
@@ -155,6 +192,8 @@ class Store implements LocalStore {
       await atomicFile(join(this.root, 'transport.json'), { ...state, commit: state.commit ?? prior?.commit ?? null });
     });
   }
+  async controls(): Promise<ControlRecord[]> { return this.operation(() => readControls(this.root)); }
+  async commitControl(record: ControlRecord): Promise<void> { return this.operation(() => writeControl(this.root, record)); }
   async journal(): Promise<JournalEntry[]> { return this.operation(() => readJournal(join(this.root, 'journal'))); }
   async checkpointCandidate(source: SourceDescriptor): Promise<Checkpoint | null> {
     return this.operation(async () => latestCheckpointCandidate(await readJournal(join(this.root, 'journal')), source));
@@ -205,7 +244,7 @@ class Store implements LocalStore {
     return this.operation(async () => {
       const acknowledged = new Set(await this.acknowledgements());
       const records = new Map<string, PublicRecord>();
-      for (const entry of await readJournal(join(this.root, 'journal'))) for (const record of entry.records) {
+      for (const record of [...(await readJournal(join(this.root, 'journal'))).flatMap(entry => entry.records), ...await readControls(this.root)]) {
         const hash = recordHash(record); if (!acknowledged.has(hash)) records.set(hash, record);
       }
       return [...records].sort(([a], [b]) => a.localeCompare(b)).map(([, record]) => record);
@@ -214,7 +253,7 @@ class Store implements LocalStore {
   async acknowledge(hashes: readonly string[]): Promise<void> {
     const validated = hashes.map(hash => { if (!digestSchema.safeParse(hash).success) throw new StoreError('invalid-batch'); return hash; });
     await this.operation(async () => {
-      const known = new Set((await readJournal(join(this.root, 'journal'))).flatMap(entry => entry.records.map(recordHash)));
+      const known = new Set([...(await readJournal(join(this.root, 'journal'))).flatMap(entry => entry.records), ...await readControls(this.root)].map(recordHash));
       const acknowledged = new Set(await this.acknowledgements());
       for (const hash of validated) if (known.has(hash)) acknowledged.add(hash);
       await atomicFile(join(this.root, 'acknowledged.json'), { schemaVersion: 1, hashes: [...acknowledged].sort() });

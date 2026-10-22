@@ -18,24 +18,11 @@ export async function runContributeCommand(options: ContributeCommandOptions = {
     const snapshot = await store.withLock(AbortSignal.timeout(20000), async () => {
       let meta: LedgerMeta = { schemaVersion: 2, protocolVersion: 1, repositoryId: activation.repositoryId, normalizationVersion: 1, catalogVersion: defaultCatalog.version,
         catalogHash: catalogHash(defaultCatalog), policy: activation.capturePolicy };
-      const records = (await store.journal()).flatMap(entry => entry.records);
+      const records = [...(await store.journal()).flatMap(entry => entry.records), ...await store.controls()];
       const localHashes = records.map(recordHash);
-      const accepted = await store.transportState();
-      if (accepted?.commit) {
-        const git = async (args: string[]) => {
-          const result = await runGit(['--no-replace-objects', ...args], { cwd: repository.worktreeRoot, maxOutputBytes: ENVELOPE_MAX_BYTES + 1 });
-          if (result.status !== 'ok') throw new Error('Accepted ledger unavailable; synchronize before exporting.');
-          return result.stdout;
-        };
-        if ((await git(['rev-parse', '--verify', `refs/agent-badge/accepted/${accepted.commit}`])).trim() !== accepted.commit) throw new Error('Accepted ledger unavailable.');
-        const listing = await git(['ls-tree', '-r', '-z', accepted.commit]);
-        for (const line of listing.split('\0').filter(Boolean)) {
-          const match = /^100644 blob ([a-f0-9]{40}|[a-f0-9]{64})\t(meta\.json|(?:observations|controls)\/[a-f0-9]{2}\/[a-f0-9]{64}\.json)$/.exec(line);
-          if (!match) continue;
-          const data = JSON.parse(await git(['cat-file', 'blob', match[1]]));
-          if (match[2] === 'meta.json') meta = parseLedgerMeta(data); else records.push(parsePublicRecord(data));
-        }
-      }
+      const { readStoreSnapshot, loadLocalAccepted } = await import('@legotin/agent-badge-core');
+      const accepted = await loadLocalAccepted(repository, await readStoreSnapshot(repository), AbortSignal.timeout(20000), Date.now()+20000);
+      if (accepted) { meta = accepted.meta; records.push(...accepted.records); }
       return { meta, records, localHashes };
     });
     meta = snapshot.meta; records = snapshot.records; selectedHashes ??= snapshot.localHashes;

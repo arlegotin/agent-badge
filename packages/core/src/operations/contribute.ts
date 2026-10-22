@@ -56,7 +56,7 @@ export function exportContribution(options: ContributionOptions): ContributionEn
     const record = all.get(hash); if (!record) throw new ProtocolError('invalid-record');
     units.add('kind' in record ? record.targetUnitKey : record.unitKey);
   }
-  for (const [hash, record] of all) if ('kind' in record && units.has(record.targetUnitKey)) selected.add(hash);
+  for (const [hash, record] of all) if (units.has('kind' in record ? record.targetUnitKey : record.unitKey)) selected.add(hash);
   const queue = [...selected];
   while (queue.length) {
     const record = all.get(queue.pop()!)!;

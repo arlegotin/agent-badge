@@ -1,144 +1,44 @@
-# Install
+# Installation
 
-`agent-badge` is npm-initializer-first. The default path is a shared runtime with minimal repo artifacts, and explicit package installation stays available as an alternative.
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Candidate artifacts and external release gates remain pending.
 
-If your requirement is "works on the first try without debugging", use only the sequence under **First-Shot Recommended Path**. The one-line initializer path is best-effort and can defer publish or report shared runtime repair guidance.
+Use Node.js **24 or 26** (`^24.0.0 || ^26.0.0`), npm and Git. A globally installed Badge runtime is unnecessary. Each repository owns its declaration and exact nested runtime lock; each Git common directory owns private activation. Linked worktrees share that private state, while provider configuration can still require worktree-specific review.
 
-## Setup Model
+After a replacement release, the initializer remains `npm init agent-badge@latest`. Until then use only verified candidate artifacts prepared by maintainers; public `1.1.20` cannot bootstrap this runtime. The source workspace can build and display help without installing or activating this checkout:
 
-There are only two setup actions to remember:
-
-- Once per machine: install the shared runtime so `agent-badge` is callable on `PATH`.
-- In each repo: run `npm init agent-badge@latest` to write `.agent-badge/*`, the managed `.gitignore` entries, the `pre-push` hook, and the README badge wiring.
-- Before live publishing: make GitHub auth available in the shell. That is machine or shell state, not repo-owned setup.
-
-## Requirements
-
-| Requirement | Supported | Why it matters |
-| --- | --- | --- |
-| Node.js | `20.x`, `22.x`, `24.x` | The runtime and initializer are tested in CI on these release lines. |
-| Git repository | required | `agent-badge init` expects to run inside a repo. |
-| Local provider data | `~/.codex` and/or `~/.claude` | The badge only reflects providers that exist on the current machine. |
-| GitHub auth | optional for local setup, required for live publish | Without auth, init finishes locally and defers gist publishing. |
-| Public GitHub Gist | required for live publish | The stable badge URL is backed by a public gist you own. |
-
-If neither `~/.codex` nor `~/.claude` exists, install still succeeds, but the badge will not report meaningful usage until provider data appears.
-
-## First-Shot Recommended Path
-
-If you want setup to succeed in one pass without runtime-resolution surprises, run this sequence in order:
-
-```bash
-# 1) Install shared runtime once on this machine
-npm install -g @legotin/agent-badge@latest
-
-# 2) Refresh shell command cache and verify runtime is callable
-hash -r
-agent-badge --version
-
-# 3) Ensure gist-capable auth is available in this shell
-gh auth status
-gh auth token >/dev/null
-
-# 4) Initialize the current repo
-npm init agent-badge@latest
-
-# 5) Confirm wiring and publish readiness
-agent-badge doctor
-agent-badge status
+```sh
+npm run build
+npm run dev:agent-badge -- --help
 ```
 
-Expected `init` ending for a fully ready first shot:
+For a verified installed candidate, initial setup is explicit:
 
-```text
-- Publish target: created public gist
-- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
+```sh
+agent-badge init --runtime-version <candidate-version> --dry-run
+agent-badge init --runtime-version <candidate-version>
 ```
 
-## Fastest Path
+Review the printed tracked changes, runtime pin and hook action items. Setup does not stage or commit files. Installation uses an exact approved npm lock and integrity with package lifecycle scripts disabled. Retry explicit setup after installation failure. No successful-setup claim is made when a required runtime/hook path is unusable; queued initial history can require a later manual run.
 
-If you already understand the setup model and want the short version, use:
+For another clone of an already configured repository:
 
-Once on this machine:
-
-```bash
-npm install -g @legotin/agent-badge@latest
+```sh
+node .agent-badge/run.cjs setup
+node .agent-badge/run.cjs doctor --json
 ```
 
-In each repo:
+Fresh clones do not inherit runtime approval. Review `.codex/hooks.json`, `.claude/settings.json` and `.gemini/settings.json` in the native provider, grant project trust deliberately, and restart the provider as required. Setup does not grant native trust or mutate global settings. On the inspected Codex source generation, linked worktrees load project hooks from the primary checkout; setup and review that checkout explicitly.
 
-```bash
-npm init agent-badge@latest
+Supported existing pre-push hooks run immediately with streamed complete input and keep control of push failure. Shared/global hooks paths, edited ownership, unsupported hook managers or legacy marker blocks produce action items. Badge only retains a bounded 1 MiB copy until EOF; incomplete, oversized or expired input can skip its own wakeup. Windows automatic hooks are unsupported; use manual collection/sync.
+
+Codex and Claude native handler timeout `10` is seconds. Gemini `10000` is milliseconds. These host cleanup windows do not increase Badge's two-second internal automatic budget.
+
+Optional trusted CI import workflow generation is explicit and performs a bounded remote read to verify the actual GitHub identity and default branch:
+
+```sh
+agent-badge setup --import-workflow
 ```
 
-This path keeps the quick instructions short. It skips the explicit validation and diagnostic steps from **First-Shot Recommended Path**.
+It embeds the exact approved runtime manifest/lock and uses the trusted installed importer. Only credential-free `github.com` destinations with supported canonical HTTPS/SSH identity are accepted. GitHub Enterprise and arbitrary hosts are unsupported for this generator. Review and commit the generated workflow normally; this command does not deploy it or prove hosted permission policy.
 
-That initializer:
-
-- creates `.agent-badge/config.json` and `.agent-badge/state.json`
-- updates `.gitignore` for state, cache, and logs
-- wires a failure-soft `pre-push` refresh hook
-- inserts the badge into `README.md` once a stable badge URL is available
-- does not install repo-local `@legotin/agent-badge`, managed `agent-badge:init` / `agent-badge:refresh` scripts, or repo-local `node_modules` by default
-
-If GitHub auth is already available in the shell, init can create and publish the gist on the same run. If auth is not available yet, local repo setup still completes and publish is deferred until you rerun `agent-badge init` after auth is ready.
-
-When GitHub auth is available and the shared runtime is already on `PATH`, init can finish with:
-
-```text
-- Publish target: created public gist
-- Setup: complete. Shared runtime, pre-push refresh, and live badge publishing are ready.
-```
-
-If GitHub auth is not available yet, init finishes with:
-
-```text
-- Publish target: deferred
-- Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
-- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish. Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT, then rerun `agent-badge init` or connect a public gist with `agent-badge init --gist-id <id>`.
-```
-
-If the shared runtime is not on `PATH` yet (for example, init reports `Shared runtime: unavailable`), install it once globally or user-scoped, run `hash -r`, verify `agent-badge --version`, then rerun `agent-badge init` or `agent-badge doctor`.
-
-## Alternative: Direct Runtime Install
-
-If you do not want the initializer, install `@legotin/agent-badge` directly and run `init` yourself.
-
-| Package manager | Install | Run the CLI |
-| --- | --- | --- |
-| npm | `npm install -D @legotin/agent-badge` | `npx --no-install agent-badge init` |
-| pnpm | `pnpm add -D @legotin/agent-badge` | `pnpm exec agent-badge init` |
-| yarn | `yarn add -D @legotin/agent-badge` | `yarn agent-badge init` |
-| bun | `bun add -d @legotin/agent-badge` | `bunx --bun agent-badge init` |
-
-The managed `pre-push` hook uses the shared command contract directly:
-
-```bash
-agent-badge refresh --hook pre-push --hook-policy fail-soft || true
-```
-
-## Package Names
-
-The npm package names are intentionally split:
-
-- `npm init agent-badge@latest` resolves to `create-agent-badge`
-- `@legotin/agent-badge` is the shared runtime CLI package when you want an explicit install path
-- `@legotin/agent-badge-core` is the published internal library used by the runtime
-
-That split is normal npm initializer behavior. You should expect `create-agent-badge` in `npm init` logs. You should only expect `@legotin/agent-badge` in repo dependencies when you choose the direct install path.
-
-## After Install
-
-Check the current state:
-
-```bash
-agent-badge status
-```
-
-If publish was deferred, follow [Authentication](AUTH.md) and rerun:
-
-```bash
-agent-badge init
-```
-
-If you want the full command reference next, use [CLI.md](CLI.md).
+[CLI](CLI.md) · [Git authentication](AUTH.md) · [Source coverage](ATTRIBUTION.md) · [Recovery](RECOVERY.md).

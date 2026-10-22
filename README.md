@@ -1,99 +1,57 @@
-<h1 align="center">agent-badge</h1>
+# Agent Badge
 
-<p align="center">
-  A README badge showing AI coding-agent usage for a repo:
-</p>
+Local-first AI coding usage, recorded in your repository. Supported local observations become sanitized, immutable receipts on `agent-badge/data`; `summary.json`, a coverage report and `badge.svg` are derived from that ledger.
 
-<p align="center">
-  <a href="https://github.com/arlegotin/agent-badge">
-    <img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge.json&cacheSeconds=300" alt="AI burn badge">
-  </a>
-</p>
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Candidate artifacts and external release gates remain pending.
 
-<p align="center">
-  The badge reflects how many tokens were spent on development.
-</p>
+## Repository setup
 
----
+Requires Node.js 24 or 26, npm and Git. Install a verified candidate runtime before using the command examples below. For development, build the workspace and inspect the CLI:
 
-## What is it
-
-`agent-badge` is an open-source CLI that adds a GitHub README badge showing **AI coding-agent usage** for a repo. It currently supports **Claude Code** and **OpenAI Codex**, shows **aggregate tokens + estimated cost**, and publishes **aggregate badge data only** — not prompts, transcripts, filenames, or local paths.
-
-## 60-Second Path
-
-Do this once:
-
-```bash
-# install the package globally:
-npm install -g @legotin/agent-badge@latest
+```sh
+npm run build
+npm run dev:agent-badge -- --help
 ```
 
-Do this in each repo:
+The initializer entry point remains:
 
-```bash
-# ensure GitHub authentication:
-gh auth token >/dev/null
-
-# add badge to the repo:
+```sh
 npm init agent-badge@latest
 ```
 
-That is the quick install path: shared runtime once per machine, then in each repo confirm GitHub auth in the current shell and run init.
+That is the intended public setup command **after the replacement is released**. Today `@latest` does not install this replacement. Do not use the old release to activate a candidate repository. [Installation](docs/INSTALL.md) explains local activation and exact runtime approval.
 
-For full support details, use [docs/INSTALL.md](docs/INSTALL.md), [docs/QUICKSTART.md](docs/QUICKSTART.md), and [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#shared-runtime-could-not-be-validated).
+Once a candidate is installed, each clone explicitly activates the repository setup:
 
-## What Gets Published
+```sh
+node .agent-badge/run.cjs setup
+node .agent-badge/run.cjs status --json
+node .agent-badge/run.cjs collect --full
+node .agent-badge/run.cjs sync
+```
 
-`agent-badge` publishes aggregate badge JSON and shared metadata only.
+Setup plans tracked configuration, a nested exact runtime lock, launcher, instructions and a managed README badge linked to data/coverage. It installs an approved runtime and recovery state under Git's common directory. It preserves the repository's package scripts and delegates existing supported hooks. Native provider project trust and hook review remain local user steps.
 
-It does NOT publish prompts, transcripts, filenames, or local paths.
+## What the numbers mean
 
-## Badge Examples
+All recorded work attributed to the repository counts, including abandoned branches and work that never merges. Squash, rebase, revert and code-branch deletion do not erase usage. Multiple contributors and worktrees union immutable identities rather than summing copied sessions. Unknown coverage, unsupported sources and unknown prices remain explicit. Costs are current-catalog API-equivalent estimates, never invoices or productivity measures.
 
-The badge at the top of this README is live. The gallery below also uses live repo data everywhere, with Shields query overrides for style, label, and color previews.
+Collection runs where the coding agent runs. CI cannot discover histories on someone else's machine. Codex has a pinned final-request reader; Gemini saved successful requests have partial coverage and recognized Gemini models remain unpriced. Native Claude numeric amounts are omitted. OpenCode candidates, Cursor and Copilot do not have certified numeric accounting in this release. See [source support and exact pins](docs/ATTRIBUTION.md).
 
-| Badge | Command |
-| --- | --- |
-| [![AI burn](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined` |
-| [![AI Receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-tokens.json&cacheSeconds=300&label=AI%20Receipt)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode tokens`<br>`agent-badge config set badge.label "AI Receipt"` |
-| [![AI spent](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300&label=AI%20spent)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI spent"` |
-| [![AI Spend](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Spend&style=flat-square&color=teal)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.label "AI Spend"`<br>`agent-badge config set badge.style flat-square`<br>`agent-badge config set badge.color teal` |
-| [![AI Bill](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Bill&style=plastic&color=royalblue)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.label "AI Bill"`<br>`agent-badge config set badge.style plastic`<br>`agent-badge config set badge.color royalblue` |
-| [![AI Receipt](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Receipt&style=for-the-badge&color=%23ff69b4)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.label "AI Receipt"`<br>`agent-badge config set badge.style for-the-badge`<br>`agent-badge config set badge.color "#ff69b4"` |
-| [![AI spent](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-cost.json&cacheSeconds=300&label=AI%20spent&color=orange)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode cost`<br>`agent-badge config set badge.label "AI spent"`<br>`agent-badge config set badge.color orange` |
-| [![AI Bill](https://img.shields.io/endpoint?url=https%3A%2F%2Fgist.githubusercontent.com%2Farlegotin%2Ff9f1989fe5ddd0f04e25df81c6dd051e%2Fraw%2Fagent-badge-combined.json&cacheSeconds=300&label=AI%20Bill&color=red&style=for-the-badge)](https://github.com/arlegotin/agent-badge) | `agent-badge config set badge.mode combined`<br>`agent-badge config set badge.label "AI Bill"`<br>`agent-badge config set badge.color red`<br>`agent-badge config set badge.style for-the-badge` |
+## Privacy and synchronization
 
-When the configuration changes, run `agent-badge refresh`.
+Public receipts contain scoped opaque hashes, allowlisted provider/model/meter fields and causal controls. Prompts, transcripts, source paths, filenames, credentials and raw provider IDs never enter outbound artifacts or Git metadata. Private discovery, attribution, journals and checkpoints stay under `<git-common-dir>/agent-badge/`.
+
+Normal sync preserves the user's index, worktree, HEAD, stash and code refs, uses normal Git authentication, and fast-forwards only `refs/heads/agent-badge/data`. Automatic wakeups have a two-second total budget; incomplete work stays pending. No force push, Gist or hosted Badge service is needed.
+
+Forks collect locally when their destination differs from the declaration. `contribute` writes a sanitized immutable envelope for a normal PR; trusted default-branch import accepts it in confirmed batches. Only accepted contributions affect upstream. [Fork contribution protocol](docs/superpowers/specs/2026-10-22-fork-contribution-import.md).
+
+The ledger contains an SVG. For canonical GitHub destinations, setup embeds a fixed public `raw.githubusercontent.com/OWNER/REPO/refs/heads/agent-badge/data/badge.svg` image linked to the data-branch report. Other hosts receive an unsupported-image/report-only result. Hosting caches are separate from confirmed usage synchronization. Authenticated/private image rendering is an unverified external gate. [How it works](docs/HOW-IT-WORKS.md).
 
 ## Documentation
 
-### User Docs
+[Install](docs/INSTALL.md) · [Quickstart](docs/QUICKSTART.md) · [CLI](docs/CLI.md) · [Configuration](docs/CONFIGURATION.md) · [Attribution](docs/ATTRIBUTION.md) · [Privacy](docs/PRIVACY.md) · [Git authentication](docs/AUTH.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Recovery](docs/RECOVERY.md) · [Uninstall](docs/UNINSTALL.md) · [FAQ](docs/FAQ.md).
 
-- [Install](docs/INSTALL.md)
-- [Authentication](docs/AUTH.md)
-- [Quickstart](docs/QUICKSTART.md)
-- [CLI Reference](docs/CLI.md)
-- [Configuration](docs/CONFIGURATION.md)
-- [How It Works](docs/HOW-IT-WORKS.md)
-- [Attribution Model](docs/ATTRIBUTION.md)
-- [Privacy Model](docs/PRIVACY.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Recovery Runbook](docs/RECOVERY.md)
-- [Manual Gist Connection](docs/MANUAL-GIST.md)
-- [Uninstall](docs/UNINSTALL.md)
-- [FAQ](docs/FAQ.md)
+[Design and implementation status](docs/superpowers/specs/2026-10-22-repo-native-design.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Release maintenance](docs/maintainers/RELEASE.md).
 
-### Maintainer Docs
-
-- [Release Process](docs/maintainers/RELEASE.md)
-- [Changelog](CHANGELOG.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security](SECURITY.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-
-## Contributing
-
-If you think AI-assisted work should be visible and measurable, you’re in the right repo.
-
-The maintainer workflow and support boundary live in [CONTRIBUTING.md](CONTRIBUTING.md).
+Licensed under [Apache-2.0](LICENSE). No release or deployment is authorized by this refactor.

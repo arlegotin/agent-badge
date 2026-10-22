@@ -145,8 +145,7 @@ async function project(
 }> {
   const prior = priorDecisions(entries),
     known = new Map(
-      entries
-        .flatMap((entry) => entry.records)
+      [...entries.flatMap((entry) => entry.records), ...await options.store.controls()]
         .map((record) => [recordHash(record), record])
     );
   const records: PublicRecord[] = [],

@@ -2,8 +2,13 @@ import { createHash } from 'node:crypto';
 import type { SharedPolicy, PrivateAttributionPolicy, RemoteBinding } from '@legotin/agent-badge-core';
 
 export const NODE_RANGE = '^24.0.0 || ^26.0.0';
+export const UNSUPPORTED_NODE_MESSAGE = 'agent-badge requires Node 24 or 26.';
+export class UnsupportedNodeError extends Error {
+  readonly code = 'unsupported-node';
+  constructor() { super(UNSUPPORTED_NODE_MESSAGE); this.name = 'UnsupportedNodeError'; }
+}
 export function assertSupportedNode(version = process.versions.node): void {
-  if (!/^(24|26)\./.test(version)) throw new Error('agent-badge requires Node 24 or 26.');
+  if (!/^(24|26)\./.test(version)) throw new UnsupportedNodeError();
 }
 export function assertExactVersion(version: string): void {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Runtime version must be exact.');

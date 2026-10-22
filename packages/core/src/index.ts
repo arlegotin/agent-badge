@@ -44,3 +44,8 @@ export { loadCapturePolicy } from './operations/capture-policy.js';
 
 export * from "./operations/contribute.js";
 export * from "./operations/contribution-workflow.js";
+export * from './operations/integration-port.js';
+export * from './operations/status.js';
+export * from './operations/doctor.js';
+export * from './operations/uninstall.js';
+export { observationEvidenceHash } from './collection/metadata.js';

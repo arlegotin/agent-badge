@@ -32,7 +32,7 @@ export async function syncDirectory(path: string): Promise<void> {
   const handle = await fs.open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try { await handle.sync(); } finally { await handle.close(); }
 }
-export async function readPrivateFile(path: string, maxBytes = 32 * 1024 * 1024): Promise<string> {
+export async function readPrivateFile(path: string, maxBytes = 32 * 1024 * 1024, readOnly = false): Promise<string> {
   try {
     await assertDirectory(dirname(path));
     const handle = await fs.open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -40,7 +40,7 @@ export async function readPrivateFile(path: string, maxBytes = 32 * 1024 * 1024)
       const info = await handle.stat();
       if (!info.isFile() || info.size > maxBytes || (process.getuid && info.uid !== process.getuid()))
         throw new StoreError('invalid-durable-data');
-      await handle.chmod(0o600);
+      if (!readOnly) await handle.chmod(0o600);
       return await handle.readFile('utf8');
     } finally { await handle.close(); }
   } catch (error) { if (hasCode(error, 'ENOENT')) throw error; throw ioError(error); }

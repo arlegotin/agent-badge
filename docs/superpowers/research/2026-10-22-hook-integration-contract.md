@@ -180,3 +180,13 @@ Core's lightweight `operations/supervisor` and worker-only `operations/worker`
 subpaths support the single approved runtime worker. The parent derives lease
 cleanup authority from its installed private module path; the child verifies Git
 common-directory membership, declaration/pin and approved runtime before capture.
+
+Task16 operational reporting/removal composes these owning APIs through a core
+integration port. Missing inspection remains not-inspected; required doctor checks
+cannot pass without it. Explicit uninstall removes validated activation first and
+then exact owned integrations. Edited or interrupted third-state snapshots retain
+recovery evidence and return static unresolved codes. Provider integration leases
+are acquired internally; callers must not nest the same lease. Unsynced journals,
+source-free causal controls, accepted anchors, unknown files and active/unknown
+leases remain. Native host timeout units are Codex/Claude10 **seconds** and
+Gemini10000 **milliseconds**; Badge's internal automatic budget stays2seconds.

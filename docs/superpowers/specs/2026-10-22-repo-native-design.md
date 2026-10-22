@@ -1,6 +1,6 @@
 # Repository-native agent-badge: breaking redesign
 
-Status: proposed design for review; product implementation has not started.
+Status: approved and implemented through Tasks 1–16 on the refactor branch; Task 17 performance/legacy removal and Task 18 candidate artifact/release preparation remain. No replacement release or deployment has occurred. Hosted GitHub policy, Linux/Windows and authenticated private-image gates remain unverified.
 Research date: 2026-10-22. Baseline: `d209a47` / npm packages `1.1.20`.
 Working branch: `refactor/repo-native-agent-badge`.
 
@@ -22,8 +22,7 @@ AI-authored lines, or an invoice. Coverage is explicitly partial when a source i
 unavailable or cannot be interpreted safely.
 
 The user requested a comprehensive breaking refactor, delegated the storage choice,
-and asked for the simplest metric to maintain with minimum risk. These architecture
-choices are recommendations, not claims that the user selected their details.
+and asked for the simplest metric to maintain with minimum risk. The architecture was approved for implementation; its source-specific capability limits are documented in the current provider contracts.
 
 ## 2. Storage alternatives and recommendation
 

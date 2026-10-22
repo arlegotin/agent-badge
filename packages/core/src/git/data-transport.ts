@@ -218,52 +218,9 @@ export class DataTransport {
       (await this.require(["cat-file", "-t", commit])).trim() !== "commit"
     )
       throw new ProtocolError("invalid-object-type");
-    const listing = await this.require(
-      ["ls-tree", "-r", "-t", "-z", "-l", "--full-tree", commit],
-      { maxOutputBytes: Number.MAX_SAFE_INTEGER }
-    );
-    const entries: PublicTreeEntry[] = [],
-      directories: string[] = [];
-    const paths = new Set<string>();
-    for (const line of listing.split("\0").filter(Boolean)) {
-      this.options.signal.throwIfAborted();
-      const match = /^(\d{6}) (\w+) ([a-f0-9]+) +(-|\d+)\t(.+)$/.exec(line);
-      if (!match) throw new ProtocolError("invalid-path");
-      const [, mode, objectType, oid, size, path] = match;
-      if (paths.has(path)) throw new ProtocolError("invalid-path");
-      paths.add(path);
-      if (
-        mode === "040000" &&
-        objectType === "tree" &&
-        /^(?:observations|controls)(?:\/[a-f0-9]{2})?$/.test(path)
-      ) {
-        directories.push(path);
-        continue;
-      }
-      validatePublicBlob(path, mode, new Uint8Array(), objectType);
-      if (!/^\d+$/.test(size) || Number(size) > PUBLIC_OBJECT_MAX_BYTES)
-        throw new ProtocolError("object-too-large");
-      const bytes = Buffer.from(
-        await this.require(["cat-file", "blob", oid], {
-          maxOutputBytes: PUBLIC_OBJECT_MAX_BYTES + 1,
-        }),
-        "utf8"
-      );
-      if (bytes.length !== Number(size))
-        throw new ProtocolError("invalid-record");
-      entries.push({ path, mode, objectType, bytes });
-    }
-    if (
-      directories.some(
-        (path) => !entries.some((entry) => entry.path.startsWith(`${path}/`))
-      )
-    )
-      throw new ProtocolError("invalid-path");
-    return {
-      ...validateLedgerTree(entries, undefined, this.options.signal),
-      commit,
-    };
+    return readLedgerCommit(this.options.repository, commit, this.options);
   }
+
   async assertDescendant(
     commit: string,
     accepted: string,
@@ -417,4 +374,66 @@ export class DataTransport {
     );
     await rm(this.directory, { recursive: true, force: true });
   }
+}
+
+
+/** Validate an immutable local tree using the same boundary as fetched ledgers. No refs/network writes. */
+export async function readLedgerCommit(repository: RepositoryContext, commit: string,
+  options: { signal: AbortSignal; deadline: number }): Promise<AcceptedLedger> {
+  if (!oidPattern.test(commit)) throw new ProtocolError('invalid-record');
+  const signal = options.signal;
+  async function require(args: readonly string[], extra: Partial<GitRunOptions> = {}): Promise<string> {
+    signal.throwIfAborted();
+    const result = await runGit(['--no-replace-objects', '-c', 'core.hooksPath=/dev/null', ...args], {
+      ...extra, cwd: repository.worktreeRoot, signal, timeoutMs: Math.max(1, options.deadline - Date.now()), env: { GIT_NO_REPLACE_OBJECTS: '1' },
+    });
+    if (result.status !== 'ok') throw new TransportError('unavailable');
+    return result.stdout;
+  }
+  if ((await require(['cat-file','-t',commit])).trim() !== 'commit') throw new ProtocolError('invalid-object-type');
+    const listing = await require(
+      ["ls-tree", "-r", "-t", "-z", "-l", "--full-tree", commit],
+      { maxOutputBytes: Number.MAX_SAFE_INTEGER }
+    );
+    const entries: PublicTreeEntry[] = [],
+      directories: string[] = [];
+    const paths = new Set<string>();
+    for (const line of listing.split("\0").filter(Boolean)) {
+      signal.throwIfAborted();
+      const match = /^(\d{6}) (\w+) ([a-f0-9]+) +(-|\d+)\t(.+)$/.exec(line);
+      if (!match) throw new ProtocolError("invalid-path");
+      const [, mode, objectType, oid, size, path] = match;
+      if (paths.has(path)) throw new ProtocolError("invalid-path");
+      paths.add(path);
+      if (
+        mode === "040000" &&
+        objectType === "tree" &&
+        /^(?:observations|controls)(?:\/[a-f0-9]{2})?$/.test(path)
+      ) {
+        directories.push(path);
+        continue;
+      }
+      validatePublicBlob(path, mode, new Uint8Array(), objectType);
+      if (!/^\d+$/.test(size) || Number(size) > PUBLIC_OBJECT_MAX_BYTES)
+        throw new ProtocolError("object-too-large");
+      const bytes = Buffer.from(
+        await require(["cat-file", "blob", oid], {
+          maxOutputBytes: PUBLIC_OBJECT_MAX_BYTES + 1,
+        }),
+        "utf8"
+      );
+      if (bytes.length !== Number(size))
+        throw new ProtocolError("invalid-record");
+      entries.push({ path, mode, objectType, bytes });
+    }
+    if (
+      directories.some(
+        (path) => !entries.some((entry) => entry.path.startsWith(`${path}/`))
+      )
+    )
+      throw new ProtocolError("invalid-path");
+    return {
+      ...validateLedgerTree(entries, undefined, signal),
+      commit,
+    };
 }

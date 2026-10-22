@@ -1,24 +1,13 @@
-# Security Policy
+# Security
 
-If you believe you found a security, privacy, or credential-handling issue in `agent-badge`, do not include exploit details, tokens, or private transcript data in a public issue.
+Use GitHub private vulnerability reporting for this repository rather than publishing sensitive evidence in an issue. Reports should use synthetic reproductions and static diagnostic codes. Never attach private agent histories, prompts, transcripts, credentials, local source paths or provider session IDs.
 
-## Reporting
+The repository-native replacement is an unreleased breaking candidate. It validates outbound schemas, bounded input objects, opaque identities, causal closure and immutable data trees; private discovery/checkpoints stay in Git's common directory. Normal Git authentication authorizes repository writers but does not attest the truth of their self-reported usage. Hashes provide identity/integrity, not billing verification.
 
-- use GitHub's private vulnerability reporting flow if it is enabled for this repository
-- if private reporting is unavailable, open a minimal public issue requesting a private contact path without posting sensitive details
+Review exact runtime pins and native project hooks before activation. Setup never grants native trust, edits global provider settings or treats hook payloads as numeric receipts. Automatic operations use a two-second total supervisor budget; Windows automatic hooks are unsupported. Keep Git/Node/provider tools updated according to their own security guidance.
 
-## Scope
+Trusted contribution CI imports accepted sanitized blobs using the approved installed runtime and lock; it does not execute Badge code from a proposal checkout. Remote doctor is read-only and does not probe credentials or write permissions. Private image rendering, actual hosted policy, and Linux/Windows/private-image gates require external verification before claims are made.
 
-Security-relevant reports include:
+Uninstall removes exact owned activation/integrations and retains unsynced journals, accepted history, unknown files and active/unknown leases. Edited ownership or interrupted third-state snapshots require action. Do not discard evidence or reseed shared history from a possibly stale private backup.
 
-- accidental publication of prompts, transcripts, filenames, or local paths
-- incorrect gist ownership or auth handling
-- unsafe deletion or overwrite behavior
-- secrets exposure in logs or command output
-
-Please include:
-
-- the affected version
-- the command you ran
-- a sanitized reproduction
-- whether the issue affects local state, published gist content, or both
+[Privacy](docs/PRIVACY.md) · [Recovery](docs/RECOVERY.md) · [Release maintenance](docs/maintainers/RELEASE.md).

@@ -1,4 +1,4 @@
-import { readFile, lstat } from 'node:fs/promises';
+import { readFile, lstat, rm } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -63,4 +63,32 @@ export async function runApprovedOperation(options: { cwd: string; privateDir?: 
       input: { cwd: options.cwd, privateDir, mode: budget.mode, target: options.target } });
   } catch { options.onDiagnostic?.('agent-badge: local work queued.'); return { status: 'queued' as const, exitCode: budget.mode === 'automatic' ? 0 : 1, acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true }; }
   finally { budget.dispose(); }
+}
+
+/** Deactivate owned approval before integration cleanup. Installed runtime/journal/leases stay intact. */
+export async function deactivateRuntime(repository: import('@legotin/agent-badge-core').RepositoryContext): Promise<{deactivated:boolean;unresolved:string[]}> {
+  try { const info = await lstat(repository.privateDir); if (!info.isDirectory() || info.isSymbolicLink() || (process.getuid && info.uid !== process.getuid())) throw new Error('Unsafe private activation.'); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {deactivated:true,unresolved:[]}; throw error; }
+  const activation = await loadActivation(repository.privateDir);
+  const bootstrap = await read(join(repository.privateDir,'bootstrap.cjs'));
+  const unresolved: string[] = [];
+  if (activation) {
+    // Validation/snapshot happens before deleting only this owner's approval file.
+    const core = await import('@legotin/agent-badge-core');
+    core.parsePrivateAttributionPolicy(activation.privatePolicy); core.parseSharedPolicy(activation.capturePolicy);
+    await rm(join(repository.privateDir,'local.json'));
+    const { bootstrapSource } = await import('./templates.js');
+    if (bootstrap === bootstrapSource.replace('APPROVED_RUNTIME_HASH',activation.lockHash)) await rm(join(repository.privateDir,'bootstrap.cjs'));
+    else if (bootstrap !== null) unresolved.push('bootstrap-edited');
+  } else if (bootstrap !== null) unresolved.push('bootstrap-owner-unavailable');
+  return {deactivated:true,unresolved};
+}
+
+/** Read-only operational inspection additionally verifies the owned bootstrap path. */
+export async function inspectActivation(options: Parameters<typeof checkActivation>[0]): Promise<ActivationCheck> {
+  const checked = await checkActivation(options);
+  if (checked.status !== 'approved') return checked;
+  const { bootstrapSource } = await import('./templates.js');
+  if (await read(join(checked.privateDir,'bootstrap.cjs')) !== bootstrapSource.replace('APPROVED_RUNTIME_HASH',checked.activation.lockHash)) return {status:'suspended'};
+  return checked;
 }
