@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { diagnosticSchema, digestSchema, modelIdSchema, parseProtocol, privateStringSchema,
+import { diagnosticSchema, digestSchema, modelIdSchema, parseProtocol, parsePublicProtocol, privateStringSchema,
   providerIdSchema, repositoryIdSchema, safeCounterSchema, vendorIdSchema } from "./capabilities.js";
 
 const dimension = safeCounterSchema.nullable();
@@ -79,5 +79,5 @@ export function parseObservation(input: unknown): UsageObservation {
   return parseProtocol(usageObservationSchema, input);
 }
 export function parsePublicObservation(input: unknown): PublicObservation {
-  return parseProtocol(publicObservationSchema, input);
+  return parsePublicProtocol(publicObservationSchema, input);
 }

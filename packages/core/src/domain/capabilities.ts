@@ -11,6 +11,7 @@ export const safeCounterSchema = z.number().int().nonnegative().max(Number.MAX_S
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const repositoryIdSchema = z.uuid().regex(/^[a-f0-9-]{36}$/);
 export const privateStringSchema = z.string().min(1).max(4096);
+export const PUBLIC_OBJECT_MAX_BYTES = 256 * 1024;
 export const diagnosticCodeSchema = z.enum(["invalid-record", "object-too-large", "envelope-too-large",
   "too-many-objects", "invalid-path", "invalid-object-type", "unsupported-contract", "unsupported-source",
   "unavailable-source", "incomplete-source", "unknown-model", "uncertain-lineage", "repository-mismatch",
@@ -38,6 +39,14 @@ export function parseProtocol<T>(schema: z.ZodType<T>, input: unknown): T {
     // Even malformed objects with throwing accessors cannot echo private input.
   }
   throw new ProtocolError("invalid-record");
+}
+
+/** Apply the outbound byte cap after structural validation has removed raw input. */
+export function parsePublicProtocol<T>(schema: z.ZodType<T>, input: unknown): T {
+  const record = parseProtocol(schema, input);
+  if (Buffer.byteLength(JSON.stringify(record), "utf8") > PUBLIC_OBJECT_MAX_BYTES)
+    throw new ProtocolError("object-too-large");
+  return record;
 }
 
 export const sourceDescriptorSchema = z.object({ provider: providerIdSchema, instanceKey: privateStringSchema,

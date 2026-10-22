@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { digestSchema, parseProtocol, ProtocolError, repositoryIdSchema, safeCounterSchema } from "./capabilities.js";
+import { digestSchema, parseProtocol, parsePublicProtocol, ProtocolError, PUBLIC_OBJECT_MAX_BYTES, repositoryIdSchema, safeCounterSchema } from "./capabilities.js";
 import { sharedPolicySchema } from "./policy.js";
 import { publicObservationSchema } from "./usage.js";
 
-export const PUBLIC_OBJECT_MAX_BYTES = 256 * 1024;
+export { PUBLIC_OBJECT_MAX_BYTES } from "./capabilities.js";
 export const ENVELOPE_MAX_BYTES = 10 * 1024 * 1024;
 export const ENVELOPE_MAX_OBJECTS = 10_000;
 const controlFields = { schemaVersion: z.literal(2), normalizationVersion: z.literal(1),
@@ -19,9 +19,7 @@ export type ControlRecord = z.infer<typeof controlRecordSchema>;
 export const publicRecordSchema = z.union([publicObservationSchema, controlRecordSchema]);
 export type PublicRecord = z.infer<typeof publicRecordSchema>;
 export function parsePublicRecord(input: unknown): PublicRecord {
-  const record = parseProtocol(publicRecordSchema, input);
-  if (Buffer.byteLength(JSON.stringify(record), "utf8") > PUBLIC_OBJECT_MAX_BYTES) throw new ProtocolError("object-too-large");
-  return record;
+  return parsePublicProtocol(publicRecordSchema, input);
 }
 export const ledgerMetaSchema = z.object({ schemaVersion: z.literal(2), protocolVersion: z.literal(1),
   repositoryId: repositoryIdSchema, normalizationVersion: z.literal(1),

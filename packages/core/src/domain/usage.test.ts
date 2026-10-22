@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { protocolObservationFixture } from "@agent-badge/testkit";
-import { parseObservation, meterSegmentSchema } from "./usage.js";
-import { checkpointSchema } from "./capabilities.js";
+import { parseObservation, parsePublicObservation, meterSegmentSchema } from "./usage.js";
+import { checkpointSchema, ProtocolError } from "./capabilities.js";
 import { parseSharedPolicy } from "./policy.js";
 import { parsePublicRecord, parseLedgerMeta, validatePublicBlob as validateBlob, validateEnvelope } from "./ledger.js";
 import { createAccountingRegistry, getAccountingContract } from "../providers/registry.js";
@@ -92,6 +92,16 @@ describe("strict accounting protocol", () => {
     expect(() => validatePublicBlob("observations/aa/" + "a".repeat(64) + ".json", "100644", Buffer.alloc(1))).not.toThrow();
     const record = sanitizeObservation(parseObservation(protocolObservationFixture()), parseSharedPolicy(policy));
     expect(() => parsePublicRecord({ ...record, meters: Array.from({ length: 1024 }, () => record.meters[0]) })).toThrow("object-too-large");
+  });
+  it("enforces the public byte limit through the observation-only parser", () => {
+    const observation = sanitizeObservation(parseObservation(protocolObservationFixture()), parseSharedPolicy(policy));
+    expect(parsePublicObservation(observation)).toEqual(observation);
+    const oversized = { ...observation, meters: Array.from({ length: 1024 }, () => observation.meters[0]) };
+    expect(Buffer.byteLength(JSON.stringify(oversized), "utf8")).toBeGreaterThan(256 * 1024);
+    expect(() => parsePublicObservation(oversized)).toThrow(ProtocolError);
+    try { parsePublicObservation(oversized); } catch (error) {
+      expect(error).toMatchObject({ message: "object-too-large", diagnostic: { code: "object-too-large", severity: "error" } });
+    }
   });
 });
 
