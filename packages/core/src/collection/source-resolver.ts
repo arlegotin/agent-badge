@@ -45,7 +45,10 @@ export async function resolveAttributionEvidence(
     evidence.nested =
       nearest.commonDir !== repository.commonDir &&
       (nearest.superprojectRoot !== null ||
-        containsPath(repository.worktreeRoot, nearest.worktreeRoot));
+        [
+          repository.worktreeRoot,
+          ...repository.worktrees.map((worktree) => worktree.path),
+        ].some((root) => containsPath(root, nearest.worktreeRoot)));
     const remote = await runGit(["remote", "get-url", "origin"], {
       cwd: nearest.worktreeRoot,
       timeoutMs: 500,
@@ -98,9 +101,7 @@ export interface DiscoverOptions {
   target?: SourceTarget;
 }
 /** Hints filter discovered identities. They never become a SourceDescriptor or grant path access. */
-export async function discoverSources(
-  options: DiscoverOptions
-): Promise<{
+export async function discoverSources(options: DiscoverOptions): Promise<{
   sources: { source: SourceDescriptor; adapter: ProviderAdapter }[];
   outcomes: SourceOutcome[];
 }> {

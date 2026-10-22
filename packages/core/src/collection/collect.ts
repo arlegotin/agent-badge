@@ -24,7 +24,10 @@ import {
   parsePrivateAttributionPolicy,
 } from "./attribution.js";
 import type { PrivateAttributionPolicy } from "./attribution.js";
-import { observationEvidenceHash } from "./metadata.js";
+import {
+  ATTRIBUTION_METADATA_MAX_BYTES,
+  observationEvidenceHash,
+} from "./metadata.js";
 import type { AttributionDecision, AttributionMetadata } from "./metadata.js";
 import {
   discoverSources,
@@ -61,11 +64,18 @@ function priorDecisions(entries: readonly JournalEntry[]): Map<string, Prior> {
   const result = new Map<string, Prior>();
   for (const entry of entries)
     if (entry.attribution)
-      for (const decision of entry.attribution.decisions)
+      for (const decision of entry.attribution.decisions) {
+        const established = result.get(decision.observationHash)?.decision
+          .verifiedCommonDir;
         result.set(decision.observationHash, {
-          decision,
+          decision: {
+            ...decision,
+            verifiedCommonDir:
+              decision.verifiedCommonDir ?? established ?? null,
+          },
           metadata: entry.attribution,
         });
+      }
   return result;
 }
 function relevantPolicyChanged(
@@ -122,7 +132,11 @@ async function project(
   privatePolicy: PrivateAttributionPolicy,
   scope: CheckpointScope,
   historical = false
-): Promise<{ records: PublicRecord[]; metadata: AttributionMetadata }> {
+): Promise<{
+  records: PublicRecord[];
+  metadata: AttributionMetadata;
+  metadataChanged: boolean;
+}> {
   const prior = priorDecisions(entries),
     known = new Map(
       entries
@@ -203,7 +217,7 @@ async function project(
           result.reason === "git-membership" ||
           result.reason === "historical-membership"
             ? options.repository.commonDir
-            : null,
+            : previous?.decision.verifiedCommonDir ?? null,
       };
     }
     decisions.push(decision);
@@ -311,6 +325,11 @@ async function project(
   const { verifiedWorktrees: _, ...snapshot } = privatePolicy;
   return {
     records,
+    metadataChanged: decisions.some(
+      (decision) =>
+        prior.get(decision.observationHash)?.metadata.policyHash !==
+        scope.attributionPolicyHash
+    ),
     metadata: {
       schemaVersion: 1,
       policyHash: scope.attributionPolicyHash,
@@ -318,6 +337,54 @@ async function project(
       decisions,
     },
   };
+}
+
+/** Partition persistence independently of unit reduction, including a single unit's long history. */
+function boundedChunks<T>(
+  values: readonly T[],
+  baseBytes: number,
+  maxBytes: number
+): T[][] {
+  if (baseBytes > maxBytes) throw new ProtocolError("object-too-large");
+  const chunks: T[][] = [[]];
+  let bytes = baseBytes;
+  for (const value of values) {
+    const valueBytes = Buffer.byteLength(JSON.stringify(value), "utf8");
+    if (baseBytes + valueBytes > maxBytes)
+      throw new ProtocolError("object-too-large");
+    let chunk = chunks[chunks.length - 1];
+    if (
+      chunk.length === 10000 ||
+      bytes + valueBytes + (chunk.length ? 1 : 0) > maxBytes
+    ) {
+      chunk = [];
+      chunks.push(chunk);
+      bytes = baseBytes;
+    }
+    bytes += valueBytes + (chunk.length ? 1 : 0);
+    chunk.push(value);
+  }
+  return chunks;
+}
+function projectionChunks(projection: {
+  records: PublicRecord[];
+  metadata: AttributionMetadata;
+}) {
+  const empty = { ...projection.metadata, decisions: [] };
+  const decisions = boundedChunks(
+    projection.metadata.decisions,
+    Buffer.byteLength(JSON.stringify(empty), "utf8"),
+    ATTRIBUTION_METADATA_MAX_BYTES
+  );
+  // Keep records comfortably below the journal's complete 32 MiB envelope bound as well.
+  const records = boundedChunks(projection.records, 2, 4 * 1024 * 1024);
+  return Array.from(
+    { length: Math.max(decisions.length, records.length) },
+    (_, index) => ({
+      metadata: { ...empty, decisions: decisions[index] ?? [] },
+      records: records[index] ?? [],
+    })
+  );
 }
 
 /** Local-only collection. Each source transaction owns candidate retrieval through durable batch commit. */
@@ -356,49 +423,66 @@ export async function collectUsage(
         }
         for (const group of groups.values()) {
           options.signal.throwIfAborted();
-          const latest = group.findLast(
-            (entry) =>
-              entry.outcome !== "unavailable" && entry.outcome !== "unsupported"
-          );
-          if (!latest) continue;
-          const observations = [
-            ...new Map(
-              group
-                .flatMap((entry) => entry.observations)
-                .map((observation) => [
-                  observationEvidenceHash(observation),
-                  observation,
-                ])
-            ).values(),
-          ];
-          if (!observations.length) continue;
-          const projection = await project(
-            observations,
-            entries,
-            options,
-            policy,
-            privatePolicy,
-            scope,
-            true
-          );
-          if (
-            projection.records.length ||
-            latest.attribution?.policyHash !== scope.attributionPolicyHash
-          ) {
-            const batch: ScanBatch = {
-              source: latest.source,
-              observations: [],
-              nextCheckpoint: { ...latest.checkpoint, ...scope },
-              outcome: latest.outcome,
-              diagnostics: latest.diagnostics,
-            };
-            await options.store.commitBatch(
-              batch.source,
-              batch,
-              projection.records,
-              projection.metadata
+          try {
+            const latest = group.findLast(
+              (entry) =>
+                entry.outcome !== "unavailable" &&
+                entry.outcome !== "unsupported"
             );
+            if (!latest) continue;
+            const observations = [
+              ...new Map(
+                group
+                  .flatMap((entry) => entry.observations)
+                  .map((observation) => [
+                    observationEvidenceHash(observation),
+                    observation,
+                  ])
+              ).values(),
+            ];
+            if (!observations.length) continue;
+            const projection = await project(
+              observations,
+              entries,
+              options,
+              policy,
+              privatePolicy,
+              scope,
+              true
+            );
+            if (
+              projection.records.length ||
+              projection.metadataChanged ||
+              latest.attribution?.policyHash !== scope.attributionPolicyHash
+            ) {
+              const batch: ScanBatch = {
+                source: latest.source,
+                observations: [],
+                nextCheckpoint: { ...latest.checkpoint, ...scope },
+                outcome: latest.outcome,
+                diagnostics: latest.diagnostics,
+              };
+              for (const chunk of projectionChunks(projection)) {
+                options.signal.throwIfAborted();
+                await options.store.commitBatch(
+                  batch.source,
+                  batch,
+                  chunk.records,
+                  chunk.metadata
+                );
+              }
+              entries = await options.store.journal();
+            }
+          } catch {
+            if (options.signal.aborted) options.signal.throwIfAborted();
+            // Earlier chunks remain durable even if a later source chunk fails.
             entries = await options.store.journal();
+            result.sourceOutcomes.push({
+              provider: group[0].source.provider,
+              sourceIdentity: group[0].source.sourceIdentity,
+              outcome: "unavailable",
+              diagnostics: [{ code: "incomplete-source", severity: "warning" }],
+            });
           }
         }
       });

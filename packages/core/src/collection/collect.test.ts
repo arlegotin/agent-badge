@@ -16,6 +16,14 @@ import { catalogHash, defaultCatalog } from "../pricing/catalog.js";
 import { protocolObservationFixture } from "@agent-badge/testkit";
 import { recordHash } from "../ledger/canonical-json.js";
 import { collectUsage } from "./collect.js";
+import {
+  attributionPolicyHash,
+  parsePrivateAttributionPolicy,
+} from "./attribution.js";
+import { observationEvidenceHash } from "./metadata.js";
+import { sanitizeObservation } from "../ledger/sanitize.js";
+import type { AttributionMetadata } from "./metadata.js";
+import type { ScanBatch } from "../domain/capabilities.js";
 import type { CollectOptions } from "./collect.js";
 
 const repositoryId = "12345678-1234-4234-8234-123456789abc";
@@ -551,6 +559,173 @@ describe("durable local collection", () => {
     expect(result.queuedHashes).toHaveLength(1);
     expect(result.sourceOutcomes[0].outcome).toBe("complete");
   });
+  it.each(["include", "exclude"] as const)(
+    "preserves independent linked-worktree membership through a temporary %s override",
+    async (decision) => {
+      const linked = join(fixture.root, "verified-linked");
+      await fixture.git(options.repository.worktreeRoot, [
+        "worktree",
+        "add",
+        "--detach",
+        linked,
+        "HEAD",
+      ]);
+      await writeFile(
+        path,
+        (
+          await readFile(path, "utf8")
+        ).replaceAll(options.repository.worktreeRoot, linked)
+      );
+      await collectUsage(options);
+      const initial = (await options.store.journal())[0];
+      const override = {
+        provider: "codex",
+        nativeUnitId: initial.observations[0].nativeUnitId,
+        representation: "request",
+        decision,
+      };
+      await collectUsage({
+        ...options,
+        privatePolicy: { overrides: [override] },
+      });
+      const temporary = (await options.store.journal()).at(-1)!;
+      expect(temporary.attribution!.decisions[0].verifiedCommonDir).toBe(
+        options.repository.commonDir
+      );
+      await rm(linked, { recursive: true });
+      await collectUsage(options);
+      const records = (await options.store.journal()).flatMap(
+        (entry) => entry.records
+      );
+      const meta = {
+        schemaVersion: 2 as const,
+        protocolVersion: 1 as const,
+        repositoryId,
+        normalizationVersion: 1 as const,
+        catalogVersion: 1,
+        catalogHash: catalogHash(defaultCatalog),
+        policy,
+      };
+      expect(reduceLedger(records, meta).knownTokens).toBe("110");
+    }
+  );
+  it.each(["distinct-units", "single-unit"] as const)(
+    "reprojects a source history over 10000 observations (%s) in durable bounded metadata chunks and progresses a healthy source",
+    async (historyKind) => {
+      const native = options.adapters!.codex!;
+      const [source] = await native.discover({
+        repositoryId,
+        enrolledRoots: [],
+        signal: options.signal,
+      });
+      let baseline: ScanBatch | undefined;
+      const privatePolicy = parsePrivateAttributionPolicy({
+        mappings: [{ cwd: join(fixture.root, "gone"), repositoryId }],
+      });
+      const scope = {
+        repositoryId,
+        normalizationVersion: 1 as const,
+        attributionPolicyHash: attributionPolicyHash(policy, privatePolicy),
+      };
+      for await (const batch of native.scan(
+        source,
+        null,
+        options.signal,
+        scope
+      ))
+        baseline = batch;
+      const observations = Array.from({ length: 10001 }, (_, index) => ({
+        ...baseline!.observations[0],
+        nativeUnitId:
+          historyKind === "single-unit"
+            ? "history-unit"
+            : `history-unit-${index}`,
+        nativeCoverageId: `history-evidence-${index}`,
+        execution: {
+          ...baseline!.observations[0].execution,
+          cwd: join(fixture.root, "gone"),
+        },
+      }));
+      const snapshot = {
+        remoteAliases: privatePolicy.remoteAliases,
+        mappings: privatePolicy.mappings,
+        overrides: privatePolicy.overrides,
+      };
+      for (const batchObservations of [
+        observations.slice(0, 10000),
+        observations.slice(10000),
+      ]) {
+        const metadata: AttributionMetadata = {
+          schemaVersion: 1,
+          policyHash: scope.attributionPolicyHash,
+          policy: snapshot,
+          decisions: batchObservations.map((observation) => ({
+            observationHash: observationEvidenceHash(observation),
+            status: "included",
+            reason: "private-mapping",
+            verifiedCommonDir: null,
+          })),
+        };
+        const records = batchObservations
+          .filter(
+            (observation) =>
+              observation === observations[0] ||
+              observation === observations[10000]
+          )
+          .map((observation) => sanitizeObservation(observation, policy));
+        await options.store.commitBatch(
+          baseline!.source,
+          { ...baseline!, observations: batchObservations },
+          records,
+          metadata
+        );
+      }
+      await writeFile(
+        join(home, "sessions/healthy.jsonl"),
+        (
+          await readFile(path, "utf8")
+        ).replaceAll("response-1", "healthy-response")
+      );
+      const result = await collectUsage({ ...options, privatePolicy: {} });
+      expect(result.diagnostics).toEqual([]);
+      expect(
+        result.sourceOutcomes.some(
+          (outcome) =>
+            outcome.sourceIdentity?.endsWith("healthy.jsonl") &&
+            outcome.outcome === "complete"
+        )
+      ).toBe(true);
+      const journal = await options.store.journal();
+      const replay = journal
+        .slice(2)
+        .filter(
+          (entry) =>
+            entry.source.sourceIdentity === baseline!.source.sourceIdentity &&
+            entry.attribution?.policyHash !== scope.attributionPolicyHash
+        );
+      expect(replay.length).toBeGreaterThan(1);
+      expect(
+        replay.flatMap((entry) => entry.attribution!.decisions)
+      ).toHaveLength(10001);
+      expect(
+        replay.every(
+          (entry) =>
+            entry.attribution!.decisions.length <= 10000 &&
+            Buffer.byteLength(JSON.stringify(entry.attribution)) <=
+              4 * 1024 * 1024
+        )
+      ).toBe(true);
+      const controls = (await options.store.pending()).filter(
+        (record) => "kind" in record
+      );
+      expect(controls).toHaveLength(historyKind === "single-unit" ? 1 : 2);
+      expect(controls.every((record) => record.kind === "exclude")).toBe(true);
+      expect(result.queuedHashes).toHaveLength(
+        historyKind === "single-unit" ? 3 : 5
+      );
+    },
+    60000
+  );
   it("retains earlier durable batches when a later scan cancels", async () => {
     const baselineAdapter = options.adapters!.codex!;
     const sources = await baselineAdapter.discover({

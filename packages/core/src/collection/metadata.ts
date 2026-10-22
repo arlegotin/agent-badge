@@ -24,16 +24,10 @@ export const attributionDecisionSchema = z
       "historical-membership",
       "missing-evidence",
     ]),
+    /** Independent historical membership proof for this exact observation, retained across overrides. */
     verifiedCommonDir: privateStringSchema.refine(isAbsolute).nullable(),
   })
-  .strict()
-  .refine(
-    (value) =>
-      value.verifiedCommonDir === null ||
-      (value.status === "included" &&
-        (value.reason === "git-membership" ||
-          value.reason === "historical-membership"))
-  );
+  .strict();
 export const attributionMetadataSchema = z
   .object({
     schemaVersion: z.literal(1),

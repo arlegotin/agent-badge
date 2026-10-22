@@ -78,6 +78,38 @@ describe("private source resolution", () => {
         .historicalMembership
     ).toBe(false);
   });
+  it("blocks an independent nested repository inside a sibling worktree before matching aliases or encompassing mappings", async () => {
+    const root = fixture.clones[0],
+      linked = join(fixture.root, "sibling-worktree");
+    await fixture.git(root, ["worktree", "add", "--detach", linked, "HEAD"]);
+    const nested = join(linked, "nested");
+    await mkdir(nested);
+    await fixture.git(nested, ["init"]);
+    await fixture.git(nested, ["remote", "add", "origin", fixture.remote]);
+    const repository = await resolveRepository(root),
+      observation = protocolObservationFixture();
+    observation.execution.cwd = nested;
+    observation.execution.remoteUrl = fixture.remote;
+    const privatePolicy = parsePrivateAttributionPolicy({
+      remoteAliases: [fixture.remote],
+      mappings: [
+        { cwd: linked, repositoryId: "12345678-1234-4234-8234-123456789abc" },
+      ],
+    });
+    const evidence = await resolveAttributionEvidence(
+      observation,
+      repository,
+      privatePolicy
+    );
+    expect(
+      attributeObservation(observation, {
+        repositoryId: "12345678-1234-4234-8234-123456789abc",
+        privatePolicy,
+        evidence,
+      }).status
+    ).toBe("excluded");
+    expect(evidence.nested).toBe(true);
+  });
   it("selects targeted hints only from enrolled discovery and isolates discovery failures", async () => {
     const root = fixture.clones[0];
     await writeFile(join(root, "untrusted.jsonl"), "must not be read");
