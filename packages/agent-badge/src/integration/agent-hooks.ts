@@ -6,7 +6,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { json } from './manifest.js';
 import type { OwnedChange } from './setup.js';
 import type { RepositoryContext } from '@legotin/agent-badge-core';
-type Provider = 'codex' | 'claude';
+type Provider = 'codex' | 'claude' | 'gemini';
 type Group = { hooks: { type: string; command?: string; [key: string]: unknown }[]; [key: string]: unknown };
 type Configuration = { hooks?: Record<string, Group[]>; [key: string]: unknown };
 interface Entry { provider: Provider; path: string; event: string; group: Group }
@@ -17,7 +17,8 @@ export interface AgentHookPlan { cwd: string; privateDir: string; pending: Provi
 export interface AgentHookResult { status: 'configured-needs-trust' | 'action-required' | 'removed' | 'unchanged'; actionItems: string[] }
 const ownershipPath = '.agent-badge/agent-hooks.json';
 const pendingName = 'agent-hooks.pending.json';
-const files: Record<Provider, string> = { codex: '.codex/hooks.json', claude: '.claude/settings.json' };
+const files: Record<Provider, string> = { codex: '.codex/hooks.json', claude: '.claude/settings.json', gemini: '.gemini/settings.json' };
+const events: Record<Provider, readonly string[]> = { codex: ['Stop', 'SubagentStop'], claude: ['Stop', 'SubagentStop'], gemini: ['AfterModel'] };
 const quote = (s: string) => "'" + s.replaceAll("'", "'\"'\"'") + "'";
 /** Fixed built-in-only locator. No tracked executable is loaded. Git lookup is a
  * killable owned group; its elapsed time is deducted from the same hook budget. */
@@ -63,7 +64,7 @@ function parse(bytes: string | null): Configuration {
 async function ownership(cwd: string): Promise<Ownership> {
   const bytes = await contents(join(cwd, ownershipPath)); if (bytes === null) return { schemaVersion: 1, entries: [] };
   const v = JSON.parse(bytes) as Ownership;
-  if (v.schemaVersion !== 1 || !Array.isArray(v.entries) || v.entries.some(e => !['codex', 'claude'].includes(e.provider) || e.path !== files[e.provider] || !['Stop', 'SubagentStop'].includes(e.event) || !object(e.group) || !Array.isArray(e.group.hooks))) throw new Error('Invalid owned agent hooks.');
+  if (v.schemaVersion !== 1 || !Array.isArray(v.entries) || v.entries.some(e => !['codex', 'claude', 'gemini'].includes(e.provider) || e.path !== files[e.provider] || !events[e.provider].includes(e.event) || !object(e.group) || !Array.isArray(e.group.hooks))) throw new Error('Invalid owned agent hooks.');
   return v;
 }
 const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -81,7 +82,7 @@ async function loadPending(privateDir: string): Promise<ProviderIntent | null> {
   try { const s = await lstat(path); if (!s.isFile() || s.isSymbolicLink() || s.size > 8 * 1024 * 1024) throw new Error('Unsafe provider recovery intent.'); bytes = await readFile(path, 'utf8'); }
   catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
   const value = JSON.parse(bytes) as ProviderIntent;
-  if (value.schemaVersion !== 1 || !['install', 'remove'].includes(value.kind) || typeof value.worktreeRoot !== 'string' || !isAbsolute(value.worktreeRoot) || !Array.isArray(value.changes) || value.changes.length > 3 ||
+  if (value.schemaVersion !== 1 || !['install', 'remove'].includes(value.kind) || typeof value.worktreeRoot !== 'string' || !isAbsolute(value.worktreeRoot) || !Array.isArray(value.changes) || value.changes.length > Object.keys(files).length + 1 ||
       value.changes.some(c => ![ownershipPath, ...Object.values(files)].includes(c.path) || (c.before !== null && typeof c.before !== 'string') || (c.after !== null && typeof c.after !== 'string') || (value.kind === 'install' && c.after === null)) ||
       new Set(value.changes.map(c => c.path)).size !== value.changes.length || !Array.isArray(value.actionItems) || value.actionItems.some(s => typeof s !== 'string') || !Array.isArray(value.notices) || value.notices.some(s => typeof s !== 'string')) throw new Error('Invalid provider recovery intent.');
   return value;
@@ -143,21 +144,21 @@ export async function planAgentHooks(cwd: string, context?: RepositoryContext): 
     if (!configured) actionItems.push('Codex linked worktrees load primary-checkout hooks on the inspected source generation; primary-checkout setup and native trust/review are required. The primary checkout was not edited.');
     notices.push('Codex worktree-local hooks.json does not independently enable hooks: the inspected source resolves hooks through the primary-checkout .codex directory. Review native trust there; common Git-hook capture remains the fallback.');
   }
-  for (const provider of ['codex', 'claude'] as const) {
+  for (const provider of ['codex', 'claude', 'gemini'] as const) {
     const file = files[provider]; let before: string | null = null, config: Configuration;
     try {
       if (provider === 'codex') { const toml = await contents(join(cwd, '.codex/config.toml'));
         if (inlineHooks(toml)) { actionItems.push('Codex inline TOML hooks require manual integration/review; existing TOML was preserved.'); entries.push(...prior.entries.filter(e => e.provider === provider)); continue; }
       }
       before = await contents(join(cwd, file)); config = parse(before);
-    } catch { actionItems.push(`${provider === 'codex' ? 'Codex' : 'Claude'} hook schema/path unsupported; manually review local configuration.`); entries.push(...prior.entries.filter(e => e.provider === provider)); continue; }
+    } catch { actionItems.push(`${provider === 'codex' ? 'Codex' : provider === 'claude' ? 'Claude' : 'Gemini'} hook schema/path unsupported; manually review local configuration.`); entries.push(...prior.entries.filter(e => e.provider === provider)); continue; }
     config.hooks ??= {};
     let changed = before === null;
-    for (const event of ['Stop', 'SubagentStop']) {
+    for (const event of events[provider]) {
       const groups = config.hooks[event] ??= [], owned = prior.entries.find(e => e.provider === provider && e.event === event);
       // Native timer leaves startup/cleanup headroom; our own complete operation
       // still has the two-second budget measured by the fixed locator.
-      const group: Group = { hooks: [{ type: 'command', command: command(provider), timeout: 10 }] };
+      const group: Group = { hooks: [{ type: 'command', command: command(provider), timeout: provider === 'gemini' ? 10000 : 10 }] };
       if (owned) {
         const matches = groups.map((g, i) => equal(g, owned.group) ? i : -1).filter(i => i >= 0);
         if (matches.length !== 1) { actionItems.push(`${provider} owned ${event} hook changed; reconcile it before setup.`); entries.push(owned); continue; }

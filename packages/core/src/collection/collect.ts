@@ -17,6 +17,7 @@ import type { LocalStore, JournalEntry } from "../storage/store.js";
 import { recordHash } from "../ledger/canonical-json.js";
 import { sanitizeObservation } from "../ledger/sanitize.js";
 import { codexAdapter } from "../providers/codex/adapter.js";
+import { geminiAdapter } from "../providers/gemini/adapter.js";
 import { claudeAdapter } from "../providers/claude/adapter.js";
 import {
   attributeObservation,
@@ -501,6 +502,7 @@ export async function collectUsage(
         adapters: options.adapters ?? {
           codex: codexAdapter,
           claude: claudeAdapter,
+          gemini: geminiAdapter,
         },
         roots: options.roots ?? {},
         signal: options.signal,

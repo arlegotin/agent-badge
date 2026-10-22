@@ -1,3 +1,4 @@
+import { geminiAccountingContract } from './gemini/identity.js';
 import { claudeAccountingContract } from './claude/identity.js';
 import { codexAccountingContract } from './codex/identity.js';
 import { isDeepStrictEqual } from "node:util";
@@ -35,7 +36,7 @@ function baselineContract(provider: ProviderId): AccountingContract {
     }
   });
 }
-const contracts = new Map(providerIdSchema.options.map((provider) => [provider, provider === 'codex' ? codexAccountingContract : provider === 'claude' ? claudeAccountingContract : baselineContract(provider)]));
+const contracts = new Map(providerIdSchema.options.map((provider) => [provider, provider === 'codex' ? codexAccountingContract : provider === 'claude' ? claudeAccountingContract : provider === 'gemini' ? geminiAccountingContract : baselineContract(provider)]));
 export function getAccountingContract(provider: string, normalizationVersion: number): AccountingContract {
   const parsed = providerIdSchema.safeParse(provider);
   if (!parsed.success || normalizationVersion !== 1) throw new ProtocolError("unsupported-contract");

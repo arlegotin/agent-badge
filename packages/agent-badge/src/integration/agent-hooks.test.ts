@@ -23,9 +23,9 @@ async function fixture() {
   await writeFile(join(privateDir, 'bootstrap.cjs'), bootstrapSource.replace('APPROVED_RUNTIME_HASH', hash));
   return { cwd, output, privateDir };
 }
-async function command(cwd: string, provider: 'codex' | 'claude') {
-  const file = provider === 'codex' ? '.codex/hooks.json' : '.claude/settings.json';
-  return JSON.parse(await readFile(join(cwd, file), 'utf8')).hooks.Stop.at(-1).hooks[0].command as string;
+async function command(cwd: string, provider: 'codex' | 'claude' | 'gemini') {
+  const file = provider === 'codex' ? '.codex/hooks.json' : provider === 'claude' ? '.claude/settings.json' : '.gemini/settings.json';
+  return JSON.parse(await readFile(join(cwd, file), 'utf8')).hooks[provider === 'gemini' ? 'AfterModel' : 'Stop'].at(-1).hooks[0].command as string;
 }
 test('JSON adapter preserves unrelated handlers, TOML and trust settings; duplicate setup and removal preserve later additions', async () => {
   const f = await fixture(); await mkdir(join(f.cwd, '.codex')); await mkdir(join(f.cwd, '.claude'));
@@ -119,7 +119,7 @@ test('locator timeout reaps a hung Git command and its helper without starting r
   } finally { try { process.kill(helperPid, 'SIGKILL'); } catch { /* Reaped by locator. */ } }
 });
 
-test.each(['.codex/hooks.json', '.claude/settings.json', '.agent-badge/agent-hooks.json'])('interrupted provider publication at %s recovers exact ownership without duplicate/adopted handlers', async obstructed => {
+test.each(['.codex/hooks.json', '.claude/settings.json', '.gemini/settings.json', '.agent-badge/agent-hooks.json'])('interrupted provider publication at %s recovers exact ownership without duplicate/adopted handlers', async obstructed => {
   const f = await fixture(); await mkdir(join(f.cwd, '.claude')); const unrelated = { hooks: [{ type: 'command', command: 'echo user-owned', timeout: 5 }] };
   await writeFile(join(f.cwd, '.claude/settings.json'), JSON.stringify({ hooks: { Stop: [unrelated] } }));
   const plan = await planAgentHooks(f.cwd), rename = fs.rename;
@@ -128,6 +128,7 @@ test.each(['.codex/hooks.json', '.claude/settings.json', '.agent-badge/agent-hoo
   await applyAgentHookPlan(await planAgentHooks(f.cwd));
   const config = JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')); expect(config.hooks.Stop).toHaveLength(2); expect(config.hooks.Stop[0]).toEqual(unrelated);
   expect(JSON.parse(await readFile(join(f.cwd, '.codex/hooks.json'), 'utf8')).hooks.Stop).toHaveLength(1);
+  expect(JSON.parse(await readFile(join(f.cwd, '.gemini/settings.json'), 'utf8')).hooks.AfterModel).toHaveLength(1);
   await removeAgentHooks(f.cwd);
   expect(JSON.parse(await readFile(join(f.cwd, '.claude/settings.json'), 'utf8')).hooks.Stop).toEqual([unrelated]);
 });
@@ -191,9 +192,9 @@ test('concurrent worktree plans publish and clean provider intents sequentially'
   await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow();
 });
 
-test('interrupted provider removal resumes its exact tombstone transaction', async () => {
+test.each(['.claude/settings.json', '.gemini/settings.json'])('interrupted provider removal at %s resumes its exact tombstone transaction', async obstructed => {
   const f = await fixture(); await applyAgentHookPlan(await planAgentHooks(f.cwd)); const rename = fs.rename;
-  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, '.claude/settings.json')) throw new Error('remove interrupted'); return result; }); syncBuiltinESMExports();
+  const fault = vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => { const result = await rename(from, to); if (String(to) === join(f.cwd, obstructed)) throw new Error('remove interrupted'); return result; }); syncBuiltinESMExports();
   try { await expect(removeAgentHooks(f.cwd)).rejects.toThrow('remove interrupted'); } finally { fault.mockRestore(); syncBuiltinESMExports(); }
   expect((await planAgentHooks(f.cwd)).actionItems.join()).toMatch(/removal/);
   expect((await removeAgentHooks(f.cwd)).status).toBe('removed'); await expect(readFile(join(f.privateDir, 'agent-hooks.pending.json'))).rejects.toThrow(); await expect(readFile(join(f.cwd, '.agent-badge/agent-hooks.json'))).rejects.toThrow();
@@ -248,4 +249,21 @@ test('unknown provider lease namespace is never reclaimed by age', async () => {
   const path = join(directory, 'operation.lock'); await writeFile(path, bytes);
   const result = await applyAgentHookPlan(plan); expect(result.status).toBe('action-required'); expect(result.actionItems.join()).toMatch(/proving owner death/); expect(await readFile(path, 'utf8')).toBe(bytes);
   await expect(readFile(join(f.cwd, '.codex/hooks.json'))).rejects.toThrow();
+});
+
+test('Gemini AfterModel wakeup preserves settings, routes only the transcript, rejects other providers events and removes exact ownership', async () => {
+  const f = await fixture(); await mkdir(join(f.cwd, '.gemini')); const path = join(f.cwd, '.gemini/settings.json');
+  await writeFile(path, JSON.stringify({ telemetry: { enabled: false }, hooks: { BeforeTool: [{ hooks: [{ type: 'command', command: 'echo user' }] }] } }));
+  await applyAgentHookPlan(await planAgentHooks(f.cwd)); const config = JSON.parse(await readFile(path, 'utf8'));
+  expect(config.telemetry).toEqual({ enabled: false }); expect(config.hooks.AfterModel).toHaveLength(1); expect(config.hooks.AfterModel[0].hooks[0].timeout).toBe(10000);
+  expect((await planAgentHooks(f.cwd)).changes).toEqual([]);
+  const cmd = await command(f.cwd, 'gemini');
+  for (const hook_event_name of ['AfterModel', 'Stop', 'SubagentStop']) {
+    await rm(f.output, { force: true }); const r = spawnSync('/bin/sh', ['-c', cmd], { cwd: f.cwd, env: { ...process.env, PATH: dirname(process.env.AGENT_BADGE_TEST_NODE ?? process.execPath) + ':' + process.env.PATH }, input: JSON.stringify({ hook_event_name, transcript_path: '/synthetic/gemini.jsonl', session_id: 'PRIVATE_GEMINI_ID', llm_response: { content: 'PRIVATE_TEXT' } }), encoding: 'utf8', timeout: 3500 });
+    expect(r.status, r.stderr).toBe(0);
+    if (hook_event_name === 'AfterModel') { const captured = await readFile(f.output, 'utf8'); expect(captured).toContain('gemini'); expect(captured).toContain('/synthetic/gemini.jsonl'); expect(captured).not.toMatch(/PRIVATE_GEMINI_ID|PRIVATE_TEXT/); }
+    else await expect(readFile(f.output)).rejects.toThrow();
+  }
+  config.extra = 'later'; await writeFile(path, JSON.stringify(config)); await removeAgentHooks(f.cwd);
+  const removed = JSON.parse(await readFile(path, 'utf8')); expect(removed.extra).toBe('later'); expect(removed.telemetry.enabled).toBe(false); expect(removed.hooks.BeforeTool).toHaveLength(1); expect(removed.hooks.AfterModel).toBeUndefined();
 });

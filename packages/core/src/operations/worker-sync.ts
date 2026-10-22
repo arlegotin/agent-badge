@@ -3,6 +3,7 @@ import { openStore } from '../storage/store.js';
 import { collectUsage } from '../collection/collect.js';
 import type { CollectionResult } from '../collection/collect.js';
 import { createCodexAdapter } from '../providers/codex/adapter.js';
+import { createGeminiAdapter } from '../providers/gemini/adapter.js';
 import { createClaudeAdapter } from '../providers/claude/adapter.js';
 import { loadCapturePolicy } from './capture-policy.js';
 import { syncUsage } from './sync.js';
@@ -26,7 +27,7 @@ export async function runOperation(input: RepositoryOperationRequest & { mode: '
       return { ...queued, pendingReconciliation: true };
     }
     const collection = { ...input.collection, ...(automatic ? { automaticLimits, adapters: {
-      codex: createCodexAdapter({ maxBytes: automaticScanBytes }), claude: createClaudeAdapter({ maxBytes: automaticScanBytes }),
+      codex: createCodexAdapter({ maxBytes: automaticScanBytes }), claude: createClaudeAdapter({ maxBytes: automaticScanBytes }), gemini: createGeminiAdapter({ maxBytes: automaticScanBytes }),
     } } : {}) };
     let captured: CollectionResult | null = null;
     if (input.capturePolicy && input.collect !== 'none') {

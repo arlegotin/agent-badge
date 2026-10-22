@@ -3,19 +3,20 @@ import { spawnSync } from 'node:child_process';
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { planSetup, applySetup } from './setup.js';
-import { codexRollout } from '@agent-badge/testkit';
+import { codexRollout, createGeminiFixtureHome, geminiSavedSession } from '@agent-badge/testkit';
 import { openStore } from '@legotin/agent-badge-core';
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 const node = process.env.AGENT_BADGE_TEST_NODE ?? process.execPath;
-async function fixture() {
+async function fixture(provider: 'codex' | 'gemini' = 'codex') {
   const root = await mkdtemp('/private/tmp/agent-badge-automatic-'); roots.push(root);
   const cwd = join(root, 'repo with spaces'); await mkdir(cwd); spawnSync('git', ['init', '-q'], { cwd });
   spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'before'], { cwd });
   const home = join(root, 'codex'); await mkdir(join(home, 'sessions'), { recursive: true });
+  const gemini = await createGeminiFixtureHome(cwd); roots.push(gemini.root);
   const version = '1.1.20';
   const pin = { manifest: JSON.stringify({ name: 'runtime', private: true, dependencies: { '@legotin/agent-badge': version } }), lock: JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: { '@legotin/agent-badge': version } }, 'node_modules/@legotin/agent-badge': { version, resolved: 'https://registry.npmjs.org/@legotin/agent-badge/-/agent-badge-1.1.20.tgz', integrity: 'sha512-c3ludGhldGlj' } } }) };
-  const plan = await planSetup({ cwd, nodeVersion: '24.0.0', runtimeVersion: version, declaredUrl: 'https://github.com/synthetic/fixture', roots: { codex: [home], claude: [] }, resolvePin: async () => pin,
+  const plan = await planSetup({ cwd, nodeVersion: '24.0.0', runtimeVersion: version, declaredUrl: 'https://github.com/synthetic/fixture', roots: { codex: provider === 'codex' ? [home] : [], claude: [], gemini: provider === 'gemini' ? [gemini.root] : [] }, resolvePin: async () => pin,
     installRuntime: async directory => {
       const cli = join(directory, 'node_modules/@legotin/agent-badge'); await mkdir(join(cli, 'dist'), { recursive: true });
       await cp(resolve('packages/agent-badge/dist/integration'), join(cli, 'dist/integration'), { recursive: true });
@@ -25,7 +26,7 @@ async function fixture() {
     }, runInitialOperation: async () => ({ status: 'queued', exitCode: 1, acknowledgedCount: 0, queuedCount: null, pendingReconciliation: true }) });
   await applySetup(plan);
   const installed = join(plan.repository.privateDir, 'runtime', plan.lockHash, 'node_modules/@legotin/agent-badge');
-  return { root, cwd, home, plan, installed, bootstrap: join(plan.repository.privateDir, 'bootstrap.cjs') };
+  return { root, cwd, home, gemini, plan, installed, bootstrap: join(plan.repository.privateDir, 'bootstrap.cjs') };
 }
 test('real approved automatic entry durably captures a targeted source while routing is unbound', async () => {
   const f = await fixture(); const source = join(f.home, 'sessions', 'synthetic.jsonl');
@@ -100,4 +101,20 @@ test('expired startup and invalid propagated deadlines skip before importing a w
     const r = spawnSync(node, [f.bootstrap, '--git-hook', '--remaining-ms', '2000', '--deadline-ms', deadline], { cwd: f.cwd, encoding: 'utf8', timeout: 1000 });
     expect(r.status, r.stderr).toBe(0); await expect(readFile(entered)).rejects.toThrow();
   }
+});
+
+test('Gemini approved targeted and untargeted automatic collection share receipts and reject an unenrolled AfterModel path', async () => {
+  const f = await fixture('gemini'), source = f.gemini.path;
+  const run = (path?: string, event = 'AfterModel') => spawnSync(node, [f.bootstrap, ...(path ? ['--hook', 'gemini'] : ['--git-hook'])], { cwd: f.cwd, input: path ? JSON.stringify({ hook_event_name: event, transcript_path: path, llm_response: { text: 'PRIVATE_HOOK_CONTENT', usage_metadata: { total_token_count: 99999 } }, session_id: 'PRIVATE_ID' }) : 'refs\n', encoding: 'utf8', timeout: 3500 });
+  const first = run(source); expect(first.status, first.stderr).toBe(0); expect(first.stderr).not.toContain('PRIVATE_HOOK_CONTENT');
+  const store = await openStore(f.plan.repository); expect(await store.pending()).toHaveLength(1);
+  expect(await store.pending()).toMatchObject([{ provider: 'gemini', quality: 'partial', meters: [{ total: 135, toolInput: 5 }] }]);
+  expect((await store.journal()).flatMap(e => e.observations)).toHaveLength(1);
+  const outside = join(f.root, 'not-enrolled.jsonl'); await writeFile(outside, (await geminiSavedSession(f.cwd)).replaceAll('synthetic-response', 'outside-response'));
+  expect(run(outside).status).toBe(0); expect(await store.pending()).toHaveLength(1);
+  const second = join(f.gemini.root, 'tmp/synthetic-project/chats/session-second.jsonl'); await writeFile(second, (await geminiSavedSession(f.cwd)).replaceAll('synthetic-response', 'second-response'));
+  expect(run(second, 'Stop').status).toBe(0); expect(await store.pending()).toHaveLength(1);
+  expect(run().status).toBe(0); expect(await store.pending()).toHaveLength(2);
+  expect(run(source).status).toBe(0); expect(await store.pending()).toHaveLength(2);
+  expect(JSON.stringify(await store.pending())).not.toMatch(/PRIVATE_HOOK_CONTENT|PRIVATE_GEMINI_TRANSCRIPT_CANARY|PRIVATE_ID|synthetic-response/);
 });

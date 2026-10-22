@@ -17,7 +17,7 @@ export interface Activation {
   schemaVersion: 1; repositoryId: string; runtimeVersion: string; lockHash: string; initializeAllowed: boolean;
   binding: RemoteBinding; capturePolicy: SharedPolicy; privatePolicy: PrivateAttributionPolicy;
   worktreeInventory: { path: string; commonDir: string }[];
-  roots: Partial<Record<'codex' | 'claude', string[]>>;
+  roots: Partial<Record<'codex' | 'claude' | 'gemini', string[]>>;
 }
 export function json(value: unknown): string { return JSON.stringify(value, null, 2) + '\n'; }
 export function digest(value: string): string { return createHash('sha256').update(value).digest('hex'); }

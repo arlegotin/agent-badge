@@ -1,0 +1,1 @@
+{"hook_event_name":"AfterModel","session_id":"synthetic-session","transcript_path":"/synthetic/session.jsonl","cwd":"/synthetic/repo","timestamp":"2026-10-01T00:00:02Z","llm_request":{"model":"gemini-3.5-flash","messages":[]},"llm_response":{"candidates":[],"usageMetadata":{"promptTokenCount":100,"candidatesTokenCount":20,"totalTokenCount":135}}}

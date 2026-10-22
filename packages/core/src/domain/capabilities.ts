@@ -7,13 +7,15 @@ export const vendorIdSchema = z.enum(["openai", "anthropic", "google", "local"])
 // Exact identity registry, independent of rates. Expand only with primary-source evidence.
 // Official model pages and dated price sources are recorded in pricing/catalog.ts.
 export const modelIdSchema = z.enum(["gpt-5.4-mini", "gpt-4.1-mini", "claude-sonnet-4-6",
-  "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-5.4", "gpt-5.3-codex", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"]);
+  "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-5.4", "gpt-5.3-codex", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "gemini-2.5-pro", "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3-pro-preview", "gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-3-flash"]);
 /** Exact identity evidence is separate from rate-card certification. */
 export const knownModelVendors: Readonly<Record<z.infer<typeof modelIdSchema>, z.infer<typeof vendorIdSchema>>> = Object.freeze({
   'gpt-5.4-mini':'openai', 'gpt-4.1-mini':'openai', 'claude-sonnet-4-6':'anthropic',
   'gpt-6.1-sol':'openai', 'gpt-6-sol':'openai', 'gpt-6-luna':'openai', 'gpt-6-astra':'openai',
   'gpt-5.4':'openai', 'gpt-5.3-codex':'openai',
-  'claude-opus-5-5':'anthropic', 'claude-sonnet-5-5':'anthropic', 'claude-haiku-5-5':'anthropic'
+  'claude-opus-5-5':'anthropic', 'claude-sonnet-5-5':'anthropic', 'claude-haiku-5-5':'anthropic',
+  'gemini-2.5-pro':'google', 'gemini-3.5-flash':'google', 'gemini-3.8-flash':'google',
+  'gemini-3-pro-preview':'google', 'gemini-3.1-pro-preview':'google', 'gemini-3-flash-preview':'google', 'gemini-3-flash':'google'
 });
 export const safeCounterSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);

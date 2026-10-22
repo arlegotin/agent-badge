@@ -111,7 +111,7 @@ else {
   const privateDir = __dirname;
   async function main() {
     const args=process.argv.slice(2); let provider, duration=2000;
-    if(args[0]==='--hook' && ['codex','claude'].includes(args[1])) { provider=args[1]; args.splice(0,2); }
+    if(args[0]==='--hook' && ['codex','claude','gemini'].includes(args[1])) { provider=args[1]; args.splice(0,2); }
     else if(args[0]==='--git-hook') args.shift();
     if(args.length) {
       if(![2,4].includes(args.length) || args[0]!=='--remaining-ms' || !/^\d+$/.test(args[1]) || +args[1]<1 || +args[1]>2000) return; duration=+args[1];
@@ -133,7 +133,7 @@ else {
         process.stdin.once('error',()=>finish(null));
         process.stdin.once('end',()=>{try {finish(JSON.parse(Buffer.concat(chunks).toString('utf8')));}catch{finish(null);} });
       });
-      if(!payload || !['Stop','SubagentStop'].includes(payload.hook_event_name)) return;
+      if(!payload || !(provider==='gemini' ? payload.hook_event_name==='AfterModel' : ['Stop','SubagentStop'].includes(payload.hook_event_name))) return;
       const source=payload.hook_event_name==='SubagentStop' ? payload.agent_transcript_path : payload.transcript_path;
       if(typeof source!=='string' || source.length>8192 || !path.isAbsolute(source) || /[\x00-\x1f]/.test(source)) return;
       target={provider,sourceIdentity:source};
