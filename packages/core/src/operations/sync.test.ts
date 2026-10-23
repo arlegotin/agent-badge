@@ -530,7 +530,7 @@ test("valid-looking remote rewind cannot discard previously acknowledged history
   expect(
     (await f.git(f.remote, ["rev-parse", "refs/heads/agent-badge/data"])).trim()
   ).toBe(first.confirmedCommit);
-});
+},30000);
 test("existing malformed ref leaves durable presence evidence after deletion", async () => {
   const f = await fixture(),
     c = await client(f);
@@ -1005,4 +1005,4 @@ test('actual automatic worker captures local usage, refuses local publication, a
   expect(confirmed).toMatchObject({ status: 'unchanged', queuedCount: 0, acknowledgedCount: 1, exitCode: 0 });
   expect((await readStoreSnapshot(repository)).pending).toHaveLength(0);
   await expect(readFile(marker)).rejects.toMatchObject({ code: 'ENOENT' });
-});
+},30000);

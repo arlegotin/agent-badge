@@ -12,8 +12,15 @@ progress; this document does not yet claim npm publication or hosted CI success.
 - GitHub `npm-release` environment exists with a custom main-branch-only policy.
 - GitHub Actions platform matrix, current-main candidate/run/tag binding and
   exact-byte OIDC publication remain required before completion.
-- npm owner confirmation of trusted publishers is pending. Local settings access
-  returned 401; no npm credential is requested in chat.
+- [Release PR1](https://github.com/arlegotin/agent-badge/pull/1) is in validation.
+  Its first matrix passed both Linux cells; Windows found license checkout line
+  endings, while hosted macOS found a hardcoded test Git binary and test-framework
+  timeouts. Corrections preserve production deadlines and exact artifact checks;
+  a clean full matrix on the corrected source remains required.
+- Hosted OIDC authorization will be checked by the release workflow. Local npm
+  settings access returned 401, which does not establish a hosted failure. Owner
+  configuration is needed only if that operation rejects the existing publisher;
+  no npm credential is requested in chat.
 - Existing local refactor review/evidence remains in
   [verification](RELEASE-VERIFICATION.md) and the
   [review record](reviews/2026-10-23-repo-native/README.md).

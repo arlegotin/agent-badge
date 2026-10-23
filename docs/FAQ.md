@@ -4,6 +4,10 @@
 
 The repository-native commands require **2.0.0 or newer**. The initializer is `npm init agent-badge@latest`; check [release status](maintainers/RELEASE-STATUS.md) for publication evidence. Version 1 uses Gists and does not provide these commands or an automatic migration.
 
+Publication is currently pending and `@latest` still selects v1. Do not run that
+entry point to activate v2 until release status confirms v2 publication and its
+`latest` tag.
+
 ## What do I install per repository or clone?
 
 Tracked declaration, nested exact runtime lock, launcher and instructions belong to the repository. Each clone/common directory explicitly approves its private runtime and integration with setup. Linked worktrees share private usage but native project hook/trust rules still apply. A global Badge runtime is unnecessary.

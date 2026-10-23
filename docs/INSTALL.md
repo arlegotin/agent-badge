@@ -6,6 +6,10 @@ Use Node.js **24 or 26** (`^24.0.0 || ^26.0.0`), npm and Git. A globally install
 
 Initialize the repository with the npm entry point; no global install is required:
 
+**Before setup:** [release status](maintainers/RELEASE-STATUS.md) must confirm v2
+publication and the `latest` tag. Publication is currently pending and `@latest`
+still selects v1; do not use it to activate v2 until that gate is complete.
+
 ```sh
 npm init agent-badge@latest
 ```

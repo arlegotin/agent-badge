@@ -83,10 +83,13 @@ test('status detects local wrong-target routing without any remote request',asyn
 
 test('supervised collect never invokes remote Git and cancellation preserves captured pending work',async()=>{
  const {f,cwd,plan}=await activatedFixture();fixtures.push(f);const {chmod}=await import('node:fs/promises');
+ const {execFileSync}=await import('node:child_process');
+ const realGit=execFileSync('/bin/sh',['-c','command -v git'],{encoding:'utf8'}).trim();
+ const quotedGit="'"+realGit.replaceAll("'","'\\''")+"'";
  const root=join(f.root,'source'),bin=join(f.root,'bin'),marker=join(f.root,'remote-invocation');await mkdir(join(root,'sessions'),{recursive:true});await mkdir(bin);
  const {codexRollout}=await import('@agent-badge/testkit');await writeFile(join(root,'sessions','request.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',cwd));
  const activation=JSON.parse(await readFile(join(plan.repository.privateDir,'local.json'),'utf8'));activation.roots={...activation.roots,codex:[root]};await writeFile(join(plan.repository.privateDir,'local.json'),JSON.stringify(activation));
- await writeFile(join(bin,'git'),`#!/bin/sh\nfor arg do\n case "$arg" in ls-remote|fetch|push) printf 'remote\\n' >> '${marker}' ;; esac\ndone\nexec /usr/bin/git "$@"\n`);await chmod(join(bin,'git'),0o755);
+ await writeFile(join(bin,'git'),`#!/bin/sh\nfor arg do\n case "$arg" in ls-remote|fetch|push) printf 'remote\\n' >> '${marker}' ;; esac\ndone\nexec ${quotedGit} "$@"\n`);await chmod(join(bin,'git'),0o755);
  const beforePath=process.env.PATH;process.env.PATH=bin+':'+beforePath;
  try{
   expect(await command(cwd,['collect','--json'])).toMatchObject({confirmedCommit:null,queuedRecords:1});

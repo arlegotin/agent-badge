@@ -212,7 +212,7 @@ test('oversized stdin reaches the complete user consumer without retaining or in
   const input = Buffer.alloc(2 * 1024 * 1024 + 17, 97);
   const r = spawnSync(f.hookPath, [], { cwd: f.cwd, input, encoding: 'utf8', timeout: 4000 });
   expect(r.status, r.stderr).toBe(3); expect(await readFile(join(f.cwd, 'large-input'))).toEqual(input); await expect(readFile(f.receipt)).rejects.toThrow();
-});
+},30000);
 
 test('interruption at the original-hook rename retains durable intent and retries without losing delegation', async () => {
   const f = await fixture('#!/bin/sh\n/bin/cat > recovered-input\nexit 4\n'); const plan = await planHooks(f.ctx, f.runtime);

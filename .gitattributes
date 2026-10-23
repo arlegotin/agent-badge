@@ -1,0 +1,3 @@
+# Keep the licenses identical to the shared Linux-built release artifact.
+/LICENSE text eol=lf
+/packages/*/LICENSE text eol=lf

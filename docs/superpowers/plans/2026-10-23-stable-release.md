@@ -30,11 +30,11 @@
 - [x] Run pinned Changesets 2.30.0 prerelease exit/version under Node 24 with isolated configuration.
 - [x] Set exact CLI→core and initializer→CLI dependencies to 2.0.0; regenerate the lockfile without install scripts.
 - [x] Update current product documentation to require v2 without prematurely claiming registry publication; preserve historical review/candidate records.
-- [ ] Run typecheck, clean build, docs, pack checks and focused release-contract tests. Review the preparation diff and commit it on the refactor branch.
+- [x] Run typecheck, clean build, docs, pack checks and focused release-contract tests. Review the preparation diff and commit it on the refactor branch.
 
 ### Task 2: Validate and integrate the exact release source
 
-- [ ] Create `npm-release` environment restricted to the main branch. Obtain npm owner confirmation of trusted publisher settings if authenticated access is unavailable.
+- [x] Create `npm-release` environment restricted to the main branch. Verify hosted publisher authorization during release; request owner configuration only if that operation rejects the existing publisher.
 - [ ] Push the reviewed refactor branch, open a PR and observe all platform/runtime CI results. Fix concrete failures with focused reproductions and appropriate verification.
 - [ ] Merge the green exact PR head, keeping the working branch. Wait for successful main-push CI and retain its candidate/run/artifact identities.
 
