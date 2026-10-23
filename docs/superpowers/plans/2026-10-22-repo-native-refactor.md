@@ -1,6 +1,6 @@
 # Repository-native agent-badge Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking. Implementation is approved and complete through Tasks 1–16 on the refactor branch. Task 17 has passed independent review with the recorded latency exception. Task 18 candidate artifact/release preparation is implemented and undergoing final local gates and independent review; see [candidate verification](../../maintainers/RELEASE-VERIFICATION.md); publishing/deployment are not authorized. External hosted/Linux/Windows/private-image gates remain unverified.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking. Implementation is approved and complete through Tasks 1–16 on the refactor branch. Task 17 has passed independent review with the recorded latency exception. Task 18 candidate artifact/release preparation has completed local gates and awaits independent review; see [candidate verification](../../maintainers/RELEASE-VERIFICATION.md); publishing/deployment are not authorized. External hosted/Linux/Windows/private-image gates remain unverified.
 
 **Goal:** Replace the Gist/global-runtime architecture with accurate local collection,
 a repository-owned usage ledger and SVG, and automatic synchronization for repository writers.

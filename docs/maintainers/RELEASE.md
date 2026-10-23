@@ -42,11 +42,16 @@ only retained candidate files plus that closure; it has no uplinks, live fallbac
 credentials or project-package acquisition. It executes the initializer alone via
 `npm init`, with default install scripts enabled, so dependency declarations and
 native/install requirements are visible. It checks repository-owned setup, runtime
-repair, fresh-clone activation, actual worker Node and workflow generation from
+repair, fresh-clone activation with both coherent native-hook commit sets, actual
+manual CLI core-worker Node and workflow generation from
 installed core resources. Production dependencies are JS-only (`zod`, Commander,
 `@iarna/toml`); SQLite comes from the chosen Node runtime. No external native build
 step is needed by this graph. Git is required. POSIX automatic-supervision/receiver
-tests stay off Windows; Windows automatic execution remains unsupported.
+tests stay off Windows; Windows automatic execution remains unsupported. Its smoke
+accepts only that exact disclosed setup action with zero queued/pending usage,
+the expected native-trust review action and a successful installed manual sync;
+unrelated setup/provider errors still fail. Local fixture tests cover that result
+classification; actual Windows CI remains unexecuted here.
 
 Retain the candidate directory: `candidate.json` records the exact source commit,
 tag, versions, sizes and SHA-512 SRI for all three files. Pack once; `smoke:pack`

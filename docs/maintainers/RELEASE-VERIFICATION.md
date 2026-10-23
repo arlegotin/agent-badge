@@ -3,7 +3,7 @@
 Task 18 prepares `2.0.0-next.0` for local review; no npm publication, push, tag,
 merge, deployment, hosted settings mutation or credential probe is authorized.
 Final exact artifact hashes/source and fresh target-runtime gate results are
-recorded below after validation. Local macOS evidence cannot certify hosted
+recorded below. Local macOS evidence cannot certify hosted
 GitHub/OIDC, Linux/Windows execution or private authenticated image rendering.
 
 The target range is `^24.0.0 || ^26.0.0`, tested at both floors on macOS arm64.
@@ -107,3 +107,83 @@ They identify the historical measurements, not new candidate tarballs. No repeat
 cold seed or final-candidate latency measurement is claimed for release metadata
 and Windows npm-dispatch changes. The later storage fix has the separate focused
 coverage described above; Task18 supplies new broad/package gates below.
+
+## Local candidate identity
+
+The retained candidate was packed once from clean source commit
+`f81d9a457ef0471ffe1c440dcaf5fa266eff0fd4`, Node24.0.0, darwin/arm64.
+Exact versions, filenames, byte lengths and SHA-512 SRI survive scratch cleanup in
+[the candidate manifest](evidence/2.0.0-next.0-local-candidate.json). Tarballs remain
+at `/private/tmp/agent-badge-task18-candidate-f81d9a4/`; keep these exact bytes for
+local review/retry. Later evidence-only commits do not change that source binding.
+This local refactor candidate has not met live current-main/tag or successful
+hosted-CI-run prerequisites; a future authorized release needs those real gates.
+
+The separate read-only [production audit](evidence/2.0.0-next.0-production-audit.json)
+reported zero advisories for the locked graph on 2026-10-23. Exact external runtime
+dependencies were `zod@4.3.6`, `@iarna/toml@2.2.5`, `commander@14.0.3`; public
+package tarballs were never obtained through uplinks. The audit does not certify
+future registry advisories or the complete development dependency graph.
+
+## Completed local gates (2026-10-23)
+
+| Gate | Node 24.0.0 / npm 11.3.0 | Node 26.0.0 / npm 11.12.1 |
+| --- | --- | --- |
+| Typecheck, build, docs, pack content | Pass | Pass |
+| Complete default partition | 67 files; 716 pass, 1 skip; 389.86s | 67 files; 716 pass, 1 skip; 391.84s |
+| Exact four-file loopback partition | 49 pass; 44.23s | 49 pass; 44.59s |
+| Later Windows-result fixture cover | 1 file; 3 pass | 1 file; 3 pass |
+| Retained candidate pack check | Pass, same three hashes | Pass, same three hashes |
+| Initializer-only registry smoke | Pass | Pass |
+| Actual manual CLI core worker | v24.0.0, matching target executable | v26.0.0, matching target executable |
+
+Each runtime's nonduplicated scope is **72 files / 769 tests: 768 pass, one skip**.
+The frozen-source broad discovery and four-file partition total 71 files / 766
+tests; the later three Windows-result fixture tests are separate covering
+evidence, not a repeated broad run. Every run was sequential with maxWorkers=1,
+darwin/arm64, canonical TMPDIR `/private/tmp`. The original node_modules symlink
+remained intact. No EBADENGINE suppression was used.
+
+The Node24 first broad attempt is retained: 20 failures, 696 pass, one skip.
+Its runner/fixtures crossed macOS's `/var` symlink while Git used physical paths;
+canonical temp roots fixed isolation fixtures without relaxing production path
+checks. A 73-test affected cover and the complete default partition above passed.
+
+Four registry harness failures are also retained: obsolete plaintext wording,
+unsupported launcher `setup --json`, an incomplete native-hook commit set, and
+instrumenting the integration worker instead of the actual manual CLI core
+worker. The incomplete commit correctly failed ownership protection. Final smoke
+tests both coherent commit sets documented in [installation](../INSTALL.md),
+requires successful manual sync, and restores instrumented installed worker
+bytes. This proves manual CLI worker selection, not new automatic-hook timings.
+
+Windows CI accepts only the exact documented automatic-hook limitation, with
+configured native definitions, zero queued records, no pending reconciliation,
+the exact known action items, installed runtime and successful manual sync.
+Unrelated setup/provider actions or generic exit1 fail. Literal result fixtures
+passed on macOS; actual Windows execution remains unverified.
+
+Local logs are `/private/tmp/agent-badge-task18-final{24,26}-default.log`,
+`agent-badge-task18-loop{24,26}.log`, `agent-badge-task18-pack{24,26}.log`,
+`agent-badge-task18-registry24-final-harness.log` and
+`agent-badge-task18-registry26.log`; the same directory contains the named failed
+attempts and standard-gate logs. These are local retained artifacts, not hosted
+CI evidence. The candidate manifest and audit above survive scratch deletion.
+
+Portable reproduction uses the tracked runner, without the plan scratch wrapper:
+
+```sh
+node scripts/validation/run-isolated.mjs npm run typecheck
+node scripts/validation/run-isolated.mjs npm run build
+node scripts/validation/run-isolated.mjs npm run docs:check
+node scripts/validation/run-isolated.mjs npm run pack:check
+node scripts/validation/run-isolated.mjs npm test -- --run --maxWorkers=1 --exclude packages/testkit/src/git-daemon.test.ts --exclude packages/core/src/git/data-transport.test.ts --exclude packages/core/src/operations/budget.test.ts --exclude packages/core/src/operations/runner.test.ts
+node scripts/validation/run-isolated.mjs node node_modules/vitest/vitest.mjs run packages/testkit/src/git-daemon.test.ts packages/core/src/git/data-transport.test.ts packages/core/src/operations/budget.test.ts packages/core/src/operations/runner.test.ts --maxWorkers=1
+node scripts/validation/run-isolated.mjs npm run smoke:pack -- /path/to/retained-candidate
+node scripts/validation/run-isolated.mjs node scripts/smoke/verify-initializer-install.mjs /path/to/retained-candidate /path/to/retained-dependency-closure
+```
+
+Choose the intended Node floor on PATH and matching AGENT_BADGE_TEST_NODE before
+each command. Apply the narrow loopback escalation boundary above where the OS
+sandbox requires it. Independent controller review remains pending; publication
+and all external prerequisites remain outside this completed local gate scope.

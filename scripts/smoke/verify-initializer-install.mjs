@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { loadArtifacts, tarFiles } from './verify-packed-install.mjs';
+import { assertWindowsManualSetup } from './windows-setup-result.mjs';
 const execute = promisify(execFile);
 const directory = resolve(process.argv[2] ?? 'artifacts/candidate'), closure = resolve(process.argv[3] ?? 'artifacts/dependency-closure');
 const { candidate, entries } = await loadArtifacts(directory);
@@ -21,10 +22,28 @@ const packages = new Map(), requests = [];
 let registry;
 const env = { ...process.env, HOME: home, USERPROFILE: home, npm_config_cache: cache, npm_config_userconfig: join(root, 'user.npmrc'), npm_config_globalconfig: join(root, 'global.npmrc'), GIT_CONFIG_GLOBAL: join(root, 'gitconfig'), npm_config_ignore_scripts: 'false', GIT_AUTHOR_NAME: 'Synthetic fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_NAME: 'Synthetic fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid' };
 const npm = 'npm';
-async function run(command, args, cwd = root) {
+function successfulResult(execution, command) {
+  if (process.platform === 'win32' && command === 'init') return assertWindowsManualSetup(execution, command, 'json');
+  assert.equal(execution.code, 0);
+  const result = execution.stdout.split(/\r?\n/).flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } }).find(value => value.schemaVersion === 1 && value.command === command);
+  assert(result, 'Missing stable command JSON');
+  assert(['synced', 'unchanged'].includes(result.status)); assert.equal(result.exitCode, 0); assert.equal(result.pendingReconciliation, false);
+  return result;
+}
+function successfulSetup(execution) {
+  if (process.platform === 'win32') return assertWindowsManualSetup(execution, 'setup', 'plaintext');
+  assert.equal(execution.code, 0); assert.match(execution.stdout, /^agent-badge: setup unchanged\./m);
+}
+async function run(command, args, cwd = root, windowsSetupCommand) {
   if (command === npm && process.platform === 'win32') { command = process.execPath; args = [join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args]; }
-  try { return await execute(command, args, { cwd, env, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }); }
-  catch (error) { console.error(String(error.stderr ?? '').slice(0, 4000), String(error.stdout ?? '').slice(0, 4000)); throw new Error('Synthetic smoke command failed: ' + command + ' ' + args.slice(0, 2).join(' ')); }
+  try { return { ...await execute(command, args, { cwd, env, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }), code: 0 }; }
+  catch (error) {
+    if (process.platform === 'win32' && windowsSetupCommand && error.code === 1) {
+      const result = { stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? ''), code: error.code };
+      assertWindowsManualSetup(result, windowsSetupCommand, windowsSetupCommand === 'init' ? 'json' : 'plaintext'); return result;
+    }
+    console.error(String(error.stderr ?? '').slice(0, 4000), String(error.stdout ?? '').slice(0, 4000)); throw new Error('Synthetic smoke command failed: ' + command + ' ' + args.slice(0, 2).join(' '));
+  }
 }
 try {
   for (const path of [home, cache, project]) await mkdir(path, { recursive: true });
@@ -59,8 +78,8 @@ try {
   await run('git', ['init', '--bare', '--initial-branch=main', join(root, 'remote.git')]);
   await run('git', ['remote', 'add', 'origin', join(root, 'remote.git')], project);
   // npm init requests only create-agent-badge; core/CLI resolve transitively from the same registry.
-  const initialized = await run(npm, ['init', '--yes', 'agent-badge@' + candidate.version, '--', '--repository-url', 'https://github.com/example/synthetic', '--target', 'origin'], project);
-  assert.match(initialized.stdout, /runtime .*usage (synced|unchanged)/);
+  const initialized = await run(npm, ['init', '--yes', 'agent-badge@' + candidate.version, '--', '--repository-url', 'https://github.com/example/synthetic', '--target', 'origin', '--json'], project, 'init');
+  successfulResult(initialized, 'init');
   const privateDir = join(project, '.git/agent-badge'), activation = JSON.parse(await readFile(join(privateDir, 'local.json'), 'utf8'));
   const runtime = join(privateDir, 'runtime', activation.lockHash, 'node_modules/@legotin/agent-badge');
   assert.equal(JSON.parse(await readFile(join(runtime, 'package.json'), 'utf8')).version, candidate.version);
@@ -71,28 +90,40 @@ try {
   assert.match(generation.stdout, /installed-core-resource-generation-passed/);
   // Remove npm-exec's initializer cache; setup is repository-owned and does not require it.
   await rm(cache, { recursive: true, force: true }); await mkdir(cache);
-  const setup = () => run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project);
-  assert.match((await setup()).stdout, /runtime .*usage unchanged/);
+  const setup = () => run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project, 'setup');
+  successfulSetup(await setup());
   const originalCli = await readFile(join(runtime, 'dist/cli/main.js'), 'utf8');
-  await rm(join(runtime, 'dist/cli/main.js')); assert.match((await setup()).stdout, /runtime .*usage unchanged/);
+  await rm(join(runtime, 'dist/cli/main.js')); successfulSetup(await setup());
   assert.equal(await readFile(join(runtime, 'dist/cli/main.js'), 'utf8'), originalCli);
   assert.equal(await readFile(join(project, 'package.json'), 'utf8').catch(() => null), null);
-  await run('git', ['add', '.agent-badge', 'README.md'], project);
+  // Native settings and their ownership both stay local in this first commit.
+  await run('git', ['add', '.agent-badge/config.json', '.agent-badge/run.cjs', '.agent-badge/runtime', '.agent-badge/README.md', '.agent-badge/ownership.json', 'README.md'], project);
   await run('git', ['-c', 'core.hooksPath=' + join(root, 'empty-hooks'), 'commit', '-m', 'Synthetic installed declaration'], project);
   await run('git', ['-c', 'core.hooksPath=' + join(root, 'empty-hooks'), 'push', 'origin', 'HEAD:refs/heads/main'], project);
   const clone = join(root, 'fresh-clone'); await run('git', ['clone', join(root, 'remote.git'), clone]);
-  const fresh = await run(process.execPath, [join(clone, '.agent-badge/run.cjs'), 'setup', '--target', 'origin'], clone);
-  assert.match(fresh.stdout, /runtime .*usage unchanged/);
+  const fresh = await run(process.execPath, [join(clone, '.agent-badge/run.cjs'), 'setup', '--target', 'origin'], clone, 'setup');
+  successfulSetup(fresh);
   const clonePrivate = join(clone, '.git/agent-badge'), cloned = JSON.parse(await readFile(join(clonePrivate, 'local.json'), 'utf8'));
   assert.equal(cloned.repositoryId, activation.repositoryId); assert.equal(cloned.initializeAllowed, false);
   // Prove approved worker runtime, rather than inferring it from the invoking process.
-  const cloneRuntime = join(clonePrivate, 'runtime', cloned.lockHash, 'node_modules/@legotin/agent-badge');
-  const workerPath = join(cloneRuntime, 'dist/integration/runtime-worker.js'), original = await readFile(workerPath, 'utf8'), proof = join(root, 'worker-runtime.json');
+  const workerPath = join(clonePrivate, 'runtime', cloned.lockHash, 'node_modules/@legotin/agent-badge-core/dist/operations/worker-sync.js'), original = await readFile(workerPath, 'utf8'), proof = join(root, 'worker-runtime.json');
   try {
     await writeFile(workerPath, `import{writeFileSync as proofWrite}from'node:fs';proofWrite(${JSON.stringify(proof)},JSON.stringify({node:process.version,execPath:process.execPath}));\n` + original);
-    await run(process.execPath, [join(clone, '.agent-badge/run.cjs'), 'sync'], clone);
+    const synced = await run(process.execPath, [join(clone, '.agent-badge/run.cjs'), 'sync', '--json'], clone);
+    successfulResult(synced, 'sync');
   } finally { await writeFile(workerPath, original); }
   const actualWorker = JSON.parse(await readFile(proof, 'utf8')); assert.equal(actualWorker.node, process.version); assert.equal(actualWorker.execPath, process.execPath);
+  // The other coherent commit set tracks exact reviewed native definitions with ownership.
+  const nativeFiles = ['.agent-badge/agent-hooks.json', '.codex/hooks.json', '.claude/settings.json', '.gemini/settings.json'];
+  await run('git', ['add', ...nativeFiles], project);
+  await run('git', ['-c', 'core.hooksPath=' + join(root, 'empty-hooks'), 'commit', '-m', 'Synthetic reviewed hook definitions and ownership'], project);
+  await run('git', ['-c', 'core.hooksPath=' + join(root, 'empty-hooks'), 'push', 'origin', 'HEAD:refs/heads/main'], project);
+  const trackedClone = join(root, 'fresh-clone-tracked-hooks'); await run('git', ['clone', join(root, 'remote.git'), trackedClone]);
+  const trackedSetup = await run(process.execPath, [join(trackedClone, '.agent-badge/run.cjs'), 'setup', '--target', 'origin'], trackedClone, 'setup');
+  successfulSetup(trackedSetup);
+  const trackedActivation = JSON.parse(await readFile(join(trackedClone, '.git/agent-badge/local.json'), 'utf8'));
+  assert.equal(trackedActivation.repositoryId, activation.repositoryId); assert.equal(trackedActivation.initializeAllowed, false);
+  for (const file of nativeFiles) assert.equal(await readFile(join(trackedClone, file), 'utf8'), await readFile(join(project, file), 'utf8'));
   if (process.platform !== 'win32') {
     await writeFile(join(clone, '.agent-badge/run.cjs'), 'throw new Error("UNTRUSTED launcher executed");');
     // Local/file automatic publication is unsupported and may report it; no receiver or live route is used.
@@ -100,7 +131,7 @@ try {
     assert.doesNotMatch(automatic.stderr, /UNTRUSTED launcher executed/);
   }
   for (const a of candidate.artifacts) assert(requests.some(route => route === '/artifacts/' + a.filename));
-  console.log(JSON.stringify({ status: 'candidate-registry-smoke-passed', sha: candidate.sha, runtime: process.version, actualWorker, platform: `${process.platform}/${process.arch}`, initializerOnly: true, scripts: 'default-enabled', projectUplinks: false, externalRoutes: false, checks: ['single-command-npm-init', 'same-registry-transitive-dependencies', 'installed-core-workflow-generation', 'repository-owned-setup', 'partial-runtime-repair', 'fresh-clone-single-command-activation', 'worker-runtime-proof'], artifacts: candidate.artifacts }));
+  console.log(JSON.stringify({ status: 'candidate-registry-smoke-passed', sha: candidate.sha, runtime: process.version, actualWorker, platform: `${process.platform}/${process.arch}`, initializerOnly: true, scripts: 'default-enabled', projectUplinks: false, externalRoutes: false, checks: ['single-command-npm-init', 'same-registry-transitive-dependencies', 'installed-core-workflow-generation', 'repository-owned-setup', 'partial-runtime-repair', 'fresh-clone-local-native-config', 'fresh-clone-tracked-reviewed-native-config', 'manual-cli-core-worker-runtime-proof'], artifacts: candidate.artifacts }));
 } finally {
   if (registry) await new Promise(accept => registry.close(accept));
   await rm(root, { recursive: true, force: true });

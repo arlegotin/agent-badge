@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "sha": "f81d9a457ef0471ffe1c440dcaf5fa266eff0fd4",
+  "tag": "v2.0.0-next.0",
+  "version": "2.0.0-next.0",
+  "artifacts": [
+    {
+      "name": "@legotin/agent-badge-core",
+      "version": "2.0.0-next.0",
+      "filename": "legotin-agent-badge-core-2.0.0-next.0.tgz",
+      "size": 133831,
+      "integrity": "sha512-z2l9UVL1OraALnNTQFMGJiiv9QJysQK3+rTxLibTlgLQZ06Rn/cFvA79Kxrdgt8wbyqV/xGp7I6H+U78x3X0lw=="
+    },
+    {
+      "name": "@legotin/agent-badge",
+      "version": "2.0.0-next.0",
+      "filename": "legotin-agent-badge-2.0.0-next.0.tgz",
+      "size": 49005,
+      "integrity": "sha512-32izC27khMnHkfMohVguB4sMv57SY9unYtYUOTduMjpfYMEOQjLHuFyUaYwb/+aegBTzL/N/Bjw7YYa2USW7AQ=="
+    },
+    {
+      "name": "create-agent-badge",
+      "version": "2.0.0-next.0",
+      "filename": "create-agent-badge-2.0.0-next.0.tgz",
+      "size": 6430,
+      "integrity": "sha512-LIeS4xmfmj16RYa2RRR6tTyhTqHRA0yZN0VNJTUXL3XNPk7We9mUbVQqbMfQxwXL9skdUArlwLgj+GYtN/JSTw=="
+    }
+  ],
+  "runtime": "v24.0.0",
+  "platform": "darwin/arm64",
+  "checks": {
+    "packing": "passed",
+    "publication": "not-authorized",
+    "hostedOidc": "unverified",
+    "hostedPrivateImage": "unverified"
+  }
+}
