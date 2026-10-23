@@ -1,21 +1,20 @@
 # Installation
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
+These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](maintainers/RELEASE-STATUS.md) for publication and verification evidence.
 
 Use Node.js **24 or 26** (`^24.0.0 || ^26.0.0`), npm and Git. A globally installed Badge runtime is unnecessary. Each repository owns its declaration and exact nested runtime lock; each Git common directory owns private activation. Linked worktrees share that private state, while provider configuration can still require worktree-specific review.
 
-After a replacement release, the initializer remains `npm init agent-badge@latest`. Until then use only verified candidate artifacts prepared by maintainers; public `1.1.20` cannot bootstrap this runtime. The source workspace can build and display help without installing or activating this checkout:
+Initialize the repository with the npm entry point; no global install is required:
 
 ```sh
-npm run build
-npm run dev:agent-badge -- --help
+npm init agent-badge@latest
 ```
 
-For a verified installed candidate, initial setup is explicit:
+An explicitly installed runtime can preview or apply setup with an exact version:
 
 ```sh
-agent-badge init --runtime-version <candidate-version> --dry-run
-agent-badge init --runtime-version <candidate-version>
+agent-badge init --runtime-version 2.0.0 --dry-run
+agent-badge init --runtime-version 2.0.0
 ```
 
 Review the printed tracked changes, runtime pin and hook action items. Setup does not stage or commit files. Reviewed native hook definitions (`.codex/hooks.json`, `.claude/settings.json`, `.gemini/settings.json`) and their matching `.agent-badge/agent-hooks.json` ownership record travel together, or both remain local/untracked. A fresh clone can create local native hooks during explicit setup. Committing ownership while omitting its definitions produces an action item to reconcile missing owned hooks; it is not a successful activation. Never force-add ignored/private settings or unrelated provider files. Installation uses an exact approved npm lock and integrity with package lifecycle scripts disabled. Retry explicit setup after installation failure. No successful-setup claim is made when a required runtime/hook path is unusable; queued initial history can require a later manual run.

@@ -1,8 +1,8 @@
 # CLI reference
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
+These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](maintainers/RELEASE-STATUS.md) for publication and verification evidence.
 
-Examples assume a verified candidate runtime on PATH, or replace `agent-badge` with `node .agent-badge/run.cjs` after activation. Help, version and invalid argument parsing do not install, collect, probe credentials or change files. There are no compatibility aliases for removed commands.
+Examples assume an explicitly installed v2 runtime on PATH, or replace `agent-badge` with `node .agent-badge/run.cjs` after activation. Help, version and invalid argument parsing do not install, collect, probe credentials or change files. There are no compatibility aliases for removed commands.
 
 | Command | Behavior |
 | --- | --- |

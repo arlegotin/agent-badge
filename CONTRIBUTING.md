@@ -11,7 +11,7 @@ Thanks for contributing to `agent-badge`.
 
 ## Local Development
 
-Use Node.js24 or26 for the repository-native candidate. Package/CI engine metadata alignment remains part of candidate release preparation.
+Use Node.js 24 or 26 (`^24.0.0 || ^26.0.0`) for version 2. Package metadata and CI use the same supported range.
 
 ```bash
 npm ci

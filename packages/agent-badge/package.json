@@ -1,6 +1,6 @@
 {
   "name": "@legotin/agent-badge",
-  "version": "2.0.0-next.0",
+  "version": "2.0.0",
   "description": "Local-first CLI for publishing privacy-safe AI usage badges to GitHub READMEs.",
   "type": "module",
   "license": "Apache-2.0",
@@ -60,7 +60,7 @@
   ],
   "dependencies": {
     "@iarna/toml": "2.2.5",
-    "@legotin/agent-badge-core": "2.0.0-next.0",
+    "@legotin/agent-badge-core": "2.0.0",
     "commander": "^14.0.0"
   }
 }

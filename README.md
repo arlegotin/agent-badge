@@ -2,26 +2,19 @@
 
 Local-first AI coding usage, recorded in your repository. Supported local observations become sanitized, immutable receipts on `agent-badge/data`; `summary.json`, a coverage report and `badge.svg` are derived from that ledger.
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
+These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](docs/maintainers/RELEASE-STATUS.md) for publication and verification evidence.
 
 ## Repository setup
 
-Requires Node.js 24 or 26, npm and Git. Install a verified candidate runtime before using the command examples below. For development, build the workspace and inspect the CLI:
-
-```sh
-npm run build
-npm run dev:agent-badge -- --help
-```
-
-The initializer entry point remains:
+Requires Node.js 24 or 26, npm and Git. In your repository, run:
 
 ```sh
 npm init agent-badge@latest
 ```
 
-That is the intended public setup command **after the replacement is released**. Today `@latest` does not install this replacement. Do not use the old release to activate a candidate repository. [Installation](docs/INSTALL.md) explains local activation and exact runtime approval.
+Review the tracked configuration, runtime pin and native hook action items. Setup does not stage or commit. [Installation](docs/INSTALL.md) explains exact runtime approval and per-clone trust.
 
-Once a candidate is installed, each clone explicitly activates the repository setup:
+A new clone of a configured repository activates and inspects the setup with:
 
 ```sh
 node .agent-badge/run.cjs setup
@@ -54,4 +47,4 @@ The ledger contains an SVG. For canonical GitHub destinations, setup embeds a fi
 
 [Design and implementation status](docs/superpowers/specs/2026-10-22-repo-native-design.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Release maintenance](docs/maintainers/RELEASE.md).
 
-Licensed under [Apache-2.0](LICENSE). No release or deployment is authorized by this refactor.
+Licensed under [Apache-2.0](LICENSE). [Release verification](docs/maintainers/RELEASE-STATUS.md).

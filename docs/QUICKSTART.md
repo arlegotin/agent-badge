@@ -1,8 +1,12 @@
 # Quickstart
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
+These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](maintainers/RELEASE-STATUS.md) for publication and verification evidence.
 
-Follow [installation](INSTALL.md) to obtain a verified candidate. After its release, the initializer entry point is `npm init agent-badge@latest`; current public releases do not provide the replacement.
+In your repository, follow [installation](INSTALL.md) and run:
+
+```sh
+npm init agent-badge@latest
+```
 
 In a configured clone, explicitly activate and inspect:
 

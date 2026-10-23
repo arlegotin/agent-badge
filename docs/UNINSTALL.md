@@ -1,6 +1,6 @@
 # Uninstall
 
-With a verified candidate installed:
+With a v2 runtime installed:
 
 ```sh
 node .agent-badge/run.cjs uninstall --json

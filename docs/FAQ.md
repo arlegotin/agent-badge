@@ -1,8 +1,8 @@
 # FAQ
 
-## Is the replacement released?
+## Which version do I need?
 
-No. These docs describe the repository-native candidate. Public npm `1.1.20` does not implement it. Maintainers still need candidate artifact/release validation and external gates. After release the initializer stays `npm init agent-badge@latest`.
+The repository-native commands require **2.0.0 or newer**. The initializer is `npm init agent-badge@latest`; check [release status](maintainers/RELEASE-STATUS.md) for publication evidence. Version 1 uses Gists and does not provide these commands or an automatic migration.
 
 ## What do I install per repository or clone?
 
