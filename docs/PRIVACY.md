@@ -1,43 +1,13 @@
-# Privacy Model
+# Privacy
 
-## Aggregate-only publishing
+Collection runs locally where the agent writes history. CI cannot discover another machine's local usage. No prompts, transcripts, agent-work filenames, local paths, credentials or raw provider session IDs are committed or transmitted by Badge.
 
-`agent-badge` keeps the badge endpoint payload aggregate-only even when shared publishing is enabled. The public gist may contain derived badge payloads, deterministic contributor files such as `agent-badge-contrib-<publisher>.json`, and the shared overrides file `agent-badge-overrides.json`, but those shared-state files still never publish prompt text, transcript text, filenames, or local paths.
+Private state under `<git-common-dir>/agent-badge/` includes discovery descriptors, normalized observations, attribution choices/proof, checkpoints, journals, fixed causal-control intents, leases and accepted snapshot evidence. It may identify local sources, so protect it like other local development data. It never belongs in a PR. Retained unsupported v1 state/cache/log files remain ignored during uninstall.
 
-Diagnostics stay aggregate-only. When `agent-badge status` or `agent-badge doctor` reports stale shared mode, conflicts, partial migration, or an orphaned local publisher, the CLI reports only mode, issue ids, counts, and remediation guidance. It does not print raw session ids, raw `provider:providerSessionId` values, prompt text, transcript text, filenames, or local paths.
+Outbound data is strictly validated: opaque repository-scoped unit/coverage hashes, allowlisted provider/model/meter values, repository UUID, schema versions, causal controls, supported catalog/policy and derived artifacts. Git data commits use a fixed non-personal identity/message; captured Git/provider errors become static diagnostic codes. Hashes provide integrity and stable identity, not proof that a writer's self-reported usage is true.
 
-## Forbidden Outbound Data
+`status` is local and sends nothing. `explain` is redacted and local only. Explicit public `contribute` files are the deliberate normal-staging exception: they contain validated public receipts and causal closure, never private source envelopes. `import --normalized-source` is private and uses a distinct strict discriminator. Exporting or uploading a raw native history is unnecessary and unsafe.
 
-The following data must never leave the local machine:
+Normal Git authentication remains Git's responsibility. The optional trusted workflow imports accepted sanitized files with exact approved code; it cannot collect a developer's private history. No background service, credential probing, analytics or per-person leaderboard is installed.
 
-- prompt text
-- raw transcript content
-- filename
-- local paths
-- raw `provider:providerSessionId` values
-
-## Local-First Boundary
-
-- Provider scanning runs against local `~/.codex` and `~/.claude` directories.
-- Attribution and override decisions are persisted locally in `.agent-badge/`.
-- Remote publishing writes aggregate endpoint JSON for Shields plus shared-state files that use opaque digest keys instead of raw provider session ids.
-
-## Local Artifacts
-
-The runtime keeps small derived state in the repo:
-
-- `.agent-badge/config.json` for supported settings
-- `.agent-badge/state.json` for publish state, checkpoints, and persisted override decisions
-- `.agent-badge/cache/` for refresh acceleration
-- `.agent-badge/logs/` for local operational logs
-
-By default, init adds the mutable state, cache, and logs paths to `.gitignore`.
-
-## CLI Output Privacy
-
-`privacy.output` can be set to `standard` or `minimal`:
-
-- `standard` prints more local publish detail such as gist id and publish hash where available
-- `minimal` trims that local output down
-
-This only changes what the CLI prints on your machine. It does not relax the aggregate-only publish boundary.
+[Security](../SECURITY.md) · [Attribution](ATTRIBUTION.md) · [Uninstall](UNINSTALL.md).

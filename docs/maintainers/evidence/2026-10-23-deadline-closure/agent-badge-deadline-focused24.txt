@@ -1,0 +1,56 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:79472) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (8 tests) 16836ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1120ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1053ms
+   ✓ actual diagnostic terminates owned inspection work and exits within its original budget  1055ms
+   ✓ actual diagnostic terminates owned capability work and exits within its original budget  1070ms
+   ✓ actual 'status' owns and terminates repository-resolution 'read' work  5286ms
+   ✓ actual 'status' owns and terminates repository-resolution 'cpu' work  5293ms
+   ✓ actual 'doctor' owns and terminates repository-resolution 'read' work  982ms
+   ✓ actual 'doctor' owns and terminates repository-resolution 'cpu' work  976ms
+(node:80204) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/operational.test.ts (9 tests) 23998ms
+   ✓ status JSON and doctor preserve explicit setup needs, unavailable sources and required failures  1192ms
+   ✓ collect is local-only, sync confirms data, explain redacts, and explicit cross-clone controls use accepted heads  4882ms
+   ✓ configure validates revision and writes accepted policy; upgrade requires an exact deliberate runtime  2335ms
+   ✓ remote-only controls have no source journal, export causal closure, and offline commands never claim intent applied  3216ms
+   ✓ status detects local wrong-target routing without any remote request  844ms
+   ✓ supervised collect never invokes remote Git and cancellation preserves captured pending work  1920ms
+   ✓ include reports a concurrent later remote exclusion instead of silently rebasing its fixed intent  5636ms
+   ✓ plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state  2719ms
+   ✓ plaintext doctor setup and uninstall expose required failures owner repair items and independent deactivation  1253ms
+(node:86314) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/doctor.test.ts (9 tests) 9623ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  368ms
+   ✓ doctor checks required integration completeness and explicitly bounded read-only remote access  921ms
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  371ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  317ms
+   ✓ remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding  1328ms
+   ✓ remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding  1362ms
+   ✓ remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding  1299ms
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3245ms
+   ✓ a bounded metadata schema establishes unsupported-data without journal replay  411ms
+(node:88400) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 6896ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  450ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1630ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1506ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  342ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1035ms
+   ✓ status refuses missing derived generation without replay or repair  381ms
+   ✓ status refuses corrupt derived generation without replay or repair  385ms
+   ✓ status refuses staged derived generation without replay or repair  387ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  780ms
+
+ Test Files  4 passed (4)
+      Tests  35 passed (35)
+   Start at  04:06:33
+   Duration  58.23s (transform 264ms, setup 0ms, collect 524ms, tests 57.35s, environment 0ms, prepare 94ms)
+

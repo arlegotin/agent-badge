@@ -1,0 +1,43 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ❯ scripts/release/preflight.test.ts (18 tests | 3 failed) 5ms
+   ✓ exact release authorization before any publish > blocks non-main dispatch 1ms
+   ✓ exact release authorization before any publish > blocks push event 0ms
+   ✓ exact release authorization before any publish > blocks stale queued request 0ms
+   ✓ exact release authorization before any publish > blocks wrong checked out commit 0ms
+   ✓ exact release authorization before any publish > blocks retargeted tag 0ms
+   ✓ exact release authorization before any publish > blocks implicit patch 0ms
+   ✓ exact release authorization before any publish > blocks stable without intent 0ms
+   ✓ exact release authorization before any publish > blocks wrong tag 0ms
+   ✓ exact release authorization before any publish > accepts explicit major prerelease and separately selected stable major 0ms
+   ✓ exact release authorization before any publish > checks every package before publishing any, stops on changed tarball 1ms
+   ✓ exact release authorization before any publish > resumes partial publication in dependency order without rewriting matching versions 0ms
+   ✓ exact release authorization before any publish > repeat publication writes nothing 0ms
+   ✓ exact release authorization before any publish > ambiguous publish failure is reconciled through exact bytes before continuing 0ms
+   ✓ exact release authorization before any publish > unknown registry state fails closed before the first write 0ms
+   ✓ exact release authorization before any publish > freshness failure after all-package preflight cannot be reconciled as an upload 0ms
+   × retains structured first publication evidence including confirmed progress 2ms
+     → publishWithEvidence is not a function
+   × retains structured partial publication evidence including confirmed progress 0ms
+     → publishWithEvidence is not a function
+   × retains structured repeat publication evidence including confirmed progress 0ms
+     → publishWithEvidence is not a function
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  scripts/release/preflight.test.ts > retains structured first publication evidence including confirmed progress
+ FAIL  scripts/release/preflight.test.ts > retains structured partial publication evidence including confirmed progress
+ FAIL  scripts/release/preflight.test.ts > retains structured repeat publication evidence including confirmed progress
+TypeError: publishWithEvidence is not a function
+ ❯ scripts/release/preflight.test.ts:53:31
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 15 passed (18)
+   Start at  03:19:04
+   Duration  118ms (transform 20ms, setup 0ms, collect 20ms, tests 5ms, environment 0ms, prepare 23ms)
+

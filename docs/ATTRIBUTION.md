@@ -1,40 +1,27 @@
-# Attribution Model
+# Attribution and source support
 
-`agent-badge` attributes sessions conservatively so totals stay credible.
+Usage belongs to the repository where work executed, independent of its code's merge outcome. Each native identity is scoped into opaque repository keys; copied sessions, linked worktrees and retries do not automatically become new additive spend. Conflicting final receipts remain conflicts instead of selecting a convenient larger count.
 
-## Evidence Priority
+<!-- capabilities:start -->
+| Integration | Reader maximum | Numeric/coverage boundary |
+| --- | --- | --- |
+| codex | fixture-certified | Pinned final requests only; unavailable/incomplete records stay partial. |
+| claude | unsupported | Native historical numeric amounts are omitted; metadata/unknown usage only. |
+| gemini | fixture-certified | Positive saved successful requests only; partial history, recognized exact models unpriced. |
+| opencode | unsupported | Candidate detection only; fork/import origin cannot certify additive numeric usage. |
+| cursor | unsupported | Context occupancy is not accumulated spend; no certified numeric reader. |
+| copilot | unsupported | Optional OTel/organization metrics have no certified local request reader here. |
+| import | fixture-certified | Explicit normalized producer assertions; always partial, not native attestation. |
+<!-- capabilities:end -->
 
-The attribution engine applies evidence in this strict order:
+“Fixture-certified” describes the maximum reader contract, not a release-wide guarantee or complete history. A present directory or detected native candidate is not an observed receipt. Missing explicitly selected roots are unavailable. Hooks only wake bounded local reads; payload totals do not become receipts. Gemini tokenless/zero saved records are omitted; failed calls can be missing. Native Claude amounts are unsupported and omitted, rather than interpreted as zero or inferred from visible text.
 
-`exact repo root -> exact remote -> normalized cwd -> transcript correlation -> persisted override`
+Exact inspected source contracts are tracked: [Codex](superpowers/research/2026-10-22-codex-accounting-contract.md) at `86e17e98c7f901277aeeb4649cf1b01462b082f2`, [Gemini](superpowers/research/2026-10-22-gemini-accounting-contract.md) at `09d81bf116b6f0ef084731dc996aa9d56438bb70`, [Claude boundaries](superpowers/research/2026-10-22-claude-accounting-contract.md), and [OpenCode/Cursor/Copilot/import research](superpowers/specs/2026-10-22-provider-capabilities-and-normalized-imports.md). Development snapshots are not proven released-version ranges. [Hook contract and timeout units](superpowers/research/2026-10-22-hook-integration-contract.md).
 
-The important part is not the number of signals. It is the order. Strong evidence gets first say. Weak hints do not get to inflate the badge.
+Live attribution resolves the nearest Git boundary, nesting, common directory, execution cwd and approved remote aliases. Conflicting repository evidence remains excluded or ambiguous. Missing cwd is not invented. Private mappings/overrides are explicit local choices. An `attribute` choice establishes repository membership only; it grants no authority to reinclude a shared exclusion.
 
-## Session Outcomes
+Automatic worktree enrollment is inventory only. A path once belonging to this common directory does not authorize unseen observations after deletion/reuse. Exact journaled proof for an observation survives deletion. Unscanned history at missing/reused paths can remain ambiguous until an explicit private mapping, override or historical enrollment assertion is chosen.
 
-Every scanned session lands in one of three buckets:
+Use opaque IDs with redacted `explain`, and deliberate `include`/`exclude` with validated current accepted causal heads. An unchanged saved override or ordinary normalized import never revives a later shared exclusion. Explicit source-free controls also support remote-only unit keys.
 
-- `included`: strong enough evidence says it belongs to this repo
-- `ambiguous`: there is some signal, but not enough to trust it automatically
-- `excluded`: the session clearly does not belong to this repo
-
-Sessions that do not clear the threshold remain ambiguous and stay out of the badge until you explicitly include them.
-
-## Manual Overrides
-
-Use these flags on a full scan when you want to resolve ambiguity:
-
-```bash
-agent-badge scan --include-session <provider:sessionId>
-agent-badge scan --exclude-session <provider:sessionId>
-```
-
-Those decisions are persisted and reused on future scans and refreshes.
-
-## Why This Matters
-
-- Strong signals are preferred over weak hints.
-- Ambiguous sessions are never auto-counted.
-- Manual include/exclude decisions are persisted and reused on future scans.
-
-The badge is allowed to undercount. It is not allowed to bluff.
+Normalized private input preserves original producer/source/request identity across copies/reexports and declares nonoverlap explicitly. This is a deliberate operator assertion, not verified native execution. Only certified native mappings reuse original Codex/Gemini identity; independent wrapping of unsupported native history is forbidden. [Full producer API](superpowers/specs/2026-10-22-provider-capabilities-and-normalized-imports.md).

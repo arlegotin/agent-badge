@@ -1,0 +1,61 @@
+
+> build
+> node scripts/build.mjs
+
+packages/create-agent-badge/src/index.test.ts(44,52): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/index.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/create-agent-badge/src/index.test.ts(44,52): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/index.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(9,8): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/provider-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(9,8): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/provider-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(16,8): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/repo-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(16,8): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/repo-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(22,8): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/git-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  The file is in the program because:
+    Imported via "./git-fixtures.js" from file '/Volumes/git/legotin/agent-badge/packages/testkit/src/index.ts'
+    Imported via './git-fixtures.js' from file '/Volumes/git/legotin/agent-badge/packages/testkit/src/index.ts'
+    Imported via './git-fixtures.js' from file '/Volumes/git/legotin/agent-badge/packages/testkit/src/git-daemon.ts'
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(22,8): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/git-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  The file is in the program because:
+    Imported via "./git-fixtures.js" from file '/Volumes/git/legotin/agent-badge/packages/testkit/src/index.ts'
+    Imported via './git-fixtures.js' from file '/Volumes/git/legotin/agent-badge/packages/testkit/src/index.ts'
+    Imported via './git-fixtures.js' from file '/Volumes/git/legotin/agent-badge/packages/testkit/src/git-daemon.ts'
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(23,82): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/storage-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(23,82): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/storage-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(24,58): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/codex-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(24,58): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/codex-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(25,61): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/claude-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(25,61): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/claude-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(27,61): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/gemini-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(27,61): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/gemini-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(28,32): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/opencode-fixtures.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(28,32): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/opencode-fixtures.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(29,62): error TS6059: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/git-daemon.ts' is not under 'rootDir' '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/src'. 'rootDir' is expected to contain all source files.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+packages/testkit/src/index.ts(29,62): error TS6307: File '/Volumes/git/legotin/agent-badge/packages/testkit/src/git-daemon.ts' is not listed within the file list of project '/Volumes/git/legotin/agent-badge/packages/create-agent-badge/tsconfig.json'. Projects must list all files or use an 'include' pattern.
+  File is ECMAScript module because '/Volumes/git/legotin/agent-badge/packages/testkit/package.json' has field "type" with value "module"
+file:///Volumes/git/legotin/agent-badge/scripts/build.mjs:16
+  if(result.status!==0)throw new Error('TypeScript build failed.');
+                             ^
+
+Error: TypeScript build failed.
+    at buildWorkspace (file:///Volumes/git/legotin/agent-badge/scripts/build.mjs:16:30)
+    at async file:///Volumes/git/legotin/agent-badge/scripts/build.mjs:19:84
+
+Node.js v24.0.0

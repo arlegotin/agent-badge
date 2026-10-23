@@ -1,0 +1,37 @@
+name: Dependency and adapter fixtures
+on:
+  schedule:
+    - cron: '17 8 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.0.0'
+          package-manager-cache: false
+      - run: node scripts/validation/run-isolated.mjs npm ci
+      - name: Read-only dependency advisory report
+        run: node scripts/validation/run-isolated.mjs npm audit --omit=dev --json --registry=https://registry.npmjs.org > dependency-audit.json
+      - name: Fixture-certified capability versions (explicit empty roots)
+        if: always()
+        run: node scripts/validation/run-isolated.mjs node --import tsx scripts/validation/capabilities.ts > capability-versions.json
+      - name: Synthetic adapter regression checks
+        if: always()
+        run: node scripts/validation/run-isolated.mjs node node_modules/vitest/vitest.mjs run packages/core/src/providers --maxWorkers=1 > adapter-fixtures.log 2>&1
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: synthetic-dependency-fixture-evidence
+          path: |
+            dependency-audit.json
+            capability-versions.json
+            adapter-fixtures.log
+          retention-days: 90
+          if-no-files-found: error

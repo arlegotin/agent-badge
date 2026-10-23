@@ -1,0 +1,75 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:79038) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts (8 tests | 4 failed | 4 skipped) 18933ms
+   ↓ actual diagnostic terminates owned read work and exits within its original budget
+   ↓ actual diagnostic terminates owned cpu work and exits within its original budget
+   ↓ actual diagnostic terminates owned inspection work and exits within its original budget
+   ↓ actual diagnostic terminates owned capability work and exits within its original budget
+   × actual 'status' owns and terminates repository-resolution 'read' work 6770ms
+     → expected 79096 not to be 79096 // Object.is equality
+   × actual 'status' owns and terminates repository-resolution 'cpu' work 6717ms
+     → expected 79179 not to be 79179 // Object.is equality
+   × actual 'doctor' owns and terminates repository-resolution 'read' work 2726ms
+     → expected 79295 not to be 79295 // Object.is equality
+   × actual 'doctor' owns and terminates repository-resolution 'cpu' work 2720ms
+     → expected 79364 not to be 79364 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'status' owns and terminates repository-resolution 'read' work
+AssertionError: expected 79096 not to be 79096 // Object.is equality
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:71:19
+     69|   pid=Number(await readFile(marker,'utf8'));
+     70|   // Before the fix this identifies the blocked command parent, before…
+     71|   expect(pid).not.toBe(commandPid);
+       |                   ^
+     72|   expect(failure).toBeUndefined();
+     73|   expect(JSON.parse(result!.stdout)).toMatchObject(command==='doctor'?…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'status' owns and terminates repository-resolution 'cpu' work
+AssertionError: expected 79179 not to be 79179 // Object.is equality
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:71:19
+     69|   pid=Number(await readFile(marker,'utf8'));
+     70|   // Before the fix this identifies the blocked command parent, before…
+     71|   expect(pid).not.toBe(commandPid);
+       |                   ^
+     72|   expect(failure).toBeUndefined();
+     73|   expect(JSON.parse(result!.stdout)).toMatchObject(command==='doctor'?…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'doctor' owns and terminates repository-resolution 'read' work
+AssertionError: expected 79295 not to be 79295 // Object.is equality
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:71:19
+     69|   pid=Number(await readFile(marker,'utf8'));
+     70|   // Before the fix this identifies the blocked command parent, before…
+     71|   expect(pid).not.toBe(commandPid);
+       |                   ^
+     72|   expect(failure).toBeUndefined();
+     73|   expect(JSON.parse(result!.stdout)).toMatchObject(command==='doctor'?…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'doctor' owns and terminates repository-resolution 'cpu' work
+AssertionError: expected 79364 not to be 79364 // Object.is equality
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:71:19
+     69|   pid=Number(await readFile(marker,'utf8'));
+     70|   // Before the fix this identifies the blocked command parent, before…
+     71|   expect(pid).not.toBe(commandPid);
+       |                   ^
+     72|   expect(failure).toBeUndefined();
+     73|   expect(JSON.parse(result!.stdout)).toMatchObject(command==='doctor'?…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 skipped (8)
+   Start at  04:05:31
+   Duration  19.32s (transform 192ms, setup 0ms, collect 289ms, tests 18.93s, environment 0ms, prepare 24ms)
+

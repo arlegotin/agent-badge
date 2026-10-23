@@ -1,5 +1,7 @@
 # Contributing
 
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+
 Thanks for contributing to `agent-badge`.
 
 ## Before You Open a Change
@@ -11,9 +13,12 @@ Thanks for contributing to `agent-badge`.
 
 ## Local Development
 
+Use Node.js 24 or 26 (`^24.0.0 || ^26.0.0`) for version 2. Package metadata and CI use the same supported range.
+
 ```bash
 npm ci
 npm run typecheck
+npm run build
 npm test -- --run
 npm run docs:check
 ```
@@ -23,7 +28,7 @@ Use `npm run verify:clean-checkout` before release-oriented changes.
 ## Issues and Support
 
 - use GitHub issues for bugs, docs gaps, and feature requests
-- include exact CLI output when reporting install, auth, or publish problems
+- include sanitized CLI status/diagnostic output when reporting install, auth, or synchronization problems
 - do not post private tokens, raw transcripts, or local paths in public issues
 
 ## Pull Request Bar
@@ -31,6 +36,6 @@ Use `npm run verify:clean-checkout` before release-oriented changes.
 Changes that affect install, publish, release, or docs should leave the repo in a state where:
 
 - public requirements are explicit
-- user docs do not reference internal planning artifacts
+- user docs distinguish implemented candidate behavior, published release availability and unverified external gates
 - release docs do not hardcode stale versions
 - the docs checker still passes

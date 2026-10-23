@@ -1,0 +1,16 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:459) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (4 tests) 4301ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1113ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1051ms
+   ✓ actual diagnostic terminates owned inspection work and exits within its original budget  1061ms
+   ✓ actual diagnostic terminates owned capability work and exits within its original budget  1076ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  03:31:48
+   Duration  4.67s (transform 185ms, setup 0ms, collect 275ms, tests 4.30s, environment 0ms, prepare 24ms)
+

@@ -1,0 +1,93 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:66600) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/core/src/operations/status.test.ts (8 tests | 4 failed) 4915ms
+   × fresh status reports setup needs without creating private files or touching checkout 351ms
+     → expected { schemaVersion: 1, …(14) } to match object { schemaVersion: 1, …(6) }
+(8 matching properties omitted from actual)
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1363ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1111ms
+   ✓ future private schema is static unsupported output and is never rewritten 249ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  968ms
+   × status refuses missing derived generation without replay or repair 279ms
+     → expected { schemaVersion: 1, …(14) } to match object { state: 'unavailable', …(3) }
+(16 matching properties omitted from actual)
+   × status refuses corrupt derived generation without replay or repair 292ms
+     → expected { schemaVersion: 1, …(14) } to match object { state: 'unavailable', …(3) }
+(16 matching properties omitted from actual)
+   × status refuses staged derived generation without replay or repair 303ms
+     → expected { schemaVersion: 1, …(14) } to match object { state: 'unavailable', …(3) }
+(16 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/core/src/operations/status.test.ts > fresh status reports setup needs without creating private files or touching checkout
+AssertionError: expected { schemaVersion: 1, …(14) } to match object { schemaVersion: 1, …(6) }
+(8 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "configuration": "not-inspected",[22m
+[2m    "exitCode": 1,[22m
+[2m    "lastConfirmedSync": null,[22m
+[32m-   "queuedRecords": null,[39m
+[31m+   "queuedRecords": 0,[39m
+[2m    "schemaVersion": 1,[22m
+[2m    "setup": "not-inspected",[22m
+[2m    "state": "unavailable",[22m
+[2m  }[22m
+
+ ❯ packages/core/src/operations/status.test.ts:25:18
+     23|   const before = await snapshotUserCheckout(repository.worktreeRoot), …
+     24|   const status = await getStatus(repository);
+     25|   expect(status).toMatchObject({ schemaVersion: 1, state: 'unavailable…
+       |                  ^
+     26|   expect(await snapshotUserCheckout(repository.worktreeRoot)).toEqual(…
+     27|   expect(await readdir(repository.commonDir)).toEqual(gitBefore);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  packages/core/src/operations/status.test.ts > status refuses missing derived generation without replay or repair
+ FAIL  packages/core/src/operations/status.test.ts > status refuses corrupt derived generation without replay or repair
+ FAIL  packages/core/src/operations/status.test.ts > status refuses staged derived generation without replay or repair
+AssertionError: expected { schemaVersion: 1, …(14) } to match object { state: 'unavailable', …(3) }
+(16 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "failure": "reporting-index-unavailable",[39m
+[32m-   "queuedRecords": null,[39m
+[32m-   "state": "unavailable",[39m
+[32m-   "totals": null,[39m
+[31m+   "failure": null,[39m
+[31m+   "queuedRecords": 0,[39m
+[31m+   "state": "recorded",[39m
+[31m+   "totals": {[39m
+[31m+     "conflictingUnits": 0,[39m
+[31m+     "excludedUnits": 0,[39m
+[31m+     "includedUnits": 0,[39m
+[31m+     "knownTokens": "0",[39m
+[31m+     "partialUnits": 0,[39m
+[31m+     "recordedUnits": 0,[39m
+[31m+     "repositoryCompleteness": "unknown",[39m
+[31m+     "unknownTokenUnits": 0,[39m
+[31m+   },[39m
+[2m  }[22m
+
+ ❯ packages/core/src/operations/status.test.ts:93:100
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 passed (8)
+   Start at  03:15:55
+   Duration  5.27s (transform 168ms, setup 0ms, collect 259ms, tests 4.91s, environment 0ms, prepare 26ms)
+

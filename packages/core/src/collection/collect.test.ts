@@ -1,0 +1,1093 @@
+import { appendFile, mkdir, readFile, rm, writeFile, symlink, rename } from "node:fs/promises";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  codexRollout, codexContext, codexRequest,
+  claudeNativeResponse,
+  createBareRemoteFixture,
+  type GitFixture,
+} from "@agent-badge/testkit";
+import { resolveRepository } from "../git/context.js";
+import { openStore } from "../storage/store.js";
+import type { LocalStore } from "../storage/store.js";
+import { createCodexAdapter } from "../providers/codex/adapter.js";
+import { createClaudeAdapter } from "../providers/claude/adapter.js";
+import { reduceLedger } from "../ledger/reduce.js";
+import { catalogHash, defaultCatalog } from "../pricing/catalog.js";
+import { protocolObservationFixture } from "@agent-badge/testkit";
+import { recordHash } from "../ledger/canonical-json.js";
+import { collectUsage } from "./collect.js";
+import * as sourceResolver from './source-resolver.js';
+import {
+  attributionPolicyHash,
+  parsePrivateAttributionPolicy,
+} from "./attribution.js";
+import { observationEvidenceHash } from "./metadata.js";
+import { sanitizeObservation } from "../ledger/sanitize.js";
+import type { AttributionMetadata } from "./metadata.js";
+import type { ScanBatch } from "../domain/capabilities.js";
+import type { CollectOptions } from "./collect.js";
+
+const repositoryId = "12345678-1234-4234-8234-123456789abc";
+const policy = {
+  schemaVersion: 1 as const,
+  repositoryId,
+  normalizationVersion: 1 as const,
+  discovery: "auto" as const,
+  disabledProviders: [],
+  badge: { label: "AI usage", metric: "tokens" as const },
+};
+
+describe("durable local collection", () => {
+  let fixture: GitFixture, options: CollectOptions, home: string, path: string;
+  beforeEach(async () => {
+    fixture = await createBareRemoteFixture();
+    const repository = await resolveRepository(fixture.clones[0]);
+    home = join(fixture.root, "codex");
+    await mkdir(join(home, "sessions"), { recursive: true });
+    path = join(home, "sessions/a.jsonl");
+    const rollout = codexRollout({ single: true }).replaceAll(
+      "/synthetic/repo",
+      repository.worktreeRoot
+    );
+    await writeFile(path, rollout);
+    options = {
+      repository,
+      policy,
+      store: await openStore(repository, {
+        processNamespace: async () => "synthetic",
+      }),
+      signal: new AbortController().signal,
+      adapters: {
+        codex: createCodexAdapter({ environment: {}, defaultHome: home }),
+      },
+    };
+  });
+  afterEach(async () => {
+    await fixture.cleanup();
+  });
+  it("bounded automatic collection counts a new small session without an existing checkpoint", async () => {
+    const result = await collectUsage({ ...options, automaticLimits: { maxSources: 16 } });
+    expect(result.pendingReconciliation).toBe(false);
+    expect(await options.store.pending()).toHaveLength(1);
+    expect((await options.store.journal()).length).toBeGreaterThan(0);
+  });
+  it('collection cannot overwrite published source evidence after an index failure in its owning lease', async () => {
+    await writeFile(join(home, 'sessions/b.jsonl'), codexRollout({ single: true })
+      .replaceAll('original', 'second').replaceAll('/synthetic/repo', options.repository.worktreeRoot));
+    const adapter = options.adapters!.codex!, prepare = DatabaseSync.prototype.prepare;
+    let failed = false;
+    const injection = vi.spyOn(DatabaseSync.prototype, 'prepare').mockImplementation(function(sql) {
+      const statement = prepare.call(this, sql);
+      if (!failed && sql.startsWith('INSERT INTO journal ')) {
+        const run = statement.run;
+        statement.run = function(...args) {
+          if (!failed) { failed = true; throw new Error('synthetic SQLite insertion failure'); }
+          return run.apply(this, args);
+        };
+      }
+      return statement;
+    });
+    try {
+      const { result, refused } = await options.store.withLock(AbortSignal.timeout(5000), async () => {
+        const result = await collectUsage({ ...options, adapters: { codex: { ...adapter,
+          async discover(ctx) { return (await adapter.discover(ctx)).filter(source => source.sourceIdentity.endsWith('.jsonl')); }
+        } } });
+        const refused = await options.store.pending().then(() => false, () => true);
+        return { result, refused };
+      });
+      expect(failed).toBe(true);
+      expect(result.sourceOutcomes.every(source => source.outcome === 'unavailable')).toBe(true);
+      expect(result.diagnostics).toContainEqual({ code: 'incomplete-source', severity: 'warning' });
+      expect(refused).toBe(true);
+    } finally { injection.mockRestore(); }
+    const recovered = await options.store.journal();
+    expect(recovered).toHaveLength(1);
+    expect(recovered[0].source.sourceIdentity).toBe(path);
+    expect(recovered[0].records).toHaveLength(1);
+    // Loss of the provider file cannot erase already published authority.
+    await rm(path);
+    await collectUsage(options);
+    expect(await options.store.pending()).toHaveLength(2);
+    expect((await options.store.journal())[0]).toEqual(recovered[0]);
+  });
+  it('empty unchanged source batches require no historical control projection',async()=>{
+    await collectUsage(options);const prior=await options.store.journal(),controls=vi.spyOn(options.store,'controls');
+    try{const result=await collectUsage(options);expect(result.cancelled).toBe(false);expect(await options.store.journal()).toEqual(prior);expect(controls).not.toHaveBeenCalled();}
+    finally{controls.mockRestore();}
+  });
+  it('one operation verifies each distinct attribution cwd once across source batches',async()=>{
+    await writeFile(join(home,'sessions/b.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',options.repository.worktreeRoot));
+    await writeFile(join(home,'sessions/c.jsonl'),codexRollout({single:true}).replaceAll('/synthetic/repo',fixture.clones[1]));
+    const resolve=vi.spyOn(sourceResolver,'resolveAttributionEvidence');
+    try {
+      await collectUsage(options);
+      expect(resolve).toHaveBeenCalledTimes(2);
+      expect(new Set(resolve.mock.calls.map(([observation])=>observation.execution.cwd))).toEqual(new Set([options.repository.worktreeRoot,fixture.clones[1]]));
+    }finally{resolve.mockRestore();}
+  });
+  it("automatic discovery defers epochs and resolves selected sources before checkpoints", async () => {
+    const adapter=options.adapters!.codex!;
+    for(let i=0;i<25;i++)await writeFile(join(home,'sessions',`other-${i}.jsonl`),codexRollout({single:true}));
+    const discovered=await adapter.discover({repositoryId,enrolledRoots:[home],signal:options.signal,lazyEpoch:true});
+    expect(discovered).toHaveLength(26);
+    expect(discovered.every(source=>source.generation==='unresolved-source-epoch')).toBe(true);
+    const result=await collectUsage({...options,automaticLimits:{maxSources:1},target:{provider:'codex',sourceIdentity:path}});
+    expect(result.sourceOutcomes.filter(source=>source.sourceIdentity===path)).toHaveLength(1);
+    const journal=await options.store.journal();
+    expect(journal.flatMap(entry=>entry.observations)).toHaveLength(1);
+    expect(journal.every(entry=>entry.source.generation!=='unresolved-source-epoch' && entry.checkpoint.sourceGeneration!=='unresolved-source-epoch')).toBe(true);
+    expect((await adapter.discover({repositoryId,enrolledRoots:[home],signal:options.signal})).every(source=>source.generation!=='unresolved-source-epoch')).toBe(true);
+  });
+  it("lazy selected sources resolve replacement identities and never checkpoint missing candidates", async () => {
+    await collectUsage(options);
+    const before=await options.store.journal(),adapter=options.adapters!.codex!;
+    const replacement=path+'.new';
+    await writeFile(replacement,codexRollout({single:true}).replaceAll('original','replacement').replaceAll('/synthetic/repo',options.repository.worktreeRoot));
+    let remove=false;
+    const selected={...adapter,async discover(ctx:Parameters<typeof adapter.discover>[0]) {
+      const sources=await adapter.discover(ctx);
+      if(remove)await rm(path);else await rename(replacement,path);
+      return sources;
+    }};
+    const automatic={...options,adapters:{codex:selected},automaticLimits:{maxSources:1},target:{provider:'codex' as const,sourceIdentity:path}};
+    await collectUsage(automatic);
+    const replaced=await options.store.journal();
+    expect(replaced.at(-1)!.checkpoint.sourceGeneration).not.toBe(before.at(-1)!.checkpoint.sourceGeneration);
+    expect(await options.store.pending()).toHaveLength(2);
+    remove=true;
+    expect((await collectUsage(automatic)).sourceOutcomes.some(source=>source.outcome==='unavailable')).toBe(true);
+    expect(await options.store.journal()).toEqual(replaced);
+  });
+  it("lazy aliases deduplicate canonical sources and reject aliases outside enrollment", async () => {
+    const adapter=options.adapters!.codex!,alias=join(home,'sessions','alias.jsonl');
+    await symlink(path,alias);
+    const raw=await adapter.discover({repositoryId,enrolledRoots:[home],signal:options.signal,lazyEpoch:true});
+    const base=raw.find(source=>source.root===path)!;
+    const discovered={...adapter,async discover(){return [...raw,{...base,root:alias,sourceIdentity:alias}];}};
+    const result=await collectUsage({...options,adapters:{codex:discovered},automaticLimits:{maxSources:16}});
+    expect(result.sourceOutcomes.filter(source=>source.sourceIdentity===path)).toHaveLength(1);
+    expect((await options.store.journal()).flatMap(entry=>entry.observations)).toHaveLength(1);
+    await rm(alias);const external=join(fixture.root,'outside.jsonl');await writeFile(external,codexRollout({single:true}));await symlink(external,alias);
+    const blocked=await collectUsage({...options,adapters:{codex:discovered},automaticLimits:{maxSources:16},target:{provider:'codex',sourceIdentity:alias}});
+    expect(blocked.sourceOutcomes.some(source=>source.outcome==='unavailable')).toBe(true);
+    expect((await options.store.journal()).flatMap(entry=>entry.observations)).toHaveLength(1);
+  });
+  it("large automatic histories checkpoint bounded slices and continue warm appends beyond two MiB", async () => {
+    await appendFile(path, (JSON.stringify({type:'synthetic-padding',value:'x'.repeat(1024)})+'\n').repeat(3072));
+    const automatic={...options, adapters:{codex:createCodexAdapter({environment:{},defaultHome:home,maxBytes:512*1024})},automaticLimits:{maxSources:16}};
+    const first=await collectUsage(automatic);
+    expect(first.pendingReconciliation).toBe(true);
+    const initial=(await options.store.journal()).at(-1)!;
+    expect(initial.checkpoint.cursor.offset).toBeGreaterThan(0);
+    expect(initial.checkpoint.cursor.offset).toBeLessThan(initial.checkpoint.cursor.size);
+    for(let index=0;index<8;index++)await collectUsage(automatic);
+    const completed=(await options.store.journal()).at(-1)!.checkpoint;
+    expect(completed.cursor.offset).toBe(completed.cursor.size);
+    await appendFile(path,[{...codexContext('turn-new'),ordinal:9998},codexRequest('original','turn-new','response-new',300,9999)].map(row=>JSON.stringify(row).replaceAll('/synthetic/repo',options.repository.worktreeRoot)).join('\n')+'\n');
+    await collectUsage(automatic);
+    expect(await options.store.pending()).toHaveLength(2);
+    expect((await options.store.journal()).at(-1)!.checkpoint.cursor.offset).toBeGreaterThan(completed.cursor.offset);
+  });
+  it("persisted rotation reaches more than sixteen sources and a newly discovered session", async () => {
+    for (let index = 0; index < 18; index++) await writeFile(join(home, 'sessions', `session-${String(index).padStart(2, '0')}.jsonl`),
+      codexRollout({ single: true }).replaceAll('original', `session-${index}`).replaceAll('/synthetic/repo', options.repository.worktreeRoot));
+    const automatic = { ...options, automaticLimits: { maxSources: 16 } };
+    await collectUsage(automatic);
+    expect(await options.store.pending()).toHaveLength(16);
+    await writeFile(join(home, 'sessions', 'z-new.jsonl'), codexRollout({ single: true }).replaceAll('original', 'session-new').replaceAll('/synthetic/repo', options.repository.worktreeRoot));
+    const reopened = await openStore(options.repository, { processNamespace: async () => 'synthetic' });
+    await collectUsage({ ...automatic, store: reopened });
+    expect(await reopened.pending()).toHaveLength(20);
+    expect(await reopened.reconciliationPending()).toBe(true);
+    // Targeted work cannot claim broad pending reconciliation has completed.
+    await collectUsage({ ...options, store: reopened, target: { provider: 'codex', sourceIdentity: path } });
+    expect(await reopened.reconciliationPending()).toBe(true);
+  });
+  it('automatic slices persist at most two scheduling writes and interrupted starts visit every source',async()=>{
+    for(let i=0;i<4;i++)await writeFile(join(home,'sessions',`rotate-${i}.jsonl`),codexRollout({single:true}).replaceAll('original',`rotate-${i}`).replaceAll('/synthetic/repo',options.repository.worktreeRoot));
+    const base=options.adapters!.codex!;let writes=0;
+    const store=new Proxy(options.store,{get(target,key){const value=Reflect.get(target,key);if(key==='recordAutomaticSourceOffset')return async(offset:number)=>{writes++;return target.recordAutomaticSourceOffset(offset);};return typeof value==='function'?value.bind(target):value;}});
+    await collectUsage({...options,store,automaticLimits:{maxSources:4}});
+    expect(writes).toBeLessThanOrEqual(2);
+    const firsts=new Set<string>();
+    for(let i=0;i<5;i++){
+      const controller=new AbortController();
+      const adapter={...base,async *scan(...args:Parameters<typeof base.scan>){firsts.add(args[0].sourceIdentity);for await(const batch of base.scan(...args))yield batch;controller.abort();}};
+      await collectUsage({...options,store,adapters:{codex:adapter},signal:controller.signal,automaticLimits:{maxSources:4}});
+    }
+    expect(firsts.size).toBe(5);
+  });
+  it("excludes unchanged cached 100-token usage to zero and re-includes causally after acknowledgment", async () => {
+    const lines = (await readFile(path, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    for (const line of lines)
+      if (line.type === "token_usage_record")
+        line.payload.usage = {
+          ...line.payload.usage,
+          input_tokens: 90,
+          total_tokens: 100,
+        };
+    await writeFile(
+      path,
+      lines.map((line) => JSON.stringify(line)).join("\n") + "\n"
+    );
+    const initial = await collectUsage(options);
+    expect(initial.queuedHashes).toHaveLength(1);
+    const original = (await options.store.pending())[0];
+    expect("meters" in original && original.meters[0].total).toBe(100);
+    await options.store.acknowledge(initial.queuedHashes);
+    const observation = (await options.store.journal())[0].observations[0];
+    const override = {
+      provider: "codex",
+      nativeUnitId: observation.nativeUnitId,
+      representation: "request",
+      decision: "exclude",
+    };
+    const excluded = await collectUsage({
+      ...options,
+      privatePolicy: { overrides: [override] },
+    });
+    expect(excluded.queuedHashes).toHaveLength(1);
+    expect(await options.store.pending()).toMatchObject([
+      {
+        kind: "exclude",
+        targetUnitKey: "unitKey" in original ? original.unitKey : "",
+      },
+    ]);
+    const all = (await options.store.journal()).flatMap(
+      (entry) => entry.records
+    );
+    const meta = {
+      schemaVersion: 2 as const,
+      protocolVersion: 1 as const,
+      repositoryId,
+      normalizationVersion: 1 as const,
+      catalogVersion: 1,
+      catalogHash: catalogHash(defaultCatalog),
+      policy,
+    };
+    expect(reduceLedger([original], meta).knownTokens).toBe("100");
+    expect(reduceLedger(all, meta).knownTokens).toBe("0");
+    expect(
+      all.some((record) => recordHash(record) === recordHash(original))
+    ).toBe(true);
+    const journalLength = (await options.store.journal()).length;
+    await collectUsage({
+      ...options,
+      privatePolicy: { overrides: [override] },
+    });
+    expect((await options.store.journal()).length).toBe(journalLength);
+    await collectUsage(options);
+    const controls = (await options.store.pending()).filter(
+      (record) => "kind" in record
+    );
+    expect(controls.map((record) => record.kind)).toEqual(
+      expect.arrayContaining(["exclude", "include"])
+    );
+    const include = controls.find((record) => record.kind === "include")!;
+    expect(include.supersedes).toHaveLength(1);
+  });
+  it("reprojects a removed sole mapping from the journal after the source disappears", async () => {
+    const deleted = join(fixture.root, "deleted");
+    await writeFile(
+      path,
+      (
+        await readFile(path, "utf8")
+      ).replaceAll(options.repository.worktreeRoot, deleted)
+    );
+    await collectUsage({
+      ...options,
+      privatePolicy: { mappings: [{ cwd: deleted, repositoryId }] },
+    });
+    expect(await options.store.pending()).toHaveLength(1);
+    await rm(home, { recursive: true });
+    const store = await openStore(options.repository, {
+      processNamespace: async () => "synthetic",
+    });
+    await collectUsage({
+      ...options,
+      store,
+      privatePolicy: { mappings: [{ cwd: deleted, repositoryId }] },
+    });
+    expect(
+      (await store.pending()).filter((record) => "kind" in record)
+    ).toHaveLength(0);
+    await collectUsage({ ...options, store, privatePolicy: {} });
+    expect(
+      (await store.pending()).filter((record) => "kind" in record)
+    ).toMatchObject([{ kind: "exclude" }]);
+  });
+  it("preserves historical verified membership after deletion, unavailable providers and disabled discovery", async () => {
+    await collectUsage(options);
+    const first = (await options.store.pending())[0];
+    await rm(home, { recursive: true });
+    await collectUsage({
+      ...options,
+      policy: { ...policy, disabledProviders: ["codex"] },
+    });
+    expect(await options.store.pending()).toEqual([first]);
+    const reopened = await openStore(options.repository, {
+      processNamespace: async () => "synthetic",
+    });
+    await collectUsage({
+      ...options,
+      store: reopened,
+      privatePolicy: JSON.parse(
+        JSON.stringify({
+          verifiedWorktrees: [
+            {
+              path: options.repository.worktreeRoot,
+              commonDir: options.repository.commonDir,
+            },
+          ],
+        })
+      ),
+    });
+    expect(await reopened.pending()).toEqual([first]);
+  });
+  it("keeps provider-native Claude provisional numbers private and isolates a corrupt provider", async () => {
+    const claude = join(fixture.root, "claude");
+    await mkdir(join(claude, "projects/p"), { recursive: true });
+    const native = claudeNativeResponse();
+    native.cwd = options.repository.worktreeRoot;
+    await writeFile(
+      join(claude, "projects/p/a.jsonl"),
+      JSON.stringify(native) + "\n"
+    );
+    const broken = {
+      async discover() {
+        throw new Error("private secret filename");
+      },
+      async *scan() {},
+    };
+    const result = await collectUsage({
+      ...options,
+      adapters: {
+        codex: broken,
+        claude: createClaudeAdapter({ environment: {}, defaultHome: claude }),
+      },
+    });
+    expect(result.sourceOutcomes.map((value) => value.outcome)).toEqual([
+      "unavailable",
+      "partial",
+    ]);
+    const pending = await options.store.pending();
+    expect(pending).toHaveLength(1);
+    expect("meters" in pending[0] && pending[0].meters[0].total).toBeNull();
+    const text = JSON.stringify(pending);
+    expect(text).not.toContain(options.repository.worktreeRoot);
+    expect(text).not.toContain("privateEvidence");
+    expect(JSON.stringify(result)).not.toContain("private secret");
+  });
+  it("matches targeted and full reconciliation and discovers a provider installed after initial empty discovery", async () => {
+    const empty = join(fixture.root, "later");
+    const later = createCodexAdapter({ environment: {}, defaultHome: empty });
+    expect(
+      (await collectUsage({ ...options, adapters: { codex: later } }))
+        .sourceOutcomes[0].outcome
+    ).toBe("empty");
+    await mkdir(join(empty, "sessions"), { recursive: true });
+    const target = join(empty, "sessions/a.jsonl");
+    await writeFile(target, await readFile(path, "utf8"));
+    const targeted = await collectUsage({
+      ...options,
+      adapters: { codex: later },
+      target: { provider: "codex", sourceIdentity: target },
+    });
+    expect(targeted.queuedHashes).toHaveLength(1);
+    expect(
+      (await collectUsage({ ...options, adapters: { codex: later } }))
+        .queuedHashes
+    ).toEqual(targeted.queuedHashes);
+    const unavailable = createCodexAdapter({
+      environment: { CODEX_HOME: join(fixture.root, "missing") },
+    });
+    expect(
+      (await collectUsage({ ...options, adapters: { codex: unavailable } }))
+        .sourceOutcomes[0].outcome
+    ).toBe("unavailable");
+  });
+  it("does not parse transcripts again for display or pricing-only changes", async () => {
+    await collectUsage(options);
+    const journal = await options.store.journal();
+    const original = journal[0];
+    const diagnosticAdapter = {
+      async discover() {
+        return [original.source];
+      },
+      async *scan(source: any, candidate: any, _signal: any, scope: any) {
+        if (
+          !candidate ||
+          candidate.attributionPolicyHash !== scope.attributionPolicyHash
+        )
+          throw new Error("scope invalidated");
+        yield {
+          source,
+          observations: [],
+          nextCheckpoint: candidate,
+          outcome: "complete" as const,
+          diagnostics: [],
+        };
+      },
+    };
+    const result = await collectUsage({
+      ...options,
+      policy: { ...policy, badge: { label: "Cost", metric: "estimated-cost" } },
+      adapters: { codex: diagnosticAdapter },
+    });
+    expect(result.sourceOutcomes[0].outcome).toBe("complete");
+    expect(result.queuedHashes).toHaveLength(1);
+    expect((await options.store.journal()).length).toBe(journal.length);
+  });
+
+  it.each(["override", "alias"] as const)(
+    "retracts a removed sole %s using its journal-bound prior policy",
+    async (kind) => {
+      const observation = protocolObservationFixture();
+      observation.execution.cwd =
+        kind === "override" ? join(fixture.root, "absent") : fixture.clones[1];
+      observation.execution.remoteUrl =
+        kind === "alias" ? fixture.remote : null;
+      const source = {
+        provider: "codex" as const,
+        root: "/synthetic/session",
+        instanceKey: "/synthetic",
+        sourceIdentity: "/synthetic/session",
+        generation: "one",
+        schema: "synthetic",
+        readerVersion: "1",
+      };
+      observation.source = {
+        instanceKey: source.instanceKey,
+        sourceIdentity: source.sourceIdentity,
+        generation: source.generation,
+        sourceSchema: source.schema,
+        readerVersion: source.readerVersion,
+      };
+      const adapter = {
+        async discover() {
+          return [source];
+        },
+        async *scan(input: any, candidate: any, _signal: any, scope: any) {
+          yield {
+            source: input,
+            observations: candidate ? [] : [observation],
+            nextCheckpoint: {
+              schemaVersion: 1 as const,
+              provider: source.provider,
+              instanceKey: source.instanceKey,
+              sourceIdentity: source.sourceIdentity,
+              sourceGeneration: source.generation,
+              sourceSchema: source.schema,
+              readerVersion: source.readerVersion,
+              ...scope,
+              continuation: null,
+              cursor: {
+                offset: 1,
+                size: 1,
+                prefixHash: "b".repeat(64),
+                incompleteTail: "",
+              },
+            },
+            outcome: "complete" as const,
+            diagnostics: [],
+          };
+        },
+      };
+      const privatePolicy =
+        kind === "override"
+          ? {
+              overrides: [
+                {
+                  provider: "codex",
+                  nativeUnitId: observation.nativeUnitId,
+                  representation: "request",
+                  decision: "include",
+                },
+              ],
+            }
+          : { remoteAliases: [fixture.remote] };
+      await collectUsage({
+        ...options,
+        adapters: { codex: adapter },
+        privatePolicy,
+      });
+      expect(await options.store.pending()).toHaveLength(1);
+      const restarted = await openStore(options.repository, {
+        processNamespace: async () => "synthetic",
+      });
+      await collectUsage({
+        ...options,
+        store: restarted,
+        adapters: {},
+        privatePolicy: {},
+      });
+      expect(
+        (await restarted.pending()).filter((record) => "kind" in record)
+      ).toMatchObject([{ kind: "exclude" }]);
+    }
+  );
+  it("reprojects newly explicit historical enrollment without rereading a disappeared transcript", async () => {
+    const deleted = join(fixture.root, "deleted-worktree");
+    await writeFile(
+      path,
+      (
+        await readFile(path, "utf8")
+      ).replaceAll(options.repository.worktreeRoot, deleted)
+    );
+    await collectUsage(options);
+    expect(await options.store.pending()).toHaveLength(0);
+    await rm(home, { recursive: true });
+    await collectUsage({
+      ...options,
+      privatePolicy: {
+        verifiedWorktrees: [
+          { path: deleted, commonDir: options.repository.commonDir },
+        ],
+      },
+    });
+    expect(await options.store.pending()).toHaveLength(1);
+  });
+  it("does not assign historical verification to a later unrelated request at a reused worktree path", async () => {
+    const linked = join(fixture.root, "old-linked");
+    await fixture.git(options.repository.worktreeRoot, [
+      "worktree",
+      "add",
+      "--detach",
+      linked,
+      "HEAD",
+    ]);
+    const original = await readFile(path, "utf8");
+    await writeFile(
+      path,
+      original.replaceAll(options.repository.worktreeRoot, linked)
+    );
+    await collectUsage(options);
+    expect(await options.store.pending()).toHaveLength(1);
+    await rm(linked, { recursive: true });
+    await mkdir(linked);
+    await fixture.git(linked, ["init"]);
+    await appendFile(
+      path,
+      original
+        .replaceAll(options.repository.worktreeRoot, linked)
+        .replaceAll("response-1", "response-new")
+    );
+    await collectUsage(options);
+    const pending = await options.store.pending();
+    expect(pending).toHaveLength(1);
+    expect(
+      (await options.store.journal())
+        .flatMap((entry) => entry.observations)
+        .some((observation) =>
+          observation.nativeUnitId.includes("response-new")
+        )
+    ).toBe(true);
+  });
+
+  it("owns the source lock during adapter scanning and isolates a corrupt source", async () => {
+    const native = options.adapters!.codex!,
+      competing = await openStore(options.repository, {
+        processNamespace: async () => "synthetic",
+      });
+    const adapter = {
+      async discover(context: Parameters<typeof native.discover>[0]) {
+        const [source] = await native.discover(context);
+        return [
+          {
+            ...source,
+            root: join(home, "sessions/bad.jsonl"),
+            sourceIdentity: join(home, "sessions/bad.jsonl"),
+          },
+          source,
+        ];
+      },
+      async *scan(...args: Parameters<typeof native.scan>) {
+        let locked = false;
+        try {
+          await competing.withLock(
+            AbortSignal.timeout(25),
+            async () => undefined
+          );
+        } catch {
+          locked = true;
+        }
+        if (!locked) throw new Error("source scan was outside collection lock");
+        if (args[0].root.endsWith("bad.jsonl"))
+          throw new Error("synthetic corrupted source");
+        yield* native.scan(...args);
+      },
+    };
+    const result = await collectUsage({
+      ...options,
+      adapters: { codex: adapter },
+    });
+    expect(result.sourceOutcomes.map((value) => value.outcome)).toEqual([
+      "unavailable",
+      "complete",
+    ]);
+    expect(result.queuedHashes).toHaveLength(1);
+  });
+  it("passes the latest old reader candidate to the adapter instead of hiding or trusting it", async () => {
+    await collectUsage(options);
+    const entry = (await options.store.journal())[0];
+    const changed = { ...entry.source, readerVersion: "synthetic-next-reader" };
+    const adapter = {
+      async discover() {
+        return [changed];
+      },
+      async *scan(source: any, candidate: any, _signal: any, scope: any) {
+        if (candidate?.readerVersion !== entry.source.readerVersion)
+          throw new Error("lost latest candidate");
+        const observation = {
+          ...entry.observations[0],
+          source: {
+            ...entry.observations[0].source,
+            readerVersion: source.readerVersion,
+            generation: "reader-reset",
+          },
+        };
+        const resolved = { ...source, generation: "reader-reset" };
+        yield {
+          source: resolved,
+          observations: [observation],
+          nextCheckpoint: {
+            ...entry.checkpoint,
+            ...scope,
+            readerVersion: source.readerVersion,
+            sourceGeneration: resolved.generation,
+          },
+          outcome: "complete" as const,
+          diagnostics: [],
+        };
+      },
+    };
+    const result = await collectUsage({
+      ...options,
+      adapters: { codex: adapter },
+    });
+    expect(result.sourceOutcomes[0].outcome).toBe("complete");
+    expect(
+      (await options.store.checkpointCandidate(changed))?.readerVersion
+    ).toBe("synthetic-next-reader");
+    expect(result.queuedHashes).toHaveLength(1);
+  });
+
+  it("does not invent historical membership for journal entries written without attribution metadata", async () => {
+    const native = options.adapters!.codex!;
+    const [source] = await native.discover({
+      repositoryId,
+      enrolledRoots: [],
+      signal: options.signal,
+    });
+    const scope = {
+      repositoryId,
+      normalizationVersion: 1 as const,
+      attributionPolicyHash: "a".repeat(64),
+    };
+    for await (const batch of native.scan(source, null, options.signal, scope))
+      await options.store.commitBatch(batch.source, batch, []);
+    await collectUsage(options);
+    expect(await options.store.pending()).toEqual([]);
+    await collectUsage({
+      ...options,
+      privatePolicy: {
+        mappings: [{ cwd: options.repository.worktreeRoot, repositoryId }],
+      },
+    });
+    expect(await options.store.pending()).toHaveLength(1);
+  });
+
+  it("accepts repeated identical native request evidence without duplicating public usage", async () => {
+    const request = (await readFile(path, "utf8"))
+      .split("\n")
+      .find((line) => line.includes('"type":"token_usage_record"'))!;
+    await appendFile(
+      path,
+      JSON.stringify({ ...JSON.parse(request), ordinal: 3 }) + "\n"
+    );
+    const result = await collectUsage(options);
+    expect(result.queuedHashes).toHaveLength(1);
+    expect(result.sourceOutcomes[0].outcome).toBe("complete");
+  });
+  it.each(["include", "exclude"] as const)(
+    "preserves independent linked-worktree membership through a temporary %s override",
+    async (decision) => {
+      const linked = join(fixture.root, "verified-linked");
+      await fixture.git(options.repository.worktreeRoot, [
+        "worktree",
+        "add",
+        "--detach",
+        linked,
+        "HEAD",
+      ]);
+      await writeFile(
+        path,
+        (
+          await readFile(path, "utf8")
+        ).replaceAll(options.repository.worktreeRoot, linked)
+      );
+      await collectUsage(options);
+      const initial = (await options.store.journal())[0];
+      const override = {
+        provider: "codex",
+        nativeUnitId: initial.observations[0].nativeUnitId,
+        representation: "request",
+        decision,
+      };
+      await collectUsage({
+        ...options,
+        privatePolicy: { overrides: [override] },
+      });
+      const temporary = (await options.store.journal()).at(-1)!;
+      expect(temporary.attribution!.decisions[0].verifiedCommonDir).toBe(
+        options.repository.commonDir
+      );
+      await rm(linked, { recursive: true });
+      await collectUsage(options);
+      const records = (await options.store.journal()).flatMap(
+        (entry) => entry.records
+      );
+      const meta = {
+        schemaVersion: 2 as const,
+        protocolVersion: 1 as const,
+        repositoryId,
+        normalizationVersion: 1 as const,
+        catalogVersion: 1,
+        catalogHash: catalogHash(defaultCatalog),
+        policy,
+      };
+      expect(reduceLedger(records, meta).knownTokens).toBe("110");
+    }
+  );
+  it.each(["distinct-units", "single-unit"] as const)(
+    "reprojects a source history over 10000 observations (%s) in durable bounded metadata chunks and progresses a healthy source",
+    async (historyKind) => {
+      const native = options.adapters!.codex!;
+      const [source] = await native.discover({
+        repositoryId,
+        enrolledRoots: [],
+        signal: options.signal,
+      });
+      let baseline: ScanBatch | undefined;
+      const privatePolicy = parsePrivateAttributionPolicy({
+        mappings: [{ cwd: join(fixture.root, "gone"), repositoryId }],
+      });
+      const scope = {
+        repositoryId,
+        normalizationVersion: 1 as const,
+        attributionPolicyHash: attributionPolicyHash(policy, privatePolicy),
+      };
+      for await (const batch of native.scan(
+        source,
+        null,
+        options.signal,
+        scope
+      ))
+        baseline = batch;
+      const observations = Array.from({ length: 10001 }, (_, index) => ({
+        ...baseline!.observations[0],
+        nativeUnitId:
+          historyKind === "single-unit"
+            ? "history-unit"
+            : `history-unit-${index}`,
+        nativeCoverageId: `history-evidence-${index}`,
+        execution: {
+          ...baseline!.observations[0].execution,
+          cwd: join(fixture.root, "gone"),
+        },
+      }));
+      const snapshot = {
+        remoteAliases: privatePolicy.remoteAliases,
+        mappings: privatePolicy.mappings,
+        overrides: privatePolicy.overrides,
+      };
+      for (const batchObservations of [
+        observations.slice(0, 10000),
+        observations.slice(10000),
+      ]) {
+        const metadata: AttributionMetadata = {
+          schemaVersion: 1,
+          policyHash: scope.attributionPolicyHash,
+          policy: snapshot,
+          decisions: batchObservations.map((observation) => ({
+            observationHash: observationEvidenceHash(observation),
+            status: "included",
+            reason: "private-mapping",
+            verifiedCommonDir: null,
+          })),
+        };
+        const records = batchObservations
+          .filter(
+            (observation) =>
+              observation === observations[0] ||
+              observation === observations[10000]
+          )
+          .map((observation) => sanitizeObservation(observation, policy));
+        await options.store.commitBatch(
+          baseline!.source,
+          { ...baseline!, observations: batchObservations },
+          records,
+          metadata
+        );
+      }
+      await writeFile(
+        join(home, "sessions/healthy.jsonl"),
+        (
+          await readFile(path, "utf8")
+        ).replaceAll("response-1", "healthy-response")
+      );
+      const result = await collectUsage({ ...options, privatePolicy: {} });
+      expect(result.diagnostics).toEqual([]);
+      expect(
+        result.sourceOutcomes.some(
+          (outcome) =>
+            outcome.sourceIdentity?.endsWith("healthy.jsonl") &&
+            outcome.outcome === "complete"
+        )
+      ).toBe(true);
+      const journal = await options.store.journal();
+      const replay = journal
+        .slice(2)
+        .filter(
+          (entry) =>
+            entry.source.sourceIdentity === baseline!.source.sourceIdentity &&
+            entry.attribution?.policyHash !== scope.attributionPolicyHash
+        );
+      expect(replay.length).toBeGreaterThan(1);
+      expect(
+        replay.flatMap((entry) => entry.attribution!.decisions)
+      ).toHaveLength(10001);
+      expect(
+        replay.every(
+          (entry) =>
+            entry.attribution!.decisions.length <= 10000 &&
+            Buffer.byteLength(JSON.stringify(entry.attribution)) <=
+              4 * 1024 * 1024
+        )
+      ).toBe(true);
+      const controls = (await options.store.pending()).filter(
+        (record) => "kind" in record
+      );
+      expect(controls).toHaveLength(historyKind === "single-unit" ? 1 : 2);
+      expect(controls.every((record) => record.kind === "exclude")).toBe(true);
+      expect(result.queuedHashes).toHaveLength(
+        historyKind === "single-unit" ? 3 : 5
+      );
+    },
+    60000
+  );
+  it.each([1, 2])(
+    "resumes mixed byte-chunk output after durable chunk %s without losing a mapping-removal exclusion",
+    async (stopAfter) => {
+      const native = options.adapters!.codex!;
+      const [source] = await native.discover({
+        repositoryId,
+        enrolledRoots: [],
+        signal: options.signal,
+      });
+      const oldPrivate = parsePrivateAttributionPolicy({
+        mappings: [{ cwd: join(fixture.root, "old-mapping"), repositoryId }],
+      });
+      const oldScope = {
+        repositoryId,
+        normalizationVersion: 1 as const,
+        attributionPolicyHash: attributionPolicyHash(policy, oldPrivate),
+      };
+      let baseline: ScanBatch | undefined;
+      for await (const batch of native.scan(
+        source,
+        null,
+        options.signal,
+        oldScope
+      ))
+        baseline = batch;
+      const newlyIncluded = Array.from({ length: 25 }, (_, index) => ({
+        ...baseline!.observations[0],
+        nativeUnitId: `newly-included-${index}`,
+        nativeCoverageId: `newly-included-${index}`,
+        execution: {
+          ...baseline!.observations[0].execution,
+          cwd: join(fixture.root, "missing-new"),
+        },
+        meters: Array.from(
+          { length: 500 },
+          () => baseline!.observations[0].meters[0]
+        ),
+      }));
+      const removed = {
+        ...baseline!.observations[0],
+        nativeUnitId: "removed-by-mapping",
+        nativeCoverageId: "removed-by-mapping",
+        execution: {
+          ...baseline!.observations[0].execution,
+          cwd: join(fixture.root, "old-mapping"),
+        },
+      };
+      const observations = [...newlyIncluded, removed];
+      const original = sanitizeObservation(removed, policy);
+      const metadata: AttributionMetadata = {
+        schemaVersion: 1,
+        policyHash: oldScope.attributionPolicyHash,
+        policy: {
+          remoteAliases: oldPrivate.remoteAliases,
+          mappings: oldPrivate.mappings,
+          overrides: oldPrivate.overrides,
+        },
+        decisions: observations.map((observation) => ({
+          observationHash: observationEvidenceHash(observation),
+          status: observation === removed ? "included" : "ambiguous",
+          reason:
+            observation === removed ? "private-mapping" : "missing-evidence",
+          verifiedCommonDir: null,
+        })),
+      };
+      await options.store.commitBatch(
+        baseline!.source,
+        { ...baseline!, observations },
+        [original],
+        metadata
+      );
+      const privatePolicy = {
+        overrides: newlyIncluded.map((observation) => ({
+          provider: observation.provider,
+          nativeUnitId: observation.nativeUnitId,
+          representation: observation.representation,
+          decision: "include",
+        })),
+      };
+      const publicBytes = Buffer.byteLength(
+        JSON.stringify(
+          newlyIncluded.map((observation) =>
+            sanitizeObservation(observation, policy)
+          )
+        )
+      );
+      expect(publicBytes).toBeGreaterThan(4 * 1024 * 1024);
+      expect(publicBytes).toBeLessThan(8 * 1024 * 1024);
+      expect(
+        Buffer.byteLength(
+          JSON.stringify({ ...metadata, policy: privatePolicy })
+        )
+      ).toBeLessThan(4 * 1024 * 1024);
+      const controller = new AbortController();
+      let durableCommits = 0;
+      const interruptingStore = new Proxy(options.store, {
+        get(target, key) {
+          if (key === "commitBatch")
+            return async (...args: Parameters<LocalStore["commitBatch"]>) => {
+              await target.commitBatch(...args);
+              if (++durableCommits === stopAfter) controller.abort();
+            };
+          const value = Reflect.get(target, key);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+      const interrupted = await collectUsage({
+        ...options,
+        adapters: {},
+        privatePolicy,
+        store: interruptingStore,
+        signal: controller.signal,
+      });
+      expect(interrupted.cancelled).toBe(true);
+      expect(durableCommits).toBe(stopAfter);
+      const reopened = await openStore(options.repository, {
+        processNamespace: async () => "synthetic",
+      });
+      const partial = await reopened.journal();
+      if (stopAfter === 1)
+        expect(
+          partial
+            .flatMap((entry) => entry.records)
+            .some((record) => "kind" in record && record.kind === "exclude")
+        ).toBe(false);
+      await collectUsage({
+        ...options,
+        adapters: {},
+        privatePolicy,
+        store: reopened,
+      });
+      const journal = await reopened.journal(),
+        records = journal.flatMap((entry) => entry.records);
+      const meta = {
+        schemaVersion: 2 as const,
+        protocolVersion: 1 as const,
+        repositoryId,
+        normalizationVersion: 1 as const,
+        catalogVersion: 1,
+        catalogHash: catalogHash(defaultCatalog),
+        policy,
+      };
+      const reduced = reduceLedger(records, meta);
+      expect(reduced.excludedUnits).toBe(1);
+      expect(reduced.includedUnits).toBe(25);
+      expect(reduced.knownTokens).toBe("1375000");
+      expect(
+        records.some(
+          (record) =>
+            "kind" in record &&
+            record.kind === "exclude" &&
+            record.targetUnitKey === original.unitKey
+        )
+      ).toBe(true);
+      expect(
+        partial
+          .slice(1)
+          .every((entry) => entry.attribution!.decisions.length === 0)
+      ).toBe(true);
+      expect(
+        journal
+          .slice(1)
+          .every(
+            (entry) =>
+              entry.records.length <= 10000 &&
+              entry.attribution!.decisions.length <= 10000 &&
+              Buffer.byteLength(JSON.stringify(entry.attribution)) <=
+                4 * 1024 * 1024
+          )
+      ).toBe(true);
+      await collectUsage({
+        ...options,
+        adapters: {},
+        privatePolicy,
+        store: reopened,
+      });
+      expect((await reopened.journal()).length).toBe(journal.length);
+    },
+    60000
+  );
+  it("retains earlier durable batches when a later scan cancels", async () => {
+    const baselineAdapter = options.adapters!.codex!;
+    const sources = await baselineAdapter.discover({
+      repositoryId,
+      enrolledRoots: [],
+      signal: options.signal,
+    });
+    const controller = new AbortController();
+    const cancelling = {
+      async discover() {
+        return sources;
+      },
+      async *scan(...args: Parameters<typeof baselineAdapter.scan>) {
+        for await (const batch of baselineAdapter.scan(...args)) yield batch;
+        controller.abort();
+        throw new Error("cancelled private path");
+      },
+    };
+    const result = await collectUsage({
+      ...options,
+      signal: controller.signal,
+      adapters: { codex: cancelling },
+    });
+    expect(result.cancelled).toBe(true);
+    expect(result.queuedHashes).toHaveLength(1);
+    expect(
+      (await options.store.journal()).flatMap((entry) => entry.observations)
+    ).toHaveLength(1);
+  });
+});

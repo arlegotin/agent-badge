@@ -1,0 +1,21 @@
+import { afterEach, expect, test } from 'vitest';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createBareRemoteFixture } from '@agent-badge/testkit';
+import type { GitFixture } from '@agent-badge/testkit';
+import { resolveRepository } from '../git/context.js';
+import { openStore, readStoreSnapshot } from './store.js';
+import { recordHash } from '../ledger/canonical-json.js';
+const fixtures:GitFixture[]=[];afterEach(async()=>{await Promise.all(fixtures.splice(0).map(f=>f.cleanup()));});
+test('source-free controls remain pending after restart, acknowledge only known intent and refuse edited durable bytes',async()=>{
+ const f=await createBareRemoteFixture();fixtures.push(f);const repository=await resolveRepository(f.clones[0]),store=await openStore(repository);
+ const control={schemaVersion:2 as const,normalizationVersion:1 as const,repositoryId:'12345678-1234-4234-8234-123456789abc',kind:'exclude' as const,targetUnitKey:'a'.repeat(64),supersedes:[]};
+ await store.commitControl(control);await store.commitControl(control);
+ await expect((await openStore(repository)).pending()).resolves.toEqual([control]);
+ expect(await readStoreSnapshot(repository)).toMatchObject({controls:[control],pending:[control]});
+ expect(await store.journal()).toEqual([]);
+ await store.acknowledge(['b'.repeat(64)]);expect(await store.pending()).toEqual([control]);
+ await store.acknowledge([recordHash(control)]);expect(await store.pending()).toEqual([]);expect(await store.controls()).toEqual([control]);
+ await writeFile(join(repository.privateDir,'controls',recordHash(control)+'.json'),JSON.stringify(control)+'\n');
+ await expect(store.commitControl(control)).rejects.toThrow();await expect(readStoreSnapshot(repository)).rejects.toThrow();
+});

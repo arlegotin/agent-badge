@@ -1,9 +1,9 @@
 {
   "name": "@legotin/agent-badge-core",
-  "version": "1.1.20",
+  "version": "2.0.0",
   "description": "Core scanning, attribution, and publish logic used by agent-badge.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/arlegotin/agent-badge#readme",
   "bugs": {
     "url": "https://github.com/arlegotin/agent-badge/issues"
@@ -14,7 +14,7 @@
   },
   "packageManager": "npm@11.6.0",
   "engines": {
-    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+    "node": "^24.0.0 || ^26.0.0"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,21 +22,36 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./operations/runner": {
+      "types": "./dist/operations/runner.d.ts",
+      "import": "./dist/operations/runner.js"
+    },
+    "./operations/budget": {
+      "types": "./dist/operations/budget.d.ts",
+      "import": "./dist/operations/budget.js"
+    },
+    "./operations/supervisor": {
+      "types": "./dist/operations/supervisor.d.ts",
+      "import": "./dist/operations/supervisor.js"
+    },
+    "./operations/worker": {
+      "types": "./dist/operations/worker-sync.d.ts",
+      "import": "./dist/operations/worker-sync.js"
+    },
+    "./storage/lock": {
+      "types": "./dist/storage/lock.d.ts",
+      "import": "./dist/storage/lock.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "resources/workflows"
   ],
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "octokit": "^5.0.0",
-    "sql.js": "^1.14.1",
     "zod": "^4.0.0"
-  },
-  "devDependencies": {
-    "@types/sql.js": "^1.4.11",
-    "better-sqlite3": "^12.8.0"
   }
 }

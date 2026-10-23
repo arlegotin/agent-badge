@@ -1,2 +1,0 @@
-export * from "./doctor.js";
-

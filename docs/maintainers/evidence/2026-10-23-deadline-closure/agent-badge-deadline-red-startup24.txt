@@ -1,0 +1,103 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:89612) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts (8 tests | 4 failed | 4 skipped) 1137ms
+   ↓ actual diagnostic terminates owned read work and exits within its original budget
+   ↓ actual diagnostic terminates owned cpu work and exits within its original budget
+   ↓ actual diagnostic terminates owned inspection work and exits within its original budget
+   ↓ actual diagnostic terminates owned capability work and exits within its original budget
+   × actual 'status' owns and terminates repository-resolution 'read' work 350ms
+     → expected '89652' to be null
+   × actual 'status' owns and terminates repository-resolution 'cpu' work 262ms
+     → expected '89690' to be null
+   × actual 'doctor' owns and terminates repository-resolution 'read' work 261ms
+     → expected '89728' to be null
+   × actual 'doctor' owns and terminates repository-resolution 'cpu' work 264ms
+     → expected '89766' to be null
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'status' owns and terminates repository-resolution 'read' work
+AssertionError: expected '89652' to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+"89652"
+
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:77:57
+     75|   let result:Awaited<typeof running>|undefined,failure:unknown;
+     76|   try{result=await running;}catch(error){failure=error;}
+     77|   expect(await readFile(lookup,'utf8').catch(()=>null)).toBeNull();
+       |                                                         ^
+     78|   pid=Number(await readFile(marker,'utf8'));
+     79|   // Before the fix this identifies the blocked command parent, before…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'status' owns and terminates repository-resolution 'cpu' work
+AssertionError: expected '89690' to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+"89690"
+
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:77:57
+     75|   let result:Awaited<typeof running>|undefined,failure:unknown;
+     76|   try{result=await running;}catch(error){failure=error;}
+     77|   expect(await readFile(lookup,'utf8').catch(()=>null)).toBeNull();
+       |                                                         ^
+     78|   pid=Number(await readFile(marker,'utf8'));
+     79|   // Before the fix this identifies the blocked command parent, before…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'doctor' owns and terminates repository-resolution 'read' work
+AssertionError: expected '89728' to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+"89728"
+
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:77:57
+     75|   let result:Awaited<typeof running>|undefined,failure:unknown;
+     76|   try{result=await running;}catch(error){failure=error;}
+     77|   expect(await readFile(lookup,'utf8').catch(()=>null)).toBeNull();
+       |                                                         ^
+     78|   pid=Number(await readFile(marker,'utf8'));
+     79|   // Before the fix this identifies the blocked command parent, before…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual 'doctor' owns and terminates repository-resolution 'cpu' work
+AssertionError: expected '89766' to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+"89766"
+
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:77:57
+     75|   let result:Awaited<typeof running>|undefined,failure:unknown;
+     76|   try{result=await running;}catch(error){failure=error;}
+     77|   expect(await readFile(lookup,'utf8').catch(()=>null)).toBeNull();
+       |                                                         ^
+     78|   pid=Number(await readFile(marker,'utf8'));
+     79|   // Before the fix this identifies the blocked command parent, before…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 4 skipped (8)
+   Start at  04:08:38
+   Duration  1.51s (transform 184ms, setup 0ms, collect 275ms, tests 1.14s, environment 0ms, prepare 24ms)
+

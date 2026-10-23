@@ -1,0 +1,73 @@
+{
+  "provider": "opencode",
+  "normalizationVersion": 1,
+  "researchedDate": "2026-10-22",
+  "accounting": "unsupported-uncertifiable-native-projection-lineage",
+  "contracts": [
+    {
+      "version": "1.19.3",
+      "revision": "v1.19.3",
+      "format": "cli",
+      "commandDocumentationOnly": "opencode export <sessionID> --sanitize",
+      "shape": "{info,messages:[{info,parts}]}"
+    },
+    {
+      "version": "2.1.2",
+      "revision": "c93aaae37157d785f76a8e9a9243a6560e286468",
+      "format": "cli",
+      "commandDocumentationOnly": "opencode session export <id> --sanitize",
+      "shape": "{info,messages}"
+    },
+    {
+      "version": "2.1.2",
+      "revision": "c93aaae37157d785f76a8e9a9243a6560e286468",
+      "format": "api",
+      "endpointDocumentationOnly": "/api/experimental/session/<id>/export?sanitize=true",
+      "shape": "{data:{info,messages}}"
+    }
+  ],
+  "sourceSchemas": [
+    "opencode-v1-export",
+    "opencode-v2-export",
+    "opencode-v2-api-export"
+  ],
+  "fixtureReferences": [
+    "packages/core/src/providers/opencode/adapter.test.ts",
+    "packages/testkit/fixtures/opencode/v1-export.json",
+    "packages/testkit/fixtures/opencode/v2-export.json",
+    "packages/testkit/fixtures/opencode/v2-api-export.json"
+  ],
+  "limits": {
+    "exportBytes": 16777216,
+    "explicitExports": 1000,
+    "messages": 10000
+  },
+  "notes": [
+    "Recognition projections only; no whole-schema or release-range certification. Version and CLI/API wrapper must match independently.",
+    "No executable, network request, server startup, credential probe, database opening or setting mutation. API fixtures are supplied response files.",
+    "Forks rewrite IDs; imports may lose origin or rebind repository paths. Neither missing fork markers nor project IDs certify original execution. All native exports yield zero observations and unsupported accounting.",
+    "v2 event persistence is off by default. Any retained-event reader requires a separate version/fixture gate and cannot recover historical gaps.",
+    "Stored cost is diagnostic model-table arithmetic, never selected catalog-equivalent price authority."
+  ],
+  "sourceUrls": [
+    "https://github.com/anomalyco/opencode/releases/tag/v1.19.3",
+    "https://github.com/anomalyco/opencode/blob/v1.19.3/packages/opencode/src/cli/cmd/export.ts",
+    "https://github.com/anomalyco/opencode/blob/v1.19.3/packages/opencode/src/session/session.ts",
+    "https://github.com/anomalyco/opencode/blob/v1.19.3/packages/opencode/src/session/processor.ts",
+    "https://github.com/anomalyco/opencode/blob/v1.19.3/packages/opencode/src/cli/cmd/import.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/cli/package.json",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/cli/src/commands/handlers/session/export.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/schema/src/session-message.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/schema/src/session.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/schema/src/token-usage.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/core/src/session/usage.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/core/src/session/projector.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/core/src/session/transfer.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/core/src/session/sql.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/core/src/event/sql.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/schema/src/session-event.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/core/src/bus.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/server/src/routes.ts",
+    "https://github.com/anomalyco/opencode/blob/c93aaae37157d785f76a8e9a9243a6560e286468/packages/cli/src/server-process.ts"
+  ]
+}

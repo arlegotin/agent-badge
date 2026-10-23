@@ -1,92 +1,9 @@
-# Authentication
+# Git authentication
 
-`agent-badge` writes badge payloads to a GitHub Gist, so GitHub auth must be able to create, update, and delete gists on your account.
+The replacement uses normal Git authentication for the explicitly approved destination and the `agent-badge/data` branch. Configure your usual credential helper or SSH outside Badge. Badge does not discover, print or store provider credentials or require a Gist token.
 
-Commands below are shown as `agent-badge ...` for readability. Use them directly when the shared runtime is on your `PATH`. If you chose the direct package-install path instead, use the matching package manager exec form from [INSTALL.md](INSTALL.md).
+Local route consent is not proof of write permission. A repository can have a read-only route or branch rules that reject its data transaction. `doctor --remote` performs bounded read-only validation; it never sends a no-op update, creates a remote object to probe access or proves signing capability. Pending usage survives failed synchronization.
 
-## Accepted Auth Sources
+Fork origins that differ from the tracked declaration stay unbound. A writer can explicitly choose `setup --target upstream`; a contributor can use sanitized public envelopes instead. Do not place credentials in repository URLs. The workflow generator supports verified credential-free `github.com` identity only. Hosted workflow permissions remain an external verification gate.
 
-The CLI checks auth in this order:
-
-1. `GH_TOKEN`
-2. `GITHUB_TOKEN`
-3. `GITHUB_PAT`
-4. `gh auth token`
-
-If one of those resolves to a valid token, init can create or reuse a gist automatically.
-
-## Required Token Permissions
-
-Use one of these token shapes:
-
-- Classic personal access token: `gist` scope
-- Fine-grained personal access token: `Gists` user permission with `write`
-- GitHub CLI auth: whatever `gh auth token` returns must be able to write gists
-
-`agent-badge` does not need repository write access to publish badge JSON. It needs gist write access.
-
-## Gist Ownership Rules
-
-The configured gist must be:
-
-- public
-- owned by the authenticated account
-- reachable through the GitHub API
-
-If you connect a gist manually, use:
-
-```bash
-agent-badge init --gist-id <id>
-```
-
-## Common Setup Paths
-
-Use a token from the shell:
-
-```bash
-export GH_TOKEN=<token>
-agent-badge init
-```
-
-Or authenticate GitHub CLI and let `agent-badge` resolve the token through `gh auth token`:
-
-```bash
-gh auth login
-agent-badge init
-```
-
-## Common Messages
-
-If auth is missing during init:
-
-```text
-- Publish target: deferred
-- Badge setup deferred: set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT to create a public gist automatically, or rerun `agent-badge init --gist-id <id>` to connect an existing public gist.
-- Setup: repo setup complete, but GitHub auth is still required before the live badge can publish.
-```
-
-If a later publish attempt cannot authenticate:
-
-```text
-GitHub authentication missing or invalid.
-```
-
-If the repo has no configured gist yet:
-
-```text
-Publish is not configured. Run `agent-badge init` or re-run init with `--gist-id <id>` first.
-```
-
-## Verify Auth Before Publishing
-
-These checks are useful before you rerun init or publish:
-
-```bash
-gh auth status
-gh auth token >/dev/null
-agent-badge doctor --probe-write
-```
-
-`doctor --probe-write` is the strongest check because it validates the configured gist path, not just token presence.
-
-If auth still looks wrong, use [Troubleshooting](TROUBLESHOOTING.md) and [Manual Gist Connection](MANUAL-GIST.md).
+[CLI](CLI.md) · [Privacy](PRIVACY.md) · [Recovery](RECOVERY.md).

@@ -1,0 +1,47 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (21 tests) 6018ms
+   ✓ unsupported executable runtime fails before subprocesses or filesystem mutations  302ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  398ms
+   ✓ a failed staged replacement retains the existing partial runtime  436ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  556ms
+   ✓ standalone launcher refuses existing private authority even for dry run  310ms
+ ❯ packages/create-agent-badge/src/index.test.ts (11 tests | 2 failed) 591ms
+   ✓ recognizes a symlinked executable and missing argv 2ms
+   ✓ unsupported Node rejects before importing the shared CLI or discovering a repository 1ms
+   ✓ packed executable arguments {"args":["--help"]} have no operational side effects 37ms
+   ✓ packed executable arguments {"args":["--version"]} have no operational side effects 34ms
+   × packed executable arguments {"args":["--definitely-invalid"]} have no operational side effects 43ms
+     → expected 1 to be 64 // Object.is equality
+   × packed executable arguments {"args":["setup","--definitely-invalid"]} have no operational side effects 34ms
+     → expected 1 to be 64 // Object.is equality
+   ✓ executable ../dist/index.js rejects unsupported Node before loading operational code 26ms
+   ✓ executable ../../agent-badge/dist/cli/main.js rejects unsupported Node before loading operational code 32ms
+   ✓ initializer redacts malformed operational failures 129ms
+   ✓ initializer redacts permissions operational failures 124ms
+   ✓ initializer redacts ordinary operational failures 127ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/create-agent-badge/src/index.test.ts > packed executable arguments {"args":["--definitely-invalid"]} have no operational side effects
+ FAIL  packages/create-agent-badge/src/index.test.ts > packed executable arguments {"args":["setup","--definitely-invalid"]} have no operational side effects
+AssertionError: expected 1 to be 64 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 64[39m
+[31m+ 1[39m
+
+ ❯ packages/create-agent-badge/src/index.test.ts:26:16
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 30 passed (32)
+   Start at  03:15:54
+   Duration  6.85s (transform 44ms, setup 0ms, collect 59ms, tests 6.61s, environment 0ms, prepare 51ms)
+

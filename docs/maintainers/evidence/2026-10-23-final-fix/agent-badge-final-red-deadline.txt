@@ -1,0 +1,39 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:76925) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts (2 tests | 2 failed) 5647ms
+   × actual diagnostic terminates owned read work and exits within its original budget 2851ms
+     → Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node --input-type=module -e import{runDoctorCommand}from "file:///Volumes/git/legotin/agent-badge/packages/agent-badge/dist/commands/doctor.js";console.log(JSON.stringify(await runDoctorCommand({cwd:"/private/tmp/agent-badge-git-op4MvW/clone-a",timeoutMs:700})));
+(node:76997) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+   × actual diagnostic terminates owned cpu work and exits within its original budget 2795ms
+     → Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node --input-type=module -e import{runDoctorCommand}from "file:///Volumes/git/legotin/agent-badge/packages/agent-badge/dist/commands/doctor.js";console.log(JSON.stringify(await runDoctorCommand({cwd:"/private/tmp/agent-badge-git-ZJgAJ9/clone-a",timeoutMs:700})));
+(node:77108) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual diagnostic terminates owned read work and exits within its original budget
+Error: Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node --input-type=module -e import{runDoctorCommand}from "file:///Volumes/git/legotin/agent-badge/packages/agent-badge/dist/commands/doctor.js";console.log(JSON.stringify(await runDoctorCommand({cwd:"/private/tmp/agent-badge-git-op4MvW/clone-a",timeoutMs:700})));
+(node:76997) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual diagnostic terminates owned cpu work and exits within its original budget
+Error: Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node --input-type=module -e import{runDoctorCommand}from "file:///Volumes/git/legotin/agent-badge/packages/agent-badge/dist/commands/doctor.js";console.log(JSON.stringify(await runDoctorCommand({cwd:"/private/tmp/agent-badge-git-ZJgAJ9/clone-a",timeoutMs:700})));
+(node:77108) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  03:22:35
+   Duration  6.02s (transform 182ms, setup 0ms, collect 276ms, tests 5.65s, environment 0ms, prepare 24ms)
+

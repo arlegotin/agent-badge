@@ -1,0 +1,449 @@
+
+> test
+> vitest --run --maxWorkers=1 --exclude packages/testkit/src/git-daemon.test.ts --exclude packages/core/src/git/data-transport.test.ts --exclude packages/core/src/operations/budget.test.ts --exclude packages/core/src/operations/runner.test.ts
+
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:1138) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/sync.test.ts (45 tests) 91835ms
+   ✓ a published candidate survives a lost response without replaying accepted history or acknowledging before confirmation  2048ms
+   ✓ candidate recovery handles before-push without using unconfirmed membership  2261ms
+   ✓ candidate recovery handles corrupt-stage without using unconfirmed membership  2314ms
+   ✓ candidate recovery handles missing-base without using unconfirmed membership  2363ms
+   ✓ candidate recovery handles advanced without using unconfirmed membership  2650ms
+   ✓ candidate recovery handles advanced-removal without using unconfirmed membership  1970ms
+   ✓ real death before candidate push retains retryable durable intent  2163ms
+   ✓ real death after candidate push retains retryable durable intent  2014ms
+   ✓ real death after-confirmation candidate push retains retryable durable intent  2044ms
+   ✓ advanced current stage survives death after accepted-anchor handoff and before cache publication  3030ms
+   ✓ automatic summary checks current remote authority but avoids unchanged accepted-tree replay  1086ms
+   ✓ controlled remote conflicts exhaust the bounded retry budget without acknowledging local intent  3291ms
+   ✓ capture policy reuses verified accepted metadata while checking the local anchor and falls back on cache mismatch  1044ms
+   ✓ automatic append uses validated accepted index and confirms source-free controls without historical blob replay  1869ms
+   ✓ automatic local backlog confirms bounded complete unit groups and drains after a lost response and restart  9131ms
+   ✓ oversized automatic unit groups defer explicitly while unrelated units confirm and manual sync completes  8285ms
+   ✓ automatic accepted-cache promotion queues before new publication and the next call advances  2093ms
+   ✓ mixed accepted and new pending records recover confirmed receipts before another transport attempt  1853ms
+   ✓ deadline immediately after complete cache promotion preserves verified recovery for the next invocation  2023ms
+   ✓ explicit initialization syncs only public records, confirms inclusion, and replays without a new commit  1257ms
+   ✓ three concurrent clones merge immutable union across initial creation and stale writers  2537ms
+   ✓ normal sync cannot seed an absent ref; deletion after accepted state survives restart and refuses reseeding  1218ms
+   ✓ push destination metadata authorizes split fetch/push routing and wrong UUID never receives records  1394ms
+   ✓ partial staging, detached HEAD, in-progress operations and installed hooks are untouched  1080ms
+   ✓ routing changes and cancellation queue without acknowledgements  552ms
+   ✓ lost successful push response is confirmed from the real remote before acknowledgment  951ms
+   ✓ accepted push followed by local acknowledgment failure survives restart without a duplicate commit  1120ms
+   ✓ valid-looking remote rewind cannot discard previously acknowledged history  2487ms
+   ✓ existing malformed ref leaves durable presence evidence after deletion  560ms
+   ✓ unavailable signing queues and never bypasses required signing policy  493ms
+   ✓ accepted remote policy/catalog remain authoritative when stale bootstrap configuration is supplied  1882ms
+   ✓ source-to-data-branch collection uses the accepted repository policy and sanitized native receipts  1073ms
+   ✓ explicit cross-clone inclusion can supersede accepted remote exclusion without ordinary sync rebasing intent  3189ms
+   ✓ a distinct fetch repository cannot authorize sending to a foreign-UUID push repository  1572ms
+   ✓ routing mutation after commit construction suspends before any push  739ms
+   ✓ stale writer refetches a concurrent accepted commit and preserves union with FF-only server policy  3112ms
+   ✓ deletion observed immediately before send requires recovery and never recreates the ref  1357ms
+   ✓ deletion after local preflight but before push advertisement never recreates a seen ref  1595ms
+   ✓ deletion after advertisement is rejected by receive-pack old-OID compare rather than resurrecting the ref  1758ms
+   ✓ deadline expiring during route discovery queues rather than reporting a routing conflict  315ms
+   ✓ real child death after accepted push and before acknowledgment recovers by confirmed inclusion  1335ms
+   ✓ a valid descendant cannot erase previously acknowledged immutable records  1271ms
+   ✓ corrupt remote metadata preserves queued observations and accepted history, including explicit reinitialize  1301ms
+   ✓ future remote metadata preserves queued observations and accepted history, including explicit reinitialize  1293ms
+   ✓ actual automatic worker captures local usage, refuses local publication, and still acknowledges confirmed history  2862ms
+(node:54864) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/repo-native-matrix.test.ts (20 tests) 37254ms
+   ✓ code rebase leaves accepted usage identity and private state independent  1797ms
+   ✓ code squash leaves accepted usage identity and private state independent  1757ms
+   ✓ code cherry-pick leaves accepted usage identity and private state independent  1742ms
+   ✓ code force-push leaves accepted usage identity and private state independent  1814ms
+   ✓ expired and malformed native sources plus a removed worktree retain accepted evidence and truthful partial coverage  1822ms
+   ✓ protected code pushes and all-branch denial keep durable usage retryable without bypassing server rules  4973ms
+   ✓ public artifacts contribution names Git authors and errors exclude all private fixture canaries  1422ms
+   ✓ detected v1 Gist configuration is explicitly unsupported and leaves opaque totals and hooks untouched  705ms
+   ✓ shallow code history reads the explicit accepted data ref without importing local source provenance  1689ms
+   ✓ detached code history reads the explicit accepted data ref without importing local source provenance  1592ms
+   ✓ unborn code history reads the explicit accepted data ref without importing local source provenance  1684ms
+   ✓ a new contributor collects its own source boundary and copied native usage deduplicates across machines  1803ms
+   ✓ submodules have a separate private identity and do not inherit parent activation or usage  1558ms
+   ✓ explicit rename rebind retains repository UUID accepted history and pending local intent  2640ms
+   ✓ explicit rebind refuses missing destination evidence and preserves durable binding  1839ms
+   ✓ explicit rebind refuses foreign destination evidence and preserves durable binding  1963ms
+   ✓ explicit rebind refuses divergent destination evidence and preserves durable binding  1897ms
+   ✓ explicit rebind refuses stale-plan destination evidence and preserves durable binding  1608ms
+   ✓ explicit rebind interrupted before activation publication completes safely on explicit rerun  2167ms
+   ✓ a destination with no prior confirmed history cannot use explicit rebind to reseed  782ms
+(node:83801) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/integration/hooks.test.ts (32 tests) 26080ms
+   ✓ concurrent stale setup plans preserve the original executable and reject the losing plan  719ms
+   ✓ installed driver calls bootstrap in its parent without changing the original delegate exit  556ms
+   ✓ real push preserves shell user-hook execution and both refs consumers  889ms
+   ✓ real push preserves python user-hook execution and both refs consumers  940ms
+   ✓ real push preserves node user-hook execution and both refs consumers  861ms
+   ✓ real push preserves set-e user-hook execution and both refs consumers  866ms
+   ✓ real push preserves early-exit user-hook execution and both refs consumers  845ms
+   ✓ user failure still blocks a push while badge receives the same refs  893ms
+   ✓ repository-local hooksPath custom hooks preserves symlink and repeated setup/removal  935ms
+   ✓ repository-local hooksPath absolute preserves symlink and repeated setup/removal  843ms
+   ✓ minimal GUI PATH, missing runtime and missing approved Node keep the user hook working  1250ms
+   ✓ refuses legacy markers, shared hooks paths, changed plans and edited owned delegates without executing them  400ms
+   ✓ empty original hook is idempotent and removable, and relative interpreter resources survive delegation  1007ms
+   ✓ linked-worktree actual push respects common versus worktree-local hook availability (custom=false)  611ms
+   ✓ linked-worktree actual push respects common versus worktree-local hook availability (custom=true)  358ms
+   ✓ CRLF refs and a CRLF-bodied Node hook are preserved byte for byte on POSIX  813ms
+   ✓ ignored nonexecutable user hooks stay ignored and changed Git routing invalidates the plan  694ms
+   ✓ Node module mode, shebang interpreter arguments and sibling imports survive delegation  861ms
+   ✓ installed driver handles an open stdin pipe with original=undefined  2263ms
+   ✓ installed driver handles an open stdin pipe with original=#!/bin/sh
+exit 7
+  438ms
+   ✓ oversized stdin reaches the complete user consumer without retaining or invoking Badge  2730ms
+   ✓ interruption at the original-hook rename retains durable intent and retries without losing delegation  969ms
+   ✓ Badge expiry leaves a complete user stream and its normal lifetime intact  2504ms
+   ✓ streamed original hook signal is preserved while input remains open  783ms
+   ✓ interrupted initial intent can be uninstalled before or after moving the original  427ms
+   ✓ interrupted wrapper upgrade retains prior owned hashes for retry  407ms
+(node:93864) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/collection/collect.test.ts (31 tests) 24641ms
+   ✓ durable local collection > bounded automatic collection counts a new small session without an existing checkpoint  396ms
+   ✓ durable local collection > collection cannot overwrite published source evidence after an index failure in its owning lease  474ms
+   ✓ durable local collection > empty unchanged source batches require no historical control projection  392ms
+   ✓ durable local collection > one operation verifies each distinct attribution cwd once across source batches  488ms
+   ✓ durable local collection > automatic discovery defers epochs and resolves selected sources before checkpoints  376ms
+   ✓ durable local collection > lazy selected sources resolve replacement identities and never checkpoint missing candidates  500ms
+   ✓ durable local collection > lazy aliases deduplicate canonical sources and reject aliases outside enrollment  448ms
+   ✓ durable local collection > large automatic histories checkpoint bounded slices and continue warm appends beyond two MiB  1005ms
+   ✓ durable local collection > persisted rotation reaches more than sixteen sources and a newly discovered session  1507ms
+   ✓ durable local collection > automatic slices persist at most two scheduling writes and interrupted starts visit every source  854ms
+   ✓ durable local collection > excludes unchanged cached 100-token usage to zero and re-includes causally after acknowledgment  715ms
+   ✓ durable local collection > reprojects a removed sole mapping from the journal after the source disappears  423ms
+   ✓ durable local collection > preserves historical verified membership after deletion, unavailable providers and disabled discovery  470ms
+   ✓ durable local collection > keeps provider-native Claude provisional numbers private and isolates a corrupt provider  374ms
+   ✓ durable local collection > matches targeted and full reconciliation and discovers a provider installed after initial empty discovery  435ms
+   ✓ durable local collection > does not parse transcripts again for display or pricing-only changes  408ms
+   ✓ durable local collection > retracts a removed sole override using its journal-bound prior policy  410ms
+   ✓ durable local collection > retracts a removed sole alias using its journal-bound prior policy  496ms
+   ✓ durable local collection > reprojects newly explicit historical enrollment without rereading a disappeared transcript  411ms
+   ✓ durable local collection > does not assign historical verification to a later unrelated request at a reused worktree path  478ms
+   ✓ durable local collection > owns the source lock during adapter scanning and isolates a corrupt source  435ms
+   ✓ durable local collection > passes the latest old reader candidate to the adapter instead of hiding or trusting it  467ms
+   ✓ durable local collection > does not invent historical membership for journal entries written without attribution metadata  492ms
+   ✓ durable local collection > accepts repeated identical native request evidence without duplicating public usage  365ms
+   ✓ durable local collection > preserves independent linked-worktree membership through a temporary include override  557ms
+   ✓ durable local collection > preserves independent linked-worktree membership through a temporary exclude override  611ms
+   ✓ durable local collection > reprojects a source history over 10000 observations (distinct-units) in durable bounded metadata chunks and progresses a healthy source  2692ms
+   ✓ durable local collection > reprojects a source history over 10000 observations (single-unit) in durable bounded metadata chunks and progresses a healthy source  2369ms
+   ✓ durable local collection > resumes mixed byte-chunk output after durable chunk 1 without losing a mapping-removal exclusion  2634ms
+   ✓ durable local collection > resumes mixed byte-chunk output after durable chunk 2 without losing a mapping-removal exclusion  2592ms
+   ✓ durable local collection > retains earlier durable batches when a later scan cancels  364ms
+(node:5682) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/operational.test.ts (9 tests) 23464ms
+   ✓ status JSON and doctor preserve explicit setup needs, unavailable sources and required failures  1169ms
+   ✓ collect is local-only, sync confirms data, explain redacts, and explicit cross-clone controls use accepted heads  4738ms
+   ✓ configure validates revision and writes accepted policy; upgrade requires an exact deliberate runtime  2349ms
+   ✓ remote-only controls have no source journal, export causal closure, and offline commands never claim intent applied  3246ms
+   ✓ status detects local wrong-target routing without any remote request  857ms
+   ✓ supervised collect never invokes remote Git and cancellation preserves captured pending work  1918ms
+   ✓ include reports a concurrent later remote exclusion instead of silently rebasing its fixed intent  5404ms
+   ✓ plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state  2535ms
+   ✓ plaintext doctor setup and uninstall expose required failures owner repair items and independent deactivation  1247ms
+(node:22874) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/contributions.test.ts (10 tests) 20845ms
+   ✓ contribute writes only immutable managed envelope without staging or committing  456ms
+   ✓ only accepted default branch blobs import; unmerged/closed proposals do not affect upstream  1014ms
+   ✓ trusted accepted import performs one shared transaction without running tracked launcher or lifecycle code  2641ms
+   ✓ accepted history exceeding one envelope count is streamed without an aggregate historical ceiling  1756ms
+   ✓ sequential confirmed batches survive interruption and replay without private source acknowledgements  3648ms
+   ✓ fresh CI skips confirmed historical envelopes by validated membership and reaches new data  7108ms
+   ✓ accepted envelope histories read verified blobs in bounded batches  1253ms
+   ✓ a malformed later accepted envelope reports already confirmed progress instead of rolling it back  2451ms
+(node:39567) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/configure.test.ts (10 tests) 19198ms
+   ✓ explicit configure changes accepted metadata and catalog, while stale branch bootstrap cannot roll it back  2006ms
+   ✓ simultaneous metadata edits use revision CAS and never retry the loser as an override  2060ms
+   ✓ accepted remote configuration with a failed local write remains repairable drift without rollback  2019ms
+   ✓ stale edits conflict even when desired metadata happens to equal the winning edit  1917ms
+   ✓ a definitely rejected second edit preserves earlier unresolved declaration repair evidence  2099ms
+   ✓ remote acceptance followed by real parent death retains repair evidence across restart  2184ms
+   ✓ cancellation during a stalled declaration write returns drift and retains accepted policy  1855ms
+   ✓ an unsupported snapshot after an attempted send retains pending uncertainty rather than erasing repair evidence  1669ms
+   ✓ usage-only remote advancement retries the metadata CAS without dropping records or rescanning providers  2216ms
+   ✓ foreign configure UUID is rejected before any remote write and preserves prior repair evidence on an empty ledger  1172ms
+(node:54014) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/integration/setup.test.ts (28 tests) 18679ms
+   ✓ plans owned nested setup from a none repository without root package changes  577ms
+   ✓ plans owned nested setup from a npm repository without root package changes  573ms
+   ✓ plans owned nested setup from a pnpm repository without root package changes  577ms
+   ✓ plans owned nested setup from a yarn repository without root package changes  585ms
+   ✓ plans owned nested setup from a bun repository without root package changes  580ms
+   ✓ repeated setup reuses exact pin and approved runtime and preserves private choices  784ms
+   ✓ setup installs repository-local hooks and provider wakeups without claiming native trust  567ms
+   ✓ an installed runtime missing its supervised activation worker is never approved  333ms
+   ✓ offline or interrupted installation leaves no approved activation and resumes explicitly  718ms
+   ✓ automatic activation survives older branches and linked worktrees but suspends changed pins  1221ms
+   ✓ missing runtime requires explicit repair and ordinary launcher calls never install  826ms
+   ✓ setup preserves first-initialization intent and UUID across a queued retry  661ms
+   ✓ automatic membership inventory is private and never blanket historical attribution  796ms
+   ✓ owned-file conflicts and concurrent plan edits fail without approving changes  785ms
+   ✓ setup repairs tracked policy from locally accepted metadata without promoting stale branch policy  2091ms
+   ✓ accepted declaration callback atomically updates only owned policy and honors cancellation  585ms
+   ✓ a prunable Git registration is never automatic membership proof or tracked private data  335ms
+   ✓ repeated setup never silently rebinds changed routing through a remembered target name  800ms
+   ✓ private first-setup intent survives interruption at tracked config.json without authorizing a clone  711ms
+   ✓ private first-setup intent survives interruption at tracked run.cjs without authorizing a clone  950ms
+   ✓ fresh fork remains collection-only; explicit upstream writer binding is allowed  771ms
+   ✓ standalone fork receives a fresh UUID without resetting an activated common directory  653ms
+   ✓ setup embeds a stable public badge/report route for supported GitHub identity https://github.com/example/repo.git  680ms
+   ✓ setup embeds a stable public badge/report route for supported GitHub identity git@github.com:example/repo.git  690ms
+(node:72033) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/integration/agent-hooks.test.ts (31 tests) 17358ms
+   ✓ JSON adapter preserves unrelated handlers, TOML and trust settings; duplicate setup and removal preserve later additions  337ms
+   ✓ open provider stdin has a bounded deadline and missing Node reports an actionable soft failure  2160ms
+   ✓ locator Git lookup includes its own helper cleanup and deducted elapsed time  725ms
+   ✓ provider locator deducts synchronous bootstrap loading from its absolute deadline  567ms
+   ✓ locator timeout reaps a hung Git command and its helper without starting runtime  2164ms
+   ✓ a pending common-directory provider transaction stays bound to its original worktree  313ms
+   ✓ a stale concurrent apply recovery cannot delete a new worktree intent after the first recovery finishes  335ms
+   ✓ a stale concurrent remove recovery cannot delete a new worktree intent after the first recovery finishes  475ms
+   ✓ live provider lease gives bounded apply/remove actions without mutating config or intent  4191ms
+   ✓ unknown provider lease namespace is never reclaimed by age  2081ms
+   ✓ Gemini AfterModel wakeup preserves settings, routes only the transcript, rejects other providers events and removes exact ownership  374ms
+(node:79838) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/storage/store.test.ts (76 tests) 16787ms
+   ✓ durable repository store > bounded cache rebuild resumes validated source/control/ack stages without exposing partial pending state  832ms
+   ✓ durable repository store > local rebuild handles corrupt-stage without accepting a partial generation  397ms
+   ✓ durable repository store > local rebuild handles missing-stage-manifest without accepting a partial generation  415ms
+   ✓ durable repository store > local rebuild handles interrupted-promotion without accepting a partial generation  426ms
+   ✓ durable repository store > local rebuild handles changed-authority without accepting a partial generation  332ms
+   ✓ durable repository store > bounded pending groups keep controls with their unit and skip oversized groups without losing unrelated progress  308ms
+   ✓ durable repository store > queued operations drain before an explicit owner releases the common lock  419ms
+   ✓ real process death and filesystem failures > 'control' authority survives caught 'begin' failure and queued same-lease continuation  334ms
+   ✓ real process death and filesystem failures > 'control' authority survives caught 'insert' failure and queued same-lease continuation  329ms
+   ✓ real process death and filesystem failures > 'control' authority survives caught 'commit' failure and queued same-lease continuation  331ms
+   ✓ real process death and filesystem failures > 'control' authority survives caught 'directory-sync' failure and queued same-lease continuation  332ms
+   ✓ real process death and filesystem failures > 'ack' authority survives caught 'begin' failure and queued same-lease continuation  340ms
+   ✓ real process death and filesystem failures > 'ack' authority survives caught 'insert' failure and queued same-lease continuation  325ms
+   ✓ real process death and filesystem failures > 'ack' authority survives caught 'commit' failure and queued same-lease continuation  326ms
+   ✓ real process death and filesystem failures > 'ack' authority survives caught 'directory-sync' failure and queued same-lease continuation  321ms
+   ✓ real process death and filesystem failures > competing child processes preserve both batches across a shared common directory  399ms
+   ✓ repository and stale recovery boundaries > real linked worktrees share one durable store without tracked private output  595ms
+   ✓ repository and stale recovery boundaries > two stale reapers cannot unlink a replacement live owner  716ms
+(node:80318) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/integration/automatic-hooks.test.ts (9 tests) 16095ms
+   ✓ real approved automatic entry durably captures a targeted source while routing is unbound  889ms
+   ✓ installed native provider locator reaches the approved worker and durably captures usage  726ms
+   ✓ CPU-blocked activation-worker import is killed within the original automatic deadline  2340ms
+   ✓ stalled activation Git and its helper descendant are killed by the same supervised group  2369ms
+   ✓ actual automatic hooks suspend changed pins and capture from a pre-install branch after prior approval  911ms
+   ✓ automatic worker lease is cleaned after CPU timeout so the next real hook can capture  2617ms
+   ✓ Git driver includes delayed bootstrap startup in the same absolute deadline  2334ms
+   ✓ expired startup and invalid propagated deadlines skip before importing a worker  2587ms
+   ✓ Gemini approved targeted and untargeted automatic collection share receipts and reject an unenrolled AfterModel path  1321ms
+(node:85946) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/storage/accepted-stage.test.ts (14 tests) 13855ms
+   ✓ reused exact blob OID still validates observation versus control path  580ms
+   ✓ resumed tree inventory sizes only its bounded unverified blob batch  1324ms
+   ✓ prepared candidate with mismatched parent cannot become accepted cached authority  724ms
+   ✓ prepared candidate with mismatched object cannot become accepted cached authority  722ms
+   ✓ accepted rebuild persists bounded verified progress and promotes only complete equivalent artifacts  1572ms
+   ✓ accepted rebuild recovers corrupt-database with intact immutable Git authority  969ms
+   ✓ accepted rebuild recovers missing-manifest with intact immutable Git authority  966ms
+   ✓ accepted rebuild recovers interrupted-promotion with intact immutable Git authority  972ms
+   ✓ accepted rebuild recovers missing-ref with intact immutable Git authority  946ms
+   ✓ accepted rebuild recovers corrupt-owner with intact immutable Git authority  988ms
+   ✓ advanced remote tips finish the bound old generation before reusing verified immutable records  2039ms
+   ✓ lost staging ref and object must recover the exact bound commit before resuming  714ms
+   ✓ a verified prior snapshot rejects removed immutable history before staged promotion  527ms
+   ✓ an unavailable discarded old stage cannot prevent validating a fetched newer tip  810ms
+(node:94661) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/doctor.test.ts (9 tests) 9786ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  363ms
+   ✓ doctor checks required integration completeness and explicitly bounded read-only remote access  908ms
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  367ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  316ms
+   ✓ remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding  1347ms
+   ✓ remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding  1366ms
+   ✓ remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding  1360ms
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3355ms
+   ✓ a bounded metadata schema establishes unsupported-data without journal replay  403ms
+ ✓ packages/core/src/git/process.test.ts (15 tests) 8620ms
+   ✓ bounded Git subprocess > passes hostile arguments literally without a shell  535ms
+   ✓ bounded Git subprocess > bounds output and redacts credentials, local paths and supplied secrets in diagnostics  527ms
+   ✓ bounded Git subprocess > redacts URL credentials even when the output cap cuts off the authority  527ms
+   ✓ bounded Git subprocess > preserves UTF-8 diagnostic bounds without replacement characters  529ms
+   ✓ bounded Git subprocess > redacts local paths containing spaces and Windows path separators  538ms
+   ✓ bounded Git subprocess > does not expose a path suffix after redacting the cwd prefix  524ms
+   ✓ bounded Git subprocess > does not expose relative filename diagnostics: src/secret.ts  525ms
+   ✓ bounded Git subprocess > does not expose relative filename diagnostics: ./src/secret.ts  519ms
+   ✓ bounded Git subprocess > does not expose relative filename diagnostics: ../src/secret.ts  540ms
+   ✓ bounded Git subprocess > does not expose relative filename diagnostics: src\secret.ts  543ms
+   ✓ bounded Git subprocess > does not expose relative filename diagnostics: secret.ts  518ms
+   ✓ bounded Git subprocess > does not expose relative filename diagnostics: Makefile  527ms
+   ✓ bounded Git subprocess > times out and kills descendants even when the direct process exits  1783ms
+(node:2105) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/integration/operations.test.ts (8 tests) 8070ms
+   ✓ uninstall restores user delegates/settings and retains unsynced private state and ignore protections  769ms
+   ✓ edited integrations refuse cleanup but explicit uninstall still deactivates and retains evidence  685ms
+   ✓ interrupted first setup intent is removed only when owned, with unknown intent retained  338ms
+   ✓ uninstall handles interrupted provider install and preserves third-state evidence (edited=false)  362ms
+   ✓ doctor checks effective executable hook/driver and bootstrap rather than only ownership presence  681ms
+   ✓ unknown integration lease preserves provider evidence after explicit activation revocation  4648ms
+(node:5711) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 7096ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  463ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1666ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1533ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  352ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1070ms
+   ✓ status refuses missing derived generation without replay or repair  410ms
+   ✓ status refuses corrupt derived generation without replay or repair  402ms
+   ✓ status refuses staged derived generation without replay or repair  397ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  802ms
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (23 tests) 6082ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  561ms
+   ✓ a failed staged replacement retains the existing partial runtime  422ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  549ms
+(node:11062) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/contribute.test.ts (6 tests) 5036ms
+   ✓ imports via shared transaction and renderer, deduplicates and preserves checkout  2013ms
+   ✓ current accepted controls govern imported observations without reseeding missing or foreign ledgers  2650ms
+   ✓ an initializer carried by a SyncOptions variable cannot bootstrap through contribution import  353ms
+(node:14724) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (4 tests) 4258ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1068ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1059ms
+   ✓ actual diagnostic terminates owned inspection work and exits within its original budget  1061ms
+   ✓ actual diagnostic terminates owned capability work and exits within its original budget  1069ms
+ ✓ packages/core/src/git/remote-binding.test.ts (39 tests) 2886ms
+   ✓ private routing consent > binds matching origin routing without claiming remote ledger validation  362ms
+   ✓ private routing consent > suspends consent on changed fetch or push URLs and multiple push URLs  312ms
+ ✓ packages/core/src/git/context.test.ts (10 tests) 2831ms
+   ✓ repository context > resolves subdirectories without modifying checkout, index or refs  334ms
+   ✓ repository context > finds nested repository and submodule boundaries  419ms
+   ✓ repository context > resolves separate git dirs and relative and absolute hooksPath  303ms
+   ✓ repository context > supports detached, unborn and shallow repositories  363ms
+ ✓ packages/core/src/git/stream.test.ts (6 tests) 2757ms
+   ✓ streams arbitrarily many bounded NUL records without treating total output as a record limit  556ms
+   ✓ rejects an overlong record and incomplete final record without exposing untrusted bytes  637ms
+   ✓ early iterator return kills the producer and its owned helper descendants  363ms
+   ✓ cancellation and deadline kill a stalled producer even when consumer has received one record  479ms
+   ✓ a nonzero producer exit rejects EOF with bounded static diagnostics  327ms
+   ✓ returning a paused iterator never signals a process group already reaped at producer close  395ms
+(node:20803) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/providers/normalized-import.test.ts (16 tests) 2039ms
+   ✓ persists explicit imports through collection with per-unit approval and deduplicates after reopen  516ms
+   ✓ preserves native/import overlap and shared exclusions with unchanged attribute choices  534ms
+   ✓ preserves native/import overlap and shared exclusions with unchanged include choices  529ms
+   ✓ does not revive a later shared exclusion through reimport or historical replay of saved choices  436ms
+ ✓ scripts/feasibility/git-data-ref.test.ts (3 tests) 1906ms
+   ✓ data branch Git feasibility > snapshots HEAD, index bytes, refs and dirty file contents independently  312ms
+   ✓ data branch Git feasibility > rejects the second sibling push and retains both records after rebuilding on the new tip  824ms
+   ✓ data branch Git feasibility > pushes data from a real pre-push hook once without altering the dirty checkout  768ms
+ ✓ scripts/build.test.ts (1 test) 1660ms
+   ✓ clean package build removes deleted v1 outputs and rebuilds unchanged sources  1659ms
+(node:22627) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/storage/accepted-index.test.ts (12 tests) 1431ms
+ ✓ packages/core/src/collection/source-resolver.test.ts (3 tests) 1156ms
+   ✓ private source resolution > resolves subdirectories and sibling worktrees without accepting nested repositories or submodules  632ms
+   ✓ private source resolution > blocks an independent nested repository inside a sibling worktree before matching aliases or encompassing mappings  325ms
+(node:24020) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/integration/workflow.test.ts (2 tests) 777ms
+   ✓ opt-in workflow consumes exact approved lock and verified SSH GitHub identity/default branch  343ms
+   ✓ workflow refuses unverified default branch, wrong destination and unsupported hosts before creating files  434ms
+ ✓ packages/core/src/render/artifacts.test.ts (6 tests) 857ms
+   ✓ one snapshot artifacts and strict tree validation > validates a full ledger above the incoming batch object limit  838ms
+(node:24917) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/normalized-import.test.ts (1 test) 761ms
+   ✓ normalized import requires its strict discriminator and persists attribute-only private provenance with no invented cwd  761ms
+ ✓ packages/create-agent-badge/src/index.test.ts (11 tests) 569ms
+(node:25824) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/providers/codex/adapter.test.ts (34 tests) 518ms
+(node:25826) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/providers/claude/adapter.test.ts (20 tests) 472ms
+(node:25828) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/storage/controls.test.ts (1 test) 427ms
+   ✓ source-free controls remain pending after restart, acknowledge only known intent and refuse edited durable bytes  427ms
+(node:26016) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/collection/metadata.test.ts (1 test) 419ms
+   ✓ journal attribution boundary > rejects metadata overflow on commit and recovery and rejects unrelated provenance  419ms
+(node:26294) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/collection/gemini-collection.test.ts (1 test) 381ms
+   ✓ ordinary default discovery collects a Gemini saved success with exact repository attribution  381ms
+ ✓ packages/core/src/operations/contribution-workflow.test.ts (16 tests) 365ms
+   ✓ bootstrap installs from embedded exact lock outside checkout and invokes pinned importer once  348ms
+ ✓ scripts/release/preflight.test.ts (19 tests) 358ms
+   ✓ actual npm subprocess console cannot contaminate JSON output  354ms
+ ✓ scripts/release/workflow.test.ts (2 tests) 370ms
+   ✓ trusted inline remote guard precedes requested checkout, npm lifecycle and candidate scripts  367ms
+(node:26765) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/cli/errors.test.ts (2 tests) 313ms
+   ✓ actual run emits static JSON for setup refusal without leaking the thrown local error  312ms
+ ✓ scripts/release/artifact-download.test.ts (6 tests) 195ms
+ ✓ packages/core/src/providers/gemini/adapter.test.ts (15 tests) 142ms
+(node:27001) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ scripts/feasibility/sqlite-readonly.test.ts (5 tests) 78ms
+ ✓ packages/core/src/storage/lock.test.ts (5 tests | 1 skipped) 65ms
+ ✓ scripts/validation/isolation.test.ts (1 test) 48ms
+ ✓ packages/agent-badge/src/integration/runtime.test.ts (1 test) 30ms
+ ✓ packages/core/src/operations/exports.test.ts (1 test) 29ms
+ ✓ packages/core/src/ledger/indexed.test.ts (2 tests) 32ms
+ ✓ packages/agent-badge/src/integration/npm.test.ts (1 test) 23ms
+ ✓ packages/core/src/storage/atomic-file.test.ts (1 test) 25ms
+ ✓ packages/core/src/domain/usage.test.ts (18 tests) 23ms
+ ✓ packages/core/src/ledger/controls.test.ts (2 tests) 21ms
+ ✓ packages/core/src/ledger/reduce.test.ts (10 tests) 18ms
+ ✓ packages/core/src/providers/opencode/adapter.test.ts (8 tests) 14ms
+(node:27030) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/providers/capability-report.test.ts (9 tests) 10ms
+(node:27032) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ scripts/bench/observer.test.ts (3 tests) 9ms
+ ✓ scripts/release/capture-publish-evidence.test.ts (7 tests) 6ms
+ ✓ packages/core/src/collection/attribution.test.ts (5 tests) 7ms
+ ✓ packages/core/src/ledger/sanitize.test.ts (5 tests) 7ms
+ ✓ packages/agent-badge/src/cli/main.test.ts (3 tests) 6ms
+ ✓ packages/core/src/pricing/price.test.ts (6 tests) 6ms
+ ✓ scripts/smoke/windows-setup-result.test.ts (3 tests) 4ms
+ ✓ packages/core/src/ledger/canonical-json.test.ts (2 tests) 3ms
+ ✓ packages/core/src/git/objects.test.ts (9 tests) 4ms
+ ✓ scripts/validation/fixture-root.test.ts (1 test) 2ms
+ ✓ packages/core/src/render/svg.test.ts (14 tests) 3ms
+ ✓ scripts/release/publish-impact.test.ts (5 tests) 2ms
+ ✓ packages/core/src/operations/uninstall.test.ts (1 test) 2ms
+ ✓ packages/agent-badge/src/integration/manifest.test.ts (1 test) 1ms
+
+ Test Files  69 passed (69)
+      Tests  744 passed | 1 skipped (745)
+   Start at  03:33:00
+   Duration  407.94s (transform 594ms, setup 0ms, collect 2.66s, tests 399.11s, environment 4ms, prepare 1.62s)
+

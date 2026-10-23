@@ -2,17 +2,19 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const npmCommand = process.platform === "win32" ? process.execPath : "npm";
+const npmPrefix = process.platform === "win32" ? [resolve(dirname(process.execPath), "node_modules/npm/bin/npm-cli.js")] : [];
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const publishablePackages = [
   {
     workspace: "packages/core",
-    requiredFiles: ["package.json", "dist/index.js", "dist/index.d.ts"]
+    requiredFiles: ["LICENSE", "package.json", "dist/index.js", "dist/index.d.ts", "resources/workflows/agent-badge-import.yml"]
   },
   {
     workspace: "packages/agent-badge",
     requiredFiles: [
+      "LICENSE",
       "package.json",
       "dist/index.js",
       "dist/index.d.ts",
@@ -22,18 +24,18 @@ const publishablePackages = [
   },
   {
     workspace: "packages/create-agent-badge",
-    requiredFiles: ["package.json", "dist/index.js", "dist/index.d.ts"]
+    requiredFiles: ["LICENSE", "package.json", "dist/index.js", "dist/index.d.ts"]
   }
 ];
 
-function isAllowedPackPath(packPath) {
-  return packPath === "package.json" || packPath.startsWith("dist/");
+function isAllowedPackPath(packPath, pkg) {
+  return ["package.json", "LICENSE", "CHANGELOG.md"].includes(packPath) || packPath.startsWith("dist/") || pkg.requiredFiles.includes(packPath);
 }
 
 function runPackDryRun(workspace) {
   const output = execFileSync(
     npmCommand,
-    ["pack", "--workspace", workspace, "--dry-run", "--json"],
+    [...npmPrefix, "pack", "--workspace", workspace, "--dry-run", "--json"],
     {
       cwd: repoRoot,
       encoding: "utf8",
@@ -69,7 +71,7 @@ for (const pkg of publishablePackages) {
   const packJson = runPackDryRun(pkg.workspace);
   const filePaths = toFilePaths(packJson);
   const fileSet = new Set(filePaths);
-  const unexpectedPaths = filePaths.filter((packPath) => !isAllowedPackPath(packPath));
+  const unexpectedPaths = filePaths.filter((packPath) => !isAllowedPackPath(packPath, pkg));
   const missingPaths = pkg.requiredFiles.filter((packPath) => !fileSet.has(packPath));
 
   if (unexpectedPaths.length === 0 && missingPaths.length === 0) {

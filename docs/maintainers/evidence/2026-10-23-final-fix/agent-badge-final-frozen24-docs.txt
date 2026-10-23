@@ -1,0 +1,7 @@
+
+> docs:check
+> node --import tsx scripts/verify-docs.mjs
+
+(node:1070) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+Documentation verification passed: 14 documents, 59 local links, 35 CLI examples, 14 commands, 7 capabilities.

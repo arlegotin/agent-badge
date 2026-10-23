@@ -5,14 +5,8 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "@agent-badge/core": [
-        "packages/core/src/index.ts"
-      ],
       "@agent-badge/testkit": [
         "packages/testkit/src/index.ts"
-      ],
-      "agent-badge": [
-        "packages/agent-badge/src/index.ts"
       ]
     },
     "strict": true,

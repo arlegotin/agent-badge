@@ -1,0 +1,91 @@
+import { runReportingTask } from './report-supervisor.js';
+import type { RepositoryContext } from '../git/context.js';
+import { resolveRepository } from '../git/context.js';
+import type { IntegrationInspection, IntegrationPort, OperationalCheck } from './integration-port.js';
+import { configurationState, getIndexedStatus } from './status.js';
+import type { StatusReport } from './status.js';
+import { reportCapabilities } from '../providers/capability-report.js';
+import type { CapabilityReport } from '../providers/capability-report.js';
+import { DataTransport, TransportError } from '../git/data-transport.js';
+import { readStoreMetadata } from '../storage/store.js';
+import { ProtocolError } from '../domain/capabilities.js';
+async function bounded<T>(promise:Promise<T>,signal:AbortSignal):Promise<T> {
+  return new Promise<T>((resolve,reject)=>{
+    const abort=()=>reject(new Error('diagnostic-deadline'));
+    signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
+    promise.then(resolve,reject).finally(()=>signal.removeEventListener('abort',abort));
+  });
+}
+export interface DoctorOptions { remote?: boolean; timeoutMs?: number; deadline?:number; integrations?: IntegrationPort; /** Trusted owner module, used by the CLI so inspection is also owned work. */ integrationModule?: string }
+export interface DoctorReport { schemaVersion: 1; status: 'healthy' | 'attention-required'; exitCode: 0 | 1 | 2 | 3 | 4; remote: 'not-requested' | 'readable' | 'unavailable' | 'wrong-target' | 'history-conflict'; configuration: StatusReport['configuration']; checks: OperationalCheck[]; capabilities?: CapabilityReport }
+function unavailableDoctor(remote?:boolean):DoctorReport{return {schemaVersion:1,status:'attention-required',exitCode:1,remote:remote?'unavailable':'not-requested',configuration:'not-inspected',checks:[{code:'inspection-unavailable',status:'fail',required:true}]};}
+export async function diagnose(ctx: RepositoryContext, options: DoctorOptions): Promise<DoctorReport> {
+ return supervisedDiagnosis(ctx,options);
+}
+/** Directory discovery and concrete integrations run inside the same owned worker. */
+export async function diagnoseFromDirectory(cwd:string,options:Omit<DoctorOptions,'integrations'>):Promise<DoctorReport> {
+ return supervisedDiagnosis(cwd,options);
+}
+async function supervisedDiagnosis(ctx:RepositoryContext|string,options:DoctorOptions):Promise<DoctorReport> {
+ const timeout=options.timeoutMs??5000;
+ if(!Number.isFinite(timeout)||timeout<1||timeout>20000)throw Error('Invalid diagnostic deadline.');
+ const deadline=Math.min(options.deadline??Infinity,Date.now()+timeout),signal=AbortSignal.timeout(Math.max(1,deadline-Date.now()));
+ try {
+  // Arbitrary in-process caller ports must cooperate with cancellation. Concrete CLI
+  // owners instead load inside the supervised group below.
+  const inspection=typeof ctx!=='string'&&options.integrations?await bounded(options.integrations.inspect(ctx,signal),signal):undefined;
+  return await runReportingTask<DoctorReport>(new URL('./doctor.js',import.meta.url),{ctx,remote:options.remote,inspection,integrationModule:options.integrationModule},deadline,signal);
+ } catch{return unavailableDoctor(options.remote);}
+}
+export async function runReport(input:{ctx:RepositoryContext|string;remote?:boolean;inspection?:IntegrationInspection;integrationModule?:string},context:{signal:AbortSignal;deadline:number}):Promise<DoctorReport> {
+ const options=input,{signal,deadline}=context;
+ const report:DoctorReport={schemaVersion:1,status:'attention-required',exitCode:1,remote:'not-requested',configuration:'not-inspected',checks:[]};
+ try {
+    const ctx=typeof input.ctx==='string'?await resolveRepository(input.ctx,context):input.ctx;
+    const inspection:IntegrationInspection=input.integrationModule?await (await import(input.integrationModule)).repositoryIntegrations.inspect(ctx,signal):input.inspection??{setup:'not-inspected',checks:[]};
+    report.checks.push(...inspection.checks);
+    for (const code of ['activation','runtime','git-hooks','provider-hooks']) {
+      if (!report.checks.some(check => check.code === code && check.required)) report.checks.push({ code, status: 'not-inspected', required: true });
+    }
+    const status = await getIndexedStatus(ctx, { inspection, signal, deadline });
+    report.checks.push({ code: 'local-schema', status: status.failure ? 'fail' : 'pass', required: true });
+    report.configuration = status.configuration;
+    if (inspection.repositoryId) report.capabilities = await bounded(reportCapabilities({ repositoryId: inspection.repositoryId, enrolledRoots: [], signal }, { roots: inspection.roots }), signal);
+    let special: DoctorReport['exitCode'] = status.exitCode === 2 || status.exitCode === 3 ? status.exitCode : 0;
+    if (options.remote) {
+      let transport: DataTransport | undefined;
+      try {
+        if (inspection.binding?.status !== 'bound') throw new TransportError('routing-changed');
+        transport = await DataTransport.open({ repository: ctx, binding: inspection.binding, deadline, signal });
+        const snapshot = await readStoreMetadata(ctx);
+        const tip = await transport.remoteTip();
+        if (!tip && (snapshot.transport || inspection.binding.ledgerEvidence)) throw new TransportError('history-rewritten');
+        if (tip) {
+          const accepted = await transport.fetch();
+          if (accepted.meta.repositoryId !== inspection.binding.repositoryId) throw new TransportError('routing-changed');
+          if (snapshot.transport?.commit) await transport.assertDescendant(accepted.commit, snapshot.transport.commit, accepted.artifacts);
+          report.configuration = configurationState(accepted.meta, inspection, snapshot.pendingConfiguration !== null);
+        }
+        report.remote = 'readable';
+        report.checks.push({ code: 'remote-readable', status: 'pass', required: true });
+        for(const code of ['remote-write-permission-unproven','branch-rules-unproven','commit-signing-unproven','private-image-unproven']) report.checks.push({ code, status: 'not-inspected', required: false });
+      } catch (error) {
+        const wrong = error instanceof TransportError && error.reason !== 'unavailable';
+        const history = error instanceof TransportError && error.reason === 'history-rewritten';
+        report.remote = history ? 'history-conflict' : wrong ? 'wrong-target' : 'unavailable';
+        if (history) report.checks.push({ code: 'remote-history', status: 'fail', required: true });
+        special = wrong ? 2 : error instanceof ProtocolError ? 3 : 1;
+        report.checks.push({ code: 'remote-readable', status: 'fail', required: true });
+      } finally { await transport?.close(); }
+    }
+    report.checks.push({ code: 'shared-policy', status: report.configuration === 'drift' ? 'fail' : report.configuration === 'current' ? 'pass' : 'warning', required: true });
+    const failed = report.checks.some(check => check.required && check.status !== 'pass' && check.status !== 'warning');
+    report.exitCode = special || (report.configuration === 'drift' ? 4 : failed ? 1 : 0);
+    report.status = report.exitCode ? 'attention-required' : 'healthy';
+    return report;
+  } catch {
+    if(options.remote)report.remote='unavailable';
+    report.checks.push({ code: 'inspection-unavailable', status: 'fail', required: true });
+    return report;
+  }
+}

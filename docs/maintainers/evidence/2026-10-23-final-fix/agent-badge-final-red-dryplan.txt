@@ -1,0 +1,62 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ❯ packages/agent-badge/src/integration/launcher.test.ts (23 tests | 1 failed | 22 skipped) 295ms
+   ↓ unsupported executable runtime fails before subprocesses or filesystem mutations
+   ↓ ordinary launcher --help never installs or creates private activation
+   ↓ ordinary launcher --version never installs or creates private activation
+   ↓ ordinary launcher status never installs or creates private activation
+   ↓ launcher validates [ 'setup', '--help' ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--version' ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--target', 'bad remote' ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ Array(2) ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--definitely-invalid' ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--target' ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--target', '-unsafe' ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--runtime-version', …(1) ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--repository-url', …(1) ] before Git discovery, installs, or mutations
+   ↓ launcher validates [ 'setup', '--repository-url', …(1) ] before Git discovery, installs, or mutations
+   ↓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification
+   ↓ a failed staged replacement retains the existing partial runtime
+   ↓ runtime repair refuses a symlink hash directory and preserves its target
+   ↓ launcher dry run preserves missing runtime without npm
+   ↓ launcher dry run preserves incomplete runtime without npm
+   ↓ fresh standalone launcher keeps bootstrap acquisition outside private authority
+   ↓ standalone launcher refuses existing private authority even for dry run
+   ↓ approved complete runtime dry run reports availability without executing or altering it
+   × bootstrap dry run distinguishes requested runtime from acquisition runtime 294ms
+     → expected { schemaVersion: 1, …(7) } to match object { Object (runtimeVersion, bootstrapRuntimeVersion, ...) }
+(6 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > bootstrap dry run distinguishes requested runtime from acquisition runtime
+AssertionError: expected { schemaVersion: 1, …(7) } to match object { Object (runtimeVersion, bootstrapRuntimeVersion, ...) }
+(6 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "applied": false,[22m
+[32m-   "bootstrapRuntimeVersion": "1.1.20",[39m
+[32m-   "runtimeVersion": "2.0.0-next.1",[39m
+[31m+   "runtimeVersion": "1.1.20",[39m
+[2m  }[22m
+
+ ❯ packages/agent-badge/src/integration/launcher.test.ts:146:36
+    144|  const {cwd}=await launcherFixture();
+    145|  const result=await execute(node24,[join(cwd,'.agent-badge/run.cjs'),'…
+    146|  expect(JSON.parse(result.stdout)).toMatchObject({runtimeVersion:'2.0.…
+       |                                    ^
+    147| });
+    148| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 skipped (23)
+   Start at  03:30:27
+   Duration  441ms (transform 43ms, setup 0ms, collect 53ms, tests 295ms, environment 0ms, prepare 23ms)
+

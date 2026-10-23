@@ -1,0 +1,153 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/create-agent-badge/src/index.test.ts (11 tests) 608ms
+ ✓ scripts/release/preflight.test.ts (18 tests) 4ms
+(node:68864) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/core/src/operations/doctor.test.ts (9 tests | 4 failed) 6595ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  378ms
+   × doctor checks required integration completeness and explicitly bounded read-only remote access 565ms
+     → expected { schemaVersion: 1, …(5) } to match object { remote: 'readable', …(2) }
+(3 matching properties omitted from actual)
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  358ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  315ms
+   × remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding 438ms
+     → expected { schemaVersion: 1, …(6) } to match object { remote: 'readable', exitCode: +0 }
+(6 matching properties omitted from actual)
+   × remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding 428ms
+     → expected { schemaVersion: 1, …(6) } to match object { remote: 'readable', exitCode: +0 }
+(6 matching properties omitted from actual)
+   × remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding 433ms
+     → expected { schemaVersion: 1, …(6) } to match object { remote: 'readable', exitCode: +0 }
+(6 matching properties omitted from actual)
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3337ms
+   ✓ doctor total deadline includes stalled capability discovery  342ms
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (21 tests) 5515ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  628ms
+   ✓ a failed staged replacement retains the existing partial runtime  424ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  431ms
+(node:71190) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/core/src/operations/status.test.ts (8 tests | 2 failed) 6270ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  450ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1638ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1479ms
+   × future private schema is static unsupported output and is never rewritten 359ms
+     → expected { schemaVersion: 1, …(14) } to match object { state: 'unsupported', exitCode: 3 }
+(13 matching properties omitted from actual)
+   × local accepted reader rejects a tree masquerading as an anchored accepted commit 1109ms
+     → expected { schemaVersion: 1, …(14) } to match object { state: 'unsupported', …(2) }
+(12 matching properties omitted from actual)
+   ✓ status refuses missing derived generation without replay or repair  409ms
+   ✓ status refuses corrupt derived generation without replay or repair  411ms
+   ✓ status refuses staged derived generation without replay or repair  414ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/core/src/operations/doctor.test.ts > doctor checks required integration completeness and explicitly bounded read-only remote access
+AssertionError: expected { schemaVersion: 1, …(5) } to match object { remote: 'readable', …(2) }
+(3 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "exitCode": 0,[39m
+[31m+   "exitCode": 1,[39m
+[2m    "remote": "readable",[22m
+[32m-   "status": "healthy",[39m
+[31m+   "status": "attention-required",[39m
+[2m  }[22m
+
+ ❯ packages/core/src/operations/doctor.test.ts:32:18
+     30|   expect(local.checks.some(c => c.code === 'remote-readable')).toBe(fa…
+     31|   const remote = await diagnose(repository, { integrations: port, remo…
+     32|   expect(remote).toMatchObject({ remote: 'readable', status: 'healthy'…
+       |                  ^
+     33|   expect(await f.git(f.remote, ['for-each-ref', '--format=%(refname)',…
+     34|   await f.git(repository.worktreeRoot, ['remote','set-url','origin','h…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  packages/core/src/operations/doctor.test.ts > remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding
+ FAIL  packages/core/src/operations/doctor.test.ts > remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding
+ FAIL  packages/core/src/operations/doctor.test.ts > remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding
+AssertionError: expected { schemaVersion: 1, …(6) } to match object { remote: 'readable', exitCode: +0 }
+(6 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "exitCode": 0,[39m
+[31m+   "exitCode": 1,[39m
+[2m    "remote": "readable",[22m
+[2m  }[22m
+
+ ❯ packages/core/src/operations/doctor.test.ts:64:83
+     62| test.each(['accepted','presence-only','binding-evidence'] as const)('r…
+     63|  const {f,repository}=await fixture(),store=await openStore(repository…
+     64|  expect(await diagnose(repository,{remote:true,integrations:inspected(…
+       |                                                                                   ^
+     65|  const initialized=await syncUsage({repository,store,binding,collect:'…
+     66|  expect(initialized.status).toBe('synced');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  packages/core/src/operations/status.test.ts > future private schema is static unsupported output and is never rewritten
+AssertionError: expected { schemaVersion: 1, …(14) } to match object { state: 'unsupported', exitCode: 3 }
+(13 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "exitCode": 3,[39m
+[32m-   "state": "unsupported",[39m
+[31m+   "exitCode": 1,[39m
+[31m+   "state": "unavailable",[39m
+[2m  }[22m
+
+ ❯ packages/core/src/operations/status.test.ts:71:18
+     69|   const before = await readFile(join(repository.privateDir, 'acknowled…
+     70|   const result = await getStatus(repository);
+     71|   expect(result).toMatchObject({ state: 'unsupported', exitCode: 3 });
+       |                  ^
+     72|   expect(JSON.stringify(result)).not.toMatch(/secret|synthetic|\/priva…
+     73|   expect(await readFile(join(repository.privateDir, 'acknowledged.json…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  packages/core/src/operations/status.test.ts > local accepted reader rejects a tree masquerading as an anchored accepted commit
+AssertionError: expected { schemaVersion: 1, …(14) } to match object { state: 'unsupported', …(2) }
+(12 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "exitCode": 3,[39m
+[32m-   "failure": "unsupported-data",[39m
+[32m-   "state": "unsupported",[39m
+[31m+   "exitCode": 1,[39m
+[31m+   "failure": "reporting-index-unavailable",[39m
+[31m+   "state": "unavailable",[39m
+[2m  }[22m
+
+ ❯ packages/core/src/operations/status.test.ts:82:38
+     80|  const tree=(await f.git(repository.worktreeRoot,['rev-parse',synced.c…
+     81|  await store.recordAcceptedLedger({... (await store.transportState())!…
+     82|  expect(await getStatus(repository)).toMatchObject({state:'unsupported…
+       |                                      ^
+     83| });
+     84| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+
+ Test Files  2 failed | 3 passed (5)
+      Tests  6 failed | 61 passed (67)
+   Start at  03:19:55
+   Duration  19.79s (transform 194ms, setup 0ms, collect 358ms, tests 18.99s, environment 0ms, prepare 114ms)
+

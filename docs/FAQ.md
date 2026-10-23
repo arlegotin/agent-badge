@@ -1,59 +1,43 @@
 # FAQ
 
-## Why does `npm init agent-badge@latest` mention `create-agent-badge`?
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
 
-Because npm initializers are published as `create-*` packages. `npm init agent-badge@latest` resolves to `create-agent-badge`, which is a thin initializer entrypoint that runs `agent-badge init` for the current repo.
+## Which version do I need?
 
-## What do I do once per machine and what do I do per repo?
+The repository-native commands require **2.0.0 or newer**. The initializer is `npm init agent-badge@latest`; check [release status](maintainers/RELEASE-STATUS.md) for publication evidence. Version 1 uses Gists and does not provide these commands or an automatic migration.
 
-Install the shared runtime once per machine:
+Publication is currently pending and `@latest` still selects v1. Do not run that
+entry point to activate v2 until release status confirms v2 publication and its
+`latest` tag.
 
-```bash
-npm install -g @legotin/agent-badge@latest
-```
+## What do I install per repository or clone?
 
-Then, in each repo you want to badge, run:
+Tracked declaration, nested exact runtime lock, launcher and instructions belong to the repository. Each clone/common directory explicitly approves its private runtime and integration with setup. Linked worktrees share private usage but native project hook/trust rules still apply. A global Badge runtime is unnecessary.
 
-```bash
-npm init agent-badge@latest
-```
+## Can CI scan my laptop?
 
-If GitHub auth is missing, repo setup still completes and live publishing is deferred until you rerun `agent-badge init` after auth is ready.
+No. Collection runs where the coding agent runs. CI imports accepted sanitized envelopes or usage collected in that CI environment; it cannot discover another machine's history.
 
-## What if I only use Codex or only use Claude?
+## Does only merged code count?
 
-That is supported. `agent-badge` scans whichever provider directories exist on the current machine. If one provider is missing, the CLI reports partial coverage instead of inventing data.
+All recorded repository work counts, including abandoned branches and failed experiments. Merge, squash, rebase, revert and code-branch deletion do not remove receipts. Unknown/unsupported history remains unknown rather than guessed.
 
-## Does install fail if GitHub auth is missing?
+## What happens in a fork?
 
-No. Local setup still completes. Live gist publishing is deferred until auth is available.
+A different origin stays unbound to upstream automatic publication. A writer can explicitly approve `setup --target upstream`; contributors use immutable sanitized public files in normal PRs. Only accepted default-branch imports affect upstream, and closed/unmerged PRs do not. For independent accounting, `setup --new-repository --repository-url <fork-url>` requires a fresh clone without Badge private state. A copied foreign data branch is never overwritten; choose a supported fresh destination without that foreign ledger or reconcile as repository owner.
 
-## Why did init say `Shared runtime: unavailable`?
+## Are costs bills and are all agents supported?
 
-That means the shared CLI is not currently callable from your shell `PATH`, or the installed binary is broken. Install or upgrade `@legotin/agent-badge` globally, run `hash -r`, verify `agent-badge --version`, then rerun `agent-badge init` or `agent-badge doctor`.
+No. Cost is current-catalog API-equivalent valuation of known supported dimensions. Unknown rates/models stay unpriced; token/cost coverage can differ. Native Claude amounts are omitted; OpenCode/Cursor/Copilot numeric accounting remains unsupported. Gemini saved-success coverage is partial and its recognized exact models remain unpriced. [Support table](ATTRIBUTION.md).
 
-## What gets uploaded?
+## Why can synced usage still be partial or the image stale?
 
-Aggregate badge payloads and shared metadata only. No prompt text, transcript text, filenames, or local paths are published.
+Synchronization confirmation, provider coverage and HTTP image cache are distinct. `status` reports accepted commit/queue/partial/conflicts locally. The ledger contains `badge.svg`; canonical GitHub setup embeds its fixed public raw URL linked to the data-branch report. Non-GitHub hosts have no guessed image route. Private authenticated image rendering remains an unverified external gate.
 
-## Can I use pnpm, yarn, or bun?
+## Does deleting tracked setup deactivate an older branch?
 
-Yes for the runtime. Use npm for the one-step initializer, or install `@legotin/agent-badge` directly and use that package manager's exec form. See [INSTALL.md](INSTALL.md).
+No. Approved private integration may keep working from an older branch with no tracked declaration. Explicit uninstall revokes owned activation/integrations while retaining unsynced data and remote history. Edited/unknown ownership remains for local action. [Uninstall](UNINSTALL.md).
 
-## What if neither `~/.codex` nor `~/.claude` exists?
+## Can saved attribution reinclude shared exclusions?
 
-The CLI can still install itself, but the badge will not reflect meaningful usage until at least one supported provider directory exists on that machine.
-
-## Where is the single source of truth for commands and flags?
-
-Use [CLI.md](CLI.md). It covers every command exposed by the current CLI surface.
-
-## How do I move an existing badge to a new machine?
-
-Reconnect the existing public gist with:
-
-```bash
-agent-badge init --gist-id <id>
-```
-
-For shared-publish continuity and migration edge cases, use [MANUAL-GIST.md](MANUAL-GIST.md) and [RECOVERY.md](RECOVERY.md).
+Ordinary unchanged attribution/import cannot. `attribute` establishes repository membership only. Deliberate include/exclude requires current validated accepted causal heads and refuses offline/unbound operation. Remote-only keys use source-free control intent. Automatic worktree inventory also cannot authorize unseen history at a deleted/reused path.

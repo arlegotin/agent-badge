@@ -1,370 +1,69 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, it, expect } from 'vitest';
+import * as release from './preflight.js';
 
-const execFileAsyncMock = vi.fn();
-const execFileMock = vi.fn();
+const sha = 'a'.repeat(40);
+const request = { event: 'workflow_dispatch', ref: 'refs/heads/main', sha, head: sha, main: sha, tagSha: sha, tag: 'v2.0.0-next.0', version: '2.0.0-next.0', intent: 'major-prerelease' };
+const artifacts = ['@legotin/agent-badge-core', '@legotin/agent-badge', 'create-agent-badge'].map((name, i) => ({ name, version: '2.0.0-next.0', filename: `${i}.tgz`, size: 3, integrity: `sha512-${Buffer.from('abc').toString('base64')}` }));
 
-vi.mock("node:child_process", () => ({
-  execFile: execFileMock
-}));
+describe('exact release authorization before any publish', () => {
+  it.each([
+    ['non-main dispatch', { ref: 'refs/heads/feature' }], ['push event', { event: 'push' }],
+    ['stale queued request', { main: 'b'.repeat(40) }], ['wrong checked out commit', { head: 'b'.repeat(40) }],
+    ['retargeted tag', { tagSha: 'b'.repeat(40) }], ['implicit patch', { version: '1.1.21', tag: 'v1.1.21' }],
+    ['stable without intent', { version: '2.0.0', tag: 'v2.0.0' }], ['wrong tag', { tag: 'v2.0.0' }]
+  ])('blocks %s', (_name, patch) => expect(() => release.validateReleaseRequest({ ...request, ...patch })).toThrow());
+  it('accepts explicit major prerelease and separately selected stable major', () => {
+    expect(release.validateReleaseRequest(request)).toBe('next');
+    expect(release.validateReleaseRequest({ ...request, intent: 'stable-major', version: '2.0.0', tag: 'v2.0.0' })).toBe('latest');
+  });
+  it('checks every package before publishing any, stops on changed tarball', async () => {
+    const writes: string[] = [];
+    await expect(release.publishCandidate(artifacts, async a => a.name === 'create-agent-badge' ? 'mismatch' : 'absent', async a => { writes.push(a.name); })).rejects.toThrow(/mismatch/);
+    expect(writes).toEqual([]);
+  });
+  it('resumes partial publication in dependency order without rewriting matching versions', async () => {
+    const uploaded = new Set([artifacts[0].name]);
+    const writes: string[] = [];
+    const result = await release.publishCandidate(artifacts, async a => uploaded.has(a.name) ? 'matching' : 'absent', async a => { uploaded.add(a.name); writes.push(a.name); });
+    expect(writes).toEqual(['@legotin/agent-badge', 'create-agent-badge']);
+    expect(result).toEqual(['resumed', 'published', 'published']);
+  });
+  it('repeat publication writes nothing', async () => {
+    await expect(release.publishCandidate(artifacts, async () => 'matching', async () => { throw Error('unexpected write'); })).resolves.toEqual(['resumed', 'resumed', 'resumed']);
+  });
+  it('ambiguous publish failure is reconciled through exact bytes before continuing', async () => {
+    let uploaded = false;
+    await expect(release.publishCandidate([artifacts[0]], async () => uploaded ? 'matching' : 'absent', async () => { uploaded = true; throw Error('connection closed after upload'); })).resolves.toEqual(['published']);
+  });
+  it('unknown registry state fails closed before the first write', async () => {
+    await expect(release.publishCandidate(artifacts, async () => { throw Error('HTTP 503'); }, async () => { throw Error('unexpected write'); })).rejects.toThrow('HTTP 503');
+  });
+  it('freshness failure after all-package preflight cannot be reconciled as an upload', async () => {
+    const writes: string[] = [];
+    await expect(release.publishCandidate(artifacts, async () => 'absent', async a => { writes.push(a.name); }, async () => { throw Error('main advanced'); })).rejects.toThrow('main advanced');
+    expect(writes).toEqual([]);
+  });
 
-vi.mock("node:util", async () => {
-  const actual = await vi.importActual<typeof import("node:util")>("node:util");
-
-  return {
-    ...actual,
-    promisify: vi.fn((value: unknown) => {
-      if (value === execFileMock) {
-        return execFileAsyncMock;
-      }
-
-      return actual.promisify(value as Parameters<typeof actual.promisify>[0]);
-    })
-  };
 });
 
-const preflight = await import("./preflight.ts");
-const currentInventory = await preflight.loadPublishablePackageInventory(process.cwd());
-const currentRuntimeVersion = currentInventory.find(
-  (entry: { name: string }) => entry.name === "@legotin/agent-badge"
-)!.version;
-const registryAheadVersion = incrementPatchVersion(currentRuntimeVersion);
+it.each(['first','partial','repeat'] as const)('retains structured %s publication evidence including confirmed progress',async mode=>{
+ const candidate:release.Candidate={schemaVersion:1,sha,tag:request.tag,version:request.version,artifacts,checks:{},runtime:'v24.0.0',platform:'synthetic'};
+ const uploaded=new Set(mode==='repeat'?artifacts.map(a=>a.name):[]);
+ let bytes='';
+ const evidence=await release.publishWithEvidence(candidate,{candidateRunId:'123',artifactId:'456'},async a=>uploaded.has(a.name)?'matching':'absent',async a=>{if(mode==='partial'&&a===artifacts[1])throw Error('synthetic credential path');uploaded.add(a.name);},async()=>{},value=>{bytes=JSON.stringify(value);});
+ expect(JSON.parse(bytes)).toMatchObject({schemaVersion:1,sha,candidateRunId:'123',artifactId:'456',publication:mode==='partial'?'incomplete':'complete',artifacts});
+ expect(bytes).not.toContain('synthetic credential');
+ expect(evidence.results).toEqual(mode==='repeat'?['resumed','resumed','resumed']:mode==='partial'?['published']:['published','published','published']);
+});
 
-function incrementPatchVersion(version: string): string {
-  const parts = version.split(".");
-
-  if (parts.length !== 3) {
-    throw new Error(`Expected a semver version, received ${version}.`);
-  }
-
-  const [major, minor, patch] = parts.map((part) => Number.parseInt(part, 10));
-
-  if ([major, minor, patch].some((part) => Number.isNaN(part))) {
-    throw new Error(`Expected numeric semver parts, received ${version}.`);
-  }
-
-  return `${major}.${minor}.${patch + 1}`;
-}
-
-function missingPackageError(packageName: string): Error & {
-  readonly stderr: string;
-  readonly stdout: string;
-} {
-  const error = new Error(`npm ERR! 404 '${packageName}' is not in this registry.`);
-
-  return Object.assign(error, {
-    stderr: `npm ERR! code E404\nnpm ERR! 404 Not Found - GET https://registry.npmjs.org/${packageName}`,
-    stdout: ""
-  });
-}
-
-function mockRegistryJson(response: unknown): void {
-  execFileAsyncMock.mockResolvedValueOnce({
-    stdout: JSON.stringify(response),
-    stderr: ""
-  });
-}
-
-function mockMissingPackage(packageName: string): void {
-  execFileAsyncMock.mockRejectedValueOnce(missingPackageError(packageName));
-}
-
-function mockNpmPing(): void {
-  execFileAsyncMock.mockResolvedValueOnce({
-    stdout: "pong",
-    stderr: ""
-  });
-}
-
-function mockNpmWhoami(identity = "agent-badge-publisher"): void {
-  execFileAsyncMock.mockResolvedValueOnce({
-    stdout: `${identity}\n`,
-    stderr: ""
-  });
-}
-
-function authError(command: string): Error & {
-  readonly stderr: string;
-  readonly stdout: string;
-} {
-  const error = new Error(`${command} requires authentication.`);
-
-  return Object.assign(error, {
-    stderr: `npm ERR! code ENEEDAUTH\nnpm ERR! need auth ${command}`,
-    stdout: ""
-  });
-}
-
-describe("release preflight", () => {
-  beforeEach(() => {
-    execFileAsyncMock.mockReset();
-    execFileMock.mockReset();
-  });
-
-  it("returns overall safe when all publishable packages are missing from the registry", async () => {
-    mockMissingPackage("@legotin/agent-badge-core");
-    mockMissingPackage("@legotin/agent-badge");
-    mockMissingPackage("create-agent-badge");
-    mockNpmPing();
-    mockNpmWhoami();
-
-    const report = await preflight.runReleasePreflight(process.cwd());
-
-    expect(report.overallStatus).toBe("safe");
-    expect(report.packages).toHaveLength(3);
-    expect(report.packages.map((entry: { packageName: string; status: string }) => entry.packageName)).toEqual([
-      "@legotin/agent-badge-core",
-      "@legotin/agent-badge",
-      "create-agent-badge"
-    ]);
-    expect(report.packages.every((entry: { status: string }) => entry.status === "safe")).toBe(true);
-    expect(report.checks.find((entry: { id: string }) => entry.id === "package-ownership")).toMatchObject({
-      id: "package-ownership",
-      status: "safe"
-    });
-    expect(report.checks.find((entry: { id: string }) => entry.id === "trusted-publisher")).toMatchObject({
-      id: "trusted-publisher",
-      status: "safe"
-    });
-  });
-
-  it("returns overall blocked when a publish target already exposes the intended version", async () => {
-    mockMissingPackage("@legotin/agent-badge-core");
-    mockRegistryJson({
-      name: "@legotin/agent-badge",
-      version: currentRuntimeVersion,
-      "dist-tags.latest": currentRuntimeVersion
-    });
-    mockMissingPackage("create-agent-badge");
-    mockNpmPing();
-    mockNpmWhoami();
-
-    const report = await preflight.runReleasePreflight(process.cwd());
-    const blockedEntry = report.packages.find(
-      (entry: { packageName: string }) => entry.packageName === "@legotin/agent-badge"
-    );
-
-    expect(report.overallStatus).toBe("blocked");
-    expect(blockedEntry?.status).toBe("blocked");
-    expect(blockedEntry?.summary).toContain(currentRuntimeVersion);
-    expect(blockedEntry?.blockers).toContain("same version already published");
-  });
-
-  it("returns overall warn when the registry metadata is partial or ambiguous", async () => {
-    mockRegistryJson({
-      name: "@legotin/agent-badge-core"
-    });
-    mockMissingPackage("@legotin/agent-badge");
-    mockMissingPackage("create-agent-badge");
-    mockNpmPing();
-    mockNpmWhoami();
-
-    const report = await preflight.runReleasePreflight(process.cwd());
-    const warnEntry = report.packages.find(
-      (entry: { packageName: string }) => entry.packageName === "@legotin/agent-badge-core"
-    );
-
-    expect(report.overallStatus).toBe("warn");
-    expect(warnEntry?.status).toBe("warn");
-    expect(warnEntry?.summary).toContain("partial metadata");
-  });
-
-  it("returns explicit version drift and manual confirmation warnings when npm is ahead of source", async () => {
-    mockMissingPackage("@legotin/agent-badge-core");
-    mockRegistryJson({
-      name: "@legotin/agent-badge",
-      version: registryAheadVersion,
-      "dist-tags.latest": registryAheadVersion
-    });
-    mockMissingPackage("create-agent-badge");
-    mockNpmPing();
-    mockNpmWhoami();
-
-    const report = await preflight.runReleasePreflight(process.cwd());
-    const driftEntry = report.packages.find(
-      (entry: { packageName: string }) => entry.packageName === "@legotin/agent-badge"
-    );
-    const ownershipCheck = report.checks.find(
-      (entry: { id: string }) => entry.id === "package-ownership"
-    );
-    const trustedPublisherCheck = report.checks.find(
-      (entry: { id: string }) => entry.id === "trusted-publisher"
-    );
-
-    expect(report.overallStatus).toBe("warn");
-    expect(driftEntry?.status).toBe("warn");
-    expect(driftEntry?.summary).toContain("version drift");
-    expect(driftEntry?.blockers).toContain("version drift");
-    expect(driftEntry?.blockers).toContain("package ownership");
-    expect(ownershipCheck).toMatchObject({
-      id: "package-ownership",
-      status: "warn"
-    });
-    expect(ownershipCheck?.blockers).toContain("package ownership");
-    expect(trustedPublisherCheck).toMatchObject({
-      id: "trusted-publisher",
-      status: "warn"
-    });
-    expect(trustedPublisherCheck?.blockers).toContain("trusted-publisher");
-  });
-
-  it("loads the exact manifest-derived publishable package inventory", async () => {
-    const inventory = await preflight.loadPublishablePackageInventory(process.cwd());
-
-    expect(inventory.map((entry: { name: string }) => entry.name)).toEqual([
-      "@legotin/agent-badge-core",
-      "@legotin/agent-badge",
-      "create-agent-badge"
-    ]);
-  });
-
-  it("blocks when the npm-auth check cannot confirm the maintainer identity", async () => {
-    mockMissingPackage("@legotin/agent-badge-core");
-    mockMissingPackage("@legotin/agent-badge");
-    mockMissingPackage("create-agent-badge");
-    mockNpmPing();
-    execFileAsyncMock.mockRejectedValueOnce(authError("npm whoami"));
-
-    const report = await preflight.runReleasePreflight(process.cwd());
-    const authCheck = report.checks.find((entry: { id: string }) => entry.id === "npm-auth");
-
-    expect(report.overallStatus).toBe("blocked");
-    expect(authCheck).toMatchObject({
-      id: "npm-auth",
-      status: "blocked"
-    });
-    expect(authCheck?.blockers).toContain("npm auth");
-  });
-
-  it("blocks when the workflow-contract check loses required release markers", () => {
-    const workflowContract = preflight.evaluateWorkflowContract("name: Release\n");
-    const overall = preflight.determineOverallStatus([{ status: "safe" }, workflowContract]);
-
-    expect(workflowContract).toMatchObject({
-      id: "workflow-contract",
-      status: "blocked"
-    });
-    expect(overall).toBe("blocked");
-  });
-
-  it("accepts the auto-publish workflow markers", () => {
-    const workflowContract = preflight.evaluateWorkflowContract(`
-name: Release
-on:
-  workflow_dispatch:
-permissions:
-  id-token: write
-jobs:
-  release:
-    steps:
-      - run: npm run release:publish-impact
-      - run: npm run release:auto-version
-      - run: npm run release
-      - run: git tag -a "v1.2.3" -m "Release v1.2.3"
-      - run: gh release create "v1.2.3" --generate-notes
-`);
-
-    expect(workflowContract).toMatchObject({
-      id: "workflow-contract",
-      status: "safe"
-    });
-  });
-
-  it("blocks when the release-inputs check finds an inconsistent publish configuration", () => {
-    const releaseInputs = preflight.evaluateReleaseInputs({
-      manifests: [
-        {
-          manifestPath: "packages/core/package.json",
-          name: "@legotin/agent-badge-core",
-          version: "1.1.1",
-          packageManager: "npm@11.6.0",
-          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        },
-        {
-          manifestPath: "packages/agent-badge/package.json",
-          name: "@legotin/agent-badge",
-          version: "1.2.1",
-          packageManager: "npm@11.6.0",
-          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        },
-        {
-          manifestPath: "packages/create-agent-badge/package.json",
-          name: "create-agent-badge",
-          version: "1.1.1",
-          packageManager: "npm@11.6.0",
-          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        }
-      ],
-      changesetConfig: { access: "private" },
-      rootPackage: {
-        packageManager: "npm@11.6.0",
-        engines: {
-          node: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        },
-        scripts: {
-          release: "changeset publish",
-          "release:preflight": "tsx scripts/release/preflight.ts"
-        }
-      },
-      coreManifest: {
-        publishConfig: { access: "restricted" }
-      }
-  });
-  const overall = preflight.determineOverallStatus([{ status: "safe" }, releaseInputs]);
-
-    expect(releaseInputs).toMatchObject({
-      id: "release-inputs",
-      status: "blocked"
-    });
-    expect(overall).toBe("blocked");
-  });
-
-  it("blocks when helper workspaces can leak into production publish", () => {
-    const releaseInputs = preflight.evaluateReleaseInputs({
-      manifests: [
-        {
-          manifestPath: "packages/core/package.json",
-          name: "@legotin/agent-badge-core",
-          version: "1.1.1",
-          packageManager: "npm@11.6.0",
-          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        },
-        {
-          manifestPath: "packages/agent-badge/package.json",
-          name: "@legotin/agent-badge",
-          version: "1.1.1",
-          packageManager: "npm@11.6.0",
-          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        },
-        {
-          manifestPath: "packages/create-agent-badge/package.json",
-          name: "create-agent-badge",
-          version: "1.1.1",
-          packageManager: "npm@11.6.0",
-          enginesNode: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        }
-      ],
-      changesetConfig: { access: "public", ignore: [] },
-      rootPackage: {
-        packageManager: "npm@11.6.0",
-        engines: {
-          node: "^20.0.0 || ^22.0.0 || ^24.0.0"
-        },
-        scripts: {
-          release: "changeset publish",
-          "release:preflight": "tsx scripts/release/preflight.ts"
-        }
-      },
-      coreManifest: {
-        publishConfig: { access: "public" }
-      }
-    });
-
-    expect(releaseInputs).toMatchObject({
-      id: "release-inputs",
-      status: "blocked"
-    });
-    expect(releaseInputs.details).toContain(
-      ".changeset/config.json must ignore `@agent-badge/testkit` so helper workspaces cannot leak into production publish."
-    );
-  });
+it('actual npm subprocess console cannot contaminate JSON output',async()=>{
+ const {mkdtemp,mkdir,writeFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path'),{execFileSync}=await import('node:child_process');
+ const root=await mkdtemp(join(tmpdir(),'agent-badge-publication-output-'));
+ try {
+  const bin=join(root,'bin');await mkdir(bin);
+  await writeFile(join(bin,'npm'),'#!/bin/sh\nif [ "$1" = "--version" ]; then echo 11.6.0; else echo "synthetic npm upload console"; echo "synthetic npm diagnostic" >&2; fi\n',{mode:0o700});
+  const code=`import{publishTarball}from ${JSON.stringify(new URL('./preflight.ts',import.meta.url).href)};publishTarball(${JSON.stringify(root)},${JSON.stringify(artifacts[0])},'next');console.log(JSON.stringify({publication:'synthetic'}));`;
+  const output=execFileSync(process.execPath,['--import','tsx','--input-type=module','-e',code],{env:{...process.env,PATH:bin},encoding:'utf8',stdio:['ignore','pipe','pipe']});
+  expect(JSON.parse(output)).toEqual({publication:'synthetic'});
+ }finally{await rm(root,{recursive:true,force:true});}
 });

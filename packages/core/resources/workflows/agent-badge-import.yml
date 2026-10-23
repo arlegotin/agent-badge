@@ -1,0 +1,61 @@
+# Generated from an explicitly approved exact runtime lock. Review before enabling.
+name: Agent Badge accepted contributions
+on:
+  push:
+    branches: [__DEFAULT_BRANCH_JSON__]
+    paths:
+      - '.agent-badge/contributions/**'
+      - '.github/workflows/agent-badge-import.yml'
+  workflow_dispatch:
+__SCHEDULE__
+permissions: {}
+concurrency:
+  group: agent-badge-import
+  cancel-in-progress: false
+jobs:
+  import:
+    if: github.ref == __DEFAULT_REF_EXPRESSION__
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Guard actual default branch
+        env:
+          BADGE_REF: ${{ github.ref }}
+          BADGE_DEFAULT_REF: __DEFAULT_REF_JSON__
+          BADGE_DEFAULT_BRANCH: __DEFAULT_BRANCH_JSON__
+          BADGE_ACTUAL_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          test "$BADGE_REF" = "$BADGE_DEFAULT_REF"
+          test "$BADGE_DEFAULT_BRANCH" = "$BADGE_ACTUAL_DEFAULT_BRANCH"
+      - name: Checkout accepted data only
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Select trusted Node runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.0.0'
+          package-manager-cache: false
+      - name: Import accepted contributions
+        env:
+          BADGE_ACCEPTED_REF: ${{ github.sha }}
+          BADGE_DEFAULT_BRANCH: __DEFAULT_BRANCH_JSON__
+          BADGE_REPOSITORY_ID: __REPOSITORY_ID_JSON__
+          BADGE_REPOSITORY_URL: __REPOSITORY_URL_JSON__
+          NPM_CONFIG_USERCONFIG: /dev/null
+          NPM_CONFIG_GLOBALCONFIG: /dev/null
+        run: |
+          set -euo pipefail
+          runtime=$(mktemp -d "$RUNNER_TEMP/agent-badge-import.XXXXXX")
+          trap 'rm -rf "$runtime"' EXIT
+          printf '%s' '__MANIFEST_BASE64__' | base64 --decode > "$runtime/package.json"
+          printf '%s' '__LOCK_BASE64__' | base64 --decode > "$runtime/package-lock.json"
+          cd "$runtime"
+          npm ci --ignore-scripts --no-audit --no-fund --workspaces=false --registry=https://registry.npmjs.org/
+          cd "$GITHUB_WORKSPACE"
+          node "$runtime/node_modules/@legotin/agent-badge/dist/cli/main.js" import \
+            --accepted-ref "$BADGE_ACCEPTED_REF" --default-branch "$BADGE_DEFAULT_BRANCH" \
+            --repository-id "$BADGE_REPOSITORY_ID" --repository-url "$BADGE_REPOSITORY_URL"

@@ -1,0 +1,67 @@
+{
+  "provider": "gemini",
+  "normalizationVersion": 1,
+  "sourceRevision": "09d81bf116b6f0ef084731dc996aa9d56438bb70",
+  "sourceRevisionDate": "2026-10-22",
+  "sourcePackageVersion": "0.67.0-nightly.20261020.gb041de017",
+  "releasedVersionRange": null,
+  "observedAgentVersions": [],
+  "sourceSchemas": [
+    "gemini-saved-jsonl-pin-09d81bf",
+    "gemini-saved-json-pin-09d81bf"
+  ],
+  "fixtureRevision": "synthetic-saved-success-v1",
+  "accounting": "fixture-certified-recorded-success-only-partial",
+  "identity": [
+    "durable message.id independent of session/filename"
+  ],
+  "revision": "immutable-final",
+  "cumulativeRevision": "uncertified",
+  "fixtureReferences": [
+    "packages/core/src/providers/gemini/adapter.test.ts",
+    "packages/core/src/collection/gemini-collection.test.ts",
+    "packages/agent-badge/src/integration/automatic-hooks.test.ts",
+    "packages/testkit/src/gemini-fixtures.ts",
+    "packages/testkit/fixtures/gemini/session-success.jsonl",
+    "packages/testkit/fixtures/gemini/after-model.json"
+  ],
+  "sourceUrls": [
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/config/storage.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/config/projectRegistry.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/utils/paths.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/services/chatRecordingTypes.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/services/chatRecordingService.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/core/geminiChat.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/hooks/types.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/hooks/hookTranslator.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/config/models.ts",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/config/defaultModelConfigs.ts",
+    "https://ai.google.dev/api/generate-content#UsageMetadata",
+    "https://ai.google.dev/gemini-api/docs/pricing",
+    "https://geminicli.com/docs/hooks/",
+    "https://github.com/google-gemini/gemini-cli/blob/09d81bf116b6f0ef084731dc996aa9d56438bb70/packages/core/src/hooks/hookRunner.ts"
+  ],
+  "limits": {
+    "parseBytesPerScan": 16777216,
+    "automaticParseBytesPerScan": 524288,
+    "lineBytes": 262144,
+    "observationsPerScan": 1000,
+    "registryBytes": 1048576,
+    "projects": 10000,
+    "filesPerRoot": 10000,
+    "discoveryEntries": 20000,
+    "subagentDepth": 1
+  },
+  "notes": [
+    "Development source snapshot and synthetic fixtures; no broad release compatibility or native provider execution claim.",
+    "Registry absolute paths map short directory identifiers; projectHash is SHA256 of the exact project root bytes, not that identifier.",
+    "Saved successful usage omits failed attempts and can obscure upstream missing counters through zero defaults; all coverage stays partial.",
+    "Pending tokenless and all-zero records create no receipts; valid positive usage on the same ID may later finalize.",
+    "Numeric/model disagreement under the same ID remains a conflict; copies/resumes/migration deduplicate and rewinds never undo recorded incurred history.",
+    "Missing optional dimensions stay null, cached input is a subset, thoughts/tool are separate contributions to total.",
+    "Exact recognized Google model IDs remain unpriced; no tariff transfers or selector/suffix aliasing.",
+    "AfterModel is routing-only through the private approved bootstrap; payload usage, content and IDs never create observations.",
+    "Uncertified registries/exports and oversized snapshots remain visible unsupported/partial; no migration/agent/settings/credentials probes.",
+    "A genuine zero-use native message also has no counted receipt. A single history checkpoint over1000 messages is skipped with unsupported-source diagnostics and later records progress."
+  ]
+}

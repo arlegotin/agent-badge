@@ -1,0 +1,14 @@
+
+> build
+> node scripts/build.mjs
+
+packages/core/src/index.ts(37,1): error TS2308: Module './operations/status.js' has already exported a member named 'runReport'. Consider explicitly re-exporting to resolve the ambiguity.
+file:///Volumes/git/legotin/agent-badge/scripts/build.mjs:16
+  if(result.status!==0)throw new Error('TypeScript build failed.');
+                             ^
+
+Error: TypeScript build failed.
+    at buildWorkspace (file:///Volumes/git/legotin/agent-badge/scripts/build.mjs:16:30)
+    at async file:///Volumes/git/legotin/agent-badge/scripts/build.mjs:19:84
+
+Node.js v24.0.0

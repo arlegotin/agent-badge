@@ -1,0 +1,13 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:62834) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/normalized-import.test.ts (1 test) 850ms
+   ✓ normalized import requires its strict discriminator and persists attribute-only private provenance with no invented cwd  850ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  03:50:42
+   Duration  1.27s (transform 214ms, setup 0ms, collect 319ms, tests 850ms, environment 0ms, prepare 24ms)
+

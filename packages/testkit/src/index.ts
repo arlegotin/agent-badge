@@ -1,11 +1,7 @@
 export {
-  createClaudeFixtureHome
-} from "./claude-fixtures.js";
-export {
-  createCodexFixtureHome
-} from "./codex-fixtures.js";
-export {
   createProviderFixture,
+  protocolObservationFixture,
+  protocolPrivacyCanaries,
   type CreateProviderFixtureOptions,
   type ProviderFixture,
   type ProviderFixtureSeed,
@@ -18,3 +14,16 @@ export {
   type CreateRepoFixtureOptions,
   type RepoFixture
 } from "./repo-fixtures.js";
+export {
+  createBareRemoteFixture,
+  snapshotUserCheckout,
+  type GitFixture,
+  type CheckoutSnapshot
+} from "./git-fixtures.js";
+export { runStorageFixtureProcess, storageFaultPrelude, type StorageFault } from './storage-fixtures.js';
+export { codexContext, codexRequest, codexRollout } from './codex-fixtures.js';
+export { claudeNativeResponse, certifiedClaudeImport } from './claude-fixtures.js';
+export { commitFixtureTree } from './git-fixtures.js';
+export { createGeminiFixtureHome, geminiSavedSession } from './gemini-fixtures.js';
+export { openCodeExport } from './opencode-fixtures.js';
+export { startFixtureGitDaemon, type FixtureGitDaemon } from './git-daemon.js';

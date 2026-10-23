@@ -1,0 +1,65 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ❯ packages/create-agent-badge/src/index.test.ts (12 tests | 1 failed | 11 skipped) 31ms
+   × initializer safely reports a missing CLI package without raw import errors 30ms
+     → expected 'node:internal/modules/esm/resolve:274…' to be 'agent-badge: operation unavailable; r…' // Object.is equality
+   ↓ recognizes a symlinked executable and missing argv
+   ↓ unsupported Node rejects before importing the shared CLI or discovering a repository
+   ↓ packed executable arguments {"args":["--help"]} have no operational side effects
+   ↓ packed executable arguments {"args":["--version"]} have no operational side effects
+   ↓ packed executable arguments {"args":["--definitely-invalid"]} have no operational side effects
+   ↓ packed executable arguments {"args":["setup","--definitely-invalid"]} have no operational side effects
+   ↓ executable ../dist/index.js rejects unsupported Node before loading operational code
+   ↓ executable ../../agent-badge/dist/cli/main.js rejects unsupported Node before loading operational code
+   ↓ initializer redacts malformed operational failures
+   ↓ initializer redacts permissions operational failures
+   ↓ initializer redacts ordinary operational failures
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/create-agent-badge/src/index.test.ts > initializer safely reports a missing CLI package without raw import errors
+AssertionError: expected 'node:internal/modules/esm/resolve:274…' to be 'agent-badge: operation unavailable; r…' // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- agent-badge: operation unavailable; run doctor.[39m
+[31m+ node:internal/modules/esm/resolve:274[39m
+[31m+     throw new ERR_MODULE_NOT_FOUND([39m
+[31m+           ^[39m
+[31m+[39m
+[31m+ Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/private/tmp/agent-badge-initializer-sOcAou/node_modules/@legotin/agent-badge/synthetic-private-package-path.js' imported from /private/tmp/agent-badge-initializer-sOcAou/initializer.mjs[39m
+[31m+     at finalizeResolution (node:internal/modules/esm/resolve:274:11)[39m
+[31m+     at moduleResolve (node:internal/modules/esm/resolve:859:10)[39m
+[31m+     at defaultResolve (node:internal/modules/esm/resolve:983:11)[39m
+[31m+     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:799:12)[39m
+[31m+     at #cachedDefaultResolve (node:internal/modules/esm/loader:723:25)[39m
+[31m+     at ModuleLoader.resolve (node:internal/modules/esm/loader:706:38)[39m
+[31m+     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)[39m
+[31m+     at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:657:36)[39m
+[31m+     at TracingChannel.tracePromise (node:diagnostics_channel:344:14)[39m
+[31m+     at ModuleLoader.import (node:internal/modules/esm/loader:656:21) {[39m
+[31m+   code: 'ERR_MODULE_NOT_FOUND',[39m
+[31m+   url: 'file:///private/tmp/agent-badge-initializer-sOcAou/node_modules/@legotin/agent-badge/synthetic-private-package-path.js'[39m
+[31m+ }[39m
+[31m+[39m
+[31m+ Node.js v24.0.0[39m
+
+
+ ❯ packages/create-agent-badge/src/index.test.ts:23:27
+     21|   catch (error) { failure = error as typeof failure; }
+     22|   expect(failure?.status).toBe(1);
+     23|   expect(failure?.stderr).toBe('agent-badge: operation unavailable; ru…
+       |                           ^
+     24|   expect(failure?.stderr).not.toContain(root);
+     25|   expect(failure?.stderr).not.toContain(canary);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 skipped (12)
+   Start at  03:41:05
+   Duration  145ms (transform 21ms, setup 0ms, collect 21ms, tests 31ms, environment 0ms, prepare 24ms)
+

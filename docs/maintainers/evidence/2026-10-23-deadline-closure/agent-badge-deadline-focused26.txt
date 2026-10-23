@@ -1,0 +1,48 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/agent-badge/src/commands/operational.test.ts (9 tests) 23566ms
+   ✓ status JSON and doctor preserve explicit setup needs, unavailable sources and required failures  1413ms
+   ✓ collect is local-only, sync confirms data, explain redacts, and explicit cross-clone controls use accepted heads  4739ms
+   ✓ configure validates revision and writes accepted policy; upgrade requires an exact deliberate runtime  2309ms
+   ✓ remote-only controls have no source journal, export causal closure, and offline commands never claim intent applied  3227ms
+   ✓ status detects local wrong-target routing without any remote request  864ms
+   ✓ supervised collect never invokes remote Git and cancellation preserves captured pending work  1954ms
+   ✓ include reports a concurrent later remote exclusion instead of silently rebasing its fixed intent  5275ms
+   ✓ plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state  2514ms
+   ✓ plaintext doctor setup and uninstall expose required failures owner repair items and independent deactivation  1269ms
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (8 tests) 16785ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1064ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1059ms
+   ✓ actual diagnostic terminates owned inspection work and exits within its original budget  1058ms
+   ✓ actual diagnostic terminates owned capability work and exits within its original budget  1073ms
+   ✓ actual 'status' owns and terminates repository-resolution 'read' work  5295ms
+   ✓ actual 'status' owns and terminates repository-resolution 'cpu' work  5273ms
+   ✓ actual 'doctor' owns and terminates repository-resolution 'read' work  980ms
+   ✓ actual 'doctor' owns and terminates repository-resolution 'cpu' work  983ms
+ ✓ packages/core/src/operations/doctor.test.ts (9 tests) 9832ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  365ms
+   ✓ doctor checks required integration completeness and explicitly bounded read-only remote access  942ms
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  376ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  315ms
+   ✓ remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding  1338ms
+   ✓ remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding  1389ms
+   ✓ remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding  1354ms
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3343ms
+   ✓ a bounded metadata schema establishes unsupported-data without journal replay  410ms
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 7377ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  462ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1712ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1558ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  371ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1121ms
+   ✓ status refuses missing derived generation without replay or repair  433ms
+   ✓ status refuses corrupt derived generation without replay or repair  425ms
+   ✓ status refuses staged derived generation without replay or repair  426ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  868ms
+
+ Test Files  4 passed (4)
+      Tests  35 passed (35)
+   Start at  04:10:20
+   Duration  58.43s (transform 267ms, setup 0ms, collect 520ms, tests 57.56s, environment 0ms, prepare 83ms)
+

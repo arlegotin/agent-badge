@@ -1,0 +1,8 @@
+
+> pack:check
+> node scripts/check-packages.mjs
+
+PASS packages/core
+PASS packages/agent-badge
+PASS packages/create-agent-badge
+Pack output check passed.

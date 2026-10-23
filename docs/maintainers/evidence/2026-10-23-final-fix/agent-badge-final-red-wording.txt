@@ -1,0 +1,39 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ❯ packages/core/src/operations/budget.test.ts (14 tests | 1 failed | 13 skipped) 96ms
+   ↓ worker sees the usable deadline with supervisor cleanup reserved inside the total budget
+   ↓ automatic budget caps caller timeouts and manual cancellation returns an actionable failure
+   ↓ parent stops a CPU-blocked reader within the total automatic budget and emits one queued diagnostic
+   ↓ manual timeout returns nonzero while automatic unsupported platform refuses before spawning
+   ↓ supervisor cleans actual worker Git and auth-helper descendants on timeout without touching another tool
+   ↓ supervisor cleans actual worker Git and auth-helper descendants on normal without touching another tool
+   ↓ confirmed child exit cleans exactly its owned lease even with unknown namespace; later operation can acquire
+   ↓ supervisor preserves a foreign lease instead of treating child death as generic stale-lock proof
+   ↓ matching child PID with the wrong lease nonce remains conservative
+   ↓ parent crash loses direct child proof and unknown namespace never authorizes recovery
+   ↓ completed targeted sync reports durable broad reconciliation pending in one diagnostic
+   ↓ automatic local transport refusal survives bounded IPC with a static actionable diagnostic
+   ↓ independent fixture receiver survives a client deadline, finishes its locked transaction, and is stopped by its owner
+   × productive automatic partial drain promises continued automatic retry 95ms
+     → expected 'agent-badge: usage queued; run manual…' to contain 'automatic retry'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/core/src/operations/budget.test.ts > productive automatic partial drain promises continued automatic retry
+AssertionError: expected 'agent-badge: usage queued; run manual…' to contain 'automatic retry'
+
+Expected: [32m"a[7mutomatic retry[27m"[39m
+Received: [31m"a[7mgent-badge: usage queued; run manual sync[27m"[39m
+
+ ❯ packages/core/src/operations/budget.test.ts:172:134
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 skipped (14)
+   Start at  03:19:13
+   Duration  226ms (transform 32ms, setup 0ms, collect 38ms, tests 96ms, environment 0ms, prepare 23ms)
+
