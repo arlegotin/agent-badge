@@ -34,13 +34,31 @@ function successfulSetup(execution) {
   if (process.platform === 'win32') return assertWindowsManualSetup(execution, 'setup', 'plaintext');
   assert.equal(execution.code, 0); assert.match(execution.stdout, /^agent-badge: setup unchanged\./m);
 }
+// Only this smoke's fresh, credential-free fixture is eligible for raw diagnostics.
+// The installed CLI keeps its static privacy boundary and the original failure remains fatal.
+async function diagnoseSyntheticInitialSetup(cwd) {
+  const installs = await readdir(join(cache, '_npx')).catch(() => []);
+  for (const install of installs) {
+    const module = join(cache, '_npx', install, 'node_modules/@legotin/agent-badge/dist/commands/init.js');
+    try { await readFile(module); } catch { continue; }
+    const script = `const {runInitCommand}=await import(${JSON.stringify(pathToFileURL(module).href)});try{await runInitCommand({cwd:process.cwd(),runtimeVersion:${JSON.stringify(candidate.version)},declaredUrl:'https://github.com/example/synthetic',target:'origin'});console.error('Synthetic diagnostic retry returned without an exception');}catch(error){console.error(JSON.stringify({syntheticSetupFailure:true,name:error?.name,code:error?.code,message:String(error?.message),stack:String(error?.stack).slice(0,3000)}));process.exitCode=1;}`;
+    let diagnostic;
+    try { diagnostic = await execute(process.execPath, ['--input-type=module', '-e', script], { cwd, env, timeout: 120000, maxBuffer: 64 * 1024 }); }
+    catch (error) { diagnostic = error; }
+    console.error('Controlled synthetic setup diagnosis:', (String(diagnostic.stderr ?? '') + String(diagnostic.stdout ?? '')).replaceAll(root, '<synthetic-smoke>').slice(0, 5000));
+    return;
+  }
+  console.error('Controlled synthetic setup diagnosis: installed command unavailable');
+}
 async function run(command, args, cwd = root, windowsSetupCommand) {
   if (command === npm && process.platform === 'win32') { command = process.execPath; args = [join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args]; }
   try { return { ...await execute(command, args, { cwd, env, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }), code: 0 }; }
   catch (error) {
     if (process.platform === 'win32' && windowsSetupCommand && error.code === 1) {
       const result = { stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? ''), code: error.code };
-      assertWindowsManualSetup(result, windowsSetupCommand, windowsSetupCommand === 'init' || args.includes('--json') ? 'json' : 'plaintext'); return result;
+      try { assertWindowsManualSetup(result, windowsSetupCommand, windowsSetupCommand === 'init' || args.includes('--json') ? 'json' : 'plaintext'); }
+      catch (failure) { if (windowsSetupCommand === 'init') await diagnoseSyntheticInitialSetup(cwd); throw failure; }
+      return result;
     }
     console.error(String(error.stderr ?? '').slice(0, 4000), String(error.stdout ?? '').slice(0, 4000)); throw new Error('Synthetic smoke command failed: ' + command + ' ' + args.slice(0, 2).join(' '));
   }
