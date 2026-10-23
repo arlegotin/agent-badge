@@ -1,0 +1,54 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/core/src/operations/runner.test.ts (12 tests) 20416ms
+   ✓ real repository worker returns bounded counts without serializing accepted history  1226ms
+   ✓ full automatic reconciliation is deferred without provider reads or changing history  1259ms
+   ✓ trusted accepted policy captures targeted appended usage durably before an offline network attempt  2087ms
+   ✓ a stalled store lock stays within the automatic wall budget and emits one diagnostic  2794ms
+   ✓ new small session after setup is automatically counted with targeted=true  1931ms
+   ✓ new small session after setup is automatically counted with targeted=false  1969ms
+   ✓ automatic scan chunk handles near-maximum lines without stalling at the first unread line  1930ms
+   ✓ only a successful complete manual reconciliation clears durable pending state  2317ms
+   ✓ manual full mode with a provider-only target never clears broad reconciliation evidence  1264ms
+   ✓ manual full mode with a exact-source target never clears broad reconciliation evidence  1240ms
+   ✓ offline capture loads the latest anchored accepted policy rather than stale activation policy  1864ms
+   ✓ unbound activation captures local usage without any remote operation  534ms
+ ✓ packages/core/src/git/data-transport.test.ts (22 tests) 16195ms
+   ✓ automatic path publication refuses before starting a local receiver; explicit manual push remains available  1110ms
+   ✓ automatic file-url publication refuses before starting a local receiver; explicit manual push remains available  1085ms
+   ✓ automatic relative publication refuses before starting a local receiver; explicit manual push remains available  1103ms
+   ✓ automatic rewritten publication refuses before starting a local receiver; explicit manual push remains available  1113ms
+   ✓ validates independent routing evidence concurrently before remote access  301ms
+   ✓ reads a valid immutable tree using bounded batch object I/O  462ms
+   ✓ automatic cache loss stages a large immutable snapshot across fresh transports without early accepted anchors  3231ms
+   ✓ writes cold blobs in batches and reuses unchanged parent objects  462ms
+   ✓ a fetched Git submodule entry cannot masquerade as a public data file  423ms
+   ✓ canonical artifact writes never execute user attribute clean filters  379ms
+   ✓ rejects unsafe path before accepting a remote tree  465ms
+   ✓ rejects symlink before accepting a remote tree  451ms
+   ✓ rejects oversized blob before accepting a remote tree  451ms
+   ✓ rejects future protocol before accepting a remote tree  464ms
+   ✓ rejects incompatible catalog before accepting a remote tree  461ms
+   ✓ actual fetched tree ignores user replacement refs without deleting them  601ms
+   ✓ literal push refuses pushInsteadOf even when named explicit pushurl suppresses it  496ms
+   ✓ literal fetch refuses a second insteadOf expansion  498ms
+   ✓ relative local destination is pinned absolutely rather than interpreted as another remote name  970ms
+   ✓ duplicate disjoint directories cannot disguise a noncanonical tree  587ms
+   ✓ automatic publication uses an independently owned loopback receiver  786ms
+ ✓ packages/core/src/operations/budget.test.ts (14 tests) 6488ms
+   ✓ parent stops a CPU-blocked reader within the total automatic budget and emits one queued diagnostic  501ms
+   ✓ manual timeout returns nonzero while automatic unsupported platform refuses before spawning  500ms
+   ✓ supervisor cleans actual worker Git and auth-helper descendants on timeout without touching another tool  1308ms
+   ✓ confirmed child exit cleans exactly its owned lease even with unknown namespace; later operation can acquire  738ms
+   ✓ supervisor preserves a foreign lease instead of treating child death as generic stale-lock proof  400ms
+   ✓ matching child PID with the wrong lease nonce remains conservative  664ms
+   ✓ independent fixture receiver survives a client deadline, finishes its locked transaction, and is stopped by its owner  1598ms
+ ✓ packages/testkit/src/git-daemon.test.ts (2 tests) 607ms
+   ✓ interrupted harness stops its owned listener while keeping synthetic repository data  314ms
+
+ Test Files  4 passed (4)
+      Tests  50 passed (50)
+   Start at  03:51:30
+   Duration  44.38s (transform 172ms, setup 0ms, collect 309ms, tests 43.71s, environment 0ms, prepare 84ms)
+

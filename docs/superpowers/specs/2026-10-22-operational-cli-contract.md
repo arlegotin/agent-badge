@@ -2,8 +2,8 @@
 
 Implemented for the unreleased repository-native candidate on2026-10-22. No hosted
 or actual Linux/Windows/private-image gates are claimed. The public wire schema is
-unchanged. Tasks 1–18 and task reviews are complete. Final combined fixes are under
-validation; the scoped final branch re-review remains pending. Exact retained
+unchanged. Tasks 1–18 and task reviews are complete. Final combined fixes are locally
+validated; the scoped final branch re-review remains pending. Exact retained
 candidate identities are in [verification](../../maintainers/RELEASE-VERIFICATION.md).
 
 Core `getStatus(ctx, options?)` remains usable without an integration owner. It

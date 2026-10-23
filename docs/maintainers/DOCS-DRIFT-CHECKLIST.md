@@ -1,8 +1,8 @@
 # Documentation drift checklist
 
 The unreleased repository-native candidate has completed Tasks 1–18 and their
-reviews. The final branch review requires one combined fix wave; validation and
-one scoped re-review are pending. Public npm1.1.20 still uses the old architecture.
+reviews. The final branch review's combined fixes and local candidate checks are
+complete; one scoped re-review remains pending. Public npm1.1.20 still uses the old architecture.
 No publication, hosted permission, Linux/Windows or private-image gate is implied.
 
 Run `npm run docs:check`: it checks local product links, parses real Commander

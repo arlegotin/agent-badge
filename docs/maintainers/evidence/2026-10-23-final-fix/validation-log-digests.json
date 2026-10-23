@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 1,
+  "source": "2c37a3cf164bb3d4314f1ed69d9008b2ac9c0727",
+  "candidateDirectory": "/private/tmp/agent-badge-final-candidate-2c37a3c",
+  "runtimes": [
+    "v24.0.0",
+    "v26.0.0"
+  ],
+  "platform": "darwin/arm64",
+  "review": "scoped-rereview-pending",
+  "node24Coverage": "broad default before Ruling72; post-correction initializer/launcher + typecheck/build; exact four loopback files after correction",
+  "node26Coverage": "broad default after Ruling72 retained one pre-existing assertion failure; Ruling73 structural import cover closes it; exact four loopback files passed",
+  "isolation": "original scratch run-isolated.py plus tracked run-isolated.mjs; allowlisted target PATH,TMPDIR,AGENT_BADGE_TEST_NODE; synthetic only; sequential maxWorkers=1",
+  "escalation": "only exact four loopback test files and exact finite candidate-registry smoke; no live uplinks/credentials",
+  "logs": [
+    {
+      "original": "/private/tmp/agent-badge-final-build1.log",
+      "retained": "agent-badge-final-build1.txt",
+      "bytes": 9800,
+      "sha256": "c950a912e92e87bb98d4dc3b28541f278925112d71dcadf9719d11f1cb1df710"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build10.log",
+      "retained": "agent-badge-final-build10.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build2.log",
+      "retained": "agent-badge-final-build2.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build3.log",
+      "retained": "agent-badge-final-build3.txt",
+      "bytes": 598,
+      "sha256": "169c1cf72035f46d70c382d9799a38e5cc74ec71b59f476bd9851344efb720c0"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build4.log",
+      "retained": "agent-badge-final-build4.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build5.log",
+      "retained": "agent-badge-final-build5.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build6.log",
+      "retained": "agent-badge-final-build6.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build7.log",
+      "retained": "agent-badge-final-build7.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build8.log",
+      "retained": "agent-badge-final-build8.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-build9.log",
+      "retained": "agent-badge-final-build9.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-candidate-pack.log",
+      "retained": "agent-badge-final-candidate-pack.txt",
+      "bytes": 1341,
+      "sha256": "5094bea523c66de4106d91792fb49599aa218ccc43043102801d495f4002db4e"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-deadline-mutation-build.log",
+      "retained": "agent-badge-final-deadline-mutation-build.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-evidence-docs.log",
+      "retained": "agent-badge-final-evidence-docs.txt",
+      "bytes": 339,
+      "sha256": "e4d3eee1001ac0810339b0ce1144c031e16689232a48bdabc7c7c09b29e96abe"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-focused1.log",
+      "retained": "agent-badge-final-focused1.txt",
+      "bytes": 8471,
+      "sha256": "8e2294f2296d50e4b82dcd58c7b4c0e27ff33274119893280a177f4e0974d70c"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-focused2.log",
+      "retained": "agent-badge-final-focused2.txt",
+      "bytes": 3567,
+      "sha256": "9ad56f819372e6ea00d6aaa4b3f617971fab1d4cccab59c46572c0575ca6909c"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-focused24-corrected.log",
+      "retained": "agent-badge-final-focused24-corrected.txt",
+      "bytes": 5015,
+      "sha256": "54ff607d965fc6bdfdca3c039c7c41d3a2eef9e5c4682a073bdea3e55ffdf9fb"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-focused24.log",
+      "retained": "agent-badge-final-focused24.txt",
+      "bytes": 7443,
+      "sha256": "ce57f75b04b3f3f5af69549ac7020fb698eac312c35ce7a93b0c805525560aee"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen24-build.log",
+      "retained": "agent-badge-final-frozen24-build.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen24-default.log",
+      "retained": "agent-badge-final-frozen24-default.txt",
+      "bytes": 43508,
+      "sha256": "f0dbd96fdbca9e8d44a7b16533ca8e5b6d621b96ea9c44a473ed1c873a60a38b"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen24-docs.log",
+      "retained": "agent-badge-final-frozen24-docs.txt",
+      "bytes": 338,
+      "sha256": "8cac8a544235c73a53fc7126aa418c29ea808e3b9de0aa78ca28326577863eb0"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen24-network.log",
+      "retained": "agent-badge-final-frozen24-network.txt",
+      "bytes": 4804,
+      "sha256": "456ebc50b96f8ac18396b5d88efb5dcd922c85ecd9b2ca4ff67afe63b7e4b02e"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen24-pack-check.log",
+      "retained": "agent-badge-final-frozen24-pack-check.txt",
+      "bytes": 153,
+      "sha256": "9ba63cd734ed2428f1b25756a60cd372229a406cde307f6989035d8ad2faa9cc"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen24-typecheck.log",
+      "retained": "agent-badge-final-frozen24-typecheck.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen26-build.log",
+      "retained": "agent-badge-final-frozen26-build.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen26-default.log",
+      "retained": "agent-badge-final-frozen26-default.txt",
+      "bytes": 40271,
+      "sha256": "9db12b47d835b92eca2b0485f6d18b24bdd575369b35a02e8e09da476d83edbb"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen26-docs.log",
+      "retained": "agent-badge-final-frozen26-docs.txt",
+      "bytes": 361,
+      "sha256": "9b282662aac109670e570b87772bd6407eef87ee6542f809ba89c46bf3ce7623"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen26-network.log",
+      "retained": "agent-badge-final-frozen26-network.txt",
+      "bytes": 4466,
+      "sha256": "cc6728f240a5d1d48fffbc704d2bff97211c75750d750bc0aaceebc33082b62c"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen26-pack-check.log",
+      "retained": "agent-badge-final-frozen26-pack-check.txt",
+      "bytes": 153,
+      "sha256": "9ba63cd734ed2428f1b25756a60cd372229a406cde307f6989035d8ad2faa9cc"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-frozen26-typecheck.log",
+      "retained": "agent-badge-final-frozen26-typecheck.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-green-entrypoints.log",
+      "retained": "agent-badge-final-green-entrypoints.txt",
+      "bytes": 2591,
+      "sha256": "9b1c97b26e9c0a216b77416bde0d1fffd71fa93d572a11d22f4f9d409bce81bf"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-import-cover24.log",
+      "retained": "agent-badge-final-import-cover24.txt",
+      "bytes": 614,
+      "sha256": "30d84d2224bbe93097d5029826cf8528751857e1f2c6c6f8ddfe335821fa9ce0"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-import-cover26.log",
+      "retained": "agent-badge-final-import-cover26.txt",
+      "bytes": 445,
+      "sha256": "be3602972c2ab423e57e362435e9848d65acb7f2024cbc974f7d106d4bb5f2c8"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-import-structural24.log",
+      "retained": "agent-badge-final-import-structural24.txt",
+      "bytes": 614,
+      "sha256": "4f551ab85c61444691f644f4dd8db6944a20dc122838f5974ccc1e5bf8b1ca0a"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-import-structural26.log",
+      "retained": "agent-badge-final-import-structural26.txt",
+      "bytes": 445,
+      "sha256": "0b50f697a0e04bd64c38dbb946ad59604138d041ad8833c8bd9fe7402dfdd7a7"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-last-cover24-corrected.log",
+      "retained": "agent-badge-final-last-cover24-corrected.txt",
+      "bytes": 877,
+      "sha256": "564969a240e1a42aecbb0cf4cb05724a9d6dfd33b39616a2e0a8f3bf4bd64ee7"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-last-cover24.log",
+      "retained": "agent-badge-final-last-cover24.txt",
+      "bytes": 2430,
+      "sha256": "bb3d7d1fd130eb1676262bc85a35fc9e5bd993a6cf263ee3de9ea9c61ae9e73b"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-post72-24-build.log",
+      "retained": "agent-badge-final-post72-24-build.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-post72-24-entrypoints.log",
+      "retained": "agent-badge-final-post72-24-entrypoints.txt",
+      "bytes": 661,
+      "sha256": "9a25eb142d5564d0eba664678e9aa36d1ff3ded7343e5babbae4c6e0d30d7fc2"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-post72-24-typecheck.log",
+      "retained": "agent-badge-final-post72-24-typecheck.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-deadline.log",
+      "retained": "agent-badge-final-red-deadline.txt",
+      "bytes": 3322,
+      "sha256": "5d3abd1dbdb67e3f5cdedfe9f3067659fc893ba9a53189af829ab4d245a6ed98"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-dryplan.log",
+      "retained": "agent-badge-final-red-dryplan.txt",
+      "bytes": 3631,
+      "sha256": "e9ec27c961c6a3ddd160a7ff168c9fc82bc38649c2b799456b2b0ce2d8504c69"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-entrypoints.log",
+      "retained": "agent-badge-final-red-entrypoints.txt",
+      "bytes": 12177,
+      "sha256": "e39be0c1b4c700aabfc0e1773942eb797c9764c04e0c02f9d2bb3dc8b6a3c233"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-missing-cli.log",
+      "retained": "agent-badge-final-red-missing-cli.txt",
+      "bytes": 3849,
+      "sha256": "c24b354777ebaa05cbfb210cd20e158e476f376519c581e6a153ab3ef8385157"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-publish.log",
+      "retained": "agent-badge-final-red-publish.txt",
+      "bytes": 2868,
+      "sha256": "5dea5a9bde0445d00f0165ae20ee371fb780b4c8beb73ca59c4538ee5242744b"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-status.log",
+      "retained": "agent-badge-final-red-status.txt",
+      "bytes": 4373,
+      "sha256": "9a19ea06e5a907908b2fb92148dd1991cca49d6103ec5c4c547c477a52fd9026"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-red-wording.log",
+      "retained": "agent-badge-final-red-wording.txt",
+      "bytes": 2375,
+      "sha256": "0ac1163e217c301c65f718548c3ee0f43503c51f9b64b5bce6e5f54a179d4c1c"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-registry24.log",
+      "retained": "agent-badge-final-registry24.txt",
+      "bytes": 1469,
+      "sha256": "eed714f222fefc63df237c8b9420b2675932fc0ec811dcf7cb1e195eacfda539"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-registry26.log",
+      "retained": "agent-badge-final-registry26.txt",
+      "bytes": 1469,
+      "sha256": "ce93671a8c2562b3ba01d16088cc9b7cdcffbab4c68089473e88b51c98b64a46"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-retained-pack24.log",
+      "retained": "agent-badge-final-retained-pack24.txt",
+      "bytes": 951,
+      "sha256": "7e60929977e488445ecd179b52ba6cca868e9d5aff507f0b5ecf6c54f1180fb0"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final-retained-pack26.log",
+      "retained": "agent-badge-final-retained-pack26.txt",
+      "bytes": 951,
+      "sha256": "cd47f32602254c9aeb039b0c379f066a4670a24dcd4d39c2c4ff5944c2a28e76"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final24-build.log",
+      "retained": "agent-badge-final24-build.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final24-docs.log",
+      "retained": "agent-badge-final24-docs.txt",
+      "bytes": 398,
+      "sha256": "5d818764475ff6c377fcab3f53d5ef98a17e709c64305c5557691873272ff944"
+    },
+    {
+      "original": "/private/tmp/agent-badge-final24-typecheck.log",
+      "retained": "agent-badge-final24-typecheck.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    }
+  ]
+}

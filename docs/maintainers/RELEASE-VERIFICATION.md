@@ -2,10 +2,10 @@
 
 Final whole-branch review at `2f784de63844ead663200e4b0eb535a2d45d295c`
 found three Important and four Minor issues. The single combined fix wave is
-under local validation; one scoped re-review remains pending. Tasks1–18 and all
+implemented and locally validated; one scoped re-review remains pending. Tasks1–18 and all
 task-scoped reviews are complete. The source-f81d9a4 artifacts below remain
 historical, frozen evidence and will not be overwritten or relabeled. Packaged
-fixes require a distinct source commit and newly retained exact candidate.
+fixes are bound to the distinct source commit and exact candidate recorded below.
 
 Task 18 prepares `2.0.0-next.0` for local review; no npm publication, push, tag,
 merge, deployment, hosted settings mutation or credential probe is authorized.
@@ -19,6 +19,63 @@ installation plus unsupported-automation checks. Those hosted jobs remain
 unexecuted here. Windows setup uses the selected Node distribution's bundled
 npm JS CLI, bypassing `.cmd` shell dispatch; a custom Windows Node installation
 must provide that standard npm layout. Windows automatic supervision stays off.
+
+## Final combined fixes: local evidence (2026-10-23)
+
+Source commit: `2c37a3cf164bb3d4314f1ed69d9008b2ac9c0727`. The three
+`2.0.0-next.0` tarballs were packed once from its clean tracked tree under Node24;
+[the new candidate manifest](evidence/2026-10-23-final-fix/candidate.json) records
+exact filenames, sizes and SHA-512 SRI. Retained bytes are in
+`/private/tmp/agent-badge-final-candidate-2c37a3c/`. Later documentation/evidence
+commits preserve this source binding. The older f81d9a4 candidate below is unchanged.
+
+| Gate | Node 24.0.0 | Node 26.0.0 |
+| --- | --- | --- |
+| Typecheck, clean build, docs, pack content | Pass; typecheck/build also after initializer fallback | Pass after initializer fallback |
+| Broad default partition | 69 files; 744 pass, 1 skip; 407.94s, before the isolated initializer fallback | 69 files; 744 pass, 1 failed assertion, 1 skip; 407.03s |
+| Exact four-file loopback partition | 50 pass; 44.24s | 50 pass; 44.38s |
+| Later initializer/launcher cover | 2 files; 35 pass; 6.74s after fallback | Included in broad run: 35 pass |
+| Final structural import-privacy assertion | 1 pass; 1.23s | 1 pass; 1.21s; closes broad assertion failure |
+| Exact retained pack and initializer-only registry smoke | Pass, actual worker v24.0.0 | Pass, actual worker v26.0.0 |
+
+The nonduplicated final scope is **73 files / 796 tests**, with **795 cases passing
+and one opt-in skip** across broad and scoped evidence on each floor. This does
+not claim either broad run was repeated. Ruling72's extra initializer case was
+added after broad24, then covered with both entrypoint files and typecheck/build.
+The sole broad26 failure was the old privacy regex matching `999` within a valid
+random public hash. Ruling73 keeps raw identifier/filename suppression and
+structurally rejects the actual numeric/string cost canary and forbidden cost
+field. Both corrected-file checks pass; no production change was needed.
+
+The new initializer-only finite-registry smoke uses the retained public dependency
+closure with no uplinks or credentials. It verifies real npm init, transitive
+installation, packaged workflow generation, persistent JSON setup, partial-runtime
+repair, both coherent native-hook commit policies, nonmutating fresh dry-run,
+standalone fork identity, indexed status, owned doctor work and actual manual core
+worker runtime. Each floor gets its own fresh activation; Node26 is not inferred
+from Node24 activation or top-level PATH. Windows keeps its explicit manual
+setup/action-required guard; healthy-doctor smoke is POSIX-only. Actual Windows
+execution remains unverified.
+
+All failed intermediate regressions and final command logs are retained with
+[SHA-256 digests](evidence/2026-10-23-final-fix/validation-log-digests.json).
+The default26 log intentionally retains its failure, and the structural-cover
+logs retain its closure. The same evidence directory includes launcher/initializer,
+status, publication, automatic wording and deadline RED/GREEN logs, including the
+700ms actual-command deadline checks (read/CPU/inspection/capability, asserted
+under1800ms with owned child dead at return). This is small synthetic termination
+evidence, not a new 100k benchmark or installed pre-push latency measurement.
+
+Read-only status uses existing complete indexes and authority/anchor proofs;
+untrusted generations report unavailable with null unproved counts. Existing
+owning collect/sync performs rebuild. No new cache schema, historical cap or
+truncated output was added. Concrete CLI work runs under one owned subprocess
+deadline; arbitrary caller-supplied in-process IntegrationPort functions still
+must cooperate. Decisions71–73 record these costs and validation boundaries.
+
+Final scoped re-review remains pending. No publication, push, tag, merge, hosted
+settings change, live provider-history probe or external acceptance is claimed.
+The warning, Task16 isolation, Task17 latency and platform limitations below apply.
 
 ## Reproduce the local safety boundary
 
@@ -115,7 +172,7 @@ cold seed or final-candidate latency measurement is claimed for release metadata
 and Windows npm-dispatch changes. The later storage fix has the separate focused
 coverage described above; Task18 supplies new broad/package gates below.
 
-## Local candidate identity
+## Historical Task18 candidate identity
 
 The retained candidate was packed once from clean source commit
 `f81d9a457ef0471ffe1c440dcaf5fa266eff0fd4`, Node24.0.0, darwin/arm64.
@@ -132,7 +189,7 @@ dependencies were `zod@4.3.6`, `@iarna/toml@2.2.5`, `commander@14.0.3`; public
 package tarballs were never obtained through uplinks. The audit does not certify
 future registry advisories or the complete development dependency graph.
 
-## Completed local gates (2026-10-23)
+## Historical Task18 local gates (2026-10-23)
 
 | Gate | Node 24.0.0 / npm 11.3.0 | Node 26.0.0 / npm 11.12.1 |
 | --- | --- | --- |

@@ -1,0 +1,58 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/core/src/operations/budget.test.ts (14 tests) 6555ms
+   ✓ parent stops a CPU-blocked reader within the total automatic budget and emits one queued diagnostic  501ms
+   ✓ manual timeout returns nonzero while automatic unsupported platform refuses before spawning  502ms
+   ✓ supervisor cleans actual worker Git and auth-helper descendants on timeout without touching another tool  1308ms
+   ✓ confirmed child exit cleans exactly its owned lease even with unknown namespace; later operation can acquire  738ms
+   ✓ supervisor preserves a foreign lease instead of treating child death as generic stale-lock proof  401ms
+   ✓ matching child PID with the wrong lease nonce remains conservative  664ms
+   ✓ independent fixture receiver survives a client deadline, finishes its locked transaction, and is stopped by its owner  1591ms
+(node:28438) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/runner.test.ts (12 tests) 20264ms
+   ✓ real repository worker returns bounded counts without serializing accepted history  1117ms
+   ✓ full automatic reconciliation is deferred without provider reads or changing history  1233ms
+   ✓ trusted accepted policy captures targeted appended usage durably before an offline network attempt  2081ms
+   ✓ a stalled store lock stays within the automatic wall budget and emits one diagnostic  2806ms
+   ✓ new small session after setup is automatically counted with targeted=true  1938ms
+   ✓ new small session after setup is automatically counted with targeted=false  1948ms
+   ✓ automatic scan chunk handles near-maximum lines without stalling at the first unread line  1932ms
+   ✓ only a successful complete manual reconciliation clears durable pending state  2293ms
+   ✓ manual full mode with a provider-only target never clears broad reconciliation evidence  1242ms
+   ✓ manual full mode with a exact-source target never clears broad reconciliation evidence  1243ms
+   ✓ offline capture loads the latest anchored accepted policy rather than stale activation policy  1894ms
+   ✓ unbound activation captures local usage without any remote operation  537ms
+(node:33019) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/git/data-transport.test.ts (22 tests) 16145ms
+   ✓ automatic path publication refuses before starting a local receiver; explicit manual push remains available  1108ms
+   ✓ automatic file-url publication refuses before starting a local receiver; explicit manual push remains available  1100ms
+   ✓ automatic relative publication refuses before starting a local receiver; explicit manual push remains available  1096ms
+   ✓ automatic rewritten publication refuses before starting a local receiver; explicit manual push remains available  1099ms
+   ✓ validates independent routing evidence concurrently before remote access  302ms
+   ✓ reads a valid immutable tree using bounded batch object I/O  465ms
+   ✓ automatic cache loss stages a large immutable snapshot across fresh transports without early accepted anchors  3230ms
+   ✓ writes cold blobs in batches and reuses unchanged parent objects  450ms
+   ✓ a fetched Git submodule entry cannot masquerade as a public data file  425ms
+   ✓ canonical artifact writes never execute user attribute clean filters  376ms
+   ✓ rejects unsafe path before accepting a remote tree  468ms
+   ✓ rejects symlink before accepting a remote tree  449ms
+   ✓ rejects oversized blob before accepting a remote tree  455ms
+   ✓ rejects future protocol before accepting a remote tree  459ms
+   ✓ rejects incompatible catalog before accepting a remote tree  469ms
+   ✓ actual fetched tree ignores user replacement refs without deleting them  607ms
+   ✓ literal push refuses pushInsteadOf even when named explicit pushurl suppresses it  491ms
+   ✓ literal fetch refuses a second insteadOf expansion  493ms
+   ✓ relative local destination is pinned absolutely rather than interpreted as another remote name  950ms
+   ✓ duplicate disjoint directories cannot disguise a noncanonical tree  573ms
+   ✓ automatic publication uses an independently owned loopback receiver  784ms
+ ✓ packages/testkit/src/git-daemon.test.ts (2 tests) 609ms
+   ✓ interrupted harness stops its owned listener while keeping synthetic repository data  315ms
+
+ Test Files  4 passed (4)
+      Tests  50 passed (50)
+   Start at  03:41:51
+   Duration  44.24s (transform 175ms, setup 0ms, collect 296ms, tests 43.57s, environment 0ms, prepare 93ms)
+

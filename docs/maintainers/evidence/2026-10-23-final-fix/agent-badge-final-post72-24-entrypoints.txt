@@ -1,0 +1,14 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/create-agent-badge/src/index.test.ts (12 tests) 667ms
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (23 tests) 5829ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  485ms
+   ✓ a failed staged replacement retains the existing partial runtime  428ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  429ms
+
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+   Start at  03:41:28
+   Duration  6.74s (transform 53ms, setup 0ms, collect 71ms, tests 6.50s, environment 0ms, prepare 46ms)
+

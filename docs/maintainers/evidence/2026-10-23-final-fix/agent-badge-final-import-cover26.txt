@@ -1,0 +1,11 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/agent-badge/src/commands/normalized-import.test.ts (1 test) 830ms
+   ✓ normalized import requires its strict discriminator and persists attribute-only private provenance with no invented cwd  830ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  03:50:44
+   Duration  1.24s (transform 211ms, setup 0ms, collect 313ms, tests 830ms, environment 0ms, prepare 23ms)
+

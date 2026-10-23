@@ -1,0 +1,40 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (23 tests) 6040ms
+   ✓ unsupported executable runtime fails before subprocesses or filesystem mutations  302ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  600ms
+   ✓ a failed staged replacement retains the existing partial runtime  425ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  434ms
+(node:99896) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts (4 tests | 2 failed) 3102ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1066ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1058ms
+   × actual diagnostic terminates owned inspection work and exits within its original budget 487ms
+     → ENOENT: no such file or directory, open '/private/tmp/agent-badge-git-DodJsY/worker-pid'
+   × actual diagnostic terminates owned capability work and exits within its original budget 490ms
+     → ENOENT: no such file or directory, open '/private/tmp/agent-badge-git-uSzcbq/worker-pid'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual diagnostic terminates owned inspection work and exits within its original budget
+Error: ENOENT: no such file or directory, open '/private/tmp/agent-badge-git-DodJsY/worker-pid'
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:33:14
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  packages/agent-badge/src/commands/report-deadline.test.ts > actual diagnostic terminates owned capability work and exits within its original budget
+Error: ENOENT: no such file or directory, open '/private/tmp/agent-badge-git-uSzcbq/worker-pid'
+ ❯ packages/agent-badge/src/commands/report-deadline.test.ts:33:14
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 25 passed (27)
+   Start at  03:31:13
+   Duration  9.62s (transform 199ms, setup 0ms, collect 301ms, tests 9.14s, environment 0ms, prepare 47ms)
+

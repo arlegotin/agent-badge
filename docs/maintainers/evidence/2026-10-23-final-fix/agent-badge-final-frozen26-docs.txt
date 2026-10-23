@@ -1,0 +1,7 @@
+
+> docs:check
+> node --import tsx scripts/verify-docs.mjs
+
+(node:37111) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Documentation verification passed: 14 documents, 59 local links, 35 CLI examples, 14 commands, 7 capabilities.

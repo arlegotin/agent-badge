@@ -1,0 +1,9 @@
+
+> docs:check
+> node --import tsx scripts/verify-docs.mjs
+
+(node:88040) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+docs/INSTALL.md: generated launcher rejects setup example
+docs/INSTALL.md: generated launcher rejects setup example
+docs/CLI.md: generated launcher rejects setup example

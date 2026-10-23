@@ -1,0 +1,45 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:72362) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/doctor.test.ts (9 tests) 10026ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  568ms
+   ✓ doctor checks required integration completeness and explicitly bounded read-only remote access  907ms
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  364ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  311ms
+   ✓ remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding  1499ms
+   ✓ remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding  1349ms
+   ✓ remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding  1329ms
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3304ms
+   ✓ a bounded metadata schema establishes unsupported-data without journal replay  394ms
+(node:74433) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 6897ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  448ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1625ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1478ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  341ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1048ms
+   ✓ status refuses missing derived generation without replay or repair  387ms
+   ✓ status refuses corrupt derived generation without replay or repair  392ms
+   ✓ status refuses staged derived generation without replay or repair  395ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  783ms
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (21 tests) 5401ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  440ms
+   ✓ a failed staged replacement retains the existing partial runtime  422ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  548ms
+ ✓ packages/create-agent-badge/src/index.test.ts (11 tests) 561ms
+ ✓ scripts/release/preflight.test.ts (19 tests) 374ms
+   ✓ actual npm subprocess console cannot contaminate JSON output  370ms
+(node:76604) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (2 tests) 2197ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1109ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1088ms
+
+ Test Files  6 passed (6)
+      Tests  71 passed (71)
+   Start at  03:21:36
+   Duration  26.44s (transform 207ms, setup 0ms, collect 436ms, tests 25.46s, environment 0ms, prepare 143ms)
+

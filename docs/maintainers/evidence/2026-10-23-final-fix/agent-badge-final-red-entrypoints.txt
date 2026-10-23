@@ -1,0 +1,201 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+ ❯ packages/agent-badge/src/integration/launcher.test.ts (21 tests | 11 failed) 5325ms
+   ✓ unsupported executable runtime fails before subprocesses or filesystem mutations  376ms
+   ✓ ordinary launcher --help never installs or creates private activation 217ms
+   ✓ ordinary launcher --version never installs or creates private activation 214ms
+   ✓ ordinary launcher status never installs or creates private activation 214ms
+   ✓ launcher validates [ 'setup', '--help' ] before Git discovery, installs, or mutations 215ms
+   ✓ launcher validates [ 'setup', '--version' ] before Git discovery, installs, or mutations 214ms
+   × launcher validates [ 'setup', '--target', 'bad remote' ] before Git discovery, installs, or mutations 216ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ Array(2) ] before Git discovery, installs, or mutations 217ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ 'setup', '--definitely-invalid' ] before Git discovery, installs, or mutations 214ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ 'setup', '--target' ] before Git discovery, installs, or mutations 214ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ 'setup', '--target', '-unsafe' ] before Git discovery, installs, or mutations 215ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ 'setup', '--runtime-version', …(1) ] before Git discovery, installs, or mutations 216ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ 'setup', '--repository-url', …(1) ] before Git discovery, installs, or mutations 215ms
+     → expected 1 to be 64 // Object.is equality
+   × launcher validates [ 'setup', '--repository-url', …(1) ] before Git discovery, installs, or mutations 216ms
+     → expected 1 to be 64 // Object.is equality
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  607ms
+   ✓ a failed staged replacement retains the existing partial runtime  425ms
+   ✓ runtime repair refuses a symlink hash directory and preserves its target 252ms
+   × launcher dry run preserves missing runtime without npm 216ms
+     → Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node /private/tmp/agent-badge-git-pUzay0/clone-a/.agent-badge/run.cjs setup --dry-run --json --import-workflow
+agent-badge: setup unavailable; explicit setup may be required.
+
+   × launcher dry run preserves incomplete runtime without npm 219ms
+     → Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node /private/tmp/agent-badge-git-GouNDl/clone-a/.agent-badge/run.cjs setup --dry-run --json --import-workflow
+agent-badge: setup unavailable; explicit setup may be required.
+
+   × fresh standalone launcher keeps bootstrap acquisition outside private authority 216ms
+     → Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node /private/tmp/agent-badge-git-vYU9kM/clone-a/.agent-badge/run.cjs setup --new-repository --repository-url https://github.com/example/fork --json --import-workflow
+agent-badge: setup unavailable; explicit setup may be required.
+
+   ✓ standalone launcher refuses existing private authority even for dry run 217ms
+ ❯ packages/create-agent-badge/src/index.test.ts (11 tests | 5 failed) 1126ms
+   ✓ recognizes a symlinked executable and missing argv 2ms
+   ✓ unsupported Node rejects before importing the shared CLI or discovering a repository 1ms
+   ✓ packed executable arguments {"args":["--help"]} have no operational side effects 36ms
+   ✓ packed executable arguments {"args":["--version"]} have no operational side effects 32ms
+   × packed executable arguments {"args":["--definitely-invalid"]} have no operational side effects 35ms
+     → expected 1 to be 64 // Object.is equality
+   × packed executable arguments {"args":["setup","--definitely-invalid"]} have no operational side effects 32ms
+     → expected 1 to be 64 // Object.is equality
+   ✓ executable ../dist/index.js rejects unsupported Node before loading operational code 23ms
+   ✓ executable ../../agent-badge/dist/cli/main.js rejects unsupported Node before loading operational code 28ms
+   × initializer redacts malformed operational failures 321ms
+     → expected '(node:66115) ExperimentalWarning: SQL…' to contain 'operation unavailable'
+   × initializer redacts permissions operational failures 307ms
+     → expected '(node:66184) ExperimentalWarning: SQL…' to contain 'operation unavailable'
+   × initializer redacts ordinary operational failures 308ms
+     → expected '(node:66253) ExperimentalWarning: SQL…' to contain 'operation unavailable'
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/create-agent-badge/src/index.test.ts > packed executable arguments {"args":["--definitely-invalid"]} have no operational side effects
+ FAIL  packages/create-agent-badge/src/index.test.ts > packed executable arguments {"args":["setup","--definitely-invalid"]} have no operational side effects
+AssertionError: expected 1 to be 64 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 64[39m
+[31m+ 1[39m
+
+ ❯ packages/create-agent-badge/src/index.test.ts:26:16
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  packages/create-agent-badge/src/index.test.ts > initializer redacts malformed operational failures
+AssertionError: expected '(node:66115) ExperimentalWarning: SQL…' to contain 'operation unavailable'
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- operation unavailable[39m
+[31m+ (node:66115) ExperimentalWarning: SQLite is an experimental feature and might change at any time[39m
+[31m+ (Use `node --trace-warnings ...` to show where the warning was created)[39m
+[31m+ Expected double-quoted property name in JSON at position 61 (line 1 column 62)[39m
+[31m+[39m
+
+ ❯ packages/create-agent-badge/src/index.test.ts:58:29
+     56|     finally { await chmod(activation, 0o600); }
+     57|     expect(failure?.status).toBe(1);
+     58|     expect(failure?.stderr).toContain('operation unavailable');
+       |                             ^
+     59|     expect(failure?.stderr).not.toContain(canary);
+     60|     expect(failure?.stderr).not.toContain(cwd);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  packages/create-agent-badge/src/index.test.ts > initializer redacts permissions operational failures
+AssertionError: expected '(node:66184) ExperimentalWarning: SQL…' to contain 'operation unavailable'
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- operation unavailable[39m
+[31m+ (node:66184) ExperimentalWarning: SQLite is an experimental feature and might change at any time[39m
+[31m+ (Use `node --trace-warnings ...` to show where the warning was created)[39m
+[31m+ EACCES: permission denied, open '/private/tmp/agent-badge-git-KqqlLz/clone-a/.git/agent-badge/local.json'[39m
+[31m+[39m
+
+ ❯ packages/create-agent-badge/src/index.test.ts:58:29
+     56|     finally { await chmod(activation, 0o600); }
+     57|     expect(failure?.status).toBe(1);
+     58|     expect(failure?.stderr).toContain('operation unavailable');
+       |                             ^
+     59|     expect(failure?.stderr).not.toContain(canary);
+     60|     expect(failure?.stderr).not.toContain(cwd);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  packages/create-agent-badge/src/index.test.ts > initializer redacts ordinary operational failures
+AssertionError: expected '(node:66253) ExperimentalWarning: SQL…' to contain 'operation unavailable'
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- operation unavailable[39m
+[31m+ (node:66253) ExperimentalWarning: SQLite is an experimental feature and might change at any time[39m
+[31m+ (Use `node --trace-warnings ...` to show where the warning was created)[39m
+[31m+ Invalid private activation.[39m
+[31m+[39m
+
+ ❯ packages/create-agent-badge/src/index.test.ts:58:29
+     56|     finally { await chmod(activation, 0o600); }
+     57|     expect(failure?.status).toBe(1);
+     58|     expect(failure?.stderr).toContain('operation unavailable');
+       |                             ^
+     59|     expect(failure?.stderr).not.toContain(canary);
+     60|     expect(failure?.stderr).not.toContain(cwd);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--target', 'bad remote' ] before Git discovery, installs, or mutations
+AssertionError: expected 1 to be 64 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 64[39m
+[31m+ 1[39m
+
+ ❯ packages/agent-badge/src/integration/launcher.test.ts:59:23
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ Array(2) ] before Git discovery, installs, or mutations
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--definitely-invalid' ] before Git discovery, installs, or mutations
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--target' ] before Git discovery, installs, or mutations
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--target', '-unsafe' ] before Git discovery, installs, or mutations
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--runtime-version', …(1) ] before Git discovery, installs, or mutations
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--repository-url', …(1) ] before Git discovery, installs, or mutations
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher validates [ 'setup', '--repository-url', …(1) ] before Git discovery, installs, or mutations
+AssertionError: expected 1 to be 64 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 64[39m
+[31m+ 1[39m
+
+ ❯ packages/agent-badge/src/integration/launcher.test.ts:59:23
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher dry run preserves missing runtime without npm
+Error: Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node /private/tmp/agent-badge-git-pUzay0/clone-a/.agent-badge/run.cjs setup --dry-run --json --import-workflow
+agent-badge: setup unavailable; explicit setup may be required.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > launcher dry run preserves incomplete runtime without npm
+Error: Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node /private/tmp/agent-badge-git-GouNDl/clone-a/.agent-badge/run.cjs setup --dry-run --json --import-workflow
+agent-badge: setup unavailable; explicit setup may be required.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  packages/agent-badge/src/integration/launcher.test.ts > fresh standalone launcher keeps bootstrap acquisition outside private authority
+Error: Command failed: /private/tmp/agent-badge-node-feasibility/node-v24.0.0-darwin-arm64/bin/node /private/tmp/agent-badge-git-vYU9kM/clone-a/.agent-badge/run.cjs setup --new-repository --repository-url https://github.com/example/fork --json --import-workflow
+agent-badge: setup unavailable; explicit setup may be required.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  16 failed | 16 passed (32)
+   Start at  03:14:16
+   Duration  6.70s (transform 51ms, setup 0ms, collect 64ms, tests 6.45s, environment 0ms, prepare 50ms)
+

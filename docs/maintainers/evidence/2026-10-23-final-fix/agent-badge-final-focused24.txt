@@ -1,0 +1,111 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:77276) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (2 tests) 2153ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1106ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1046ms
+(node:77503) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ packages/agent-badge/src/commands/operational.test.ts (9 tests | 2 failed) 22892ms
+   ✓ status JSON and doctor preserve explicit setup needs, unavailable sources and required failures  1172ms
+   ✓ collect is local-only, sync confirms data, explain redacts, and explicit cross-clone controls use accepted heads  4709ms
+   ✓ configure validates revision and writes accepted policy; upgrade requires an exact deliberate runtime  2317ms
+   ✓ remote-only controls have no source journal, export causal closure, and offline commands never claim intent applied  3212ms
+   × status detects local wrong-target routing without any remote request 837ms
+     → expected { schemaVersion: 1, …(15) } to match object { state: 'conflicted', exitCode: 2 }
+(14 matching properties omitted from actual)
+   ✓ supervised collect never invokes remote Git and cancellation preserves captured pending work  1888ms
+   ✓ include reports a concurrent later remote exclusion instead of silently rebasing its fixed intent  5336ms
+   × plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state 2200ms
+     → expected 'agent-badge: status partial.\n  Setup…' to contain 'Coverage import: explicit-only; accou…'
+   ✓ plaintext doctor setup and uninstall expose required failures owner repair items and independent deactivation  1220ms
+(node:83540) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/doctor.test.ts (9 tests) 9689ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  354ms
+   ✓ doctor checks required integration completeness and explicitly bounded read-only remote access  898ms
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  365ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  312ms
+   ✓ remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding  1352ms
+   ✓ remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding  1362ms
+   ✓ remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding  1347ms
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3307ms
+   ✓ a bounded metadata schema establishes unsupported-data without journal replay  392ms
+(node:85618) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 6955ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  452ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1637ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1487ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  343ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1070ms
+   ✓ status refuses missing derived generation without replay or repair  394ms
+   ✓ status refuses corrupt derived generation without replay or repair  394ms
+   ✓ status refuses staged derived generation without replay or repair  395ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  783ms
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (21 tests) 5388ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  547ms
+   ✓ a failed staged replacement retains the existing partial runtime  421ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  431ms
+ ✓ packages/create-agent-badge/src/index.test.ts (11 tests) 555ms
+ ✓ scripts/release/workflow.test.ts (2 tests) 391ms
+   ✓ trusted inline remote guard precedes requested checkout, npm lifecycle and candidate scripts  388ms
+ ✓ scripts/release/preflight.test.ts (19 tests) 253ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  packages/agent-badge/src/commands/operational.test.ts > status detects local wrong-target routing without any remote request
+AssertionError: expected { schemaVersion: 1, …(15) } to match object { state: 'conflicted', exitCode: 2 }
+(14 matching properties omitted from actual)
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "exitCode": 2,[39m
+[32m-   "state": "conflicted",[39m
+[31m+   "exitCode": 1,[39m
+[31m+   "state": "unavailable",[39m
+[2m  }[22m
+
+ ❯ packages/agent-badge/src/commands/operational.test.ts:81:49
+     79| test('status detects local wrong-target routing without any remote req…
+     80|  const {f,cwd}=await activatedFixture();fixtures.push(f);await f.git(c…
+     81|  expect(await command(cwd,['status','--json'])).toMatchObject({state:'…
+       |                                                 ^
+     82| });
+     83| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  packages/agent-badge/src/commands/operational.test.ts > plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state
+AssertionError: expected 'agent-badge: status partial.\n  Setup…' to contain 'Coverage import: explicit-only; accou…'
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Coverage import: explicit-only; accounting fixture-certified; coverage request[39m
+[31m+ agent-badge: status partial.[39m
+[31m+   Setup: approved[39m
+[31m+   Configuration: current[39m
+[31m+   Last confirmed sync: f746406a11c7d9ce37ad60cf107da10b06ea5dcb[39m
+[31m+   1 recorded units; 1 included; 0 excluded; 0 conflicting; 1 partial.[39m
+[31m+   140 known tokens; 0 units with unknown tokens; repository completeness unknown.[39m
+[31m+   Current catalog estimate (accepted, version 1, snapshot 2026-10-22); not an invoice.[39m
+[31m+   0 queued records.[39m
+[31m+   Reconciliation pending: no[39m
+[31m+   Provider import: partial; diagnostics incomplete-source[39m
+
+ ❯ packages/agent-badge/src/commands/operational.test.ts:137:15
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 7 passed (8)
+      Tests  2 failed | 80 passed (82)
+   Start at  03:24:54
+   Duration  49.53s (transform 280ms, setup 0ms, collect 569ms, tests 48.28s, environment 0ms, prepare 180ms)
+

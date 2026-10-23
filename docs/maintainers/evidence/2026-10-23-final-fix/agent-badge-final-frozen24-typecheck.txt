@@ -1,0 +1,4 @@
+
+> typecheck
+> tsc -b --pretty false packages/core/tsconfig.json packages/agent-badge/tsconfig.json packages/create-agent-badge/tsconfig.json packages/testkit/tsconfig.json
+

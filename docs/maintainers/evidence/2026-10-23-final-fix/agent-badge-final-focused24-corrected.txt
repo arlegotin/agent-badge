@@ -1,0 +1,59 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:88162) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/operational.test.ts (9 tests) 23313ms
+   ✓ status JSON and doctor preserve explicit setup needs, unavailable sources and required failures  1255ms
+   ✓ collect is local-only, sync confirms data, explain redacts, and explicit cross-clone controls use accepted heads  4813ms
+   ✓ configure validates revision and writes accepted policy; upgrade requires an exact deliberate runtime  2331ms
+   ✓ remote-only controls have no source journal, export causal closure, and offline commands never claim intent applied  3182ms
+   ✓ status detects local wrong-target routing without any remote request  844ms
+   ✓ supervised collect never invokes remote Git and cancellation preserves captured pending work  1918ms
+   ✓ include reports a concurrent later remote exclusion instead of silently rebasing its fixed intent  5276ms
+   ✓ plaintext explain contribute and status retain redacted explanations staging paths coverage and accepted state  2475ms
+   ✓ plaintext doctor setup and uninstall expose required failures owner repair items and independent deactivation  1218ms
+(node:94245) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/doctor.test.ts (9 tests) 9648ms
+   ✓ doctor without owning integration inspection cannot claim healthy setup  365ms
+   ✓ doctor checks required integration completeness and explicitly bounded read-only remote access  898ms
+   ✓ unreadable/future local data fails required schema checks even with healthy integration evidence  363ms
+   ✓ remote doctor owns a total deadline even when integration inspection is stalled  312ms
+   ✓ remote doctor distinguishes never initialized history from deleted accepted evidence without reseeding  1317ms
+   ✓ remote doctor distinguishes never initialized history from deleted presence-only evidence without reseeding  1346ms
+   ✓ remote doctor distinguishes never initialized history from deleted binding-evidence evidence without reseeding  1336ms
+   ✓ remote doctor compares freshly fetched policy while pending requests remain uncertain and no declaration stays absent  3307ms
+   ✓ a bounded metadata schema establishes unsupported-data without journal replay  404ms
+(node:96327) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 7063ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  462ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1674ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1514ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  355ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1062ms
+   ✓ status refuses missing derived generation without replay or repair  399ms
+   ✓ status refuses corrupt derived generation without replay or repair  399ms
+   ✓ status refuses staged derived generation without replay or repair  403ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  794ms
+ ✓ packages/agent-badge/src/integration/launcher.test.ts (22 tests) 5636ms
+   ✓ explicit launcher setup repairs a nonempty runtime missing its CLI only after staged verification  442ms
+   ✓ a failed staged replacement retains the existing partial runtime  417ms
+   ✓ fresh standalone launcher keeps bootstrap acquisition outside private authority  547ms
+(node:98393) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (2 tests) 2114ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1059ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1055ms
+ ✓ packages/create-agent-badge/src/index.test.ts (11 tests) 561ms
+ ✓ scripts/release/workflow.test.ts (2 tests) 360ms
+   ✓ trusted inline remote guard precedes requested checkout, npm lifecycle and candidate scripts  357ms
+ ✓ scripts/release/preflight.test.ts (19 tests) 367ms
+   ✓ actual npm subprocess console cannot contaminate JSON output  362ms
+
+ Test Files  8 passed (8)
+      Tests  83 passed (83)
+   Start at  03:29:01
+   Duration  50.31s (transform 271ms, setup 0ms, collect 555ms, tests 49.06s, environment 0ms, prepare 184ms)
+
