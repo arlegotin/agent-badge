@@ -1,5 +1,6 @@
 import { runReportingTask } from './report-supervisor.js';
 import type { RepositoryContext } from '../git/context.js';
+import { resolveRepository } from '../git/context.js';
 import type { IntegrationInspection, IntegrationPort, OperationalCheck } from './integration-port.js';
 import { configurationState, getIndexedStatus } from './status.js';
 import type { StatusReport } from './status.js';
@@ -19,20 +20,28 @@ export interface DoctorOptions { remote?: boolean; timeoutMs?: number; deadline?
 export interface DoctorReport { schemaVersion: 1; status: 'healthy' | 'attention-required'; exitCode: 0 | 1 | 2 | 3 | 4; remote: 'not-requested' | 'readable' | 'unavailable' | 'wrong-target' | 'history-conflict'; configuration: StatusReport['configuration']; checks: OperationalCheck[]; capabilities?: CapabilityReport }
 function unavailableDoctor(remote?:boolean):DoctorReport{return {schemaVersion:1,status:'attention-required',exitCode:1,remote:remote?'unavailable':'not-requested',configuration:'not-inspected',checks:[{code:'inspection-unavailable',status:'fail',required:true}]};}
 export async function diagnose(ctx: RepositoryContext, options: DoctorOptions): Promise<DoctorReport> {
+ return supervisedDiagnosis(ctx,options);
+}
+/** Directory discovery and concrete integrations run inside the same owned worker. */
+export async function diagnoseFromDirectory(cwd:string,options:Omit<DoctorOptions,'integrations'>):Promise<DoctorReport> {
+ return supervisedDiagnosis(cwd,options);
+}
+async function supervisedDiagnosis(ctx:RepositoryContext|string,options:DoctorOptions):Promise<DoctorReport> {
  const timeout=options.timeoutMs??5000;
  if(!Number.isFinite(timeout)||timeout<1||timeout>20000)throw Error('Invalid diagnostic deadline.');
  const deadline=Math.min(options.deadline??Infinity,Date.now()+timeout),signal=AbortSignal.timeout(Math.max(1,deadline-Date.now()));
  try {
   // Arbitrary in-process caller ports must cooperate with cancellation. Concrete CLI
   // owners instead load inside the supervised group below.
-  const inspection=options.integrations?await bounded(options.integrations.inspect(ctx,signal),signal):undefined;
+  const inspection=typeof ctx!=='string'&&options.integrations?await bounded(options.integrations.inspect(ctx,signal),signal):undefined;
   return await runReportingTask<DoctorReport>(new URL('./doctor.js',import.meta.url),{ctx,remote:options.remote,inspection,integrationModule:options.integrationModule},deadline,signal);
  } catch{return unavailableDoctor(options.remote);}
 }
-export async function runReport(input:{ctx:RepositoryContext;remote?:boolean;inspection?:IntegrationInspection;integrationModule?:string},context:{signal:AbortSignal;deadline:number}):Promise<DoctorReport> {
- const {ctx}=input,options=input,{signal,deadline}=context;
+export async function runReport(input:{ctx:RepositoryContext|string;remote?:boolean;inspection?:IntegrationInspection;integrationModule?:string},context:{signal:AbortSignal;deadline:number}):Promise<DoctorReport> {
+ const options=input,{signal,deadline}=context;
  const report:DoctorReport={schemaVersion:1,status:'attention-required',exitCode:1,remote:'not-requested',configuration:'not-inspected',checks:[]};
  try {
+    const ctx=typeof input.ctx==='string'?await resolveRepository(input.ctx,context):input.ctx;
     const inspection:IntegrationInspection=input.integrationModule?await (await import(input.integrationModule)).repositoryIntegrations.inspect(ctx,signal):input.inspection??{setup:'not-inspected',checks:[]};
     report.checks.push(...inspection.checks);
     for (const code of ['activation','runtime','git-hooks','provider-hooks']) {

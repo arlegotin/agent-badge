@@ -2,8 +2,9 @@
 
 Implemented for the unreleased repository-native candidate on2026-10-22. No hosted
 or actual Linux/Windows/private-image gates are claimed. The public wire schema is
-unchanged. Tasks 1–18 and task reviews are complete. Final combined fixes are locally
-validated; the scoped final branch re-review remains pending. Exact retained
+unchanged. Tasks 1–18 and task reviews are complete. The combined fixes were locally
+validated; scoped review found an executable repository-resolution deadline residual.
+Its focused closure and review are pending; remote cleanup Minor N1 is deferred. Exact retained
 candidate identities are in [verification](../../maintainers/RELEASE-VERIFICATION.md).
 
 Core `getStatus(ctx, options?)` remains usable without an integration owner. It
@@ -22,7 +23,13 @@ are merged by exact accepted membership and the existing affected-component redu
 not assumed acknowledged membership. All local opaque IDs remain in the result;
 there is no historical cap or silently truncated exact total.
 
-One original deadline covers owned subprocess startup and reporting work. The
+Core resolved-context APIs remain unchanged. Executable commands use
+`getStatusFromDirectory(cwd, options?)` and
+`diagnoseFromDirectory(cwd, options)`; the latter excludes in-process IntegrationPort
+callbacks. These entrypoints send only the directory and trusted integration-module
+identity into the same existing worker. Repository Git discovery, realpath calls
+and synchronous parsing now execute there before integration/reporting work.
+One original deadline covers owned subprocess startup, repository resolution and reporting work. The
 parent terminates and reaps the owned group for stalled filesystem or synchronous
 CPU work. Concrete CLI integration inspection, capability discovery in doctor,
 and explicit remote validation execute inside that group; doctor does not repeat
@@ -31,6 +38,13 @@ retains the disclosed best-effort taskkill limitation. Arbitrary caller-provided
 in-process IntegrationPort functions must cooperate with cancellation; a promise
 race cannot terminate arbitrary caller code. Cache unavailability is actionable:
 automatic catch-up continues; manual collect/sync can accelerate validation.
+
+Deferred Minor N1: forced remote-doctor termination can prevent its transport
+finally from deleting invocation-private `transport-*` directories and transaction
+refs. Repeated timeouts may accumulate these private resources. The owned process
+tree is terminated; resource cleanup is not guaranteed. Parent-owned exact-resource
+cleanup is deferred under Ruling75; accepted ledger anchors and user checkout refs
+are not advanced by diagnosis.
 
 `IntegrationPort.inspect(ctx, signal)` returns static required checks plus private
 identity/policy/binding/roots for orchestration. The CLI adapter composes installing

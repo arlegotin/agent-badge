@@ -40,3 +40,50 @@ test.each(['read','cpu','inspection','capability'] as const)('actual diagnostic 
   if(pid)try{process.kill(-pid,'SIGKILL');}catch{}
  }
 },7000);
+
+test.each([
+ {command:'status',stage:'read'}, {command:'status',stage:'cpu'},
+ {command:'doctor',stage:'read'}, {command:'doctor',stage:'cpu'},
+] as const)('actual $command owns and terminates repository-resolution $stage work',async({command,stage})=>{
+ const fixture=await createBareRemoteFixture();fixtures.push(fixture);
+ const cwd=fixture.clones[0],marker=join(fixture.root,'resolution-pid'),lookup=join(fixture.root,'module-lookup-pid'),hook=join(fixture.root,'stall-resolution.mjs');
+ await writeFile(hook,`import fs from 'node:fs';import promises from 'node:fs/promises';import{syncBuiltinESMExports}from'node:module';
+ const original=promises.realpath;
+ const exists=fs.existsSync;
+ fs.existsSync=function(path){
+  if(String(path).includes('/operations/report-host.')){
+   fs.writeFileSync(${JSON.stringify(lookup)},String(process.pid));
+   throw Error('synthetic module lookup outside owned work');
+  }
+  return exists.call(this,path);
+ };
+ promises.realpath=async function(path,...args){
+  if(String(path)===${JSON.stringify(cwd)}){
+   fs.writeFileSync(${JSON.stringify(marker)},String(process.pid));
+   if(${JSON.stringify(stage)}==='cpu'){while(true){}}
+   return new Promise(()=>setInterval(()=>{},1000));
+  }
+  return original.call(this,path,...args);
+ };
+ syncBuiltinESMExports();`);
+ const entry=command==='doctor'?'runDoctorCommand':'runStatusCommand';
+ const program=`import{${entry}}from ${JSON.stringify(new URL('../../dist/commands/'+command+'.js',import.meta.url).href)};console.log(JSON.stringify(await ${entry}({cwd:${JSON.stringify(cwd)},timeoutMs:700})));`;
+ const start=performance.now();let pid:number|undefined,commandPid:number|undefined;
+ try {
+  const running=execute(process.env.AGENT_BADGE_TEST_NODE??process.execPath,['--input-type=module','-e',program],{cwd,env:{...process.env,NODE_OPTIONS:'--import='+hook},timeout:command==='status'?6500:2500,killSignal:'SIGKILL'});
+  commandPid=running.child.pid;
+  let result:Awaited<typeof running>|undefined,failure:unknown;
+  try{result=await running;}catch(error){failure=error;}
+  expect(await readFile(lookup,'utf8').catch(()=>null)).toBeNull();
+  pid=Number(await readFile(marker,'utf8'));
+  // Before the fix this identifies the blocked command parent, before any reporting worker exists.
+  expect(pid).not.toBe(commandPid);
+  expect(failure).toBeUndefined();
+  expect(JSON.parse(result!.stdout)).toMatchObject(command==='doctor'?{status:'attention-required',exitCode:1}:{state:'unavailable',queuedRecords:null,exitCode:1});
+  expect(performance.now()-start).toBeLessThan(command==='status'?6000:1800);
+  expect(()=>process.kill(pid!,0)).toThrow();
+ } finally {
+  if(!pid)try{pid=Number(await readFile(marker,'utf8'));}catch{}
+  if(pid)try{process.kill(pid===commandPid?pid:-pid,'SIGKILL');}catch{}
+ }
+},10000);

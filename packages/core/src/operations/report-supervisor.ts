@@ -1,14 +1,14 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /** Trusted owned reporting modules only. No leases or writes are acquired here.
  * Resolve only after the owned child has exited; Git children share its group. */
 export async function runReportingTask<T>(worker: URL, input: unknown, deadline: number, signal?: AbortSignal): Promise<T> {
   if (signal?.aborted || Date.now() >= deadline) throw Error('diagnostic-deadline');
-  let host = new URL('./report-host.js', import.meta.url);
-  if (!existsSync(host)) host = new URL('./report-host.ts', import.meta.url);
-  if (!existsSync(worker) && worker.pathname.endsWith('.js')) worker = new URL(worker.href.replace(/\.js$/, '.ts'));
+  // This trusted module's format determines its siblings; no parent-side filesystem probe.
+  const source = import.meta.url.endsWith('.ts');
+  const host = new URL(source ? './report-host.ts' : './report-host.js', import.meta.url);
+  if (source && worker.pathname.endsWith('.js')) worker = new URL(worker.href.replace(/\.js$/, '.ts'));
   return new Promise<T>((resolve, reject) => {
     const child = spawn(process.execPath, [...(host.pathname.endsWith('.ts') ? ['--import','tsx'] : []),fileURLToPath(host)], { detached:process.platform !== 'win32',stdio:['ignore','ignore','ignore','ipc'] });
     let result: T, received = false, expired = false;

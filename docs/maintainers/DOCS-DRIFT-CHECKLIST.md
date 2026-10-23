@@ -1,8 +1,9 @@
 # Documentation drift checklist
 
 The unreleased repository-native candidate has completed Tasks 1–18 and their
-reviews. The final branch review's combined fixes and local candidate checks are
-complete; one scoped re-review remains pending. Public npm1.1.20 still uses the old architecture.
+reviews. The combined fixes and local candidate checks are complete. Scoped review
+left the I3 repository-resolution deadline for focused closure/review; Minor N1
+private remote-diagnostic cleanup is deferred. Public npm1.1.20 still uses the old architecture.
 No publication, hosted permission, Linux/Windows or private-image gate is implied.
 
 Run `npm run docs:check`: it checks local product links, parses real Commander

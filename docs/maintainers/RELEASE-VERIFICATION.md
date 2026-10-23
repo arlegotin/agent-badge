@@ -2,7 +2,10 @@
 
 Final whole-branch review at `2f784de63844ead663200e4b0eb535a2d45d295c`
 found three Important and four Minor issues. The single combined fix wave is
-implemented and locally validated; one scoped re-review remains pending. Tasks1–18 and all
+implemented and locally validated. The scoped review accepted six findings and
+the indexed/owned-reporting portions of I3, but identified its executable
+repository-resolution deadline residual. A focused closure is under validation;
+Minor N1 private remote-doctor resource cleanup is explicitly deferred. Tasks1–18 and all
 task-scoped reviews are complete. The source-f81d9a4 artifacts below remain
 historical, frozen evidence and will not be overwritten or relabeled. Packaged
 fixes are bound to the distinct source commit and exact candidate recorded below.

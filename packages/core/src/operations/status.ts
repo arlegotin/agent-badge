@@ -1,5 +1,6 @@
 import type { LedgerMeta } from '../domain/ledger.js';
 import type { RepositoryContext } from '../git/context.js';
+import { resolveRepository } from '../git/context.js';
 import { readLedgerCommit } from '../git/data-transport.js';
 import type { AcceptedLedger } from '../git/data-transport.js';
 import { runGit } from '../git/process.js';
@@ -62,13 +63,21 @@ export function unavailableStatus(options: StatusOptions = {}): StatusReport {
 }
 /** No provider discovery, network, lease, installation, chmod or repair. */
 export async function getStatus(ctx:RepositoryContext,options:StatusOptions={}):Promise<StatusReport> {
+ return supervisedStatus(ctx,options);
+}
+/** Executable entry: repository discovery shares the reporting process and deadline. */
+export async function getStatusFromDirectory(cwd:string,options:StatusOptions={}):Promise<StatusReport> {
+ return supervisedStatus(cwd,options);
+}
+async function supervisedStatus(ctx:RepositoryContext|string,options:StatusOptions):Promise<StatusReport> {
  const {signal,...serializable}=options,deadline=options.deadline??Date.now()+10000;
  try{return await runReportingTask<StatusReport>(new URL('./status.js',import.meta.url),{ctx,options:serializable},deadline,signal);}
  catch{return unavailableStatus(options);}
 }
-export async function runReport(input:{ctx:RepositoryContext;options:StatusOptions},context:{signal:AbortSignal;deadline:number}) {
- const inspection=input.options.integrationModule?await (await import(input.options.integrationModule)).repositoryIntegrations.inspect(input.ctx,context.signal):input.options.inspection;
- return getIndexedStatus(input.ctx,{...input.options,...context,inspection});
+export async function runReport(input:{ctx:RepositoryContext|string;options:StatusOptions},context:{signal:AbortSignal;deadline:number}) {
+ const ctx=typeof input.ctx==='string'?await resolveRepository(input.ctx,context):input.ctx;
+ const inspection=input.options.integrationModule?await (await import(input.options.integrationModule)).repositoryIntegrations.inspect(ctx,context.signal):input.options.inspection;
+ return getIndexedStatus(ctx,{...input.options,...context,inspection});
 }
 export async function getIndexedStatus(ctx:RepositoryContext,options:StatusOptions={}):Promise<StatusReport> {
  const inspection=options.inspection, report=unavailableStatus(options), deadline=options.deadline??Date.now()+10000, signal=options.signal??AbortSignal.timeout(Math.max(1,deadline-Date.now()));
