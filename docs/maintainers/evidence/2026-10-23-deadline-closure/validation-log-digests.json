@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "base": "695fbc9a2c66f35ad09d2e5ef8e50ba96c4bd917",
+  "source": "62e9a27c23e459740a3690b24f8b211e87e6c55a",
+  "candidateDirectory": "/private/tmp/agent-badge-deadline-candidate-62e9a27",
+  "runtimes": [
+    "v24.0.0",
+    "v26.0.0"
+  ],
+  "platform": "darwin/arm64",
+  "review": "focused-closure-review-pending",
+  "node24Coverage": "four prescribed files35pass before final startup-probe removal; final source/compiled deadline+status17pass after removal, typecheck/build/docs/pack pass",
+  "node26Coverage": "four prescribed files35pass plus typecheck/build/docs/pack on final source",
+  "fullSuite": "not repeated; earlier broad evidence remains separately attributed",
+  "deferred": "N1: forced remote diagnosis may strand private transport directory/transaction ref",
+  "isolation": "original scratch plus tracked wrapper; allowlisted exact target environment; synthetic only; sequential maxWorkers1; only exact finite registry smoke escalated",
+  "logs": [
+    {
+      "original": "/private/tmp/agent-badge-deadline-build24.log",
+      "retained": "agent-badge-deadline-build24.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-build26.log",
+      "retained": "agent-badge-deadline-build26.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-candidate-pack.log",
+      "retained": "agent-badge-deadline-candidate-pack.txt",
+      "bytes": 1344,
+      "sha256": "7a8b94563cd645e52010c45b15ec864b7c28c95d98d22d56c767f5468fe9f1e4"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-docs24.log",
+      "retained": "agent-badge-deadline-docs24.txt",
+      "bytes": 339,
+      "sha256": "7d429f4721d5a3c1422642d1213ae92960b07bcf0bfeaa6c3921eab371249255"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-docs26.log",
+      "retained": "agent-badge-deadline-docs26.txt",
+      "bytes": 360,
+      "sha256": "153a2897c35a5c2548f690ecad0c94dfa9d5cc5901aa88bef7eeb761e6f3d327"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-evidence-docs24.log",
+      "retained": "agent-badge-deadline-evidence-docs24.txt",
+      "bytes": 338,
+      "sha256": "ddc965f64bc6b6cadd24120a8a8890c29f0cc6558d214aa9e19c9fe0ed5b70bf"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-focused24.log",
+      "retained": "agent-badge-deadline-focused24.txt",
+      "bytes": 4835,
+      "sha256": "e07673bcbf389ab4664009fa18be4030be4d7385eca0c3cba78effe3db36eafe"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-focused26.log",
+      "retained": "agent-badge-deadline-focused26.txt",
+      "bytes": 4159,
+      "sha256": "70b4778e747447425748729a81d7289f22c48edae7bb73e3bdf7e6584907016f"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-pack-check24.log",
+      "retained": "agent-badge-deadline-pack-check24.txt",
+      "bytes": 153,
+      "sha256": "9ba63cd734ed2428f1b25756a60cd372229a406cde307f6989035d8ad2faa9cc"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-pack-check26.log",
+      "retained": "agent-badge-deadline-pack-check26.txt",
+      "bytes": 153,
+      "sha256": "9ba63cd734ed2428f1b25756a60cd372229a406cde307f6989035d8ad2faa9cc"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-red-resolution24.log",
+      "retained": "agent-badge-deadline-red-resolution24.txt",
+      "bytes": 4306,
+      "sha256": "873ff74b8709d357938684c6b60c765a7d5d536189d2313aeb845de36d83a6d3"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-red-startup24.log",
+      "retained": "agent-badge-deadline-red-startup24.txt",
+      "bytes": 4675,
+      "sha256": "9e4f18ba350076476d845c5df5f7949fd098240ab49cdb801f5cd714b0984a9a"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-registry24.log",
+      "retained": "agent-badge-deadline-registry24.txt",
+      "bytes": 1469,
+      "sha256": "d7e985e1af687f208176fe015de7d4d424cc5f72293ac38f021811ba63b05529"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-registry26.log",
+      "retained": "agent-badge-deadline-registry26.txt",
+      "bytes": 1469,
+      "sha256": "1f22ce466a94918c23a7cba4f3cfcf9f51856dfabf260eac1464213d08beca5f"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-retained-pack24.log",
+      "retained": "agent-badge-deadline-retained-pack24.txt",
+      "bytes": 954,
+      "sha256": "84d14b3af721645b56bc5a68fde7816b59e5c6294ba490e4a7a741168969291a"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-retained-pack26.log",
+      "retained": "agent-badge-deadline-retained-pack26.txt",
+      "bytes": 954,
+      "sha256": "700b9f96446b2d1e79963b9d9a95b98413e64dea1e2911a2d93b1bca03f82be8"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-startup-build24.log",
+      "retained": "agent-badge-deadline-startup-build24.txt",
+      "bytes": 35,
+      "sha256": "828d2117cbc39dc0ae792829c7389f3ddc3dc10c98892115b6ffa670dceca180"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-startup-cover24.log",
+      "retained": "agent-badge-deadline-startup-cover24.txt",
+      "bytes": 2320,
+      "sha256": "4ace0525f534825cb8868570f283378227dce78bc314e6e5ab37371988a237b7"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-startup-typecheck24.log",
+      "retained": "agent-badge-deadline-startup-typecheck24.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-typecheck24.log",
+      "retained": "agent-badge-deadline-typecheck24.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    },
+    {
+      "original": "/private/tmp/agent-badge-deadline-typecheck26.log",
+      "retained": "agent-badge-deadline-typecheck26.txt",
+      "bytes": 174,
+      "sha256": "eb45e90a8a5041233864dc7569cb767b89916e71728d2b76e3d9152bac1df850"
+    }
+  ]
+}

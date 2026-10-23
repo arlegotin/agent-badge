@@ -4,7 +4,7 @@ Final whole-branch review at `2f784de63844ead663200e4b0eb535a2d45d295c`
 found three Important and four Minor issues. The single combined fix wave is
 implemented and locally validated. The scoped review accepted six findings and
 the indexed/owned-reporting portions of I3, but identified its executable
-repository-resolution deadline residual. A focused closure is under validation;
+repository-resolution deadline residual. The focused closure is implemented and locally validated; its narrow review is pending;
 Minor N1 private remote-doctor resource cleanup is explicitly deferred. Tasks1–18 and all
 task-scoped reviews are complete. The source-f81d9a4 artifacts below remain
 historical, frozen evidence and will not be overwritten or relabeled. Packaged
@@ -23,7 +23,56 @@ unexecuted here. Windows setup uses the selected Node distribution's bundled
 npm JS CLI, bypassing `.cmd` shell dispatch; a custom Windows Node installation
 must provide that standard npm layout. Windows automatic supervision stays off.
 
-## Final combined fixes: local evidence (2026-10-23)
+## Focused executable deadline closure (2026-10-23)
+
+Ruling74 authorizes this narrow I3 continuation after the scoped review found that
+repository resolution still ran before the reporting worker. Source commit
+`62e9a27c23e459740a3690b24f8b211e87e6c55a` moves command repository discovery,
+realpath and synchronous parsing into the same owned worker, under the original
+parent deadline. Core resolved-context APIs remain; directory entrypoints carry
+only cwd and trusted integration-module identity. Source/compiled sibling module
+paths derive from import.meta.url rather than parent-side filesystem probes.
+No nested worker, authority/cache change or historical cap was added.
+
+| Gate | Node 24.0.0 | Node 26.0.0 |
+| --- | --- | --- |
+| Typecheck, clean build, docs, pack content | Pass; typecheck/build repeated only for startup-probe correction | Pass on final source |
+| Prescribed four-file cover | 35 pass; 58.23s before final startup-probe correction | 35 pass; 58.43s on final source |
+| Final source/compiled startup cover | Deadline + core status:17 pass; 24.64s | Included in four-file cover |
+| Exact retained pack and initializer-only install | Pass; actual worker v24.0.0 | Pass; actual worker v26.0.0 |
+
+No full suite, broad branch audit or100k benchmark was repeated. Earlier broad
+results remain attributed to the earlier changes below. The four new actual
+status/doctor read/CPU regressions first failed because each stalled PID equaled
+the command parent (19.32s RED). The separate module-probe RED failed all four
+selected cases (1.51s). Final checks require a different owned worker PID, no
+startup filesystem-probe marker, unavailable/exit1, command termination below the
+specified allowance and a dead worker at return. Doctor uses700ms with<1800ms
+assertion; status retains5000ms with<6000ms assertion. Fixture construction is
+outside that timing assertion. Existing index/CPU/inspection/capability tests stay.
+
+New `2.0.0-next.0` artifacts were packed once from clean source62e9a27 under Node24
+and retained at `/private/tmp/agent-badge-deadline-candidate-62e9a27/`.
+[The closure candidate manifest](evidence/2026-10-23-deadline-closure/candidate.json)
+records exact lengths and SHA-512 SRI; both runtime pack/install logs identify these
+same bytes. Fresh independent activation proves actual installed worker selection.
+The finite registry has no uplinks and reuses the existing public dependency
+closure. Both historical candidates f81d9a4 and2c37a3c remain untouched.
+[Closure logs and SHA-256 digests](evidence/2026-10-23-deadline-closure/validation-log-digests.json)
+retain both RED failures, covering/standard checks and exact package/install results.
+
+**Deferred N1 (Ruling75):** a forcibly terminated remote doctor may strand its
+invocation-private transport directory and transaction ref because the worker's
+finally cannot finish. Repeated timeouts may accumulate private resources.
+Process termination is verified; transport-resource cleanup is not guaranteed.
+Parent-owned exact-resource cleanup is deferred, with no accepted-ledger or user
+checkout/ref mutation implied. Arbitrary in-process IntegrationPort callbacks
+still require cooperative cancellation. Windows taskkill remains best effort.
+
+The focused closure awaits root's narrow review. All external/platform/privacy
+and historical latency limitations below remain; no publication is authorized.
+
+## Earlier combined fixes: local evidence (2026-10-23)
 
 Source commit: `2c37a3cf164bb3d4314f1ed69d9008b2ac9c0727`. The three
 `2.0.0-next.0` tarballs were packed once from its clean tracked tree under Node24;
@@ -76,7 +125,8 @@ truncated output was added. Concrete CLI work runs under one owned subprocess
 deadline; arbitrary caller-supplied in-process IntegrationPort functions still
 must cooperate. Decisions71–73 record these costs and validation boundaries.
 
-Final scoped re-review remains pending. No publication, push, tag, merge, hosted
+The subsequent scoped review found the executable I3 residual and Minor N1,
+recorded in the focused closure above. No publication, push, tag, merge, hosted
 settings change, live provider-history probe or external acceptance is claimed.
 The warning, Task16 isolation, Task17 latency and platform limitations below apply.
 

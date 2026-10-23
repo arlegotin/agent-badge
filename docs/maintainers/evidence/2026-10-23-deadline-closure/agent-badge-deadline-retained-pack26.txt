@@ -1,0 +1,5 @@
+
+> smoke:pack
+> node scripts/smoke/verify-packed-install.mjs /private/tmp/agent-badge-deadline-candidate-62e9a27
+
+{"status":"retained-pack-check-passed","sha":"62e9a27c23e459740a3690b24f8b211e87e6c55a","runtime":"v26.0.0","platform":"darwin","artifacts":[{"name":"@legotin/agent-badge-core","version":"2.0.0-next.0","filename":"legotin-agent-badge-core-2.0.0-next.0.tgz","size":138109,"integrity":"sha512-x9kxS8Jy9OwPwR+WvwGL3LyamX3ij9zcHL0fJUi7VYRU9Nhrh4UI+rYz+fTT220E5o8ayCRwPKSoiDXQiQenhQ=="},{"name":"@legotin/agent-badge","version":"2.0.0-next.0","filename":"legotin-agent-badge-2.0.0-next.0.tgz","size":49958,"integrity":"sha512-GmQDSJy0cjONqlEAnMzBTWxZF13BZRlewNBEhFg4RqsZX4SscCGDGOsvRLibY27qoUrPpHQuzCtOg+zUyMLL3w=="},{"name":"create-agent-badge","version":"2.0.0-next.0","filename":"create-agent-badge-2.0.0-next.0.tgz","size":7057,"integrity":"sha512-HJWQGP299KrX0oJJIYLV2bql3G6Fe+LXeN6+Ord9sQtGjLSJNrOBZHv2AWaOOYx5ck16kHNjvG/f1KIK2ZNnkA=="}]}

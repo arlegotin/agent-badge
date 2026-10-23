@@ -1,0 +1,32 @@
+
+ RUN  v3.2.4 /Volumes/git/legotin/agent-badge
+
+(node:89840) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/agent-badge/src/commands/report-deadline.test.ts (8 tests) 16858ms
+   ✓ actual diagnostic terminates owned read work and exits within its original budget  1151ms
+   ✓ actual diagnostic terminates owned cpu work and exits within its original budget  1053ms
+   ✓ actual diagnostic terminates owned inspection work and exits within its original budget  1054ms
+   ✓ actual diagnostic terminates owned capability work and exits within its original budget  1074ms
+   ✓ actual 'status' owns and terminates repository-resolution 'read' work  5284ms
+   ✓ actual 'status' owns and terminates repository-resolution 'cpu' work  5275ms
+   ✓ actual 'doctor' owns and terminates repository-resolution 'read' work  979ms
+   ✓ actual 'doctor' owns and terminates repository-resolution 'cpu' work  988ms
+(node:90569) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ packages/core/src/operations/status.test.ts (9 tests) 7254ms
+   ✓ fresh status reports setup needs without creating private files or touching checkout  461ms
+   ✓ local status distinguishes recorded pending synced partial and conflict with accepted catalog valuation  1711ms
+   ✓ pending configuration is uncertainty and actual declaration controls drift reporting  1508ms
+   ✓ future raw journal schema without a trusted index is unavailable and never rewritten  361ms
+   ✓ local accepted reader rejects a tree masquerading as an anchored accepted commit  1105ms
+   ✓ status refuses missing derived generation without replay or repair  418ms
+   ✓ status refuses corrupt derived generation without replay or repair  423ms
+   ✓ status refuses staged derived generation without replay or repair  429ms
+   ✓ stable readonly index rejects a concurrent writer, stale authority and stale repository binding  838ms
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  04:09:06
+   Duration  24.64s (transform 196ms, setup 0ms, collect 351ms, tests 24.11s, environment 0ms, prepare 46ms)
+

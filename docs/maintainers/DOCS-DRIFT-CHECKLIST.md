@@ -2,7 +2,8 @@
 
 The unreleased repository-native candidate has completed Tasks 1–18 and their
 reviews. The combined fixes and local candidate checks are complete. Scoped review
-left the I3 repository-resolution deadline for focused closure/review; Minor N1
+identified the I3 repository-resolution deadline residual; its focused closure is
+locally validated and awaits narrow review; Minor N1
 private remote-diagnostic cleanup is deferred. Public npm1.1.20 still uses the old architecture.
 No publication, hosted permission, Linux/Windows or private-image gate is implied.
 
