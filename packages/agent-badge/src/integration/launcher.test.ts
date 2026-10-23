@@ -44,14 +44,14 @@ async function launcherFixture() {
 test.each([
   { args: ['setup', '--help'], code: 0 },
   { args: ['setup', '--version'], code: 0 },
-  { args: ['setup', '--target', 'bad remote'], code: 1 },
-  { args: ['setup', '--runtime-version=^1.1.20'], code: 1 },
-  { args: ['setup', '--definitely-invalid'], code: 1 },
-  { args: ['setup', '--target'], code: 1 },
-  { args: ['setup', '--target', '-unsafe'], code: 1 },
-  { args: ['setup', '--runtime-version', '^1.1.20'], code: 1 },
-  { args: ['setup', '--repository-url', 'file:///synthetic/private'], code: 1 },
-  { args: ['setup', '--repository-url', 'https://token@example.invalid/repo'], code: 1 },
+  { args: ['setup', '--target', 'bad remote'], code: 64 },
+  { args: ['setup', '--runtime-version=^1.1.20'], code: 64 },
+  { args: ['setup', '--definitely-invalid'], code: 64 },
+  { args: ['setup', '--target'], code: 64 },
+  { args: ['setup', '--target', '-unsafe'], code: 64 },
+  { args: ['setup', '--runtime-version', '^1.1.20'], code: 64 },
+  { args: ['setup', '--repository-url', 'file:///synthetic/private'], code: 64 },
+  { args: ['setup', '--repository-url', 'https://token@example.invalid/repo'], code: 64 },
 ])('launcher validates $args before Git discovery, installs, or mutations', async ({ args, code }) => {
   const { f, cwd } = await launcherFixture(), bin = join(f.root, 'bin'); await mkdir(bin);
   for (const command of ['git', 'npm']) await writeFile(join(bin, command), '#!/bin/sh\necho forbidden > "$CALL_MARKER"\nexit 97\n', { mode: 0o700 });
@@ -95,4 +95,53 @@ test('runtime repair refuses a symlink hash directory and preserves its target',
   await expect(execute(node24, [join(cwd, '.agent-badge/run.cjs'), 'setup'], { cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH } })).rejects.toThrow();
   expect(await readFile(join(f.root, 'keep'), 'utf8')).toBe('outside owned runtime');
   expect((await (await import('node:fs/promises')).lstat(runtime)).isSymbolicLink()).toBe(true);
+});
+
+test.each(['missing', 'incomplete'])('launcher dry run preserves %s runtime without npm', async kind => {
+  const fixture = kind === 'incomplete' ? await repairFixture() : await launcherFixture();
+  const { cwd, f } = fixture;
+  const before = await readdir(join(cwd, '.git'), { recursive: true });
+  const result = await execute(node24, [join(cwd, '.agent-badge/run.cjs'), 'setup', '--dry-run', '--json', '--import-workflow'], { cwd });
+  expect(JSON.parse(result.stdout)).toMatchObject({ command: 'setup', status: 'bootstrap-planned', applied: false });
+  expect(await readdir(join(cwd, '.git'), { recursive: true })).toEqual(before);
+  expect(await readdir(f.root)).not.toContain('repaired');
+});
+
+test('fresh standalone launcher keeps bootstrap acquisition outside private authority', async () => {
+  const { cwd, f, privateDir, bin } = await repairFixture();
+  await rm(privateDir, { recursive: true });
+  // Synthetic installed executable proves the real launcher did not pre-create authority.
+  const npm = await readFile(join(bin, 'npm'), 'utf8');
+  await writeFile(join(bin, 'npm'), npm.replace('require("node:fs").writeFileSync(process.env.REPAIR_MARKER,"repaired");', 'const fs=require("node:fs");if(fs.existsSync(process.env.PRIVATE_DIR))process.exit(91);fs.writeFileSync(process.env.REPAIR_MARKER,JSON.stringify(process.argv.slice(2)));'));
+  const marker = join(f.root, 'forwarded');
+  const args = ['setup','--new-repository','--repository-url','https://github.com/example/fork','--json','--import-workflow'];
+  await execute(node24, [join(cwd, '.agent-badge/run.cjs'), ...args], { cwd, env: { ...process.env, PATH: bin + ':' + process.env.PATH, PRIVATE_DIR: privateDir, REPAIR_MARKER: marker } });
+  expect(JSON.parse(await readFile(marker,'utf8'))).toEqual(args);
+  expect(await readdir(join(cwd,'.git'))).not.toContain('agent-badge');
+});
+
+test('standalone launcher refuses existing private authority even for dry run', async () => {
+  const { cwd, privateDir } = await repairFixture();
+  const before = await readdir(privateDir, { recursive:true });
+  await expect(execute(node24,[join(cwd,'.agent-badge/run.cjs'),'setup','--new-repository','--repository-url','https://github.com/example/fork','--dry-run'],{cwd})).rejects.toMatchObject({code:1});
+  expect(await readdir(privateDir,{recursive:true})).toEqual(before);
+});
+
+test('approved complete runtime dry run reports availability without executing or altering it',async()=>{
+ const {cwd,privateDir,runtime}=await repairFixture();
+ const pkg=join(runtime,'node_modules/@legotin/agent-badge');await mkdir(join(pkg,'dist/cli'));
+ await writeFile(join(pkg,'dist/cli/main.js'),'throw Error("dry-run executed runtime");');
+ await writeFile(join(pkg,'dist/integration/runtime-worker.js'),'exports.valid=true;');
+ await writeFile(join(privateDir,'local.json'),'{"synthetic":"approved fixture"}');
+ const before=await readdir(privateDir,{recursive:true});
+ const result=await execute(node24,[join(cwd,'.agent-badge/run.cjs'),'setup','--dry-run','--json'],{cwd});
+ expect(JSON.parse(result.stdout)).toMatchObject({status:'bootstrap-planned',applied:false,runtimeAcquisition:'available'});
+ expect(await readdir(privateDir,{recursive:true})).toEqual(before);
+ expect(await readFile(join(pkg,'dist/cli/main.js'),'utf8')).toContain('dry-run executed runtime');
+});
+
+test('bootstrap dry run distinguishes requested runtime from acquisition runtime',async()=>{
+ const {cwd}=await launcherFixture();
+ const result=await execute(node24,[join(cwd,'.agent-badge/run.cjs'),'setup','--dry-run','--json','--runtime-version','2.0.0-next.1'],{cwd});
+ expect(JSON.parse(result.stdout)).toMatchObject({runtimeVersion:'2.0.0-next.1',bootstrapRuntimeVersion:'1.1.20',applied:false});
 });

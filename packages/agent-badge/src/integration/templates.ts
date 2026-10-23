@@ -1,3 +1,4 @@
+import { setupOptions } from '../cli/setup-options.js';
 /** Explicit user entry. Automatic hooks must start private bootstrap.cjs instead. */
 export const launcherSource = String.raw`#!/usr/bin/env node
 'use strict';
@@ -13,18 +14,22 @@ function main() {
   const setup = command === 'setup' || command === 'init';
   let help = command === '--help' || command === '-h';
   let showVersion = command === '--version';
+  const flags = new Set(), values = {};
   if (setup) {
+    process.exitCode = 64;
+    const contract = ${JSON.stringify(setupOptions.map(([flags]) => flags))};
     const args = process.argv.slice(3);
     for (let index = 0; index < args.length; index++) {
       const argument = args[index];
       if (argument === '--help' || argument === '-h') { help = true; continue; }
       if (argument === '--version') { showVersion = true; continue; }
-      if (argument === '--dry-run') continue;
+      if (contract.includes(argument)) { flags.add(argument); continue; }
       const separator = argument.indexOf('=');
       const option = separator < 0 ? argument : argument.slice(0, separator);
-      if (!['--target', '--repository-url', '--runtime-version'].includes(option)) throw new Error('Invalid setup argument.');
+      if (!contract.some(flags => flags.startsWith(option + ' <'))) throw new Error('Invalid setup argument.');
       const value = separator < 0 ? args[++index] : argument.slice(separator + 1);
       if (!value || value.startsWith('-')) throw new Error('Invalid setup argument.');
+      values[option] = value;
       if (option === '--target' && !/^[a-zA-Z0-9][a-zA-Z0-9._/-]*$/.test(value)) throw new Error('Invalid setup target.');
       if (option === '--runtime-version' && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value)) throw new Error('Invalid exact runtime version.');
       if (option === '--repository-url') {
@@ -32,8 +37,9 @@ function main() {
         if (/[\x00-\x20\x7f]/.test(value) || !['https:', 'ssh:'].includes(url.protocol) || url.password || (url.protocol === 'https:' && url.username) || url.search || url.hash) throw new Error('Invalid public repository URL.');
       }
     }
+    process.exitCode = 0;
   }
-  if (help) { console.log('Usage: node .agent-badge/run.cjs setup [--target <remote>] [--repository-url <url>] [--runtime-version <exact-version>] [--dry-run]'); return; }
+  if (help) { console.log('Usage: node .agent-badge/run.cjs setup [--target <remote>] [--repository-url <url>] [--runtime-version <exact-version>] [--dry-run] [--json] [--new-repository] [--import-workflow]'); return; }
   if (showVersion) {
     const version = JSON.parse(fs.readFileSync(path.join(root, '.agent-badge/config.json'), 'utf8')).runtimeVersion;
     if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid exact runtime version.');
@@ -74,8 +80,21 @@ function main() {
       return JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version === version;
     } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
   }
-  if (command === 'setup' || command === 'init') { directory(privateDir); directory(path.join(privateDir, 'runtime')); }
-  const runtime = path.join(privateDir, 'runtime', hash);
+  const standalone = flags.has('--new-repository');
+  if (standalone && fs.existsSync(privateDir)) throw new Error('Standalone identity requires a fresh clone.');
+  if (standalone && !process.argv.some(arg => arg === '--repository-url' || arg.startsWith('--repository-url='))) throw new Error('Standalone setup requires a repository URL.');
+  if (flags.has('--dry-run')) {
+    const plan = { schemaVersion: 1, command, status: 'bootstrap-planned', applied: false, runtimeVersion: values['--runtime-version'] || version, bootstrapRuntimeVersion: version,
+      runtimeAcquisition: ready(path.join(privateDir, 'runtime', hash)) ? 'available' : 'required',
+      nextAction: 'Run setup without --dry-run to acquire the pinned runtime and compute/apply owned changes.', exitCode: 0 };
+    console.log(flags.has('--json') ? JSON.stringify(plan) : 'agent-badge: bootstrap planned; no changes applied. ' + plan.nextAction); return;
+  }
+  // A fresh standalone identity is checked again by shared setup before any persistent state.
+  const temporary = standalone ? fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'agent-badge-bootstrap-')) : null;
+  const runtimeParent = temporary || path.join(privateDir, 'runtime');
+  if (setup && !temporary) { directory(privateDir); directory(runtimeParent); }
+  const runtime = path.join(runtimeParent, hash);
+  try {
   const cli = path.join(runtime, 'node_modules/@legotin/agent-badge/dist/cli/main.js');
   if (command !== 'setup' && command !== 'init') {
     const a = JSON.parse(fs.readFileSync(path.join(privateDir, 'local.json'), 'utf8'));
@@ -83,7 +102,7 @@ function main() {
   }
   if (!ready(runtime)) {
     if (command !== 'setup' && command !== 'init') throw new Error('Runtime activation required.');
-    const stage = fs.mkdtempSync(path.join(privateDir, 'runtime', '.install-'));
+    const stage = fs.mkdtempSync(path.join(runtimeParent, '.install-'));
     try {
       fs.writeFileSync(path.join(stage, 'package.json'), manifest); fs.writeFileSync(path.join(stage, 'package-lock.json'), lock);
       const npmArgs = ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false'];
@@ -99,8 +118,9 @@ function main() {
   }
   const result = cp.spawnSync(process.execPath, [cli, command, ...process.argv.slice(3)], { cwd: root, env, stdio: 'inherit' });
   process.exitCode = result.status ?? 1;
+  } finally { if (temporary) fs.rmSync(temporary, { recursive: true, force: true }); }
 }
-try { main(); } catch { console.error('agent-badge: setup unavailable; explicit setup may be required.'); process.exitCode = 1; }
+try { main(); } catch { console.error('agent-badge: setup unavailable; explicit setup may be required.'); process.exitCode = process.exitCode === 64 ? 64 : 1; }
 `;
 
 export const bootstrapSource = String.raw`#!/usr/bin/env node

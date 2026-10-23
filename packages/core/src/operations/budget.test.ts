@@ -165,3 +165,9 @@ test('independent fixture receiver survives a client deadline, finishes its lock
     await expect(f.git(f.root, ['ls-remote', daemon.url])).rejects.toThrow();
   } finally { budget.dispose(); await writeFile(release, 'finish'); await daemon.stop(); await f.cleanup(); }
 });
+
+test('productive automatic partial drain promises continued automatic retry',async()=>{
+ const {worker}=await fixture("export async function runOperation(){return {status:'queued',acknowledgedCount:5,queuedCount:10,pendingReconciliation:false}}");
+ const budget=createOperationBudget('automatic');
+ try {const result=await superviseOperation({worker,input:{},budget});expect(result.status).toBe('queued');expect(result.diagnostic).toContain('automatic retry');expect(result.diagnostic).not.toContain('run manual');}finally{budget.dispose();}
+});

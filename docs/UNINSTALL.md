@@ -3,7 +3,7 @@
 With a verified candidate installed:
 
 ```sh
-agent-badge uninstall --json
+node .agent-badge/run.cjs uninstall --json
 ```
 
 Uninstall first removes validated owned private activation, then asks the owning Git-hook and provider-integration APIs to restore delegates and remove exact owned entries. It removes a strict owned interrupted `setup-intent.json` even when first setup never activated. It does not grant itself ownership of arbitrary files or settings. Existing provider settings/groups, user hook bytes/mode and same-directory delegates are preserved.

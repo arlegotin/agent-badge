@@ -1,11 +1,7 @@
-import { resolveRepository, getStatus, reportCapabilities } from '@legotin/agent-badge-core';
-import type { IntegrationInspection } from '@legotin/agent-badge-core';
-import { repositoryIntegrations } from '../integration/operations.js';
+import { existsSync } from 'node:fs';
+import { resolveRepository, getStatus } from '@legotin/agent-badge-core';
 export async function runStatusCommand(options: {cwd?:string} = {}) {
-  const repository=await resolveRepository(options.cwd??process.cwd());let inspection:IntegrationInspection;
-  try { inspection=await repositoryIntegrations.inspect(repository,AbortSignal.timeout(5000)); }
-  catch { inspection={setup:'needs-setup',checks:[{code:'inspection-unavailable',required:true,status:'fail'}]}; }
-  const signal=AbortSignal.timeout(5000);
-  const capabilities=inspection.repositoryId ? await reportCapabilities({repositoryId:inspection.repositoryId,enrolledRoots:[],signal},{roots:inspection.roots}) : undefined;
-  return getStatus(repository,{inspection,capabilities});
+  const deadline=Date.now()+5000;
+  const repository=await resolveRepository(options.cwd??process.cwd(),{deadline,signal:AbortSignal.timeout(5000)});
+  return getStatus(repository,{deadline,integrationModule:new URL(existsSync(new URL('../integration/operations.js',import.meta.url))?'../integration/operations.js':'../integration/operations.ts',import.meta.url).href});
 }

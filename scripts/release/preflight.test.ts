@@ -45,3 +45,25 @@ describe('exact release authorization before any publish', () => {
   });
 
 });
+
+it.each(['first','partial','repeat'] as const)('retains structured %s publication evidence including confirmed progress',async mode=>{
+ const candidate:release.Candidate={schemaVersion:1,sha,tag:request.tag,version:request.version,artifacts,checks:{},runtime:'v24.0.0',platform:'synthetic'};
+ const uploaded=new Set(mode==='repeat'?artifacts.map(a=>a.name):[]);
+ let bytes='';
+ const evidence=await release.publishWithEvidence(candidate,{candidateRunId:'123',artifactId:'456'},async a=>uploaded.has(a.name)?'matching':'absent',async a=>{if(mode==='partial'&&a===artifacts[1])throw Error('synthetic credential path');uploaded.add(a.name);},async()=>{},value=>{bytes=JSON.stringify(value);});
+ expect(JSON.parse(bytes)).toMatchObject({schemaVersion:1,sha,candidateRunId:'123',artifactId:'456',publication:mode==='partial'?'incomplete':'complete',artifacts});
+ expect(bytes).not.toContain('synthetic credential');
+ expect(evidence.results).toEqual(mode==='repeat'?['resumed','resumed','resumed']:mode==='partial'?['published']:['published','published','published']);
+});
+
+it('actual npm subprocess console cannot contaminate JSON output',async()=>{
+ const {mkdtemp,mkdir,writeFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path'),{execFileSync}=await import('node:child_process');
+ const root=await mkdtemp(join(tmpdir(),'agent-badge-publication-output-'));
+ try {
+  const bin=join(root,'bin');await mkdir(bin);
+  await writeFile(join(bin,'npm'),'#!/bin/sh\nif [ "$1" = "--version" ]; then echo 11.6.0; else echo "synthetic npm upload console"; echo "synthetic npm diagnostic" >&2; fi\n',{mode:0o700});
+  const code=`import{publishTarball}from ${JSON.stringify(new URL('./preflight.ts',import.meta.url).href)};publishTarball(${JSON.stringify(root)},${JSON.stringify(artifacts[0])},'next');console.log(JSON.stringify({publication:'synthetic'}));`;
+  const output=execFileSync(process.execPath,['--import','tsx','--input-type=module','-e',code],{env:{...process.env,PATH:bin},encoding:'utf8',stdio:['ignore','pipe','pipe']});
+  expect(JSON.parse(output)).toEqual({publication:'synthetic'});
+ }finally{await rm(root,{recursive:true,force:true});}
+});

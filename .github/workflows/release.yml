@@ -86,13 +86,14 @@ jobs:
           NODE
           artifact_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN_ID/artifacts" --jq '[.artifacts[] | select(.name == "candidate" and .expired == false)] | if length == 1 then .[0].id else error("Expected one retained candidate") end')
           [[ "$artifact_id" =~ ^[0-9]+$ ]] || exit 1
+          echo "CANDIDATE_ARTIFACT_ID=$artifact_id" >> "$GITHUB_ENV"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/candidate.zip"
           python3 scripts/release/artifact-download.py "$RUNNER_TEMP/candidate.zip" artifacts/candidate
       - name: Verify retained bytes and explicit source binding
         run: node --import tsx scripts/release/preflight.ts artifacts/candidate
       - name: Publish or resume only these exact tarballs
         # Hosted per-package trusted publisher/direct-publish configuration remains a prerequisite.
-        run: node --import tsx scripts/release/preflight.ts artifacts/candidate --publish | tee artifacts/candidate/publish-result.json
+        run: node --import tsx scripts/release/preflight.ts artifacts/candidate --publish
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:

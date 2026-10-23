@@ -26,24 +26,24 @@ Plaintext output includes redacted attribution, diagnostic check results, setup 
 All commands accept `--json`. Results use `schemaVersion: 1`, a `command` discriminator and static status fields. Counts distinguish known data from unknown completeness. JSON never dumps accepted ledger bodies, source paths, native IDs or provider errors. `explain` stays redacted. `status.localUnits` exposes opaque local IDs for explanation/control; `metadataRevision` identifies current accepted metadata for configure requests. Public contribution output paths are safe managed digest paths.
 
 ```sh
-agent-badge --help
-agent-badge --version
+node .agent-badge/run.cjs --help
+node .agent-badge/run.cjs --version
 agent-badge init --runtime-version <candidate-version> --dry-run
-agent-badge setup --target upstream --json
-agent-badge collect --full --json
-agent-badge sync --json
-agent-badge status --json
-agent-badge doctor --json
-agent-badge doctor --remote --json
-agent-badge explain <local-id> --json
-agent-badge exclude <local-id-or-unit-key> --json
-agent-badge include <local-id-or-unit-key> --json
-agent-badge contribute --hash <record-digest> --json
-agent-badge import --file .agent-badge/contributions/<digest>.json --json
-agent-badge import --normalized-source /synthetic/private/source.json --json
-agent-badge configure --from-file /synthetic/private/configuration.json --json
-agent-badge upgrade --runtime-version <candidate-version> --dry-run --json
-agent-badge uninstall --json
+node .agent-badge/run.cjs setup --target upstream --json
+node .agent-badge/run.cjs collect --full --json
+node .agent-badge/run.cjs sync --json
+node .agent-badge/run.cjs status --json
+node .agent-badge/run.cjs doctor --json
+node .agent-badge/run.cjs doctor --remote --json
+node .agent-badge/run.cjs explain <local-id> --json
+node .agent-badge/run.cjs exclude <local-id-or-unit-key> --json
+node .agent-badge/run.cjs include <local-id-or-unit-key> --json
+node .agent-badge/run.cjs contribute --hash <record-digest> --json
+node .agent-badge/run.cjs import --file .agent-badge/contributions/<digest>.json --json
+node .agent-badge/run.cjs import --normalized-source /synthetic/private/source.json --json
+node .agent-badge/run.cjs configure --from-file /synthetic/private/configuration.json --json
+node .agent-badge/run.cjs upgrade --runtime-version <candidate-version> --dry-run --json
+node .agent-badge/run.cjs uninstall --json
 ```
 
 `init`/`setup` accept `--repository-url`, `--target`, `--runtime-version`, `--dry-run`, `--import-workflow` and `--new-repository`. Standalone `--new-repository` requires a fresh clone with no private Badge state and an explicit destination URL. It never resets a foreign existing data ledger. [Fork semantics](FAQ.md).
@@ -65,3 +65,20 @@ Exit codes: `0` completed requested operation; `1` incomplete/queued/unavailable
 Status exposes primary `state` plus overlapping `states`: `recorded`, `pending`, `synced`, `partial`, `conflicted`; unavailable and unsupported data are distinct. `lastConfirmedSync` is a commit, not a cache-refresh time. Pending configuration is uncertainty; `drift` compares the actual declaration with accepted metadata. Older branches can have an absent declaration while retaining approved private activation.
 
 Remote doctor compares the declaration with the freshly validated data-branch metadata. Its `configuration` distinguishes `current`, `drift`, `uncertain`, `absent` and `not-inspected`; a pending request does not prove acceptance. A missing remote ref after durable presence/accepted history or validated binding evidence reports `remote: history-conflict`, required `remote-history: fail` and exit `2`. A never-initialized destination stays distinct. Doctor never recreates or writes the remote ledger, updates the local accepted anchor, or repairs configuration. Its total deadline includes local capability discovery.
+
+The repository launcher accepts the shared setup options, including `--json`,
+`--import-workflow` and `--new-repository`. Its `setup --dry-run` reports a
+`bootstrap-planned` plan without acquiring, repairing or installing a runtime.
+It does not claim to have computed runtime-owned file changes. Standalone setup
+requires a fresh clone with no Badge private state; temporary bootstrap acquisition
+does not create that authority before the shared planner checks it.
+
+Status uses complete validated local indexes without provider discovery or repair.
+Missing, stale or corrupt indexes report `reporting-index-unavailable`, unknown
+queue count (`null`) and unavailable totals. Automatic owning operations can
+rebuild; a manual collect/sync can speed catch-up. Doctor's owned reporting worker
+is terminated at its diagnostic deadline, including CPU and filesystem stages.
+
+Status capability entries are reader maxima from static manifests; `not-inspected`
+means local provider presence was not examined. Doctor performs the explicit local
+capability checks. Stored provider outcomes and accounting remain separate.

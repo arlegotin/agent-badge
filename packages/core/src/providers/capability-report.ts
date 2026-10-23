@@ -32,7 +32,7 @@ import {
 import { normalizedImportCapabilityManifest } from "./normalized-import.js";
 export interface IntegrationCapability {
   provider: ProviderId;
-  detection: "detected" | "absent" | "unavailable" | "explicit-only";
+  detection: "detected" | "absent" | "unavailable" | "explicit-only" | "not-inspected";
   accounting: CapabilityManifest["accounting"];
   manifest: CapabilityManifest;
   diagnostics: Diagnostic[];
@@ -62,6 +62,36 @@ function unsupported(provider: "cursor" | "copilot"): CapabilityManifest {
     modelSegmentation: "unknown",
   };
 }
+const nativeCapabilities = [
+    {
+      manifest: codexCapabilityManifest,
+      limits: ["recorded-final-requests-only"],
+    },
+    {
+      manifest: claudeCapabilityManifest,
+      limits: ["native-numeric-accounting-uncertified"],
+    },
+    {
+      manifest: geminiCapabilityManifest,
+      limits: ["recorded-success-only", "historical-coverage-partial"],
+    },
+    {
+      manifest: opencodeCapabilityManifest,
+      limits: [
+        "projected-fork-import-lineage-uncertified",
+        "v2-event-persistence-off-by-default",
+      ],
+    },
+  ];
+const unsupportedLimits = {
+ cursor: ['context-occupancy-is-not-spend','native-token-source-not-fixture-certified'],
+ copilot: ['optional-request-otel-not-fixture-certified','organization-pr-totals-not-repository-receipts'],
+};
+const importCapability:IntegrationCapability={provider:'import',detection:'explicit-only',accounting:normalizedImportCapabilityManifest.accounting,manifest:normalizedImportCapabilityManifest,diagnostics:[],limits:['explicit-producer-assertion','independent-origin-not-automatically-verifiable','coverage-partial']};
+/** Reader capability maxima only. Never examines HOME, roots, inventory or adapters. */
+export function staticCapabilities():CapabilityReport {
+ return {integrations:[...nativeCapabilities.map(({manifest,limits})=>({provider:manifest.provider,detection:'not-inspected' as const,accounting:manifest.accounting,manifest,diagnostics:[],limits})),...(['cursor','copilot'] as const).map(provider=>({provider,detection:'not-inspected' as const,accounting:'unsupported' as const,manifest:unsupported(provider),diagnostics:[],limits:unsupportedLimits[provider]})),importCapability]};
+}
 /** Read local presence/allowlisted discovery only. No executable, listener, network, settings or credential probes. */
 export async function reportCapabilities(
   input: DiscoveryContext,
@@ -86,31 +116,8 @@ export async function reportCapabilities(
       "opencode"
     ),
   };
-  const registered = [
-    {
-      manifest: codexCapabilityManifest,
-      adapter: createCodexAdapter({ environment }),
-      limits: ["recorded-final-requests-only"],
-    },
-    {
-      manifest: claudeCapabilityManifest,
-      adapter: createClaudeAdapter({ environment }),
-      limits: ["native-numeric-accounting-uncertified"],
-    },
-    {
-      manifest: geminiCapabilityManifest,
-      adapter: createGeminiAdapter({ environment }),
-      limits: ["recorded-success-only", "historical-coverage-partial"],
-    },
-    {
-      manifest: opencodeCapabilityManifest,
-      adapter: createOpenCodeAdapter({ environment }),
-      limits: [
-        "projected-fork-import-lineage-uncertified",
-        "v2-event-persistence-off-by-default",
-      ],
-    },
-  ];
+  const adapters={codex:createCodexAdapter({environment}),claude:createClaudeAdapter({environment}),gemini:createGeminiAdapter({environment}),opencode:createOpenCodeAdapter({environment})};
+  const registered=nativeCapabilities.map(definition=>({...definition,adapter:adapters[definition.manifest.provider as keyof typeof adapters]}));
   for (const { manifest, adapter, limits } of registered) {
     let detection: IntegrationCapability["detection"] = "absent";
     const diagnostics: Diagnostic[] = [];
@@ -204,16 +211,7 @@ export async function reportCapabilities(
         }
       }
     }
-    const limits =
-      provider === "cursor"
-        ? [
-            "context-occupancy-is-not-spend",
-            "native-token-source-not-fixture-certified",
-          ]
-        : [
-            "optional-request-otel-not-fixture-certified",
-            "organization-pr-totals-not-repository-receipts",
-          ];
+    const limits = unsupportedLimits[provider];
     integrations.push({
       provider,
       detection,
@@ -223,17 +221,6 @@ export async function reportCapabilities(
       limits,
     });
   }
-  integrations.push({
-    provider: "import",
-    detection: "explicit-only",
-    accounting: normalizedImportCapabilityManifest.accounting,
-    manifest: normalizedImportCapabilityManifest,
-    diagnostics: [],
-    limits: [
-      "explicit-producer-assertion",
-      "independent-origin-not-automatically-verifiable",
-      "coverage-partial",
-    ],
-  });
+  integrations.push(importCapability);
   return { integrations };
 }

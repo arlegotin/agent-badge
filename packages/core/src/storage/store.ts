@@ -91,22 +91,27 @@ export async function readStoreSnapshot(ctx: RepositoryContext): Promise<StoreSn
   if (resolve(ctx.privateDir) !== join(await fs.realpath(ctx.commonDir), 'agent-badge')) throw new StoreError('unsafe-store-path');
   const empty: StoreSnapshot = { controls: [], entries: [], pending: [], transport: null, pendingConfiguration: null, reconciliationPending: false };
   try { await assertDirectory(ctx.privateDir); } catch (error) { if (hasCode(error, 'ENOENT')) return empty; throw ioError(error); }
-  async function data(name: string): Promise<unknown | null> {
-    try { return JSON.parse(await readPrivateFile(join(ctx.privateDir, name), undefined, true)); }
-    catch (error) { if (hasCode(error, 'ENOENT')) return null; throw ioError(error); }
-  }
   const acknowledged = await readAcknowledgements(ctx.privateDir, true);
   let entries: JournalEntry[];
   try { entries = await readJournal(join(ctx.privateDir, 'journal'), true); } catch (error) { if (!hasCode(error, 'ENOENT')) throw error; entries = []; }
   const controls = await readControls(ctx.privateDir);
   const records = new Map<string, PublicRecord>(), hashes = new Set(acknowledged);
   for (const record of [...entries.flatMap(entry => entry.records), ...controls]) if (!hashes.has(recordHash(record))) records.set(recordHash(record), record);
+  return {controls,entries,pending:[...records.values()],...await readStoreMetadata(ctx)};
+}
+/** Small authority files only; no journal replay or derived writes. */
+export async function readStoreMetadata(ctx:RepositoryContext) {
+  if (resolve(ctx.privateDir) !== join(await fs.realpath(ctx.commonDir), 'agent-badge')) throw new StoreError('unsafe-store-path');
+  async function data(name: string): Promise<unknown | null> {
+    try { return JSON.parse(await readPrivateFile(join(ctx.privateDir, name), undefined, true)); }
+    catch (error) { if (hasCode(error, 'ENOENT')) return null; throw ioError(error); }
+  }
   const transport = await data('transport.json'), configuration = await data('pending-configuration.json'), reconciliation = await data('reconciliation.json');
   for (const value of [transport, configuration, reconciliation]) if (value !== null && typeof value === 'object' && 'schemaVersion' in value && value.schemaVersion !== 1) throw new StoreError('unsupported-durable-schema');
   const pending = configuration === null ? null : pendingConfigurationSchema.safeParse(configuration);
   const reconciled = reconciliationSchema.safeParse(reconciliation ?? { schemaVersion: 1, pending: false, automaticSourceOffset: 0 });
   if ((pending && !pending.success) || !reconciled.success) throw new StoreError('invalid-durable-data');
-  return { controls, entries, pending: [...records.values()], transport: transport === null ? null : parseTransportState(transport),
+  return { transport: transport === null ? null : parseTransportState(transport),
     pendingConfiguration: pending?.success ? pending.data : null, reconciliationPending: reconciled.data.pending };
 }
 export async function openStore(ctx: RepositoryContext, options: StoreOptions = {}): Promise<LocalStore> {

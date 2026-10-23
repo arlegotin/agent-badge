@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { setupOptions } from './setup-options.js';
 import { assertSupportedNode, UnsupportedNodeError, UNSUPPORTED_NODE_MESSAGE } from '../integration/manifest.js';
 import { formatPlaintext } from './format.js';
 import type { CliResults } from './format.js';
@@ -21,12 +22,11 @@ export function buildProgram(context:CliOptions={}):Command {
     else for (const line of formatPlaintext(command,value)) write(line);
     const exit=(result as {exitCode?:number}).exitCode;if(exit!==undefined)process.exitCode=exit;
   }
-  for(const name of ['init','setup'] as const) program.command(name).description('Install and explicitly activate repository-owned setup.')
-    .option('--new-repository','Create a standalone UUID in a fresh clone without private Badge state.')
-    .option('--target <remote>','Explicitly approve a Git remote destination.').option('--repository-url <url>','Credential-free repository declaration URL.')
-    .option('--runtime-version <version>','Exact runtime version.').option('--dry-run','Print concrete owned changes without applying.')
-    .option('--import-workflow','Generate trusted accepted-contribution import workflow after verifying GitHub destination and default branch.')
-    .option('--json','Print stable JSON.').action(async options=>{const {runInitCommand}=await import('../commands/init.js');emit(name,await runInitCommand({cwd,newRepository:options.newRepository,target:options.target,declaredUrl:options.repositoryUrl,runtimeVersion:options.runtimeVersion,dryRun:options.dryRun,importWorkflow:options.importWorkflow}),options.json);});
+  for(const name of ['init','setup'] as const) {
+    const setup=program.command(name).description('Install and explicitly activate repository-owned setup.');
+    for(const [flags,description] of setupOptions) setup.option(flags,description);
+    setup.action(async options=>{const {runInitCommand}=await import('../commands/init.js');emit(name,await runInitCommand({cwd,newRepository:options.newRepository,target:options.target,declaredUrl:options.repositoryUrl,runtimeVersion:options.runtimeVersion,dryRun:options.dryRun,importWorkflow:options.importWorkflow}),options.json);});
+  }
   program.command('collect').description('Capture/reproject local usage into the durable queue; no remote writes.').option('--full','Manual historical reconciliation.').option('--json','Print stable JSON.')
     .action(async options=>{const {runCollectCommand}=await import('../commands/collect.js');emit('collect',await runCollectCommand({cwd,full:options.full}),options.json);});
   program.command('sync').description('Incremental capture and bounded Git synchronization.').option('--json','Print stable JSON.')
@@ -65,6 +65,7 @@ export async function run(argv:string[]=process.argv,options:{nodeVersion?:strin
     console.log(JSON.stringify({schemaVersion:1,command,status:'unsupported-node',message:UNSUPPORTED_NODE_MESSAGE,exitCode:1}));process.exitCode=1;return;
   }
   const program=buildProgram().exitOverride();
+  for(const command of program.commands) command.exitOverride();
   try{await program.parseAsync(argv);}
   catch(error){
     if((error as {code?:string})?.code?.startsWith('commander.')||!argv.slice(2).includes('--json'))throw error;

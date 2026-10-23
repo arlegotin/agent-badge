@@ -1,5 +1,12 @@
 # Repository-native candidate verification
 
+Final whole-branch review at `2f784de63844ead663200e4b0eb535a2d45d295c`
+found three Important and four Minor issues. The single combined fix wave is
+under local validation; one scoped re-review remains pending. Tasks1–18 and all
+task-scoped reviews are complete. The source-f81d9a4 artifacts below remain
+historical, frozen evidence and will not be overwritten or relabeled. Packaged
+fixes require a distinct source commit and newly retained exact candidate.
+
 Task 18 prepares `2.0.0-next.0` for local review; no npm publication, push, tag,
 merge, deployment, hosted settings mutation or credential probe is authorized.
 Final exact artifact hashes/source and fresh target-runtime gate results are

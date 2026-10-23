@@ -36,7 +36,7 @@ Codex and Claude native handler timeout `10` is seconds. Gemini `10000` is milli
 Optional trusted CI import workflow generation is explicit and performs a bounded remote read to verify the actual GitHub identity and default branch:
 
 ```sh
-agent-badge setup --import-workflow
+node .agent-badge/run.cjs setup --import-workflow
 ```
 
 It embeds the exact approved runtime manifest/lock and uses the trusted installed importer. Only credential-free `github.com` destinations with supported canonical HTTPS/SSH identity are accepted. GitHub Enterprise and arbitrary hosts are unsupported for this generator. Review and commit the generated workflow normally; this command does not deploy it or prove hosted permission policy.

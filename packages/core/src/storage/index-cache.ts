@@ -218,6 +218,39 @@ export class StoreIndex {
     }
     return new StoreIndex(root, db, files);
   }
+  /** Complete published generations only. The two proofs bracket one readonly
+   * transaction; a concurrent writer makes this view unavailable, never repaired. */
+  static async readOnly<T>(root: string, task: (index: StoreIndex) => Promise<T>): Promise<T> {
+    const directory = join(root, 'cache'), path = join(directory, 'index.sqlite');
+    await assertDirectory(root); await assertDirectory(directory);
+    const prove = async () => {
+      for (const file of ['locks/operation.lock', 'cache/index.sqlite-journal', 'cache/index.sqlite-wal', 'cache/index.sqlite-shm']) {
+        try { await fs.lstat(join(root, file)); throw new StoreError('store-busy'); }
+        catch (error) { if (!hasCode(error, 'ENOENT')) throw error; }
+      }
+      const files = inventory(root), database = fingerprint(path, true);
+      const raw = await readPrivateFile(join(directory, 'index.json'), 32 * 1024 * 1024, true);
+      const manifest = JSON.parse(raw);
+      if (manifest.version !== 4 || manifest.database !== database || manifest.digest !== digest(JSON.stringify({version:4,files:[...files],database}))) throw new StoreError('store-busy');
+      return {raw, files, database};
+    };
+    const before = await prove();
+    const db = new DatabaseSync(path, {readOnly:true});
+    try {
+      db.exec('PRAGMA trusted_schema=OFF; BEGIN;');
+      const result = await task(new StoreIndex(root, db, before.files));
+      const after = await prove();
+      if (after.raw !== before.raw || after.database !== before.database) throw new StoreError('store-busy');
+      db.exec('ROLLBACK');
+      return result;
+    } finally { db.close(); }
+  }
+  reporting(accepted?: {hasHashes(hashes:readonly string[]):boolean}) {
+    const localUnits = this.db.prepare('SELECT DISTINCT hash,source FROM evidence ORDER BY hash').all().map(row => ({localId:String(row.hash),provider:JSON.parse(String(row.source))[0] as string}));
+    const providers = this.db.prepare(`SELECT json_extract(j.data,'$.source.provider') AS provider,json_extract(j.data,'$.outcome') AS outcome,json_extract(j.data,'$.diagnostics') AS diagnostics FROM journal j JOIN (SELECT source,max(sequence) AS last FROM journal GROUP BY source) s ON j.sequence=s.last`).all().map(row=>({provider:String(row.provider),outcome:String(row.outcome),diagnostics:(JSON.parse(String(row.diagnostics)) as {code:string}[]).map(d=>d.code)}));
+    const first = this.db.prepare("SELECT json_extract(data,'$.checkpoint.repositoryId') AS id FROM journal ORDER BY sequence LIMIT 1").get();
+    return {localUnits:[...new Map(localUnits.map(unit=>[unit.localId,unit])).values()],providers,repositoryId:first?.id as string|undefined,records:accepted?this.db.prepare('SELECT hash FROM records ORDER BY hash').all().flatMap(row=>accepted.hasHashes([String(row.hash)])?[]:this.records('SELECT data,hash FROM records WHERE hash=?',[String(row.hash)])):this.records('SELECT data,hash FROM records ORDER BY hash'),pendingCount:this.pendingCount()};
+  }
   private static schema(db: DatabaseSync) {
     db.exec(`CREATE TABLE journal(sequence INTEGER PRIMARY KEY,source TEXT NOT NULL,data TEXT NOT NULL,hash TEXT NOT NULL);
           CREATE INDEX journal_source ON journal(source,sequence);

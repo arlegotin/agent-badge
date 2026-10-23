@@ -24,7 +24,7 @@ node .agent-badge/run.cjs sync
 A fork with an unbound upstream route can submit sanitized usage through its normal PR:
 
 ```sh
-agent-badge contribute
+node .agent-badge/run.cjs contribute
 ```
 
 Stage the generated `.agent-badge/contributions/<digest>.json` with your normal PR. The command does not stage or commit. Keep the immutable file until trusted default-branch import completes; closed/unmerged PRs do not contribute upstream totals. [CLI](CLI.md) describes import retries and explicit controls.

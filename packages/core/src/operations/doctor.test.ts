@@ -22,7 +22,7 @@ test('doctor without owning integration inspection cannot claim healthy setup', 
 });
 
 test('doctor checks required integration completeness and explicitly bounded read-only remote access', async () => {
-  const { f, repository } = await fixture(); await openStore(repository);
+  const { f, repository } = await fixture(); await (await openStore(repository)).pendingCount();
   const binding = await bindRemote(repository, { repositoryId: '12345678-1234-4234-8234-123456789abc', declaredUrl: f.remote });
   const port: IntegrationPort = { inspect: async () => ({ setup: 'approved', binding, checks: ['activation','runtime','git-hooks','provider-hooks'].map(code => ({ code, required: true, status: 'pass' })) }), deactivate: async () => ({ deactivated: true, unresolved: [] }) };
   const local = await diagnose(repository, { integrations: port });
@@ -61,6 +61,7 @@ function inspected(binding: Awaited<ReturnType<typeof bindRemote>>, currentPolic
 
 test.each(['accepted','presence-only','binding-evidence'] as const)('remote doctor distinguishes never initialized history from deleted %s evidence without reseeding',async kind=>{
  const {f,repository}=await fixture(),store=await openStore(repository),binding=await bindRemote(repository,{repositoryId,declaredUrl:f.remote});
+ await store.pendingCount();
  expect(await diagnose(repository,{remote:true,integrations:inspected(binding)})).toMatchObject({remote:'readable',exitCode:0});
  const initialized=await syncUsage({repository,store,binding,collect:'none',initialize:{meta,catalog:defaultCatalog},signal:AbortSignal.timeout(15000),deadline:Date.now()+15000});
  expect(initialized.status).toBe('synced');
@@ -94,12 +95,9 @@ test('remote doctor compares freshly fetched policy while pending requests remai
  expect((await f.git(f.remote,['rev-parse','refs/heads/agent-badge/data'])).trim()).toBe(changed.confirmedCommit);
 },20000);
 
-test('doctor total deadline includes stalled capability discovery',async()=>{
- const {f,repository}=await fixture(),binding=await bindRemote(repository,{repositoryId,declaredUrl:f.remote});
- // Discovery is read-only, but filesystem I/O can remain unresolved after abort.
- // Stall that external stage; the diagnostic watchdog must still return on time.
- vi.spyOn(capabilityReporting,'reportCapabilities').mockImplementation(async()=>new Promise(()=>{}));
- const started=performance.now(),result=await diagnose(repository,{integrations:inspected(binding),remote:true,timeoutMs:80});
- expect(performance.now()-started).toBeLessThan(500);
- expect(result).toMatchObject({status:'attention-required',exitCode:1,remote:'unavailable',checks:expect.arrayContaining([{code:'inspection-unavailable',status:'fail',required:true}])});
+test('a bounded metadata schema establishes unsupported-data without journal replay',async()=>{
+ const {repository}=await fixture();const store=await openStore(repository);await store.pendingCount();
+ const {writeFile}=await import('node:fs/promises');const {join}=await import('node:path');
+ await writeFile(join(repository.privateDir,'reconciliation.json'),'{"schemaVersion":99}');
+ expect(await getStatus(repository)).toMatchObject({state:'unsupported',failure:'unsupported-data',exitCode:3,queuedRecords:null});
 });

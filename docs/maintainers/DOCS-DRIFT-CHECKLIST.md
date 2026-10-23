@@ -1,12 +1,12 @@
 # Documentation drift checklist
 
-The repository-native candidate is implemented through Task16 and is unreleased.
-Public npm1.1.20 still uses the previous architecture. Task17 performance/legacy
-removal and Task18 exact candidate artifact/release preparation remain. No
-publication, hosted permission, Linux/Windows or private-image gate is implied.
+The unreleased repository-native candidate has completed Tasks 1–18 and their
+reviews. The final branch review requires one combined fix wave; validation and
+one scoped re-review are pending. Public npm1.1.20 still uses the old architecture.
+No publication, hosted permission, Linux/Windows or private-image gate is implied.
 
 Run `npm run docs:check`: it checks local product links, parses real Commander
-examples without actions, compares the14-command reference to the executable and
+examples without actions, exercises the generated setup launcher parser without Git/setup, compares the14-command reference to the executable and
 compares source capability maxima to code-owned manifests. It rejects obsolete live
 Gist/Shields endpoint examples. Historical release notes remain historical.
 
@@ -29,5 +29,4 @@ When changing behavior, reconcile these contracts:
 
 Current interfaces and Task17 consuming details are tracked in the
 [operational CLI contract](../superpowers/specs/2026-10-22-operational-cli-contract.md).
-Release maintenance remains in [RELEASE](RELEASE.md), whose package/version/pipeline
-alignment is Task18 work.
+Release maintenance remains in [RELEASE](RELEASE.md), with the historical Task18 candidate and final-fix source identities in [verification](RELEASE-VERIFICATION.md).

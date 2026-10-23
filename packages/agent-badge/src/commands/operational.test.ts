@@ -136,6 +136,7 @@ test('plaintext explain contribute and status retain redacted explanations stagi
  expect(text).toContain(`Last confirmed sync: ${synced.confirmedCommit}`);expect(text).toContain('Configuration: current');expect(text).toContain(`Provider import: ${status.providers.find((p:{provider:string})=>p.provider==='import').outcome}`);
  expect(text).toContain('Coverage import: explicit-only; accounting fixture-certified; coverage request');
  expect(text).toContain('independent-origin-not-automatically-verifiable, coverage-partial');
+ expect(status.capabilities.integrations.find((p:{provider:string})=>p.provider==='codex').detection).toBe('not-inspected');
  const config=JSON.parse(await readFile(join(cwd,'.agent-badge/config.json'),'utf8'));config.policy.badge.label='Unaccepted';await writeFile(join(cwd,'.agent-badge/config.json'),JSON.stringify(config));
  expect(await transcript(cwd,['status'])).toContain('Configuration: drift');
  expect([plain,contribution,text].join('')).not.toMatch(/private-original-id|private-source|\/private\/|sourceIdentity|nativeUnitId/);

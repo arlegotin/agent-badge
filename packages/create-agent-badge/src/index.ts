@@ -17,9 +17,12 @@ export function isDirectExecution(argv: readonly string[] = process.argv): boole
 }
 if (isDirectExecution()) {
   void runCreateAgentBadge().catch((error: unknown) => {
-    const code = (error as { code?: string })?.code;
-    if (code === "commander.helpDisplayed" || code === "commander.version") return;
-    console.error(error instanceof Error ? error.message : "agent-badge initializer failed.");
-    process.exitCode = 1;
+    // Preserve the lightweight early gate, then share the CLI's static boundary.
+    if (!/^(24|26)\./.test(process.versions.node)) {
+      console.error("agent-badge requires Node 24 or 26."); process.exitCode = 1; return;
+    }
+    return import("@legotin/agent-badge/cli").then(({ handleRunError }) => handleRunError(error)).catch(() => {
+      console.error("agent-badge: operation unavailable; run doctor."); process.exitCode = 1;
+    });
   });
 }

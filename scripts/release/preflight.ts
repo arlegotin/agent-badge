@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -20,21 +20,32 @@ export function validateReleaseRequest(r: ReleaseRequest): 'next' | 'latest' {
 }
 export type RegistryState = 'absent' | 'matching' | 'mismatch';
 /** Lookup must validate downloaded bytes, registry SRI and the intended dist-tag. */
-export async function publishCandidate(artifacts: readonly Artifact[], lookup: (a: Artifact) => Promise<RegistryState>, publish: (a: Artifact) => Promise<void>, beforeFirstWrite?: () => Promise<void>): Promise<string[]> {
+export async function publishCandidate(artifacts: readonly Artifact[], lookup: (a: Artifact) => Promise<RegistryState>, publish: (a: Artifact) => Promise<void>, beforeFirstWrite?: () => Promise<void>, progress?: (results:string[])=>void): Promise<string[]> {
   const before = [];
   for (const artifact of artifacts) before.push(await lookup(artifact));
   if (before.some(state => state !== 'absent' && state !== 'matching')) throw Error('Existing artifact mismatch; no packages published');
   if (before.includes('absent')) await beforeFirstWrite?.();
   const result = [];
   for (let index = 0; index < artifacts.length; index++) {
-    if (before[index] === 'matching') { result.push('resumed'); continue; }
+    if (before[index] === 'matching') { result.push('resumed'); progress?.([...result]); continue; }
     // An ambiguous upload is reconciled by exact-version bytes, never by a bump or blind retry.
     let failure: unknown;
     try { await publish(artifacts[index]); } catch (error) { failure = error; }
     if (await lookup(artifacts[index]) !== 'matching') throw failure ?? Error('Upload could not be verified');
-    result.push('published');
+    result.push('published'); progress?.([...result]);
   }
   return result;
+}
+export interface PublishEvidence {
+ schemaVersion:1;sha:string;tag:string;candidateRunId:string;artifactId:string;artifacts:Artifact[];
+ publication:'complete'|'incomplete';results:string[];failure:'publication-unverified'|null;
+}
+/** Persist confirmed progress even if a later upload or registry verification fails. */
+export async function publishWithEvidence(candidate:Candidate,identity:{candidateRunId:string;artifactId:string},lookup:(a:Artifact)=>Promise<RegistryState>,publish:(a:Artifact)=>Promise<void>,beforeFirstWrite:()=>Promise<void>,write:(value:PublishEvidence)=>void|Promise<void>):Promise<PublishEvidence> {
+ const evidence:PublishEvidence={schemaVersion:1,sha:candidate.sha,tag:candidate.tag,...identity,artifacts:candidate.artifacts,publication:'incomplete',results:[],failure:null};
+ try {await publishCandidate(candidate.artifacts,lookup,publish,beforeFirstWrite,results=>{evidence.results=results;});evidence.publication='complete';}
+ catch {evidence.failure='publication-unverified';}
+ await write(evidence);return evidence;
 }
 export function integrity(bytes: Uint8Array): string { return 'sha512-' + createHash('sha512').update(bytes).digest('base64'); }
 export async function validateArtifacts(directory: string): Promise<Candidate> {
@@ -97,6 +108,11 @@ export async function registryState(artifact: Artifact, tag: string, request: ty
   if (!tags.ok || (await tags.json())[tag] !== artifact.version) throw Error('Intended dist-tag requires separately authorized repair');
   return 'matching';
 }
+export function publishTarball(directory:string,a:Artifact,tag:string):void {
+    if (execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim() !== '11.6.0') throw Error('Use pinned npm 11.6.0');
+    // npm's human console output never enters the structured stdout/file channel.
+    execFileSync('npm', ['publish', resolve(directory, a.filename), '--registry', registry, '--access', 'public', '--tag', tag, '--provenance', '--ignore-scripts'], { stdio: ['ignore',2,2] });
+}
 async function main() {
   const directory = process.argv[2];
   if (!directory) throw Error('Provide retained candidate directory');
@@ -112,10 +128,10 @@ async function main() {
     console.log(JSON.stringify({sha:candidate.sha,tag:candidate.tag,states,publication:'not-requested'}));
     return;
   }
-  const result = await publishCandidate(candidate.artifacts, a => registryState(a, tag), async a => {
-    if (execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim() !== '11.6.0') throw Error('Use pinned npm 11.6.0');
-    execFileSync('npm', ['publish', resolve(directory, a.filename), '--registry', registry, '--access', 'public', '--tag', tag, '--provenance', '--ignore-scripts'], { stdio: 'inherit' });
-  }, async () => { await validateHostedRequest(candidate); });
-  console.log(JSON.stringify({ sha: candidate.sha, tag: candidate.tag, result, oidc: 'authorization only proven by actual successful publication' }));
+  const result = await publishWithEvidence(candidate,{candidateRunId:process.env.CANDIDATE_RUN_ID??'unknown',artifactId:process.env.CANDIDATE_ARTIFACT_ID??'unknown'},a => registryState(a, tag), async a => {
+    publishTarball(directory,a,tag);
+  }, async () => { await validateHostedRequest(candidate); },async evidence=>{await writeFile(resolve(directory,'publish-result.json'),JSON.stringify(evidence,null,2)+'\n');});
+  console.log(JSON.stringify(result));
+  if(result.publication!=='complete')process.exitCode=1;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await main();

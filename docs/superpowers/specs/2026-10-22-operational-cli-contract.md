@@ -2,15 +2,35 @@
 
 Implemented for the unreleased repository-native candidate on2026-10-22. No hosted
 or actual Linux/Windows/private-image gates are claimed. The public wire schema is
-unchanged. Exact runtime/release artifacts remain Task18 work.
+unchanged. Tasks 1–18 and task reviews are complete. Final combined fixes are under
+validation; the scoped final branch re-review remains pending. Exact retained
+candidate identities are in [verification](../../maintainers/RELEASE-VERIFICATION.md).
 
-Core `getStatus(ctx, options?)` is usable without a CLI integration owner. It reads
-`readStoreSnapshot(ctx)` and a validated immutable local accepted commit through
-`loadLocalAccepted` / `readLedgerCommit`; it performs no network, installation,
-lease, directory creation or chmod. Absent integration evidence is not-inspected,
-never healthy. Individual atomic files/journal records are validated; a concurrent
-write can make the reporting view conservatively stale. No historical cap is added.
-Task17 owns indexed acceleration for these full validating views.
+Core `getStatus(ctx, options?)` remains usable without an integration owner. It
+opens only a complete readonly local index transaction and a complete accepted
+index whose commit matches durable transport evidence and its Git accepted ref.
+The existing authority inventory/database fingerprints, published manifests,
+transport binding and anchor are checked before/after; concurrent writers or
+staging/uncertain generations yield `reporting-index-unavailable`, nonzero exit,
+null totals and `queuedRecords:null`. Status retains static reader capability maxima/limits with presence `not-inspected`,
+and never discovers providers, contacts
+network, installs, acquires a lease, creates directories, repairs or chmods.
+Absent/corrupt cache does not trigger historical replay. Owning collect/sync
+validates/rebuilds and can reveal underlying corrupt/unsupported raw data; directly
+validated bounded metadata can still report unsupported-data. Local public records
+are merged by exact accepted membership and the existing affected-component reducer,
+not assumed acknowledged membership. All local opaque IDs remain in the result;
+there is no historical cap or silently truncated exact total.
+
+One original deadline covers owned subprocess startup and reporting work. The
+parent terminates and reaps the owned group for stalled filesystem or synchronous
+CPU work. Concrete CLI integration inspection, capability discovery in doctor,
+and explicit remote validation execute inside that group; doctor does not repeat
+a full journal snapshot. POSIX uses process groups; Windows manual tree cleanup
+retains the disclosed best-effort taskkill limitation. Arbitrary caller-provided
+in-process IntegrationPort functions must cooperate with cancellation; a promise
+race cannot terminate arbitrary caller code. Cache unavailability is actionable:
+automatic catch-up continues; manual collect/sync can accelerate validation.
 
 `IntegrationPort.inspect(ctx, signal)` returns static required checks plus private
 identity/policy/binding/roots for orchestration. The CLI adapter composes installing
