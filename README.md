@@ -1,55 +1,123 @@
-# Agent Badge
+<h1 align="center">agent-badge</h1>
 
-Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+<p align="center">
+  A little receipt for the AI tokens that went into your repo.
+</p>
 
-Local-first AI coding usage, recorded in your repository. Supported local observations become sanitized, immutable receipts on `agent-badge/data`; `summary.json`, a coverage report and `badge.svg` are derived from that ledger.
+<div align="center">
 
-These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](docs/maintainers/RELEASE-STATUS.md) for publication and verification evidence.
+<!-- agent-badge:start -->
+[![AI usage](https://raw.githubusercontent.com/arlegotin/agent-badge/refs/heads/agent-badge/data/badge.svg)](https://github.com/arlegotin/agent-badge/tree/agent-badge/data)
 
-## Repository setup
+[data and coverage](https://github.com/arlegotin/agent-badge/tree/agent-badge/data).
+<!-- agent-badge:end -->
 
-Requires Node.js 24 or 26, npm and Git. In your repository, run:
+</div>
 
-Version **2.0.0** is published on `latest`. See the
-[release record](docs/maintainers/releases/2.0.0/README.md) for verified packages and platform checks.
+Your coding agent spent tokens getting this thing to work. Put the receipt in the README.
+
+**Agent Badge adds a badge showing recorded AI coding usage: tokens or estimated cost.** It reads supported usage on the machine where you code, combines contributions from the people working on the repo, and keeps the public data in the repo itself. The badge above is this project's own recorded usage.
+
+## Get your badge
+
+You'll need **Node 24 or 26, npm and Git**, on Linux or macOS. On Windows, run both Badge and your coding agent inside Linux/WSL2.
+
+In your repo:
 
 ```sh
 npm init agent-badge@latest
 ```
 
-Review the tracked configuration, runtime pin and native hook action items. Setup does not stage or commit. [Installation](docs/INSTALL.md) explains exact runtime approval and per-clone trust.
+Review the generated files and hook instructions, approve the project hooks in your coding agent, then commit the repository setup with your README. Setup preserves existing supported hooks and doesn't stage or commit for you. [Full installation guide →](docs/INSTALL.md)
 
-A new clone of a configured repository activates and inspects the setup with:
+After activation, agent hooks and Git's pre-push hook collect supported usage and attempt to sync it. Offline work stays queued for later. You don't need a global Badge install, a Gist to keep republishing, or a separate Badge server.
+
+The usage data and `badge.svg` live on **`agent-badge/data`**. Your README stays on your normal branch and displays that SVG. You don't have to switch branches to see the badge.
+
+## What it looks like
+
+These are **illustrative numbers**, rendered with the same SVG renderer as the live badge above. Labels are yours; the metric can be tokens or estimated cost.
+
+| Badge | What it shows |
+| --- | --- |
+| ![AI usage: 12.4M tokens](docs/assets/badges/tokens.svg) | Recorded tokens, with the default label. |
+| ![AI burn: 12.4M tokens](docs/assets/badges/burn.svg) | Same tokens. A less diplomatic label. |
+| ![AI Receipt: approximately $38.42](docs/assets/badges/receipt.svg) | Estimated API-equivalent cost. |
+| ![AI Bill: approximately $38.42](docs/assets/badges/bill.svg) | You can call it “AI Bill.” It's still an estimate, not your invoice. |
+| ![AI usage: 12.4M known tokens](docs/assets/badges/partial.svg) | Known tokens when some recorded usage is incomplete. |
+| ![AI spent: cost unknown](docs/assets/badges/unknown-cost.svg) | Recorded usage without a supported price. No invented dollar amount. |
+
+[Badge configuration →](docs/CONFIGURATION.md)
+
+## A few everyday examples
+
+**You've cloned a repo that already uses Badge.** Activate your own clone once:
 
 ```sh
 node .agent-badge/run.cjs setup
-node .agent-badge/run.cjs status --json
-node .agent-badge/run.cjs collect --full
+```
+
+The repository shares its configuration. Each clone approves its local runtime and hooks; linked Git worktrees share the same private usage state.
+
+**You want to see what's recorded, or catch up after working offline:**
+
+```sh
+# Show totals, coverage and pending work.
+node .agent-badge/run.cjs status
+
+# Collect new usage and try to publish the queued data.
 node .agent-badge/run.cjs sync
 ```
 
-Setup plans tracked configuration, a nested exact runtime lock, launcher, instructions and a managed README badge linked to data/coverage. It installs an approved runtime and recovery state under Git's common directory. It preserves the repository's package scripts and delegates existing supported hooks. Native provider project trust and hook review remain local user steps.
+**Something looks wrong:**
 
-## What the numbers mean
+```sh
+node .agent-badge/run.cjs doctor
+```
 
-All recorded work attributed to the repository counts, including abandoned branches and work that never merges. Squash, rebase, revert and code-branch deletion do not erase usage. Multiple contributors and worktrees union immutable identities rather than summing copied sessions. Unknown coverage, unsupported sources and unknown prices remain explicit. Costs are current-catalog API-equivalent estimates, never invoices or productivity measures.
+[CLI reference](docs/CLI.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Recovery](docs/RECOVERY.md)
 
-Collection runs where the coding agent runs. CI cannot discover histories on someone else's machine. Codex has a pinned final-request reader; Gemini saved successful requests have partial coverage and recognized Gemini models remain unpriced. Native Claude numeric amounts are omitted. OpenCode candidates, Cursor and Copilot do not have certified numeric accounting in this release. See [source support and exact pins](docs/ATTRIBUTION.md).
+## Teams, branches, abandoned experiments
 
-## Privacy and synchronization
+Everyone activates their own clone. Recorded work from feature branches counts, including work that never makes it to main. Squashing and rebasing don't erase it. Deleting the branch doesn't unspend the tokens.
 
-Public receipts contain scoped opaque hashes, allowlisted provider/model/meter fields and causal controls. Prompts, transcripts, source paths, filenames, credentials and raw provider IDs never enter outbound artifacts or Git metadata. Private discovery, attribution, journals and checkpoints stay under `<git-common-dir>/agent-badge/`.
+Seeing the same session in two worktrees doesn't turn it into twice the usage. Copied sessions aren't automatically counted as extra spend either.
 
-Normal sync preserves the user's index, worktree, HEAD, stash and code refs, uses normal Git authentication, and fast-forwards only `refs/heads/agent-badge/data`. Automatic wakeups have a two-second total budget; incomplete work stays pending. No force push, Gist or hosted Badge service is needed.
+Fork contributors can export sanitized usage for a normal pull request:
 
-Forks collect locally when their destination differs from the declaration. `contribute` writes a sanitized immutable envelope for a normal PR; trusted default-branch import accepts it in confirmed batches. Only accepted contributions affect upstream. [Fork contribution protocol](docs/superpowers/specs/2026-10-22-fork-contribution-import.md).
+```sh
+node .agent-badge/run.cjs contribute
+```
 
-The ledger contains an SVG. For canonical GitHub destinations, setup embeds a fixed public `raw.githubusercontent.com/OWNER/REPO/refs/heads/agent-badge/data/badge.svg` image linked to the data-branch report. Other hosts receive an unsupported-image/report-only result. Hosting caches are separate from confirmed usage synchronization. Authenticated/private image rendering is an unverified external gate. [How it works](docs/HOW-IT-WORKS.md).
+A fork doesn't silently push usage into upstream. Its contribution counts there after the PR is accepted and the trusted import runs. [Forks and collaboration →](docs/FAQ.md)
 
-## Documentation
+## Which agents are counted?
 
-[Install](docs/INSTALL.md) · [Quickstart](docs/QUICKSTART.md) · [CLI](docs/CLI.md) · [Configuration](docs/CONFIGURATION.md) · [Attribution](docs/ATTRIBUTION.md) · [Privacy](docs/PRIVACY.md) · [Git authentication](docs/AUTH.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Recovery](docs/RECOVERY.md) · [Uninstall](docs/UNINSTALL.md) · [FAQ](docs/FAQ.md).
+| Agent | What v2 can count |
+| --- | --- |
+| **OpenAI Codex** | Supported final-request records. Missing or incomplete history stays explicit. |
+| **Gemini CLI** | Saved successful requests, with partial coverage. Recognized Gemini models currently have no price estimate. |
+| **Claude Code** | Hook integration, but native historical token amounts are omitted because they can't be verified reliably. |
+| **OpenCode, Cursor, Copilot** | No verified native token totals in this release. |
 
-[Design and implementation status](docs/superpowers/specs/2026-10-22-repo-native-design.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Release maintenance](docs/maintainers/RELEASE.md).
+“Detected an agent” and “can trust its token total” are different things. Badge reports partial or unknown coverage when that's all the saved data supports. [Exact source support and limitations →](docs/ATTRIBUTION.md)
 
-Licensed under [Apache-2.0](LICENSE). [Release verification](docs/maintainers/RELEASE-STATUS.md).
+Costs use a recorded API rate catalog. They're estimates of the usage Badge can price, not subscription bills, proof of productivity, or a complete account of everything an agent ever did.
+
+## What leaves your machine?
+
+Sanitized usage records: provider, model, token counts and opaque identifiers used to avoid duplicates. **Prompts, conversations, source code, filenames, local paths and credentials stay out of the public data.** Private discovery and checkpoints stay under Git's private directory.
+
+CI can't read the agent history on your laptop. Collection happens where the agent runs; only the sanitized results travel.
+
+The badge uses a public GitHub raw-SVG URL. Private-repository image rendering hasn't been verified; other Git hosts currently get the data/report without an automatic image route. [Privacy](docs/PRIVACY.md) · [How it works](docs/HOW-IT-WORKS.md)
+
+## Already using v1?
+
+V2 replaces the Gist and global-runtime setup. There's no automatic migration of old configuration or opaque Gist totals. Preserve the old records you need, remove the v1-owned integrations, then explicitly set up v2. [Installation](docs/INSTALL.md)
+
+## More
+
+[Configuration](docs/CONFIGURATION.md) · [Git authentication](docs/AUTH.md) · [FAQ](docs/FAQ.md) · [Uninstall](docs/UNINSTALL.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+
+Open source under [Apache-2.0](LICENSE). [Releases](https://github.com/arlegotin/agent-badge/releases) · [Release verification](docs/maintainers/RELEASE-STATUS.md)

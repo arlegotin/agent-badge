@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    ".agent-badge/config.json": "4b9dfed4131c26a7ac43f8cb39c4fb9fcc52269aa36545096078af443bbe257a",
+    ".agent-badge/run.cjs": "bb11a59e4ed180dcde72e6ff0fc83a685a817abcfbcf0412bd9a5f2c8b0d3be4",
+    ".agent-badge/runtime/package.json": "d7f9b4dec6cee4ae2379d520b243326c06753e838aa6de56af5bbc8b42597e32",
+    ".agent-badge/runtime/package-lock.json": "cc11530d5a23d42274a4a207bb3204220d90e88f08df6a6ed1a1833a52c0bc60",
+    ".agent-badge/README.md": "2424491d9a54565db78058c314183a4f9df69893f35a90e471506740d717a2d8"
+  },
+  "readmeBlock": "agent-badge"
+}
