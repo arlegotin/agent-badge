@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "sourceSha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+  "tag": "v2.0.0",
+  "prRunId": 39936187775,
+  "candidateRunId": 39937480625,
+  "candidateArtifactId": 12493868772,
+  "candidateArchiveDigest": "sha256:25490839c441391597df7aca7a3e916a2b8ca105cd1b455e7ed831e04e8cc0ab",
+  "conclusion": "success",
+  "cells": [
+    {
+      "cell": "evidence-macos-latest-node-24.0.0",
+      "conclusion": "success",
+      "summaries": [
+        "Test Files  76 passed (76)",
+        "Tests  837 passed | 1 skipped (838)",
+        "Duration  315.92s (transform 795ms, setup 0ms, collect 4.12s, tests 302.52s, environment 6ms, prepare 2.47s)"
+      ],
+      "logSha256": "3cd431374f290d1df56de4c84eeffe3de78c332c4fb9d34fdfeea17c2ac0145c",
+      "checks": [
+        {
+          "status": "retained-pack-check-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v24.0.0",
+          "platform": "darwin"
+        },
+        {
+          "status": "candidate-registry-smoke-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v24.0.0",
+          "actualWorker": {
+            "node": "v24.0.0",
+            "execPath": "/Users/runner/hostedtoolcache/node/24.0.0/arm64/bin/node"
+          },
+          "platform": "darwin/arm64",
+          "initializerOnly": true,
+          "scripts": "default-enabled",
+          "projectUplinks": false,
+          "externalRoutes": false,
+          "checks": [
+            "single-command-npm-init",
+            "same-registry-transitive-dependencies",
+            "installed-core-workflow-generation",
+            "repository-owned-setup",
+            "partial-runtime-repair",
+            "fresh-clone-local-native-config",
+            "fresh-clone-tracked-reviewed-native-config",
+            "manual-cli-core-worker-runtime-proof",
+            "persistent-setup-json",
+            "nonmutating-fresh-dry-run",
+            "standalone-fork-setup",
+            "indexed-status",
+            "owned-doctor-worker"
+          ]
+        }
+      ]
+    },
+    {
+      "cell": "evidence-macos-latest-node-26.0.0",
+      "conclusion": "success",
+      "summaries": [
+        "Test Files  76 passed (76)",
+        "Tests  837 passed | 1 skipped (838)",
+        "Duration  319.09s (transform 831ms, setup 0ms, collect 4.17s, tests 305.77s, environment 6ms, prepare 2.10s)"
+      ],
+      "logSha256": "849b3d5e6ccf436d95eeec29edda6b3e43b1d6d67f3cdcff3e8ef656d8b7e0de",
+      "checks": [
+        {
+          "status": "retained-pack-check-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v26.0.0",
+          "platform": "darwin"
+        },
+        {
+          "status": "candidate-registry-smoke-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v26.0.0",
+          "actualWorker": {
+            "node": "v26.0.0",
+            "execPath": "/Users/runner/hostedtoolcache/node/26.0.0/arm64/bin/node"
+          },
+          "platform": "darwin/arm64",
+          "initializerOnly": true,
+          "scripts": "default-enabled",
+          "projectUplinks": false,
+          "externalRoutes": false,
+          "checks": [
+            "single-command-npm-init",
+            "same-registry-transitive-dependencies",
+            "installed-core-workflow-generation",
+            "repository-owned-setup",
+            "partial-runtime-repair",
+            "fresh-clone-local-native-config",
+            "fresh-clone-tracked-reviewed-native-config",
+            "manual-cli-core-worker-runtime-proof",
+            "persistent-setup-json",
+            "nonmutating-fresh-dry-run",
+            "standalone-fork-setup",
+            "indexed-status",
+            "owned-doctor-worker"
+          ]
+        }
+      ]
+    },
+    {
+      "cell": "evidence-ubuntu-latest-node-24.0.0",
+      "conclusion": "success",
+      "summaries": [
+        "Test Files  76 passed (76)",
+        "Tests  837 passed | 1 skipped (838)",
+        "Duration  301.99s (transform 1.34s, setup 0ms, collect 7.80s, tests 279.69s, environment 15ms, prepare 5.58s)"
+      ],
+      "logSha256": "c83d057f5642a9740797ad2c852faa3fec52948646e55b7996bf966a730102ad",
+      "checks": [
+        {
+          "status": "retained-pack-check-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v24.0.0",
+          "platform": "linux"
+        },
+        {
+          "status": "candidate-registry-smoke-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v24.0.0",
+          "actualWorker": {
+            "node": "v24.0.0",
+            "execPath": "/opt/hostedtoolcache/node/24.0.0/x64/bin/node"
+          },
+          "platform": "linux/x64",
+          "initializerOnly": true,
+          "scripts": "default-enabled",
+          "projectUplinks": false,
+          "externalRoutes": false,
+          "checks": [
+            "single-command-npm-init",
+            "same-registry-transitive-dependencies",
+            "installed-core-workflow-generation",
+            "repository-owned-setup",
+            "partial-runtime-repair",
+            "fresh-clone-local-native-config",
+            "fresh-clone-tracked-reviewed-native-config",
+            "manual-cli-core-worker-runtime-proof",
+            "persistent-setup-json",
+            "nonmutating-fresh-dry-run",
+            "standalone-fork-setup",
+            "indexed-status",
+            "owned-doctor-worker"
+          ]
+        }
+      ]
+    },
+    {
+      "cell": "evidence-ubuntu-latest-node-26.0.0",
+      "conclusion": "success",
+      "summaries": [
+        "Test Files  76 passed (76)",
+        "Tests  837 passed | 1 skipped (838)",
+        "Duration  225.11s (transform 935ms, setup 0ms, collect 4.66s, tests 211.96s, environment 7ms, prepare 2.44s)"
+      ],
+      "logSha256": "fc07516308103c5ab5f24bdb1ec7f08c215830605d3363a0f356f152cd0326b7",
+      "checks": [
+        {
+          "status": "retained-pack-check-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v26.0.0",
+          "platform": "linux"
+        },
+        {
+          "status": "candidate-registry-smoke-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v26.0.0",
+          "actualWorker": {
+            "node": "v26.0.0",
+            "execPath": "/opt/hostedtoolcache/node/26.0.0/x64/bin/node"
+          },
+          "platform": "linux/x64",
+          "initializerOnly": true,
+          "scripts": "default-enabled",
+          "projectUplinks": false,
+          "externalRoutes": false,
+          "checks": [
+            "single-command-npm-init",
+            "same-registry-transitive-dependencies",
+            "installed-core-workflow-generation",
+            "repository-owned-setup",
+            "partial-runtime-repair",
+            "fresh-clone-local-native-config",
+            "fresh-clone-tracked-reviewed-native-config",
+            "manual-cli-core-worker-runtime-proof",
+            "persistent-setup-json",
+            "nonmutating-fresh-dry-run",
+            "standalone-fork-setup",
+            "indexed-status",
+            "owned-doctor-worker"
+          ]
+        }
+      ]
+    },
+    {
+      "cell": "evidence-windows-latest-node-24.0.0",
+      "conclusion": "success",
+      "summaries": [
+        "Test Files  4 passed (4)",
+        "Tests  41 passed (41)",
+        "Duration  1.89s (transform 362ms, setup 0ms, collect 609ms, tests 713ms, environment 0ms, prepare 194ms)"
+      ],
+      "logSha256": "78bb1a291ae3e9cce669cc96e45d3818bfc6d78b17278e2d7a4d9d40c5fecf8c",
+      "checks": [
+        {
+          "status": "retained-pack-check-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v24.0.0",
+          "platform": "win32"
+        },
+        {
+          "status": "candidate-registry-smoke-passed",
+          "support": "unsupported-platform",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v24.0.0",
+          "actualWorker": null,
+          "platform": "win32/x64",
+          "initializerOnly": true,
+          "scripts": "default-enabled",
+          "projectUplinks": false,
+          "externalRoutes": false,
+          "checks": [
+            "single-command-npm-init",
+            "same-registry-transitive-dependencies",
+            "unsupported-platform-exit3",
+            "no-public-or-private-setup-writes"
+          ]
+        }
+      ]
+    },
+    {
+      "cell": "evidence-windows-latest-node-26.0.0",
+      "conclusion": "success",
+      "summaries": [
+        "Test Files  4 passed (4)",
+        "Tests  41 passed (41)",
+        "Duration  3.04s (transform 590ms, setup 0ms, collect 1000ms, tests 1.17s, environment 1ms, prepare 314ms)"
+      ],
+      "logSha256": "1322f8c8133e8cafc8b4f4cbe54d33913b6e4a0f29f6d0a552fe742bfb2d75a1",
+      "checks": [
+        {
+          "status": "retained-pack-check-passed",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v26.0.0",
+          "platform": "win32"
+        },
+        {
+          "status": "candidate-registry-smoke-passed",
+          "support": "unsupported-platform",
+          "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+          "runtime": "v26.0.0",
+          "actualWorker": null,
+          "platform": "win32/x64",
+          "initializerOnly": true,
+          "scripts": "default-enabled",
+          "projectUplinks": false,
+          "externalRoutes": false,
+          "checks": [
+            "single-command-npm-init",
+            "same-registry-transitive-dependencies",
+            "unsupported-platform-exit3",
+            "no-public-or-private-setup-writes"
+          ]
+        }
+      ]
+    }
+  ]
+}

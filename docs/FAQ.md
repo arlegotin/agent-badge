@@ -6,9 +6,9 @@ Supported execution requires Linux or macOS. Native Windows actions return `unsu
 
 The repository-native commands require **2.0.0 or newer**. The initializer is `npm init agent-badge@latest`; check [release status](maintainers/RELEASE-STATUS.md) for publication evidence. Version 1 uses Gists and does not provide these commands or an automatic migration.
 
-Publication is currently pending and `@latest` still selects v1. Do not run that
-entry point to activate v2 until release status confirms v2 publication and its
-`latest` tag.
+Version **2.0.0** is published on `latest`. The
+[release record](maintainers/releases/2.0.0/README.md) confirms exact public bytes,
+the initializer dependency graph and the supported platform matrix.
 
 ## What do I install per repository or clone?
 

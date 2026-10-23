@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "sha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+  "tag": "v2.0.0",
+  "version": "2.0.0",
+  "artifacts": [
+    {
+      "name": "@legotin/agent-badge-core",
+      "version": "2.0.0",
+      "filename": "legotin-agent-badge-core-2.0.0.tgz",
+      "size": 138106,
+      "integrity": "sha512-6kbZzUWTOVPlNCMREBrXyIuHCdr2h+zTeyhSAppW2UcTj7PWZbPSm7ItmL/so57xjDUYXKH9+V7YB5QlSV70GQ=="
+    },
+    {
+      "name": "@legotin/agent-badge",
+      "version": "2.0.0",
+      "filename": "legotin-agent-badge-2.0.0.tgz",
+      "size": 50657,
+      "integrity": "sha512-WapUYHvBwCYOvr6kLvA8q9xoe2SkaTusqXoRGylMzOIwtBoLpwKE3ryXbomnm0OVuyr7aEGRaiCrS2ssUJgUQQ=="
+    },
+    {
+      "name": "create-agent-badge",
+      "version": "2.0.0",
+      "filename": "create-agent-badge-2.0.0.tgz",
+      "size": 7051,
+      "integrity": "sha512-bVJ+l9DsJ12pbRDkLCVuNRSqTfSZILRvqUNHxaOBhXpMIy/8a/KhzyqQdMepWRalDE5gP7vme0jKgB7LX+szdw=="
+    }
+  ],
+  "runtime": "v24.0.0",
+  "platform": "linux/x64",
+  "checks": {
+    "packing": "passed",
+    "publication": "not-authorized",
+    "hostedOidc": "unverified",
+    "hostedPrivateImage": "unverified"
+  }
+}

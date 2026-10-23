@@ -35,15 +35,15 @@
 ### Task 2: Validate and integrate the exact release source
 
 - [x] Create `npm-release` environment restricted to the main branch. Verify hosted publisher authorization during release; request owner configuration only if that operation rejects the existing publisher.
-- [ ] Push the reviewed refactor branch, open a PR and observe all platform/runtime CI results. Fix concrete failures with focused reproductions and appropriate verification.
-- [ ] Merge the green exact PR head, keeping the working branch. Wait for successful main-push CI and retain its candidate/run/artifact identities.
+- [x] Push the reviewed refactor branch, open a PR and observe all platform/runtime CI results. Fix concrete failures with focused reproductions and appropriate verification.
+- [x] Merge the green exact PR head, keeping the working branch. Wait for successful main-push CI and retain its candidate/run/artifact identities.
 
 ### Task 3: Publish and verify
 
-- [ ] Create exact `v2.0.0` tag at current validated main, then dispatch `release.yml` with `stable-major`, SHA, tag and successful main CI run ID.
-- [ ] Observe publication and retain structured result/provenance evidence. Resume the same bytes only if needed.
-- [ ] Independently check all three public exact versions, tarball hashes and `latest` tags. Smoke the public initializer with synthetic roots and no real provider collection.
-- [ ] Publish GitHub release notes/assets describing the breaking change and supported scope. Record actual hosted/public results and remaining limitations in Git.
+- [x] Create exact `v2.0.0` tag at current validated main, then dispatch `release.yml` with `stable-major`, SHA, tag and successful main CI run ID.
+- [x] Observe publication and retain structured result/provenance evidence. Resume the same bytes only if needed.
+- [x] Independently check all three public exact versions, tarball hashes and `latest` tags. Smoke the public initializer with synthetic roots and no real provider collection.
+- [x] Publish GitHub release notes/assets describing the breaking change and supported scope. Record actual hosted/public results and remaining limitations in Git.
 
 ## Initial access evidence
 
@@ -59,6 +59,6 @@ GitHub account `arlegotin` has repository admin/push access; Actions is enabled.
 - [x] Add one shared static platform contract and early guards; preserve safe JSON/plaintext errors and automatic failure-soft behavior. Do not skip or weaken directory fsync.
 - [x] Replace the unverified Windows-manual smoke expectation with actual installed unsupported-platform/no-write verification. Remove the temporary raw diagnostic retry once its evidence is retained.
 - [x] Update current docs/workflow labels and link historical scope to the amendment without rewriting old logs/hashes. Fix generated repository instructions to use the repository-owned launcher.
-- [ ] Run covering Node24/26 tests, type/build/docs/pack and a scoped independent review. Commit source/docs with hooks disabled; root will push and require the fresh full hosted matrix before merge.
+- [x] Run covering Node24/26 tests, type/build/docs/pack and a scoped independent review. Commit source/docs with hooks disabled; root will push and require the fresh full hosted matrix before merge.
 
-Local covering checks and package gates passed on Node24/26. Scoped independent review and the fresh hosted full matrix remain root-coordinated release gates.
+Local covering checks and package gates passed on Node24/26. Scoped independent review approved the gate; the final PR and main-push matrices passed all six cells. All three stable packages are public on latest with exact bytes, signatures and provenance verified. See the [release record](../../maintainers/releases/2.0.0/README.md) for source/run/artifact identities, propagation recovery and public initializer evidence.

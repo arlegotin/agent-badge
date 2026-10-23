@@ -1,20 +1,25 @@
 # Release preparation and exact artifact publication
 
-The current `2.0.0-next.0` candidate is prepared for review and remains unpublished.
-Planning, local commits and local fixture registries do not authorize publication,
-tagging, pushing, hosted configuration changes or deployment. See the actual
-[verification scope](RELEASE-VERIFICATION.md) before making support claims.
+Stable **2.0.0** is published on `latest`; the
+[release record](releases/2.0.0/README.md) contains actual hosted and public evidence.
+The original `2.0.0-next.0` preparation remains historical and was not published.
+Future planning, local commits and fixture registries do not authorize publication,
+tagging, pushing, hosted configuration changes or deployment. Publication requires
+explicit authorization and the checks below. See the historical local
+[verification scope](RELEASE-VERIFICATION.md) and current release record before making support claims.
 
 The three public packages form one Changesets fixed group. Testkit stays private.
 Apache-2.0 is the retained root license; each public tarball includes its identical
 LICENSE. Every workspace uses Node `^24.0.0 || ^26.0.0`. The initializer entry point
-remains `npm init agent-badge@latest` after an authorized stable release; a deliberate
-candidate test selects `npm init agent-badge@2.0.0-next.0`.
+remains `npm init agent-badge@latest`; the exact published stable version can be
+selected with `npm init agent-badge@2.0.0`. An unpublished prerelease cannot be
+installed from the public registry.
 
 ## Prepare once, then validate the same files
 
 Use the lockfile-pinned Changesets **2.30.0**, not a fetched v3 CLI. Start from an
-explicit major changeset, run `npm run changeset -- pre enter next`, then
+explicit major changeset. For the original prerelease preparation, run
+`npm run changeset -- pre enter next`, then
 `npm run changeset -- version`. Inspect actual manifests, package changelogs and
 `.changeset/pre.json`: this preparation produced `2.0.0-next.0` in every public
 workspace. Changesets 2.30.0 emits caret internal dependencies; deliberately tighten
@@ -88,6 +93,17 @@ Matching packages are resumable successes; missing ones publish core→CLI→ini
 from the **retained tarballs**, then exact bytes/tags are checked again. Ambiguous
 upload errors are reconciled by requery; repeat publication makes no npm writes.
 Freshness is checked again after registry preflight immediately before first write.
+
+npm can accept an upload and print a processing notice before its exact public
+version is readable. The workflow then records incomplete publication rather than
+claiming success. After an accepted upload, wait until that package's exact public
+bytes and intended tag match before resuming the same candidate. A temporary 404
+while processing does not justify blindly repeating that upload. Preserve each
+attempt's evidence; do not bump, repack, overwrite, unpublish or retag as recovery.
+Once every package matches, a confirmation run records all three as resumed and
+makes no npm writes. The [2.0.0 record](releases/2.0.0/README.md) documents the actual
+propagation and recovery, including a premature retry rejected by npm.
+
 No workflow can prevent main advancing after that last check; serialization prevents
 this workflow from racing another publisher, not unrelated main updates.
 

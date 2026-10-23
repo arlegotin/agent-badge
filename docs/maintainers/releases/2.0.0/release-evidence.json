@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-23T10:37:19.395690+00:00",
+  "sourceSha": "6bab9679b8ccd9341bc67a2c990b0007bd30a559",
+  "tag": "v2.0.0",
+  "candidateRunId": 39937480625,
+  "candidateArtifactId": 12493868772,
+  "candidateArchiveDigest": "sha256:25490839c441391597df7aca7a3e916a2b8ca105cd1b455e7ed831e04e8cc0ab",
+  "publicationRunId": 39938378112,
+  "finalPublicationArtifactId": 12494803617,
+  "publicationAttempts": [
+    {
+      "attempt": 1,
+      "jobId": 120363460452,
+      "conclusion": "failure"
+    },
+    {
+      "attempt": 2,
+      "jobId": 120364427802,
+      "conclusion": "failure"
+    },
+    {
+      "attempt": 3,
+      "jobId": 120365103012,
+      "conclusion": "cancelled"
+    },
+    {
+      "attempt": 4,
+      "jobId": 120367246759,
+      "conclusion": "success",
+      "npmWrites": 0
+    }
+  ],
+  "archiveFileCount": 81,
+  "assets": [
+    {
+      "name": "candidate.json",
+      "size": 1148,
+      "sha256": "6580b10d97325562b02ba8a7e6c00dcf055a15e1b8dc3fc51d2305c3c4a1614b"
+    },
+    {
+      "name": "create-agent-badge-2.0.0.tgz",
+      "size": 7051,
+      "sha256": "f427bd1312682fcb69b4688e9b5b24b000507144ca64682b17d7efd727d39792"
+    },
+    {
+      "name": "legotin-agent-badge-2.0.0.tgz",
+      "size": 50657,
+      "sha256": "1c3308514b4403c54c2bfbbe248e0ce5b7996a5bdc20ecf68be320bcd3aafff0"
+    },
+    {
+      "name": "legotin-agent-badge-core-2.0.0.tgz",
+      "size": 138106,
+      "sha256": "3cc5ab4ab14d0f2d9146590ae27daf0ec908a8e1fd3bad1c98498935dde08782"
+    },
+    {
+      "name": "public-initializer-verification.json",
+      "size": 2783,
+      "sha256": "4a3438a1981514a5751e273b05452e115ef80586e8878b48c02c28b83dc55bbd"
+    },
+    {
+      "name": "public-provenance-verification.json",
+      "size": 2331,
+      "sha256": "db155d6ed169b525bf19b046a4111a70d73947250618e2f4709f42292834756d"
+    },
+    {
+      "name": "public-registry-verification.json",
+      "size": 1890,
+      "sha256": "be4ddf8909595b01feaf70995847ed02aac0bda29c8a36eb85129fbf802cd298"
+    },
+    {
+      "name": "publish-result.json",
+      "size": 1101,
+      "sha256": "c1d0fdd245eb85b59b8c41418ee30ad2fad6cb4c2a153b8f5f9ffe03c13aaab1"
+    },
+    {
+      "name": "release-validation-evidence.tar.gz",
+      "size": 213887,
+      "sha256": "8d075eb8f36aed049222bedf32b419b17e53bd65d17ced472a70eb07b8c38974"
+    },
+    {
+      "name": "validation-summary.json",
+      "size": 9763,
+      "sha256": "d06ba2c74e97629aa0864e1ff3ea953b2419700235d47e1ad5ff7a4ff5d6ebfe"
+    }
+  ]
+}

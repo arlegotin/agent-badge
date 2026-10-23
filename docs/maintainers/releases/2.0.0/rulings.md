@@ -1,0 +1,9 @@
+# Stable release rulings
+
+Ruling: Target stable2.0.0/latest rather than next — the stated install-once public entrypoint is npm init agent-badge@latest, and the user authorized release of the breaking replacement; this default was stated before mutations — cost: v1 consumers see a major upgrade and must explicitly migrate rather than receive backward compatibility.
+
+Ruling: Force LF checkout only for root/public-package license files rather than weaken exact retained-license checks — shared Linux-built candidate must match the Windows checkout's canonical license despite core.autocrlf — cost: Windows working copies use LF for these files and carry a small checkout regression; no runtime/accounting change or artifact hash normalization is introduced.
+
+Ruling: Keep real subprocess/operation deadlines and assertions, but allow30s frameworktime for the three multi-operation Mac tests and delegate the fixture's Git spy to the already-selected executable — hostedfixture setup+several bounded operations need not fit the default5s, and swapping tools in the spy is not the product behavior under test — cost: a stalled test may report later; unchanged internal4s hook/subprocess and2s automatic limits still detect actual deadline violations. Existingagent-hooks fixture uses the same selected-Git pattern; shellquote preserves unusual executablepaths.
+
+Ruling: Release verified Linux/macOS behavior and reject native Windows actions before writes instead of dropping required directory fsync — actualWindowsEPERM demonstrates the unverified manual-support aspiration is not delivered, and a trustworthy native storage port requires separateplatform work — cost: nativeWindows users must run bothagentandBadge inLinux/WSL2 or wait; Windowshelp/version and safe unsupported diagnostics remain, but no nativeWindowsusage support is claimed. Root stated the change before implementation. No user demand for Windows feature removal is invented.

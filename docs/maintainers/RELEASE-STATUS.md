@@ -1,43 +1,46 @@
 # Agent Badge 2.0.0 release status
 
-The user authorized stable publication on 2026-10-23. Release preparation is in
-progress; this document does not yet claim npm publication or hosted CI success.
+Stable **2.0.0** was published on 2026-10-23 under the user's explicit release
+authorization. All three public packages are on `latest`:
+`@legotin/agent-badge-core`, `@legotin/agent-badge`, and `create-agent-badge`.
 
-- Intended public versions: `@legotin/agent-badge-core@2.0.0`,
-  `@legotin/agent-badge@2.0.0`, and `create-agent-badge@2.0.0`, all on `latest`.
-- Stable source preparation: Changesets 2.30.0 prerelease exit/version, exact
-  internal dependency pins, unchanged production dependency graph.
-- Local Node 24 preparation checks passed: typecheck, clean build, documentation,
-  package content and 62 release/launcher/initializer tests.
-- GitHub `npm-release` environment exists with a custom main-branch-only policy.
-- GitHub Actions platform matrix, current-main candidate/run/tag binding and
-  exact-byte OIDC publication remain required before completion.
-- [Release PR1](https://github.com/arlegotin/agent-badge/pull/1) is in validation.
-  Its first matrix passed both Linux cells; Windows found license checkout line
-  endings, while hosted macOS found a hardcoded test Git binary and test-framework
-  timeouts. Corrections preserve production deadlines and exact artifact checks;
-  a clean full matrix on the corrected source remains required.
-- Hosted OIDC authorization will be checked by the release workflow. Local npm
-  settings access returned 401, which does not establish a hosted failure. Owner
-  configuration is needed only if that operation rejects the existing publisher;
-  no npm credential is requested in chat.
-- Existing local refactor review/evidence remains in
-  [verification](RELEASE-VERIFICATION.md) and the
-  [review record](reviews/2026-10-23-repo-native/README.md).
+```sh
+npm init agent-badge@latest
+```
 
-Hosted run 39931707158 passed Linux/macOS Node 24/26 validation, while native
-Windows initial setup failed. Controlled synthetic diagnosis in run 39932491268
-identified `EPERM` at setup directory `fsync`. Native Windows never established
-successful durable manual operation. The
-[platform amendment](../superpowers/specs/2026-10-23-release-platform-scope.md)
-requires early `unsupported-platform`/exit 3 rejection instead of weakening fsync.
-Fresh hosted validation of that gate remains pending; no WSL2 execution is claimed.
+The [release record](releases/2.0.0/README.md) contains exact source, candidate,
+tarball, review and public verification evidence. Source
+`6bab9679b8ccd9341bc67a2c990b0007bd30a559` is tagged `v2.0.0` after
+[PR1](https://github.com/arlegotin/agent-badge/pull/1) merged.
 
-Known scope remains: Linux/macOS execution only; native Windows unsupported; unverified native
-amounts are omitted; private badge rendering is unverified. Minor N1 can leave
-private transport resources after forcibly terminated remote diagnostics. The
-historical 250 ms optimization goal is unmet; the two-second automatic limit stays.
+- The final [PR matrix](https://github.com/arlegotin/agent-badge/actions/runs/39936187775)
+  and required [main-push matrix](https://github.com/arlegotin/agent-badge/actions/runs/39937480625)
+  each passed all six platform/runtime cells. Linux/macOS each passed 837 tests
+  with one opt-in benchmark skipped, plus exact-package initializer, setup,
+  repair, fork, status, doctor and actual worker checks.
+- Native Windows is unsupported. Both Windows cells passed 41 platform tests and
+  actual installed-initializer exit 3/no-write verification. Required directory
+  fsync was preserved. See the [platform amendment](../superpowers/specs/2026-10-23-release-platform-scope.md).
+  WSL2 requires both Badge and the coding agent inside Linux; no separate WSL2
+  execution result is claimed.
+- The [hosted release](https://github.com/arlegotin/agent-badge/actions/runs/39938378112/attempts/4)
+  confirmed the same retained main candidate. Existing OIDC authorization worked
+  for all three packages; no npm credential or account change was needed.
+- Public checks verified downloaded sizes/SHA-512, versions, `latest` tags and
+  exact provenance source/workflow identity. A fresh public npm initializer smoke
+  resolved the exact v2 graph and displayed help without setup writes. npm
+  verified six registry signatures and four attestations.
+- npm propagation required matching-byte recovery. The release record discloses
+  one premature resume and npm's rejection of its duplicate-version upload.
+  Final confirmation made zero npm writes. No package was bumped, repacked,
+  overwritten, unpublished or retagged.
 
-Actual CI, tag, artifact, publication and public-install results will replace the
-pending entries after their execution. The [release plan](../superpowers/plans/2026-10-23-stable-release.md)
-records the procedure and authorization.
+Known scope remains: Linux/macOS execution; unverified native amounts omitted;
+private badge rendering unverified. Minor N1 can leave private transport resources
+after forcibly killed remote diagnostics. The historical 250 ms optimization goal
+is unmet; the two-second automatic limit stays. V1 has no automatic migration.
+
+Earlier local evidence remains in [verification](RELEASE-VERIFICATION.md) and the
+[refactor review record](reviews/2026-10-23-repo-native/README.md). The
+[release plan](../superpowers/plans/2026-10-23-stable-release.md) records execution
+and authorization.

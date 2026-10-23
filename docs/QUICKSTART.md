@@ -6,9 +6,8 @@ These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previo
 
 In your repository, follow [installation](INSTALL.md) and run:
 
-**Before setup:** [release status](maintainers/RELEASE-STATUS.md) must confirm v2
-publication and the `latest` tag. Publication is currently pending and `@latest`
-still selects v1; do not use it to activate v2 until that gate is complete.
+Version **2.0.0** is published on `latest`; see the
+[release record](maintainers/releases/2.0.0/README.md) for verification.
 
 ```sh
 npm init agent-badge@latest
