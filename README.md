@@ -2,7 +2,7 @@
 
 Local-first AI coding usage, recorded in your repository. Supported local observations become sanitized, immutable receipts on `agent-badge/data`; `summary.json`, a coverage report and `badge.svg` are derived from that ledger.
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Final scoped re-review and external release gates remain pending.
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
 
 ## Repository setup
 

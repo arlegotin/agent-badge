@@ -1,6 +1,6 @@
 # Quickstart
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Final scoped re-review and external release gates remain pending.
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
 
 Follow [installation](INSTALL.md) to obtain a verified candidate. After its release, the initializer entry point is `npm init agent-badge@latest`; current public releases do not provide the replacement.
 

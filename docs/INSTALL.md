@@ -1,6 +1,6 @@
 # Installation
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Final scoped re-review and external release gates remain pending.
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
 
 Use Node.js **24 or 26** (`^24.0.0 || ^26.0.0`), npm and Git. A globally installed Badge runtime is unnecessary. Each repository owns its declaration and exact nested runtime lock; each Git common directory owns private activation. Linked worktrees share that private state, while provider configuration can still require worktree-specific review.
 

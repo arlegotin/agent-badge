@@ -2,9 +2,9 @@
 
 Implemented for the unreleased repository-native candidate on2026-10-22. No hosted
 or actual Linux/Windows/private-image gates are claimed. The public wire schema is
-unchanged. Tasks 1–18 and task reviews are complete. The combined fixes were locally
-validated; scoped review found an executable repository-resolution deadline residual.
-Its focused closure is locally validated and awaits review; remote cleanup Minor N1 is deferred. Exact retained
+unchanged. Tasks 1–18, their reviews and the final corrections are complete.
+Independent narrow review accepted the executable repository-resolution deadline
+correction with no new findings. Remote cleanup Minor N1 remains deferred. Exact retained
 candidate identities are in [verification](../../maintainers/RELEASE-VERIFICATION.md).
 
 Core `getStatus(ctx, options?)` remains usable without an integration owner. It

@@ -1,6 +1,6 @@
 # CLI reference
 
-This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Final scoped re-review and external release gates remain pending.
+This documents the unreleased repository-native replacement. Published npm `1.1.20` uses the previous architecture and does not provide these commands. Exact local candidate artifacts have passed Node 24/26 installation checks. Independent local review is complete; external release gates remain pending.
 
 Examples assume a verified candidate runtime on PATH, or replace `agent-badge` with `node .agent-badge/run.cjs` after activation. Help, version and invalid argument parsing do not install, collect, probe credentials or change files. There are no compatibility aliases for removed commands.
 

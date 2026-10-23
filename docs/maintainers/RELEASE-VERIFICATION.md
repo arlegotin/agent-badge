@@ -4,8 +4,10 @@ Final whole-branch review at `2f784de63844ead663200e4b0eb535a2d45d295c`
 found three Important and four Minor issues. The single combined fix wave is
 implemented and locally validated. The scoped review accepted six findings and
 the indexed/owned-reporting portions of I3, but identified its executable
-repository-resolution deadline residual. The focused closure is implemented and locally validated; its narrow review is pending;
-Minor N1 private remote-doctor resource cleanup is explicitly deferred. Tasks1–18 and all
+repository-resolution deadline residual. Its focused correction passed narrow review.
+No Critical or Important finding remains open; Minor N1 private remote-doctor
+resource cleanup is explicitly deferred. The [final review record](reviews/2026-10-23-repo-native/README.md)
+retains every review and the final disposition. Tasks1–18 and all
 task-scoped reviews are complete. The source-f81d9a4 artifacts below remain
 historical, frozen evidence and will not be overwritten or relabeled. Packaged
 fixes are bound to the distinct source commit and exact candidate recorded below.
@@ -69,8 +71,12 @@ Parent-owned exact-resource cleanup is deferred, with no accepted-ledger or user
 checkout/ref mutation implied. Arbitrary in-process IntegrationPort callbacks
 still require cooperative cancellation. Windows taskkill remains best effort.
 
-The focused closure awaits root's narrow review. All external/platform/privacy
-and historical latency limitations below remain; no publication is authorized.
+The focused closure passed independent narrow review with no new findings.
+Final nonduplicated coverage is 73 files / 800 tests: 799 passing cases and one
+existing opt-in skip per runtime across the disclosed broad and focused runs.
+The four new resolution cases extend the earlier 796-case scope; no repeated
+broad run is implied. All external/platform/privacy and historical latency
+limitations below remain; no publication is authorized.
 
 ## Earlier combined fixes: local evidence (2026-10-23)
 
@@ -302,5 +308,5 @@ node scripts/validation/run-isolated.mjs node scripts/smoke/verify-initializer-i
 
 Choose the intended Node floor on PATH and matching AGENT_BADGE_TEST_NODE before
 each command. Apply the narrow loopback escalation boundary above where the OS
-sandbox requires it. Independent controller review remains pending; publication
-and all external prerequisites remain outside this completed local gate scope.
+sandbox requires it. Independent reviews are complete, as recorded above;
+publication and all external prerequisites remain outside this completed local scope.
