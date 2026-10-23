@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { chmod, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
@@ -9,7 +12,7 @@ const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 const node = process.env.AGENT_BADGE_TEST_NODE ?? process.execPath;
 async function fixture(provider: 'codex' | 'gemini' = 'codex') {
-  const root = await mkdtemp('/private/tmp/agent-badge-automatic-'); roots.push(root);
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-automatic-'))); roots.push(root);
   const cwd = join(root, 'repo with spaces'); await mkdir(cwd); spawnSync('git', ['init', '-q'], { cwd });
   spawnSync('git', ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.invalid', 'commit', '--allow-empty', '-qm', 'before'], { cwd });
   const home = join(root, 'codex'); await mkdir(join(home, 'sessions'), { recursive: true });

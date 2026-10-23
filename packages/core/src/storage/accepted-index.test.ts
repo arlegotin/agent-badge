@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import {expect,test} from 'vitest';
 import {mkdtemp,mkdir,rm,writeFile,readFile,copyFile,stat,symlink} from 'node:fs/promises';
 import {join} from 'node:path';
@@ -15,7 +18,7 @@ import {AcceptedIndex} from './accepted-index.js';
 const repositoryId='d9428888-122b-4aab-9bc4-111111111111';
 const meta=parseLedgerMeta({schemaVersion:2,protocolVersion:1,repositoryId,normalizationVersion:1,catalogVersion:1,catalogHash:catalogHash(defaultCatalog),policy:{schemaVersion:1,repositoryId,normalizationVersion:1,discovery:'auto',disabledProviders:[],badge:{label:'AI usage',metric:'tokens'}}});
 test('accepted index binds exact validated commit, persists only installed extensions and detects corruption',async()=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-index-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-index-')));await mkdir(join(root,'cache'),{mode:0o700});
   try{
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),ledger=reduceLedger([record],meta),artifacts=renderArtifacts(ledger,meta,defaultCatalog),commit='a'.repeat(40);
     let index=await AcceptedIndex.create(root,{commit,meta,catalog:defaultCatalog,records:ledger.records,ledger,artifacts});
@@ -31,7 +34,7 @@ test('accepted index binds exact validated commit, persists only installed exten
   }finally{await rm(root,{recursive:true,force:true});}
 });
 test('an unpublished extension leaves the last complete generation readable',async()=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-generation-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-generation-')));await mkdir(join(root,'cache'),{mode:0o700});
   try {
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),ledger=reduceLedger([record],meta);
     let index=await AcceptedIndex.create(root,{commit:'a'.repeat(40),meta,catalog:defaultCatalog,records:ledger.records,ledger,artifacts:renderArtifacts(ledger,meta,defaultCatalog)});await index.close();
@@ -48,7 +51,7 @@ test('an unpublished extension leaves the last complete generation readable',asy
   }finally {await rm(root,{recursive:true,force:true});}
 });
 test.each(['copy','transaction','committed','before-manifest','after-manifest'])('actual death at accepted generation %s leaves a complete usable generation',async phase=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-death-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-death-')));await mkdir(join(root,'cache'),{mode:0o700});
   try {
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),ledger=reduceLedger([record],meta),added={...record,unitKey:'e'.repeat(64),coverageKey:'e'.repeat(64)};
     const seed=await AcceptedIndex.create(root,{commit:'a'.repeat(40),meta,catalog:defaultCatalog,records:ledger.records,ledger,artifacts:renderArtifacts(ledger,meta,defaultCatalog)});await seed.close();
@@ -76,7 +79,7 @@ test.each(['copy','transaction','committed','before-manifest','after-manifest'])
   }finally {await rm(root,{recursive:true,force:true});}
 });
 test.each([false,true])('interrupted stage publication keeps completed stage retryable (prior generation %s)',async prior=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-promotion-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-promotion-')));await mkdir(join(root,'cache'),{mode:0o700});
   try {
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),ledger=reduceLedger([record],meta),artifacts=renderArtifacts(ledger,meta,defaultCatalog);
     const seed=await AcceptedIndex.create(root,{commit:'a'.repeat(40),meta,catalog:defaultCatalog,records:ledger.records,ledger,artifacts});const state={...seed.validatedState,commit:'b'.repeat(40)};await seed.close();
@@ -96,7 +99,7 @@ test.each([false,true])('interrupted stage publication keeps completed stage ret
   }finally {await rm(root,{recursive:true,force:true});}
 });
 test('manifest publication cannot reuse the prior anchor or live candidate base slot before confirmation',async()=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-pins-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-pins-')));await mkdir(join(root,'cache'),{mode:0o700});
   try {
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),ledger=reduceLedger([record],meta),added={...record,unitKey:'f'.repeat(64),coverageKey:'f'.repeat(64)};
     const seed=await AcceptedIndex.create(root,{commit:'a'.repeat(40),meta,catalog:defaultCatalog,records:ledger.records,ledger,artifacts:renderArtifacts(ledger,meta,defaultCatalog)});await seed.close();
@@ -115,7 +118,7 @@ test('manifest publication cannot reuse the prior anchor or live candidate base 
   }finally {await rm(root,{recursive:true,force:true});}
 });
 test('manifest slot corruption and inactive symlinks cannot select external paths or mutate the active generation',async()=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-slots-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-slots-')));await mkdir(join(root,'cache'),{mode:0o700});
   try {
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),ledger=reduceLedger([record],meta);
     const seed=await AcceptedIndex.create(root,{commit:'a'.repeat(40),meta,catalog:defaultCatalog,records:ledger.records,ledger,artifacts:renderArtifacts(ledger,meta,defaultCatalog)});await seed.close();
@@ -127,7 +130,7 @@ test('manifest slot corruption and inactive symlinks cannot select external path
   }finally {await rm(root,{recursive:true,force:true});}
 });
 test('configuration replacement and interrupted generation rebuild preserve full artifact equivalence',async()=>{
-  const root=await mkdtemp('/private/tmp/agent-badge-accepted-rebuild-');await mkdir(join(root,'cache'),{mode:0o700});
+  const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-accepted-rebuild-')));await mkdir(join(root,'cache'),{mode:0o700});
   try {
     const record=sanitizeObservation(parseObservation(protocolObservationFixture()),meta.policy),records=[record];
     const snapshot=(commit:string,m=meta,catalog=defaultCatalog)=>{const ledger=reduceLedger(records,m);return {commit,meta:m,catalog,records,ledger,artifacts:renderArtifacts(ledger,m,catalog)};};

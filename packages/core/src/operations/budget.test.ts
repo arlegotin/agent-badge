@@ -11,7 +11,7 @@ import { acquireLock } from '../storage/lock.js';
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
 async function fixture(body: string) {
-  const root = await realpath(await mkdtemp(join('/private/tmp', 'agent-badge-budget-'))); roots.push(root);
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'agent-badge-budget-'))); roots.push(root);
   const worker = join(root, 'worker.mjs'); await writeFile(worker, body);
   return { root, worker: pathToFileURL(worker) };
 }

@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
@@ -12,7 +15,7 @@ const roots: string[] = [];
 if (process.env.AGENT_BADGE_TEST_NODE) process.env.PATH = dirname(process.env.AGENT_BADGE_TEST_NODE) + ':' + process.env.PATH;
 afterEach(async () => { await Promise.all(roots.splice(0).map(p => rm(p, { recursive: true, force: true }))); });
 async function fixture() {
-  const cwd = await mkdtemp('/private/tmp/agent-badge-provider hooks-'); roots.push(cwd);
+  const cwd = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-provider hooks-'))); roots.push(cwd);
   spawnSync('git', ['init', '-q'], { cwd });
   const privateDir = join(cwd, '.git/agent-badge'); await mkdir(privateDir, { recursive: true });
   const hash = 'a'.repeat(64), runtime = join(privateDir, 'runtime', hash, 'node_modules/@legotin/agent-badge/dist/integration');

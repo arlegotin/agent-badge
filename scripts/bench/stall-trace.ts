@@ -1,3 +1,4 @@
+import { assertOwnedGitFixture } from '../validation/fixture-root.js';
 /** Instrument only a retained synthetic runtime copy, restoring production afterward. */
 import { spawnSync } from 'node:child_process';
 import { cp, mkdir, readFile, readdir, readlink, realpath, rm, symlink, writeFile } from 'node:fs/promises';
@@ -6,7 +7,7 @@ import { observeProgress } from './observer.js';
 import { startFixtureGitDaemon } from '../../packages/testkit/src/git-daemon.js';
 
 const root = await realpath(process.argv[2]), runs = Number(process.argv[3] ?? 3);
-if (!root.startsWith('/private/tmp/') || !basename(root).startsWith('agent-badge-git-')) throw Error('synthetic fixture required');
+if (!(await assertOwnedGitFixture(root))) throw Error('synthetic fixture required');
 const cwd = join(root, 'clone-a'), privateDir = join(cwd, '.git/agent-badge');
 const declaration = JSON.parse(await readFile(join(cwd, '.agent-badge/config.json'), 'utf8'));
 if (declaration.declaredUrl !== 'https://github.com/synthetic/benchmark') throw Error('synthetic fixture required');

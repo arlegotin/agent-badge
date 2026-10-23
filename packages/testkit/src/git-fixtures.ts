@@ -10,7 +10,7 @@ function fixtureEnvironment(): NodeJS.ProcessEnv {
   return {
     ...env,
     GIT_CONFIG_NOSYSTEM: "1",
-    GIT_CONFIG_GLOBAL: "/dev/null",
+    GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
     GIT_TERMINAL_PROMPT: "0",
     GIT_AUTHOR_NAME: "agent-badge fixture",
     GIT_AUTHOR_EMAIL: "fixture@example.invalid",

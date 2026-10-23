@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, it } from "vitest";
 import {
   mkdir,
@@ -28,7 +31,7 @@ async function fixture(
   format: "cli" | "api" = "cli",
   maxBytes?: number
 ) {
-  const root = await mkdtemp("/private/tmp/opencode-contract-");
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'opencode-contract-')));
   roots.push(root);
   const path = join(root, "export.json");
   await writeFile(path, JSON.stringify(await openCodeExport(version, format)));
@@ -137,7 +140,7 @@ it("bounds export bytes, rejects symlinked explicitly supplied exports and never
   });
 });
 it("detects an installed data root without opening native databases or starting v2 servers", async () => {
-  const root = await mkdtemp("/private/tmp/opencode-detect-");
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'opencode-detect-')));
   roots.push(root);
   await mkdir(join(root, "data"));
   const a = createOpenCodeAdapter({

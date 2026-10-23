@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { expect, test } from 'vitest';
 import { createRequire } from 'node:module';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
@@ -24,7 +27,7 @@ test('workflow parses and guards dispatch ref before trusted runtime installatio
  expect(workflow.permissions).toEqual({});
  expect(workflow.jobs.import.permissions).toEqual({contents:'write'});
  expect(workflow.jobs.import.steps.find((s: {name:string})=>s.name==='Checkout accepted data only').with['fetch-depth']).toBe(0);
- const root = await mkdtemp('/private/tmp/badge-workflow-');
+ const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'badge-workflow-')));
  try {
   const guard = workflow.jobs.import.steps[0];
   await expect(execute('bash',['-e','-c',guard.run],{cwd:root,env:{...process.env,BADGE_REF:'refs/heads/proposal',BADGE_DEFAULT_REF:'refs/heads/trunk',BADGE_DEFAULT_BRANCH:'trunk',BADGE_ACTUAL_DEFAULT_BRANCH:'trunk'}})).rejects.toThrow();
@@ -34,7 +37,7 @@ test('workflow parses and guards dispatch ref before trusted runtime installatio
 test('bootstrap installs from embedded exact lock outside checkout and invokes pinned importer once', async () => {
  const workflow = yaml.load(await generateContributionWorkflow({...options,schedule:'17 4 * * 1'}));
  expect(workflow.on.schedule).toEqual([{cron:'17 4 * * 1'}]);
- const root = await mkdtemp('/private/tmp/badge-workflow-');
+ const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'badge-workflow-')));
  try {
   const bin = join(root,'bin'), runner = join(root,'runner'), checkout = join(root,'repo');
   await mkdir(bin); await mkdir(runner); await mkdir(checkout);

@@ -1,9 +1,9 @@
 {
   "name": "@legotin/agent-badge",
-  "version": "1.1.20",
+  "version": "2.0.0-next.0",
   "description": "Local-first CLI for publishing privacy-safe AI usage badges to GitHub READMEs.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/arlegotin/agent-badge#readme",
   "bugs": {
     "url": "https://github.com/arlegotin/agent-badge/issues"
@@ -14,13 +14,12 @@
   },
   "packageManager": "npm@11.6.0",
   "engines": {
-    "node": "^20.0.0 || ^22.0.0 || ^24.0.0"
+    "node": "^24.0.0 || ^26.0.0"
   },
   "keywords": [
     "badge",
     "cli",
     "github",
-    "gist",
     "codex",
     "claude",
     "ai"
@@ -61,7 +60,7 @@
   ],
   "dependencies": {
     "@iarna/toml": "2.2.5",
-    "@legotin/agent-badge-core": "^1.1.20",
+    "@legotin/agent-badge-core": "2.0.0-next.0",
     "commander": "^14.0.0"
   }
 }

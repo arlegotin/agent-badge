@@ -4,71 +4,65 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  validate:
+  candidate:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.0.0'
+          package-manager-cache: false
+      - run: node scripts/validation/run-isolated.mjs npm ci
+      - run: node scripts/validation/run-isolated.mjs npm run build
+      - run: node scripts/validation/run-isolated.mjs npm run release:evidence -- artifacts/candidate
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: candidate
+          path: artifacts/candidate
+          retention-days: 90
+          if-no-files-found: error
+
+  validate:
+    needs: candidate
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['20.x', '22.x', '24.x']
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['24.0.0', '26.0.0']
+    defaults:
+      run:
+        shell: bash
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
-      - name: Prepare isolated HOME
-        run: |
-          HOME_DIR="$RUNNER_TEMP/agent-badge-home"
-          mkdir -p "$HOME_DIR"
-          echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
-      - name: Install dependencies
-        run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
-      - name: Run tests
-        run: npm test -- --run
-
-  scenario-matrix:
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '24.x'
-          cache: npm
-      - name: Prepare isolated HOME
-        run: |
-          HOME_DIR="$RUNNER_TEMP/agent-badge-home"
-          mkdir -p "$HOME_DIR"
-          echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Run release-readiness scenario matrix
-        run: npm test -- --run packages/agent-badge/src/commands/release-readiness-matrix.test.ts
-
-  release-readiness:
-    runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Fetch same exact retained candidate for every matrix cell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name candidate --dir artifacts/candidate
+      - run: node scripts/validation/run-isolated.mjs npm ci
+      - name: Separately acquire locked public production dependency closure
+        run: node scripts/validation/run-isolated.mjs node scripts/smoke/seed-dependencies.mjs artifacts/dependency-closure
+      - name: Validate source and exact install artifact (Windows manual scope only)
+        run: node scripts/validation/run-isolated.mjs node scripts/validation/verify-clean-checkout.mjs artifacts/candidate artifacts/dependency-closure > matrix-evidence.log 2>&1
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
         with:
-          node-version: '24.x'
-          cache: npm
-      - name: Prepare isolated HOME
-        run: |
-          HOME_DIR="$RUNNER_TEMP/agent-badge-home"
-          mkdir -p "$HOME_DIR"
-          echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
-      - name: Install dependencies
-        run: npm ci
-      - name: Verify docs
-        run: npm run docs:check
-      - name: Verify clean checkout release path
-        run: npm run verify:clean-checkout
+          name: evidence-${{ matrix.os }}-node-${{ matrix.node }}
+          path: matrix-evidence.log
+          if-no-files-found: error
+          retention-days: 90

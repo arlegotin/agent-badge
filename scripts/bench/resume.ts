@@ -1,10 +1,11 @@
+import { assertOwnedGitFixture } from '../validation/fixture-root.js';
 /** Diagnose a retained synthetic benchmark only; never accepts a real repository. */
 import {spawnSync} from 'node:child_process';
 import {cp,mkdir,readFile,readlink,realpath,rm,symlink,writeFile} from 'node:fs/promises';
 import {join,resolve,basename} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 const root=await realpath(process.argv[2]),runs=Number(process.argv[3]??15),trace=process.argv[4]?.startsWith('trace');
-if(!root.startsWith('/private/tmp/')||!basename(root).startsWith('agent-badge-git-'))throw Error('synthetic fixture required');
+if(!(await assertOwnedGitFixture(root)))throw Error('synthetic fixture required');
 const cwd=join(root,'clone-a'),privateDir=join(cwd,'.git/agent-badge'),declaration=JSON.parse(await readFile(join(cwd,'.agent-badge/config.json'),'utf8'));
 if(declaration.declaredUrl!=='https://github.com/synthetic/benchmark')throw Error('synthetic fixture required');
 const activation=JSON.parse(await readFile(join(privateDir,'local.json'),'utf8')),modules=join(privateDir,'runtime',activation.lockHash,'node_modules'),core=join(modules,'@legotin/agent-badge-core'),traceFile=join(root,process.argv[4]?.startsWith('trace-stage')?'resume-stage-trace.jsonl':'resume-trace.jsonl');

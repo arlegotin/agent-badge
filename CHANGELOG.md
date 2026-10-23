@@ -2,9 +2,13 @@
 
 All notable package releases are tracked here.
 
-## Unreleased
+## 2.0.0-next.0 — prepared candidate (unpublished)
 
-- No unreleased notes yet.
+- Breaking replacement: repository-owned data ref and exact approved private runtime; no Gist transport or required global runtime.
+- Local privacy-filtered collection, multiple contributors/worktrees/branches, fork contributions, strict partial coverage and deterministic SVG/report evidence.
+- Requires Node `^24.0.0 || ^26.0.0`; package licenses consistently Apache-2.0.
+- Manual exact-SHA/tag release with retained tarballs and safe exact-version resume. This entry does not authorize publication.
+- The 250ms optimization target remains unmet (measured Node24/26 pre-push p95 382.28/443.23ms); the two-second hard deadline remains. Windows automatic supervision and hosted private-image support remain outside verified release scope.
 
 ## 1.1.19 - 2026-04-09
 

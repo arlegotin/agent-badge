@@ -2,178 +2,101 @@ name: Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+    inputs:
+      sha:
+        description: Exact reviewed current-main source commit
+        required: true
+      tag:
+        description: Existing exact v2.0.0-next.N or v2.0.0 tag
+        required: true
+      intent:
+        type: choice
+        options: [major-prerelease, stable-major]
+        required: true
+      candidate_run_id:
+        description: Successful CI run retaining the exact candidate tarballs; reuse on retry
+        required: true
 
 concurrency:
-  group: release-main
-  cancel-in-progress: true
+  group: npm-release
+  cancel-in-progress: false
+  queue: max
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      RELEASE_SHA: ${{ inputs.sha }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_INTENT: ${{ inputs.intent }}
+      CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      # No requested-checkout code/lifecycle runs before this trusted inline guard.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          ref: main
+          persist-credentials: false
+      - name: Authorize exact source using trusted workflow code
+        id: authorize_source
+        run: |
+          node --input-type=module <<'NODE'
+          import {execFileSync} from 'node:child_process';
+          const {GITHUB_EVENT_NAME:event,GITHUB_REF:ref,RELEASE_SHA:sha,RELEASE_TAG:tag,RELEASE_INTENT:intent}=process.env;
+          if(event!=='workflow_dispatch'||ref!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(sha??'')||!/^v2\.0\.0(?:-next\.\d+)?$/.test(tag??'')||!(intent==='major-prerelease'&&tag.includes('-next.')||intent==='stable-major'&&tag==='v2.0.0'))throw Error('Unauthorized release request');
+          const lines=execFileSync('git',['ls-remote','--exit-code','origin','refs/heads/main','refs/tags/'+tag,'refs/tags/'+tag+'^{}'],{encoding:'utf8'}).trim().split('\n').map(l=>l.split(/\s+/));
+          const refs=new Map(lines.map(([oid,name])=>[name,oid]));
+          if(refs.get('refs/heads/main')!==sha||(refs.get('refs/tags/'+tag+'^{}')??refs.get('refs/tags/'+tag))!==sha)throw Error('Requested SHA/tag is not current remote main');
+          console.log('authorized exact main/tag source');
+          NODE
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.sha }}
           fetch-depth: 0
-
-      - name: Skip recursive release commits
-        if: github.event_name == 'push'
-        id: release_commit
-        run: |
-          COMMIT_MESSAGE="$(git log -1 --pretty=%s)"
-          if printf '%s\n' "$COMMIT_MESSAGE" | grep -q '^chore(release): publish '; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Release publish commit detected; skipping recursive release workflow."
-            exit 0
-          fi
-          echo "skip=false" >> "$GITHUB_OUTPUT"
-
-      - name: Setup Node.js
-        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
-        uses: actions/setup-node@v6
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: 24.x
-          cache: npm
-
-      - name: Install dependencies
-        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
-        run: npm ci
-
-      - name: Prepare isolated HOME
-        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
+          node-version: '24.0.0'
+          package-manager-cache: false
+      - name: Pin direct-publish npm; install tooling without candidate lifecycle scripts
         run: |
-          HOME_DIR="$RUNNER_TEMP/agent-badge-home"
-          mkdir -p "$HOME_DIR"
-          echo "HOME=$HOME_DIR" >> "$GITHUB_ENV"
-
-      - name: Typecheck
-        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
-        run: npm run typecheck
-
-      - name: Verify clean checkout release path
-        if: github.event_name != 'push' || steps.release_commit.outputs.skip != 'true'
-        run: npm run verify:clean-checkout
-
-      - name: Detect publish impact
-        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true'
-        id: impact
-        run: >-
-          npm run release:publish-impact -- --base "${{ github.event.before }}"
-          --head "${{ github.sha }}" --github-output "$GITHUB_OUTPUT"
-
-      - name: Stop if this push did not change publishable inputs
-        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true' && steps.impact.outputs.impacted != 'true'
-        run: echo "No publishable inputs changed on main; skipping npm publish."
-
-      - name: Stop if main moved after this workflow started
-        if: github.event_name == 'push' && steps.release_commit.outputs.skip != 'true' && steps.impact.outputs.impacted == 'true'
-        id: freshness
-        run: |
-          git fetch origin main
-          CURRENT_MAIN=$(git rev-parse origin/main)
-          if [ "$CURRENT_MAIN" != "${{ github.sha }}" ]; then
-            echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "Main advanced to $CURRENT_MAIN; a newer release run will handle publishing."
-            exit 0
-          fi
-          echo "stale=false" >> "$GITHUB_OUTPUT"
-
-      - name: Read current npm version
-        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
-        id: registry
-        run: |
-          echo "version=$(npm view @legotin/agent-badge version)" >> "$GITHUB_OUTPUT"
-
-      - name: Auto-bump publishable package versions
-        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
-        id: version
-        run: >-
-          npm run release:auto-version -- --registry-version "${{ steps.registry.outputs.version }}"
-          --write --github-output "$GITHUB_OUTPUT"
-
-      - name: Publish npm packages
-        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
-        run: npm run release
-
-      - name: Commit and push released versions
-        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
-        id: release_commit_push
-        run: |
-          if [ "${GITHUB_REF_TYPE}" != "branch" ]; then
-            echo "Release workflow must run from a branch ref."
-            exit 1
-          fi
-
-          TARGET_BRANCH="${GITHUB_REF_NAME}"
-          if [ "${TARGET_BRANCH}" != "main" ]; then
-            echo "Release workflow only publishes from main. Current ref: ${TARGET_BRANCH}"
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json packages/core/package.json packages/agent-badge/package.json packages/create-agent-badge/package.json
-
-          if git diff --cached --quiet; then
-            echo "No version file changes to commit."
-          else
-            git commit -m "chore(release): publish ${{ steps.version.outputs.next_version }}"
-            git push origin HEAD:"${TARGET_BRANCH}"
-          fi
-
-          echo "release_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push release tags
-        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
-        run: |
-          RELEASE_SHA="${{ steps.release_commit_push.outputs.release_commit_sha }}"
-          VERSION="${{ steps.version.outputs.next_version }}"
-          TAGS=(
-            "v${VERSION}"
-            "@legotin/agent-badge-core@${VERSION}"
-            "@legotin/agent-badge@${VERSION}"
-            "create-agent-badge@${VERSION}"
-          )
-          PUSH_TAGS=()
-
-          for tag in "${TAGS[@]}"; do
-            if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-              echo "Remote tag already exists: ${tag}"
-              continue
-            fi
-
-            if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null 2>&1; then
-              git tag -a "${tag}" "${RELEASE_SHA}" -m "Release ${tag}"
-            fi
-
-            PUSH_TAGS+=("${tag}")
-          done
-
-          if [ "${#PUSH_TAGS[@]}" -gt 0 ]; then
-            git push origin "${PUSH_TAGS[@]}"
-          else
-            echo "No new tags to push."
-          fi
-
-      - name: Create GitHub release
-        if: (github.event_name != 'push' || steps.release_commit.outputs.skip != 'true') && (github.event_name != 'push' || (steps.impact.outputs.impacted == 'true' && steps.freshness.outputs.stale != 'true'))
+          npm install --global npm@11.6.0 --ignore-scripts --registry=https://registry.npmjs.org
+          node scripts/validation/run-isolated.mjs npm ci --ignore-scripts
+      - name: Download the previously validated candidate without repacking
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ steps.version.outputs.next_version }}"
-          ROOT_TAG="v${VERSION}"
-
-          if gh release view "${ROOT_TAG}" >/dev/null 2>&1; then
-            echo "GitHub release already exists for ${ROOT_TAG}."
-            exit 0
-          fi
-
-          gh release create "${ROOT_TAG}" \
-            --title "${ROOT_TAG}" \
-            --generate-notes
+          [[ "$CANDIDATE_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN_ID" > "$RUNNER_TEMP/candidate-run.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/candidate-run.json','utf8'));
+          if(r.head_sha!==process.env.RELEASE_SHA||r.path!=='.github/workflows/ci.yml'||r.event!=='push'||r.head_branch!=='main'||r.conclusion!=='success'||r.repository.full_name!==process.env.GITHUB_REPOSITORY)throw Error('Candidate requires successful same-repository main CI at exact SHA');
+          NODE
+          artifact_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN_ID/artifacts" --jq '[.artifacts[] | select(.name == "candidate" and .expired == false)] | if length == 1 then .[0].id else error("Expected one retained candidate") end')
+          [[ "$artifact_id" =~ ^[0-9]+$ ]] || exit 1
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$RUNNER_TEMP/candidate.zip"
+          python3 scripts/release/artifact-download.py "$RUNNER_TEMP/candidate.zip" artifacts/candidate
+      - name: Verify retained bytes and explicit source binding
+        run: node --import tsx scripts/release/preflight.ts artifacts/candidate
+      - name: Publish or resume only these exact tarballs
+        # Hosted per-package trusted publisher/direct-publish configuration remains a prerequisite.
+        run: node --import tsx scripts/release/preflight.ts artifacts/candidate --publish | tee artifacts/candidate/publish-result.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: publish-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/candidate
+          retention-days: 90
+          if-no-files-found: error

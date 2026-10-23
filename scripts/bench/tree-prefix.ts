@@ -1,10 +1,11 @@
+import { assertOwnedGitFixture } from '../validation/fixture-root.js';
 /** Compare verified raw-prefix cost with per-record replay on synthetic Git data. */
 import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFile,realpath} from 'node:fs/promises';
 import {join,basename} from 'node:path';
 import {streamGitRecords} from '../../packages/core/src/git/process.js';
-const root=await realpath(process.argv[2]);if(!root.startsWith('/private/tmp/')||!basename(root).startsWith('agent-badge-git-'))throw Error('synthetic fixture required');
+const root=await realpath(process.argv[2]);if(!(await assertOwnedGitFixture(root)))throw Error('synthetic fixture required');
 const cwd=join(root,'clone-a');if(JSON.parse(await readFile(join(cwd,'.agent-badge/config.json'),'utf8')).declaredUrl!=='https://github.com/synthetic/benchmark')throw Error('synthetic fixture required');
 const owner=JSON.parse(await readFile(join(cwd,'.git/agent-badge/cache/accepted-stage-owner.json'),'utf8'));
 for(const kind of process.argv[3]?[process.argv[3]]:['tree','retention']){

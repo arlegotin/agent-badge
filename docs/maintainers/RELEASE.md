@@ -1,130 +1,132 @@
-# Release Process
+# Release preparation and exact artifact publication
 
-Use this checklist when preparing to publish `@legotin/agent-badge`, `create-agent-badge`, and `@legotin/agent-badge-core`.
+The current `2.0.0-next.0` candidate is prepared for review and remains unpublished.
+Planning, local commits and local fixture registries do not authorize publication,
+tagging, pushing, hosted configuration changes or deployment. See the actual
+[verification scope](RELEASE-VERIFICATION.md) before making support claims.
 
-## Release Truth
+The three public packages form one Changesets fixed group. Testkit stays private.
+Apache-2.0 is the retained root license; each public tarball includes its identical
+LICENSE. Every workspace uses Node `^24.0.0 || ^26.0.0`. The initializer entry point
+remains `npm init agent-badge@latest` after an authorized stable release; a deliberate
+candidate test selects `npm init agent-badge@2.0.0-next.0`.
 
-A release is not done until these surfaces agree:
+## Prepare once, then validate the same files
 
-- the three publishable package manifests
-- the npm registry `latest` tags for all three packages
-- Git tags for the published version
-- the GitHub release entry for the published version
-- `CHANGELOG.md`
+Use the lockfile-pinned Changesets **2.30.0**, not a fetched v3 CLI. Start from an
+explicit major changeset, run `npm run changeset -- pre enter next`, then
+`npm run changeset -- version`. Inspect actual manifests, package changelogs and
+`.changeset/pre.json`: this preparation produced `2.0.0-next.0` in every public
+workspace. Changesets 2.30.0 emits caret internal dependencies; deliberately tighten
+CLI→core and initializer→CLI to the exact candidate version, then regenerate the
+lockfile with `npm install --package-lock-only --ignore-scripts`. Review and commit.
+Do not invoke either version command during a retry. Stable `2.0.0` requires separate
+explicit intent, prerelease exit/version preparation and a new reviewed commit.
 
-Current published truth should come from the manifests plus live npm checks, not from hardcoded historical version numbers in docs.
+Use a supported Node executable on PATH for npm and every shebang/subprocess. The
+portable runner supplies fresh HOME/cache/config and empty provider roots, with no
+native-agent/auth/proxy/Node-injection variables. It does not alter production setup.
+For example, from a clean committed checkout with dependencies installed:
 
-## 1. Run the local gates
-
-From the repository root:
-
-```bash
-npm run docs:check
-npm run typecheck
-npm run verify:clean-checkout
-npm run release:preflight
+```sh
+node scripts/validation/run-isolated.mjs npm run typecheck
+node scripts/validation/run-isolated.mjs npm run build
+node scripts/validation/run-isolated.mjs npm run release:evidence -- artifacts/candidate
+node scripts/validation/run-isolated.mjs node scripts/smoke/seed-dependencies.mjs artifacts/dependency-closure
+node scripts/validation/run-isolated.mjs node scripts/validation/verify-clean-checkout.mjs artifacts/candidate artifacts/dependency-closure
 ```
 
-`npm run verify:clean-checkout` is the full local rehearsal. It rebuilds from a clean tree, runs tests, checks tarball contents, and verifies the packed-install path for explicit runtime package installs.
+Acquisition is a separate read-only step restricted to exact production dependency
+URLs/SRI from the lockfile at registry.npmjs.org. The actual loopback smoke serves
+only retained candidate files plus that closure; it has no uplinks, live fallback,
+credentials or project-package acquisition. It executes the initializer alone via
+`npm init`, with default install scripts enabled, so dependency declarations and
+native/install requirements are visible. It checks repository-owned setup, runtime
+repair, fresh-clone activation, actual worker Node and workflow generation from
+installed core resources. Production dependencies are JS-only (`zod`, Commander,
+`@iarna/toml`); SQLite comes from the chosen Node runtime. No external native build
+step is needed by this graph. Git is required. POSIX automatic-supervision/receiver
+tests stay off Windows; Windows automatic execution remains unsupported.
 
-`npm run release:preflight` is the live registry and workflow contract gate. It validates:
+Retain the candidate directory: `candidate.json` records the exact source commit,
+tag, versions, sizes and SHA-512 SRI for all three files. Pack once; `smoke:pack`
+checks those bytes without rebuilding/repacking. `smoke:registry` consumes them
+with the separate closure. Standard gates are typecheck, build, full tests with
+`--maxWorkers=1`, docs, pack content, retained-pack checks and initializer registry
+smoke on Node 24.0.0/26.0.0. The CI matrix consumes **one uploaded candidate** in
+every platform/runtime cell; configuring Linux/Windows is not execution evidence.
 
-- aligned publishable versions
-- npm auth visibility
-- npm ownership visibility
-- trusted-publishing workflow markers
-- support metadata such as `engines.node` and the root `packageManager`
+## Publication, only after explicit authorization
 
-## 2. Capture preflight output
+`.github/workflows/release.yml` is manual-only. Supply exact SHA, existing exact
+`v<version>` tag, explicit `major-prerelease` or `stable-major` intent, and successful
+main CI run ID retaining that candidate. The protected `npm-release` environment
+must restrict publishing to main. Every request shares one fixed noncanceling
+`npm-release` queue with `queue: max`; stale queued requests fail closed.
 
-Persist the machine-readable preflight report with placeholders that match the version you are releasing:
+A trusted inline workflow guard checks dispatch/main, syntax, current remote main
+and the exact peeled tag **before checking out or executing the requested source**.
+The publisher accepts artifacts only from the same repository's successful
+`.github/workflows/ci.yml` main push at the exact SHA. ZIP membership/type/size and
+manifest binding are validated before extraction; filenames and actual hashes are
+validated again before use. No tag, commit, release or push is created by this job.
 
-```bash
-mkdir -p artifacts/releases/<release-version>
-npm --silent run release:preflight -- --json > artifacts/releases/<release-version>/preflight.json
-```
+Before the first publish it fetches and rechecks HEAD/tag/current-main and tracked
+inputs, then checks **every exact registry version**, not `latest`. An exact-version
+404 means absent. Auth, HTTP, malformed responses and unknown errors stop the run.
+Existing packages must match registry SHA-512, downloaded bytes, size and retained
+SRI, with the intended dist-tag. A mismatch stops the entire run before any upload.
+Matching packages are resumable successes; missing ones publish core→CLI→initializer
+from the **retained tarballs**, then exact bytes/tags are checked again. Ambiguous
+upload errors are reconciled by requery; repeat publication makes no npm writes.
+Freshness is checked again after registry preflight immediately before first write.
+No workflow can prevent main advancing after that last check; serialization prevents
+this workflow from racing another publisher, not unrelated main updates.
 
-Use `npm --silent run` when redirecting to a file so the output stays valid JSON.
+Retries select the same retained CI run ID and candidate hashes. Never bump, repack,
+unpublish or retag to repair a partial publication. Artifacts expire (configured
+90 days, subject to hosted policy); archive the exact files and evidence externally
+through an authorized maintainer process before that. If the retained bytes are lost
+or source freshness no longer holds, this workflow refuses to resume: recover the
+original files and seek a separately reviewed recovery action. Rebuilding matching
+versions is not an automatic recovery path. A wrong/missing dist-tag needs separately
+authorized repair and cannot be called a completed release.
 
-## 3. Publish through GitHub Actions
+## Hosted prerequisites that local tests do not prove
 
-The production publish path is `.github/workflows/release.yml`.
+Configure npm trusted publishing separately for **each** package: exact GitHub
+owner/repository, workflow filename `release.yml` and environment `npm-release`;
+repository metadata must match. Use GitHub-hosted runners, `id-token: write`, and
+explicitly allow **direct** publishing (new publishers may default to staged).
+The workflow pins npm **11.6.0** for direct `npm publish <tarball> --tag next`
+with provenance. Do not pass legacy npm tokens or use `npm whoami` as OIDC evidence.
+This npm version does **not** support standalone OIDC dist-tag repair; that requires
+npm >=11.21.0 or >=12.2.0 plus separate publisher permission, deliberately reviewed
+before use. Provenance availability also depends on public source-repository status.
+A pack/dry-run is not proof of OIDC authorization, package ownership, main/tag
+freshness on GitHub, branch protection or private authenticated image rendering.
+No such hosted claims were verified during local candidate preparation.
 
-Expected behavior:
+Primary research: [npm trusted publishers](https://docs.npmjs.com/trusted-publishers/),
+[npm publish](https://docs.npmjs.com/cli/v11/commands/npm-publish/),
+[npm lifecycle](https://docs.npmjs.com/cli/v11/using-npm/scripts/),
+[Changesets fixed groups](https://changesets.dev/guide/fixed-packages),
+[Changesets prereleases](https://changesets.dev/guide/prereleases),
+[GitHub concurrency/queues](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+The retained release-contract research informed these implementation decisions;
+its v2 CLI output was verified locally rather than inferred from current v3 docs.
 
-- qualifying pushes to `main` auto-bump the three publishable packages in lockstep
-- npm publish uses trusted publishing through OIDC
-- the workflow commits the released versions back to the branch
-- the workflow creates Git tags for the released version
-- the workflow creates or updates a GitHub release entry for that version
+## Dependency and fixture maintenance
 
-Do not switch to a one-off local publish path when the workflow is the source of truth. Fix the workflow or trusted-publisher configuration instead.
+The weekly/manual dependency-fixtures workflow runs only synthetic fixtures,
+explicit empty-root capability version reporting and a read-only production audit.
+It retains redacted test/advisory/capability evidence; it does not commit upgrades,
+replace fixtures from user histories, publish packages or update users' approved
+runtime code. Review advisories and official adapter schema/version evidence,
+propose a changeset, validate the matrix and explicitly upgrade repository pins.
 
-## 4. Capture publish evidence
-
-After the workflow succeeds, write repo-local evidence for that exact published version:
-
-```bash
-npm run release:evidence \
-  -- --output-dir artifacts/releases/<release-version> \
-  --publish-path github-actions \
-  --preflight-json artifacts/releases/<release-version>/preflight.json \
-  --artifact-prefix PUBLISH-EVIDENCE \
-  --workflow-run-url <workflow-url> \
-  --workflow-run-id <workflow-run-id> \
-  --workflow-run-conclusion success \
-  --published-git-sha <released-commit-sha> \
-  --published-at <ISO8601>
-```
-
-The important part is the placeholder contract:
-
-- `artifacts/releases/<release-version>/...`
-- `PUBLISH-EVIDENCE`
-
-The release doc should stay template-driven. It must not hardcode an old published version.
-
-## 5. Run post-publish registry smoke
-
-Verify that the released packages and initializer resolve from a clean directory:
-
-```bash
-bash scripts/smoke/verify-registry-install.sh \
-  --version <release-version> \
-  --check-initializer \
-  --write-evidence \
-  --output-dir artifacts/releases/<release-version> \
-  --artifact-prefix REGISTRY-SMOKE
-```
-
-That should leave:
-
-- `artifacts/releases/<release-version>/REGISTRY-SMOKE.json`
-- `artifacts/releases/<release-version>/REGISTRY-SMOKE.md`
-
-This is the authoritative initializer proof for the default contract. `verify-registry-install.sh --check-initializer --write-evidence` must show that `npm init agent-badge@latest` leaves minimal repo artifacts, writes `.agent-badge/*`, and installs the direct shared-runtime hook without requiring repo-local `node_modules/.bin/agent-badge`.
-
-The smoke result must report `"status": "passed"` before the release is treated as complete.
-
-## 6. Backfill missing tags or releases
-
-If npm says `latest` is newer than the public Git tags or GitHub Releases page, backfill the missing metadata before calling the release story complete. The current repo history already contains `chore(release): publish <version>` commits that can be used as the source of truth for missing tags.
-
-Typical manual backfill commands:
-
-```bash
-git tag -a v<release-version> <released-commit-sha> -m "Release v<release-version>"
-git tag -a @legotin/agent-badge-core@<release-version> <released-commit-sha> -m "Release @legotin/agent-badge-core@<release-version>"
-git tag -a @legotin/agent-badge@<release-version> <released-commit-sha> -m "Release @legotin/agent-badge@<release-version>"
-git tag -a create-agent-badge@<release-version> <released-commit-sha> -m "Release create-agent-badge@<release-version>"
-git push origin v<release-version> @legotin/agent-badge-core@<release-version> @legotin/agent-badge@<release-version> create-agent-badge@<release-version>
-gh release create v<release-version> --title "v<release-version>" --generate-notes
-```
-
-## 7. Update changelog and docs
-
-Make sure:
-
-- `CHANGELOG.md` includes the published version
-- user docs still point only to user-facing pages
-- maintainer docs stay under `docs/maintainers/`
+Checkout/setup-node retain independently verified v6 commit pins. Artifact upload
+uses Node24 [v6.0.0](https://github.com/actions/upload-artifact/releases/tag/v6.0.0),
+verified at [b7c566a772e6b6bfb58ed0dc250532a479d7789f](https://github.com/actions/upload-artifact/commit/b7c566a772e6b6bfb58ed0dc250532a479d7789f)
+and [its action manifest](https://raw.githubusercontent.com/actions/upload-artifact/v6.0.0/action.yml).
+Pin updates are deliberate review work, including runner/runtime requirements.

@@ -1,6 +1,6 @@
 # Repository-native agent-badge: breaking redesign
 
-Status: approved and implemented through Tasks 1–16 on the refactor branch. Task 17 performance/legacy removal is implemented and locally verified, pending independent review; its measured latency exception is recorded in §14. Task 18 candidate artifact/release preparation remains. No replacement release or deployment has occurred. Hosted GitHub policy, Linux/Windows and authenticated private-image gates remain unverified.
+Status: approved and implemented through Tasks 1–16 on the refactor branch. Task 17 performance/legacy removal has passed independent review; its measured latency exception is recorded in §14. Task 18 candidate artifact/release preparation is implemented and undergoing final local gates and independent review; see [candidate verification](../../maintainers/RELEASE-VERIFICATION.md). No replacement release or deployment has occurred. Hosted GitHub policy, Linux/Windows and authenticated private-image gates remain unverified.
 Research date: 2026-10-22. Baseline: `d209a47` / npm packages `1.1.20`.
 Working branch: `refactor/repo-native-agent-badge`.
 

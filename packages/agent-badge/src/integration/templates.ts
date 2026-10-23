@@ -86,7 +86,10 @@ function main() {
     const stage = fs.mkdtempSync(path.join(privateDir, 'runtime', '.install-'));
     try {
       fs.writeFileSync(path.join(stage, 'package.json'), manifest); fs.writeFileSync(path.join(stage, 'package-lock.json'), lock);
-      const result = cp.spawnSync('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false'], { cwd: stage, stdio: 'ignore', timeout: 120000 });
+      const npmArgs = ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false'];
+      const npmCommand = process.platform === 'win32' ? process.execPath : 'npm';
+      if (process.platform === 'win32') npmArgs.unshift(path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'));
+      const result = cp.spawnSync(npmCommand, npmArgs, { cwd: stage, stdio: 'ignore', timeout: 120000 });
       if (result.status !== 0) throw new Error('Runtime installation unavailable; retry setup when online.');
       if (!ready(stage)) throw new Error('Installed runtime incomplete or version mismatch.');
       // Remove only a verified owned hash directory, after its replacement is complete.

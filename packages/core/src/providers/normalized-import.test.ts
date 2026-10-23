@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, it } from "vitest";
 import {
   copyFile,
@@ -92,7 +95,7 @@ async function fixture(
   provider: ProviderId = "import",
   maxBytes?: number
 ) {
-  const root = await mkdtemp("/private/tmp/normalized-import-");
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'normalized-import-')));
   roots.push(root);
   const path = join(root, "source.json");
   await writeFile(path, JSON.stringify(value));

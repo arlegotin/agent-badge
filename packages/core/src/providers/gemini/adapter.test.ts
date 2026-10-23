@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, it } from "vitest";
 import {
   appendFile,
@@ -65,7 +68,7 @@ const row = (id = "one", extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 async function fixture(bytes = jsonl(header(), row())) {
-  const root = await mkdtemp("/private/tmp/gemini-contract-");
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'gemini-contract-')));
   roots.push(root);
   const dir = join(root, "tmp/project-one/chats");
   await mkdir(dir, { recursive: true });
@@ -372,7 +375,7 @@ it("scope and registry mapping changes force verified replay rather than reusing
 });
 it("detects the configured runtime home and sandbox root without reading sibling credentials", async () => {
   const f = await fixture();
-  const outer = await mkdtemp("/private/tmp/gemini-home-");
+  const outer = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'gemini-home-')));
   roots.push(outer);
   await mkdir(join(outer, ".cache"), { recursive: true });
   await rename(f.root, join(outer, ".cache", ".gemini"));

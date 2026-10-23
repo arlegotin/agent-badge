@@ -1,107 +1,106 @@
-// Controlled loopback registry: exercise actual packed artifacts without public registry traffic.
+// Exact retained candidates, initializer alone, real dependency graph, no uplinks.
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, writeFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
+import { loadArtifacts, tarFiles } from './verify-packed-install.mjs';
 const execute = promisify(execFile);
-const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const root = await mkdtemp('/private/tmp/agent-badge-initializer-smoke-');
-const packs = join(root, 'packs'), home = join(root, 'home'), cache = join(root, 'cache'), project = join(root, 'project');
-const packages = new Map(), packed = new Map();
+const directory = resolve(process.argv[2] ?? 'artifacts/candidate'), closure = resolve(process.argv[3] ?? 'artifacts/dependency-closure');
+const { candidate, entries } = await loadArtifacts(directory);
+if (!/^(24|26)\./.test(process.versions.node)) throw Error('Use Node 24/26 floor on PATH');
+// Runner is a required boundary: refuse execution under an ordinary user HOME.
+if (process.env.AGENT_BADGE_TEST_NODE !== process.execPath || process.env.AGENT_BADGE_TEST_PROVIDER_ROOTS !== '{"codex":[],"claude":[],"gemini":[],"opencode":[]}') throw Error('Run through scripts/validation/run-isolated.mjs');
+const root = await mkdtemp(join(tmpdir(), 'agent-badge-registry-smoke-'));
+const home = join(root, 'home'), cache = join(root, 'cache'), project = join(root, 'project');
+const packages = new Map(), requests = [];
 let registry;
-const env = { ...process.env, HOME: home, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', npm_config_cache: cache,
-  npm_config_userconfig: join(home, '.npmrc'), npm_config_globalconfig: join(root, 'global.npmrc'), npm_config_audit: 'false', npm_config_fund: 'false', npm_config_ignore_scripts: 'true', GIT_AUTHOR_NAME: 'Synthetic fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_NAME: 'Synthetic fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid' };
-for (const key of Object.keys(env)) if (/^(GH_|GITHUB_|CODEX_|CLAUDE_|NPM_TOKEN|NODE_AUTH_TOKEN)/.test(key)) delete env[key];
-async function run(command, args, cwd = root, extra = {}) {
-  try { return await execute(command, args, { cwd, env, timeout: 120000, maxBuffer: 4 * 1024 * 1024, ...extra }); }
-  catch (error) { console.error(String(error.stderr ?? '').slice(0, 4000), String(error.stdout ?? '').slice(0, 4000)); throw new Error(`Controlled smoke command failed: ${command} ${args.slice(0, 2).join(' ')}`); }
-}
-async function locate(name, from) {
-  const require = createRequire(join(from, 'package.json'));
-  for (const directory of require.resolve.paths(name) ?? []) {
-    try { const manifest = JSON.parse(await readFile(join(directory, name, 'package.json'), 'utf8')); if (manifest.name === name) return await realpath(join(directory, name)); } catch {}
-  }
-  throw new Error('Dependency fixture unavailable: ' + name);
-}
-async function pack(directory) {
-  const manifest = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
-  const key = manifest.name + '@' + manifest.version;
-  if (packed.has(key)) return;
-  packed.set(key, true);
-  const { stdout } = await run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', packs], directory);
-  const filename = JSON.parse(stdout)[0].filename, bytes = await readFile(join(packs, filename));
-  const entry = { manifest, filename, bytes, integrity: 'sha512-' + createHash('sha512').update(bytes).digest('base64') };
-  const versions = packages.get(manifest.name) ?? new Map(); versions.set(manifest.version, entry); packages.set(manifest.name, versions);
-  for (const dependency of Object.keys(manifest.dependencies ?? {})) {
-    const local = dependency === '@legotin/agent-badge' ? join(sourceRoot, 'packages/agent-badge') : dependency === '@legotin/agent-badge-core' ? join(sourceRoot, 'packages/core') : await locate(dependency, directory);
-    await pack(local);
-  }
+const env = { ...process.env, HOME: home, USERPROFILE: home, npm_config_cache: cache, npm_config_userconfig: join(root, 'user.npmrc'), npm_config_globalconfig: join(root, 'global.npmrc'), GIT_CONFIG_GLOBAL: join(root, 'gitconfig'), npm_config_ignore_scripts: 'false', GIT_AUTHOR_NAME: 'Synthetic fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_NAME: 'Synthetic fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid' };
+const npm = 'npm';
+async function run(command, args, cwd = root) {
+  if (command === npm && process.platform === 'win32') { command = process.execPath; args = [join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args]; }
+  try { return await execute(command, args, { cwd, env, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }); }
+  catch (error) { console.error(String(error.stderr ?? '').slice(0, 4000), String(error.stdout ?? '').slice(0, 4000)); throw new Error('Synthetic smoke command failed: ' + command + ' ' + args.slice(0, 2).join(' ')); }
 }
 try {
-  if (!/^(24|26)\./.test(process.versions.node)) throw new Error('Run packed initializer smoke under Node 24 or 26 with target Node on PATH.');
-  for (const path of [packs, home, cache, project]) await mkdir(path, { recursive: true });
-  await writeFile(env.npm_config_userconfig, ''); await writeFile(env.npm_config_globalconfig, '');
-  await pack(join(sourceRoot, 'packages/create-agent-badge'));
+  for (const path of [home, cache, project]) await mkdir(path, { recursive: true });
+  for (const path of [env.npm_config_userconfig, env.npm_config_globalconfig]) await writeFile(path, '');
+  await writeFile(env.GIT_CONFIG_GLOBAL, '[credential]\n\thelper =\n');
+  const deps = JSON.parse(await readFile(join(closure, 'closure.json'), 'utf8'));
+  for (const a of deps) {
+    assert(!candidate.artifacts.some(p => p.name === a.name), 'No project-package uplink/closure override');
+    assert.match(a.filename, /^[A-Za-z0-9_.-]+\.tgz$/);
+    const bytes = await readFile(join(closure, a.filename));
+    assert.equal(bytes.length, a.size); assert.equal('sha512-' + createHash('sha512').update(bytes).digest('base64'), a.integrity);
+    const manifest = JSON.parse(tarFiles(bytes).get('package/package.json'));
+    assert.equal(manifest.name, a.name); assert.equal(manifest.version, a.version);
+    entries.push({ ...a, bytes, manifest });
+  }
+  for (const entry of entries) { assert(!packages.has(entry.name), 'Duplicate closure name'); packages.set(entry.name, entry); }
   registry = createServer((request, response) => {
-    const route = decodeURIComponent(request.url.split('?')[0]);
-    if (route.startsWith('/artifacts/')) {
-      const entry = [...packages.values()].flatMap(v => [...v.values()]).find(e => route === '/artifacts/' + e.filename);
-      if (entry) { response.writeHead(200, { 'content-type': 'application/octet-stream' }); response.end(entry.bytes); return; }
-    }
-    const name = route.slice(1), versions = packages.get(name);
-    if (versions) {
-      const content = Object.fromEntries([...versions].map(([version, e]) => [version, { ...e.manifest, dist: { tarball: env.npm_config_registry + 'artifacts/' + e.filename, integrity: e.integrity } }]));
-      response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ name, 'dist-tags': { latest: [...versions.keys()][0] }, versions: content })); return;
+    if (request.method !== 'GET') { response.writeHead(405); response.end(); return; }
+    const route = decodeURIComponent(request.url.split('?')[0]); requests.push(route);
+    const artifact = entries.find(e => route === '/artifacts/' + e.filename);
+    if (artifact) { response.writeHead(200, { 'content-type': 'application/octet-stream' }); response.end(artifact.bytes); return; }
+    const name = route.slice(1), entry = packages.get(name);
+    if (entry) {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ name, 'dist-tags': { latest: entry.version, next: entry.version }, versions: { [entry.version]: { ...entry.manifest, dist: { tarball: env.npm_config_registry + 'artifacts/' + entry.filename, integrity: entry.integrity } } } })); return;
     }
     response.writeHead(404); response.end('{}');
   });
   await new Promise((accept, reject) => { registry.once('error', reject); registry.listen(0, '127.0.0.1', accept); });
   env.npm_config_registry = `http://127.0.0.1:${registry.address().port}/`;
-  await writeFile(join(root, 'package.json'), '{"private":true}');
-  const version = JSON.parse(await readFile(join(sourceRoot, 'packages/create-agent-badge/package.json'), 'utf8')).version;
-  // Only the initializer is requested; all runtime dependencies resolve from controlled actual tarballs.
-  await run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', 'create-agent-badge@' + version]);
-  const initializer = join(root, 'node_modules/create-agent-badge/dist/index.js');
   await run('git', ['init', '--initial-branch=main'], project);
   await run('git', ['init', '--bare', '--initial-branch=main', join(root, 'remote.git')]);
   await run('git', ['remote', 'add', 'origin', join(root, 'remote.git')], project);
-  const result = await run(process.execPath, [initializer, '--repository-url', 'https://github.com/example/synthetic', '--target', 'origin'], project);
-  assert.match(result.stdout, /runtime .*usage (synced|unchanged)/);
+  // npm init requests only create-agent-badge; core/CLI resolve transitively from the same registry.
+  const initialized = await run(npm, ['init', '--yes', 'agent-badge@' + candidate.version, '--', '--repository-url', 'https://github.com/example/synthetic', '--target', 'origin'], project);
+  assert.match(initialized.stdout, /runtime .*usage (synced|unchanged)/);
   const privateDir = join(project, '.git/agent-badge'), activation = JSON.parse(await readFile(join(privateDir, 'local.json'), 'utf8'));
   const runtime = join(privateDir, 'runtime', activation.lockHash, 'node_modules/@legotin/agent-badge');
-  assert.equal(JSON.parse(await readFile(join(runtime, 'package.json'), 'utf8')).version, version);
-  assert.equal(JSON.parse(await readFile(join(project, '.agent-badge/runtime/package.json'), 'utf8')).dependencies['@legotin/agent-badge'], version);
-  // Remove the temporary initializer installation. Fresh-clone activation must still work.
-  await rm(join(root, 'node_modules'), { recursive: true, force: true });
-  const second = await run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project);
-  assert.match(second.stdout, /runtime .*usage unchanged/);
+  assert.equal(JSON.parse(await readFile(join(runtime, 'package.json'), 'utf8')).version, candidate.version);
+  assert.equal(JSON.parse(await readFile(join(project, '.agent-badge/runtime/package.json'), 'utf8')).dependencies['@legotin/agent-badge'], candidate.version);
+  // Installed core must find its packaged workflow resource and generate a complete workflow.
+  const core = join(privateDir, 'runtime', activation.lockHash, 'node_modules/@legotin/agent-badge-core/dist/index.js');
+  const generation = await run(process.execPath, ['--input-type=module', '-e', `const {generateContributionWorkflow}=await import(${JSON.stringify(pathToFileURL(core).href)});const v=${JSON.stringify(candidate.version)};const manifest=JSON.stringify({private:true,dependencies:{'@legotin/agent-badge':v}});const lock=JSON.stringify({lockfileVersion:3,packages:{'':{dependencies:{'@legotin/agent-badge':v}},'node_modules/@legotin/agent-badge':{version:v,resolved:'https://registry.npmjs.org/synthetic.tgz',integrity:'sha512-c3ludGhldGlj'}}});const text=await generateContributionWorkflow({repositoryId:${JSON.stringify(activation.repositoryId)},repositoryUrl:'https://github.com/example/synthetic',defaultBranch:'main',runtimeVersion:v,pin:{manifest,lock}});if(text.includes('__MANIFEST_BASE64__')||!text.includes('workflow_dispatch:'))throw Error('incomplete installed workflow');console.log('installed-core-resource-generation-passed');`], project);
+  assert.match(generation.stdout, /installed-core-resource-generation-passed/);
+  // Remove npm-exec's initializer cache; setup is repository-owned and does not require it.
+  await rm(cache, { recursive: true, force: true }); await mkdir(cache);
+  const setup = () => run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project);
+  assert.match((await setup()).stdout, /runtime .*usage unchanged/);
   const originalCli = await readFile(join(runtime, 'dist/cli/main.js'), 'utf8');
-  await rm(join(runtime, 'dist/cli/main.js'));
-  const repaired = await run(process.execPath, [join(project, '.agent-badge/run.cjs'), 'setup'], project);
-  assert.match(repaired.stdout, /runtime .*usage unchanged/);
+  await rm(join(runtime, 'dist/cli/main.js')); assert.match((await setup()).stdout, /runtime .*usage unchanged/);
   assert.equal(await readFile(join(runtime, 'dist/cli/main.js'), 'utf8'), originalCli);
   assert.equal(await readFile(join(project, 'package.json'), 'utf8').catch(() => null), null);
   await run('git', ['add', '.agent-badge', 'README.md'], project);
-  await run('git', ['commit', '-m', 'Synthetic installed declaration'], project);
-  await run('git', ['push', 'origin', 'HEAD:refs/heads/main'], project);
+  await run('git', ['-c', 'core.hooksPath=' + join(root, 'empty-hooks'), 'commit', '-m', 'Synthetic installed declaration'], project);
+  await run('git', ['-c', 'core.hooksPath=' + join(root, 'empty-hooks'), 'push', 'origin', 'HEAD:refs/heads/main'], project);
   const clone = join(root, 'fresh-clone'); await run('git', ['clone', join(root, 'remote.git'), clone]);
   const fresh = await run(process.execPath, [join(clone, '.agent-badge/run.cjs'), 'setup', '--target', 'origin'], clone);
   assert.match(fresh.stdout, /runtime .*usage unchanged/);
-  const clonePrivate = join(clone, '.git/agent-badge'), cloneActivation = JSON.parse(await readFile(join(clonePrivate, 'local.json'), 'utf8'));
-  assert.equal(cloneActivation.repositoryId, activation.repositoryId);
-  assert.equal(cloneActivation.initializeAllowed, false);
-  const cloneRuntime = join(clonePrivate, 'runtime', cloneActivation.lockHash, 'node_modules/@legotin/agent-badge');
-  const child = await run(process.execPath, ['--input-type=module', '-e', `const runtime=await import(${JSON.stringify(new URL('file://' + join(cloneRuntime, 'dist/integration/runtime.js')).href)});const r=await runtime.runApprovedOperation({cwd:process.cwd(),privateDir:${JSON.stringify(clonePrivate)}});if(!['unchanged','synced'].includes(r.status))process.exit(1);console.log(process.version+' private runtime '+r.status);`], clone);
-  // A mutable tracked launcher cannot run during automatic collection.
-  await writeFile(join(clone, '.agent-badge/run.cjs'), 'throw new Error("UNTRUSTED tracked launcher executed");');
-  const automatic = await run(process.execPath, [join(clonePrivate, 'bootstrap.cjs')], clone);
-  assert.equal(automatic.stderr, '');
-  console.log('Packed initializer persistent-runtime smoke passed: ' + child.stdout.trim() + '; temporary initializer removed; nonempty partial runtime repaired; fresh clone explicitly activated; mutable launcher ignored; no root package created.');
+  const clonePrivate = join(clone, '.git/agent-badge'), cloned = JSON.parse(await readFile(join(clonePrivate, 'local.json'), 'utf8'));
+  assert.equal(cloned.repositoryId, activation.repositoryId); assert.equal(cloned.initializeAllowed, false);
+  // Prove approved worker runtime, rather than inferring it from the invoking process.
+  const cloneRuntime = join(clonePrivate, 'runtime', cloned.lockHash, 'node_modules/@legotin/agent-badge');
+  const workerPath = join(cloneRuntime, 'dist/integration/runtime-worker.js'), original = await readFile(workerPath, 'utf8'), proof = join(root, 'worker-runtime.json');
+  try {
+    await writeFile(workerPath, `import{writeFileSync as proofWrite}from'node:fs';proofWrite(${JSON.stringify(proof)},JSON.stringify({node:process.version,execPath:process.execPath}));\n` + original);
+    await run(process.execPath, [join(clone, '.agent-badge/run.cjs'), 'sync'], clone);
+  } finally { await writeFile(workerPath, original); }
+  const actualWorker = JSON.parse(await readFile(proof, 'utf8')); assert.equal(actualWorker.node, process.version); assert.equal(actualWorker.execPath, process.execPath);
+  if (process.platform !== 'win32') {
+    await writeFile(join(clone, '.agent-badge/run.cjs'), 'throw new Error("UNTRUSTED launcher executed");');
+    // Local/file automatic publication is unsupported and may report it; no receiver or live route is used.
+    const automatic = await run(process.execPath, [join(clonePrivate, 'bootstrap.cjs')], clone);
+    assert.doesNotMatch(automatic.stderr, /UNTRUSTED launcher executed/);
+  }
+  for (const a of candidate.artifacts) assert(requests.some(route => route === '/artifacts/' + a.filename));
+  console.log(JSON.stringify({ status: 'candidate-registry-smoke-passed', sha: candidate.sha, runtime: process.version, actualWorker, platform: `${process.platform}/${process.arch}`, initializerOnly: true, scripts: 'default-enabled', projectUplinks: false, externalRoutes: false, checks: ['single-command-npm-init', 'same-registry-transitive-dependencies', 'installed-core-workflow-generation', 'repository-owned-setup', 'partial-runtime-repair', 'fresh-clone-single-command-activation', 'worker-runtime-proof'], artifacts: candidate.artifacts }));
 } finally {
   if (registry) await new Promise(accept => registry.close(accept));
   await rm(root, { recursive: true, force: true });

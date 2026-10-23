@@ -1,3 +1,4 @@
+import { assertOwnedGitFixture } from '../validation/fixture-root.js';
 /** Actual installed shell-entry latency on an already populated synthetic fixture. */
 import { spawnSync } from 'node:child_process';
 import { readFile, readdir, realpath } from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { readStoreSnapshot } from '../../packages/core/src/storage/store.js';
 import { observeProgress } from './observer.js';
 
 const root = await realpath(process.argv[2]), sampleCount = Number(process.argv[3] ?? 30);
-if (!root.startsWith('/private/tmp/') || !basename(root).startsWith('agent-badge-git-') || !Number.isSafeInteger(sampleCount) || sampleCount < 30)
+if (!(await assertOwnedGitFixture(root)) || !Number.isSafeInteger(sampleCount) || sampleCount < 30)
   throw Error('Populated synthetic fixture and at least thirty samples required');
 const cwd = join(root, 'clone-a'), declaration = JSON.parse(await readFile(join(cwd, '.agent-badge/config.json'), 'utf8'));
 if (declaration.declaredUrl !== 'https://github.com/synthetic/benchmark') throw Error('Synthetic fixture required');

@@ -1,3 +1,4 @@
+import { npmInvocation } from './npm.js';
 import { readFile, writeFile, mkdir, mkdtemp, rename, rm, lstat, realpath, open } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
@@ -81,13 +82,15 @@ async function resolveNpmPin(version: string): Promise<RuntimePin> {
   try {
     const manifest = json({ name: 'agent-badge-runtime', private: true, engines: { node: NODE_RANGE }, dependencies: { '@legotin/agent-badge': version } });
     await writeFile(join(root, 'package.json'), manifest);
-    await execute('npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false'], { cwd: root, timeout: 120000, maxBuffer: 64 * 1024 });
+    const npm = npmInvocation(['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false']);
+    await execute(npm.command, npm.args, { cwd: root, timeout: 120000, maxBuffer: 64 * 1024 });
     return { manifest, lock: await readFile(join(root, 'package-lock.json'), 'utf8') };
   } catch { throw new Error('Exact runtime resolution unavailable; retry setup when online.'); }
   finally { await rm(root, { recursive: true, force: true }); }
 }
 async function npmInstall(directory: string) {
-  try { await execute('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false'], { cwd: directory, timeout: 120000, maxBuffer: 64 * 1024 }); }
+  const npm = npmInvocation(['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--workspaces=false']);
+  try { await execute(npm.command, npm.args, { cwd: directory, timeout: 120000, maxBuffer: 64 * 1024 }); }
   catch { throw new Error('Runtime installation unavailable; retry setup when online.'); }
 }
 /** Resolves a concrete reviewable plan. Never changes the repository or activates code. */

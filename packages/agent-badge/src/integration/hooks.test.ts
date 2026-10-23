@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs/promises';
@@ -13,7 +16,7 @@ function git(cwd: string, args: string[], env = process.env) {
   return spawnSync('git', args, { cwd, env, encoding: 'utf8', timeout: 15000 });
 }
 async function fixture(hook?: string, hooksPath?: string) {
-  const root = await mkdtemp('/private/tmp/agent-badge hooks-'); roots.push(root);
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge hooks-'))); roots.push(root);
   const cwd = join(root, 'repository with spaces'); await mkdir(cwd);
   expect(git(cwd, ['init', '-q']).status).toBe(0);
   for (const [k, v] of [['user.name', 'Synthetic'], ['user.email', 'synthetic@example.invalid']]) git(cwd, ['config', k, v]);

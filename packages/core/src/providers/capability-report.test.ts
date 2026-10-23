@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, it } from "vitest";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -12,7 +15,7 @@ afterEach(async () => {
     await rm(root, { recursive: true, force: true });
 });
 it("reports all integrations with detected unsupported Cursor/Copilot and no invented token receipts", async () => {
-  const home = await mkdtemp("/private/tmp/capability-");
+  const home = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'capability-')));
   roots.push(home);
   for (const dir of [".cursor", ".copilot", ".local/share/opencode"])
     await mkdir(join(home, dir), { recursive: true });
@@ -50,7 +53,7 @@ it("reports all integrations with detected unsupported Cursor/Copilot and no inv
 it.each(["copilot", "opencode", "codex", "claude", "gemini"] as const)(
   "keeps missing explicitly enrolled %s sources visible as unavailable",
   async (provider) => {
-    const home = await mkdtemp("/private/tmp/capability-");
+    const home = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'capability-')));
     roots.push(home);
     const report = await reportCapabilities(
       { repositoryId, enrolledRoots: [], signal: signal() },
@@ -64,7 +67,7 @@ it.each(["copilot", "opencode", "codex", "claude", "gemini"] as const)(
 it.each(["cursor", "copilot"])(
   "rejects a Claude-compatible hook targeting an unenrolled %s transcript",
   async (provider) => {
-    const home = await mkdtemp("/private/tmp/capability-");
+    const home = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'capability-')));
     roots.push(home);
     const path = join(home, provider, "transcript.jsonl");
     await mkdir(join(home, provider));
@@ -93,7 +96,7 @@ it.each(["cursor", "copilot"])(
 );
 
 it("distinguishes absent tools from detected empty roots with no certified source", async () => {
-  const home = await mkdtemp("/private/tmp/capability-");
+  const home = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'capability-')));
   roots.push(home);
   const before = await reportCapabilities(
     { repositoryId, enrolledRoots: [], signal: signal() },

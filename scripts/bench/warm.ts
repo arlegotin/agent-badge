@@ -1,3 +1,4 @@
+import { assertOwnedGitFixture } from '../validation/fixture-root.js';
 /** Reapprove a retained synthetic fixture with this Node, then measure real hooks. */
 import {startFixtureGitDaemon} from '../../packages/testkit/src/git-daemon.js';
 import {spawnSync} from 'node:child_process';
@@ -11,7 +12,7 @@ import {readLedgerCommit} from '../../packages/core/src/git/data-transport.js';
 import {observeProgress} from './observer.js';
 import {codexContext,codexRequest} from '../../packages/testkit/src/index.js';
 const root=await realpath(process.argv[2]),samples=Number(process.argv[3]??30);
-if(!root.startsWith('/private/tmp/')||!basename(root).startsWith('agent-badge-git-'))throw Error('synthetic fixture required');
+if(!(await assertOwnedGitFixture(root)))throw Error('synthetic fixture required');
 const cwd=join(root,'clone-a'),privateDir=join(cwd,'.git/agent-badge'),declaration=JSON.parse(await readFile(join(cwd,'.agent-badge/config.json'),'utf8'));
 if(declaration.declaredUrl!=='https://github.com/synthetic/benchmark')throw Error('synthetic fixture required');
 const receiver=JSON.parse(await readFile(join(root,'receiver.json'),'utf8'));

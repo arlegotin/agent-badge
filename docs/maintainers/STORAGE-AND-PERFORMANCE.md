@@ -106,7 +106,7 @@ or control intent. Corrupt or unavailable derived evidence falls back to strict
 rebuild; it never supplies acknowledgements.
 
 The scale, bounded-progress and recovery gates completed. The latency-goal
-exception is recorded below; independent review remains required. Full-scale
+exception is recorded below; Task17 independent review is complete. Full-scale
 attempts are retained separately:
 
 | Attempt | Recorded progress | Outcome |
@@ -163,7 +163,7 @@ native source files, then drained them in 79 automatic calls: 89.33 s summed hoo
 time, 90.60 s including read-only observations, maximum call 1,279.91 ms, exact
 pending zero. Its append confirmed unit 10,001 in 1,000.51 ms. Strict read-only
 verification passed. In the larger cold gate, the maximum of all 1,814 hook calls
-was 1,946.39 ms. Standard/package checks remain in progress.
+was 1,946.39 ms. At that intermediate measurement, standard/package checks remained in progress. Their subsequent completion and the final candidate scope are recorded in [candidate verification](RELEASE-VERIFICATION.md).
 
 The second fresh run reached 11,520 confirmations after 300 calls/472 seconds;
 recurrent rebuilds again collapsed throughput. A retained-fixture trace caught
@@ -248,9 +248,10 @@ approved bootstrap command. Full authority validation after measurements remains
 an observer operation and is excluded from hook resource claims.
 
 
-The current fixture harness is macOS-specific: its synthetic-root guard uses
-`/private/tmp`, Git configuration suppression uses `/dev/null`, and the memory
-probe uses macOS `time -l`. These tests do not establish Linux/Windows harness
-portability. Task18 owns the corresponding CI/isolation-runner adaptation; the
-product's explicit unsupported automatic supervision behavior on Windows remains
-separate from that harness work.
+The measured fixture harness was macOS-specific: it used `/private/tmp`,
+`/dev/null` and macOS `time -l`. Task18 replaces receiver/warm/wrapper guards with
+canonical OS temporary-root validation, gives the receiver an owned empty Git
+config, and supplies portable test isolation/fixture roots. The receiver and
+process-group suites remain POSIX-only; memory `time -l` evidence remains macOS
+only. Configured Linux/Windows jobs have not executed here. Windows automatic
+supervision remains explicitly unsupported. See [candidate verification](RELEASE-VERIFICATION.md).

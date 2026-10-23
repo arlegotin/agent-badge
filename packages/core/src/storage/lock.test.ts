@@ -44,7 +44,7 @@ test('caller cancellation interrupts a hanging namespace probe without waiting f
 
 test('atomic lease publication preserves an existing symlink and never writes its target', async () => {
   const { symlink, readFile, readdir } = await import('node:fs/promises');
-  const root = await realpath(await mkdtemp(join('/private/tmp', 'agent-badge-lock-symlink-')));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'agent-badge-lock-symlink-')));
   const target = join(root, 'target');
   await writeFile(target, 'unchanged'); await symlink(target, join(root, 'operation.lock'));
   try {
@@ -57,7 +57,7 @@ test('atomic lease publication preserves an existing symlink and never writes it
 test('unsupported hardlink publication fails closed and removes its staging file', async () => {
   const fs = (await import('node:fs/promises')).default;
   const { vi } = await import('vitest');
-  const root = await realpath(await mkdtemp(join('/private/tmp', 'agent-badge-lock-link-failure-')));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'agent-badge-lock-link-failure-')));
   const spy = vi.spyOn(fs, 'link').mockRejectedValue(Object.assign(new Error('synthetic'), { code: 'ENOTSUP' }));
   try {
     await expect(acquireLock(root, AbortSignal.timeout(100), async () => null)).rejects.toMatchObject({ code: 'store-io' });

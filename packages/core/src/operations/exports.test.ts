@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { expect, test } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -6,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 import * as nodeModule from 'node:module';
 
 test('built launcher subpaths import before the budget without loading the core barrel or provider pipeline', async () => {
-  const root = await mkdtemp('/private/tmp/agent-badge-lightweight-');
+  const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'agent-badge-lightweight-')));
   const loader = join(root, 'guard.mjs');
   const check = `if(/\\/(providers|collection|domain|pricing)\\//.test(resolved.url)||resolved.url.endsWith('/dist/index.js'))throw new Error('Heavy module imported before budget');return resolved;`;
   const synchronousHooks = typeof nodeModule.registerHooks === 'function';

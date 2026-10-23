@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { basename, dirname } from 'node:path';
+import { tmpdir } from 'node:os';
+import { writeFile } from 'node:fs/promises';
 import { realpath } from 'node:fs/promises';
 import type { GitFixture } from './git-fixtures.js';
 
@@ -26,18 +28,21 @@ async function unusedLoopbackPort(): Promise<number> {
 /** Own the receiver separately from supervised clients, as a hosted Git service does. */
 export async function startFixtureGitDaemon(fixture: Pick<GitFixture, 'root' | 'remote'>, retainedPort?: number): Promise<FixtureGitDaemon> {
   const root = await realpath(fixture.root), remote = await realpath(fixture.remote);
-  if (!root.startsWith('/private/tmp/agent-badge-git-') || dirname(remote) !== root || basename(remote) !== 'remote.git')
+  if (process.platform === 'win32') throw Error('POSIX receiver fixture unsupported on Windows');
+  if (dirname(root) !== await realpath(tmpdir()) || !/^agent-badge-git-[A-Za-z0-9_-]+$/.test(basename(root)) || dirname(remote) !== root || basename(remote) !== 'remote.git')
     throw Error('Receiver requires an exact synthetic bare fixture');
   if (retainedPort !== undefined && (!Number.isSafeInteger(retainedPort) || retainedPort < 1024 || retainedPort > 65535))
     throw Error('Invalid retained synthetic port');
   const port = retainedPort ?? await unusedLoopbackPort();
+  const gitConfig = root + '/receiver.gitconfig';
+  await writeFile(gitConfig, '[credential]\n\thelper =\n');
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
   const child = spawn('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', 'daemon',
     '--reuseaddr', '--verbose', '--listen=127.0.0.1', `--port=${port}`, `--base-path=${root}`,
     '--strict-paths', '--export-all', '--enable=receive-pack', '--disable=upload-archive', remote], {
     cwd: root, detached: true, stdio: ['ignore', 'ignore', 'pipe'],
-    env: { ...env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_TERMINAL_PROMPT: '0' },
+    env: { ...env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: gitConfig, GIT_TERMINAL_PROMPT: '0' },
   });
   let exited = false, stopping: Promise<void> | undefined;
   const lifetime = setTimeout(() => { void stop(); }, 2 * 60 * 60 * 1000);

@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { appendFile, chmod, copyFile, mkdir, mkdtemp, readFile, rename, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -15,7 +18,7 @@ const policy={schemaVersion:1 as const,repositoryId:scope.repositoryId,normaliza
 const publicRecords=(observations:ScanBatch['observations'])=>observations.map(o=>sanitizeObservation(o,policy));
 const signal = new AbortController().signal;
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, {recursive: true, force: true}))); });
-async function home() { const root = await mkdtemp('/private/tmp/codex-contract-'); roots.push(root); await mkdir(join(root, 'sessions')); return root; }
+async function home() { const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'codex-contract-'))); roots.push(root); await mkdir(join(root, 'sessions')); return root; }
 async function collect(root: string, checkpoint: Checkpoint | null = null) {
   const adapter = createCodexAdapter({ environment: {}, defaultHome: root });
   const sources = await adapter.discover({ repositoryId:scope.repositoryId, enrolledRoots: [root], signal });

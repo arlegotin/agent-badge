@@ -1,4 +1,4 @@
-/** Integrated synthetic provider/activation benchmark; run only through run-isolated.py. */
+/** Integrated synthetic provider/activation benchmark; run only through scripts/validation/run-isolated.mjs. */
 import { spawnSync } from 'node:child_process';
 import { mkdir, writeFile, readFile, appendFile, cp, symlink, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';

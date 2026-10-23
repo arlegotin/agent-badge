@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { appendFile, copyFile, mkdir, mkdtemp, readFile, rename, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -23,7 +26,7 @@ function row(id='one',input=100,output=3,extra:Record<string,unknown>={}) {
     usage:{input_tokens:input,output_tokens:output,cache_read_input_tokens:10,cache_creation_input_tokens:19,cache_creation:{ephemeral_5m_input_tokens:7,ephemeral_1h_input_tokens:12}}},...extra};
 }
 const jsonl=(...rows:unknown[])=>rows.map(value=>JSON.stringify(value)+'\n').join('');
-async function home(){const root=await mkdtemp('/private/tmp/claude-contract-');roots.push(root);await mkdir(join(root,'projects'));return root;}
+async function home(){const root=await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'claude-contract-')));roots.push(root);await mkdir(join(root,'projects'));return root;}
 async function file(root:string,path:string,contents:string){const target=join(root,'projects',path);await mkdir(dirname(target),{recursive:true});await writeFile(target,contents);return target;}
 async function collect(root:string,checkpoint:Checkpoint|null=null,options:Parameters<typeof createClaudeAdapter>[0]={}) {
   const adapter=createClaudeAdapter({environment:{},defaultHome:root,...options});

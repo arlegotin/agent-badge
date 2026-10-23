@@ -1,3 +1,4 @@
+import { assertOwnedGitFixture } from '../validation/fixture-root.js';
 /** Separate macOS hook-command RSS probe; run through run-isolated.py. */
 import {startFixtureGitDaemon} from '../../packages/testkit/src/git-daemon.js';
 import { spawnSync } from 'node:child_process';
@@ -6,7 +7,7 @@ import { availableParallelism, cpus, release, totalmem } from 'node:os';
 import { basename, join } from 'node:path';
 
 const root = await realpath(process.argv[2]);
-if (!root.startsWith('/private/tmp/') || !basename(root).startsWith('agent-badge-git-')) throw Error('synthetic fixture required');
+if (!(await assertOwnedGitFixture(root))) throw Error('synthetic fixture required');
 if (process.platform !== 'darwin') throw Error('this probe requires macOS time -l');
 const cwd = join(root, 'clone-a'), privateDir = join(cwd, '.git/agent-badge');
 const declaration = JSON.parse(await readFile(join(cwd, '.agent-badge/config.json'), 'utf8'));

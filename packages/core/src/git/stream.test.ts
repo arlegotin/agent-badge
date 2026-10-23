@@ -1,3 +1,6 @@
+import { realpath as fixtureRealpath } from 'node:fs/promises';
+import { tmpdir as fixtureTmpdir } from 'node:os';
+import { join as fixtureJoin } from 'node:path';
 import { afterEach, expect, test, vi } from 'vitest';
 import { mkdir, mkdtemp, writeFile, chmod, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -5,7 +8,7 @@ import * as git from './process.js';
 const roots: string[] = [];
 afterEach(async()=> { await Promise.all(roots.splice(0).map(root=>rm(root,{recursive:true,force:true}))); });
 async function command(source:string) {
- const root = await mkdtemp('/private/tmp/task15-stream-'); roots.push(root);
+ const root = await fixtureRealpath(await mkdtemp(fixtureJoin(fixtureTmpdir(), 'task15-stream-'))); roots.push(root);
  const bin = join(root,'bin'); await mkdir(bin);
  const script = join(bin,'synthetic.cjs'); await writeFile(script,source);
  const executable = join(bin,'git-synthetic'); await writeFile(executable,`#!/bin/sh\nexec '${process.execPath}' '${script}' "$@"\n`); await chmod(executable,0o755);

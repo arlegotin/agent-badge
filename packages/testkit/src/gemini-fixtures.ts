@@ -1,5 +1,6 @@
+import { tmpdir } from 'node:os';
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 /** Synthetic pinned saved history. Paths/IDs are private test evidence only. */
 export async function geminiSavedSession(cwd = "/synthetic/repo") {
@@ -13,7 +14,7 @@ export async function geminiSavedSession(cwd = "/synthetic/repo") {
   );
 }
 export async function createGeminiFixtureHome(cwd = "/synthetic/repo") {
-  const root = await mkdtemp("/private/tmp/agent-badge-gemini-fixture-");
+  const root = await realpath(await mkdtemp(join(tmpdir(), "agent-badge-gemini-fixture-")));
   const chats = join(root, "tmp", "synthetic-project", "chats"),
     path = join(chats, "session-synthetic.jsonl");
   await mkdir(chats, { recursive: true });
