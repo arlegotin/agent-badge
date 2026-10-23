@@ -25,10 +25,16 @@ it('trusted inline remote guard precedes requested checkout, npm lifecycle and c
     // The inline code runs against a synthetic local remote, never GitHub or credential helpers.
     const sha = (await fixture.git(fixture.clones[0], ['rev-parse', 'HEAD'])).trim();
     await fixture.git(fixture.clones[0], ['tag', 'v2.0.0-next.0']);
+    await fixture.git(fixture.clones[0], ['tag', 'v2.0.1']);
+    await fixture.git(fixture.clones[0], ['tag', 'v2.0.2']);
+    await fixture.git(fixture.clones[0], ['push', 'origin', 'refs/tags/v2.0.1', 'refs/tags/v2.0.2']);
     await fixture.git(fixture.clones[0], ['push', 'origin', 'refs/tags/v2.0.0-next.0']);
     const env = { ...process.env, GITHUB_EVENT_NAME: 'workflow_dispatch', GITHUB_REF: 'refs/heads/main', RELEASE_SHA: sha, RELEASE_TAG: 'v2.0.0-next.0', RELEASE_INTENT: 'major-prerelease' };
     expect(() => execFileSync(process.execPath, ['--input-type=module', '-e', code], { cwd: fixture.clones[0], env: { ...env, RELEASE_SHA: 'b'.repeat(40) }, stdio: 'pipe' })).toThrow();
     expect(() => execFileSync(process.execPath, ['--input-type=module', '-e', code], { cwd: fixture.clones[0], env: { ...env, GITHUB_REF: 'refs/heads/feature' }, stdio: 'pipe' })).toThrow();
     expect(execFileSync(process.execPath, ['--input-type=module', '-e', code], { cwd: fixture.clones[0], env, encoding: 'utf8' })).toContain('authorized exact main/tag source');
+    const patchEnv = {...env,RELEASE_TAG:'v2.0.1',RELEASE_INTENT:'stable-patch'};
+    expect(execFileSync(process.execPath, ['--input-type=module', '-e', code], {cwd:fixture.clones[0],env:patchEnv,encoding:'utf8'})).toContain('authorized exact main/tag source');
+    for(const changes of [{RELEASE_INTENT:'stable-major'},{RELEASE_TAG:'v2.0.2'},{RELEASE_SHA:'b'.repeat(40)},{GITHUB_REF:'refs/heads/feature'}]) expect(()=>execFileSync(process.execPath,['--input-type=module','-e',code],{cwd:fixture.clones[0],env:{...patchEnv,...changes},stdio:'pipe'})).toThrow();
   } finally { await fixture.cleanup(); }
 });

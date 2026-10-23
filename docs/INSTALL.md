@@ -24,6 +24,8 @@ agent-badge init --runtime-version 2.0.0
 
 Review the printed tracked changes, runtime pin and hook action items. Setup does not stage or commit files. Reviewed native hook definitions (`.codex/hooks.json`, `.claude/settings.json`, `.gemini/settings.json`) and their matching `.agent-badge/agent-hooks.json` ownership record travel together, or both remain local/untracked. A fresh clone can create local native hooks during explicit setup. Committing ownership while omitting its definitions produces an action item to reconcile missing owned hooks; it is not a successful activation. Never force-add ignored/private settings or unrelated provider files. Installation uses an exact approved npm lock and integrity with package lifecycle scripts disabled. Retry explicit setup after installation failure. No successful-setup claim is made when a required runtime/hook path is unusable; queued initial history can require a later manual run.
 
+New setup uses gold badges with plain values and links the README badge to the repository homepage. Existing accepted 2.0.0 data retains its presentation until an explicit runtime upgrade and configuration change; see [badge configuration](CONFIGURATION.md).
+
 For another clone of an already configured repository:
 
 ```sh

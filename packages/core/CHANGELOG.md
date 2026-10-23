@@ -1,5 +1,11 @@
 # @legotin/agent-badge-core
 
+## 2.0.1
+
+### Patch Changes
+
+- Restore gold badges, add custom hex colors and plain token/cost values, and link generated README badges to the repository homepage. Preserve strict validation of accepted 2.0.0 trees with versioned presentation metadata.
+
 ## 2.0.0
 
 ### Major Changes

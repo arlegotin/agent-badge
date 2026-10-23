@@ -28,6 +28,8 @@ lockfile with `npm install --package-lock-only --ignore-scripts`. Review and com
 Do not invoke either version command during a retry. Stable `2.0.0` requires separate
 explicit intent, prerelease exit/version preparation and a new reviewed commit.
 
+The presentation patch uses a patch changeset and the same pinned version command to prepare exactly `2.0.1` for all three public packages, with exact internal pins. Restore private testkit to `0.0.0` if the v2 Changesets CLI bumps it. `stable-patch` authorizes only exact `2.0.1` to `latest`; the original prerelease and stable-major cases remain available.
+
 Use a supported Node executable on PATH for npm and every shebang/subprocess. The
 portable runner supplies fresh HOME/cache/config and empty provider roots, with no
 native-agent/auth/proxy/Node-injection variables. It does not alter production setup.
@@ -72,7 +74,7 @@ every platform/runtime cell; configuring Linux/Windows is not execution evidence
 ## Publication, only after explicit authorization
 
 `.github/workflows/release.yml` is manual-only. Supply exact SHA, existing exact
-`v<version>` tag, explicit `major-prerelease` or `stable-major` intent, and successful
+`v<version>` tag, explicit `major-prerelease`, `stable-major` or `stable-patch` intent, and successful
 main CI run ID retaining that candidate. The protected `npm-release` environment
 must restrict publishing to main. Every request shares one fixed noncanceling
 `npm-release` queue with `queue: max`; stale queued requests fail closed.

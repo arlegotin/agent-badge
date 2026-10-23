@@ -1,7 +1,7 @@
 import { digestSchema, parseProtocol } from "../domain/capabilities.js";
 import { parseSharedPolicy } from "../domain/policy.js";
 import type { SharedPolicy } from "../domain/policy.js";
-/** Fixed SVG structure: only escaped text and computed integers are interpolated. */
+/** Fixed SVG structure: only escaped text, validated colors and computed dimensions are interpolated. */
 export function xmlText(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -32,5 +32,11 @@ export function renderSvg(policyInput: SharedPolicy, value: string, inputSetHash
   const policy = parseSharedPolicy(policyInput); const label = policy.badge.label;
   const left = Math.max(40, Array.from(label).length * 8 + 16); const right = Math.max(40, Array.from(value).length * 8 + 16);
   const width = left + right;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" role="img" aria-label="${xmlText(`${label}: ${value}`)}"><title>${xmlText(`${label}: ${value}`)}</title><desc>Input set ${digest}</desc><rect width="${left}" height="20" fill="#555"/><rect x="${left}" width="${right}" height="20" fill="#286b46"/><g fill="#fff" text-anchor="middle" font-family="Verdana,Arial,sans-serif" font-size="11"><text x="${left / 2}" y="14">${xmlText(label)}</text><text x="${left + right / 2}" y="14">${xmlText(value)}</text></g></svg>`;
+  const color = policy.badge.color ?? "#E8A515";
+  const channels = [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16) / 255)
+    .map(channel => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  // Pick the stronger WCAG contrast against the right panel; the gray label remains white.
+  const foreground = (luminance + 0.05) / (0.016 + 0.05) >= 1.05 / (luminance + 0.05) ? "#222" : "#fff";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="20" role="img" aria-label="${xmlText(`${label}: ${value}`)}"><title>${xmlText(`${label}: ${value}`)}</title><desc>Input set ${digest}</desc><rect width="${left}" height="20" fill="#555"/><rect x="${left}" width="${right}" height="20" fill="${color}"/><g fill="#fff" text-anchor="middle" font-family="Verdana,Arial,sans-serif" font-size="11"><text x="${left / 2}" y="14">${xmlText(label)}</text><text fill="${foreground}" x="${left + right / 2}" y="14">${xmlText(value)}</text></g></svg>`;
 }

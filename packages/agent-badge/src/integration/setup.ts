@@ -154,7 +154,7 @@ export async function planSetup(options: SetupOptions = {}): Promise<SetupPlan> 
   const github = githubRepositoryUrl(declaration.declaredUrl, repository.worktreeRoot);
   const badge: SetupPlan['badge'] = { status: github ? 'public-route' : 'unsupported-host', privateImageSupport: 'unverified' };
   const block = '<!-- agent-badge:start -->\n' + (github
-    ? '[![AI usage](https://raw.githubusercontent.com/' + github.slice('https://github.com/'.length) + '/refs/heads/agent-badge/data/badge.svg)](' + github + '/tree/agent-badge/data)\n\n[data and coverage](' + github + '/tree/agent-badge/data).'
+    ? '[![AI usage](https://raw.githubusercontent.com/' + github.slice('https://github.com/'.length) + '/refs/heads/agent-badge/data/badge.svg)](' + github + ')'
     : 'AI coding usage: data, coverage and badge.svg are recorded on refs/heads/agent-badge/data. Hosted image routing is unsupported for this destination.') + '\n<!-- agent-badge:end -->';
   const readmeBefore = await contents(join(repository.worktreeRoot, 'README.md'));
   const pattern = /<!-- agent-badge:start -->[\s\S]*?<!-- agent-badge:end -->/g;
@@ -236,7 +236,7 @@ export async function applySetup(plan: SetupPlan): Promise<SetupResult> {
   await rm(join(privateDir, 'setup-intent.json'), { force: true });
   const request: RepositoryOperationRequest = { cwd: plan.repository.worktreeRoot, privateDir, repositoryId: plan.declaration.repositoryId, binding: plan.activation.binding, collect: 'full', capturePolicy: plan.activation.capturePolicy,
     collection: { roots: plan.activation.roots, privatePolicy: plan.activation.privatePolicy } };
-  if (plan.initialize) request.initialize = { meta: { schemaVersion: 2, protocolVersion: 1, repositoryId: plan.declaration.repositoryId, normalizationVersion: 1,
+  if (plan.initialize) request.initialize = { meta: { schemaVersion: 2, protocolVersion: 1, presentationVersion: 2, repositoryId: plan.declaration.repositoryId, normalizationVersion: 1,
     catalogVersion: core.defaultCatalog.version, catalogHash: core.catalogHash(core.defaultCatalog), policy: plan.declaration.policy }, catalog: core.defaultCatalog };
   let operation: InitialResult;
   if (plan.options.runInitialOperation) operation = await plan.options.runInitialOperation(request);

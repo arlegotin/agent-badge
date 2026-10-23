@@ -7,11 +7,11 @@ on:
         description: Exact reviewed current-main source commit
         required: true
       tag:
-        description: Existing exact v2.0.0-next.N or v2.0.0 tag
+        description: Existing exact v2.0.0-next.N, v2.0.0 or v2.0.1 tag
         required: true
       intent:
         type: choice
-        options: [major-prerelease, stable-major]
+        options: [major-prerelease, stable-major, stable-patch]
         required: true
       candidate_run_id:
         description: Successful CI run retaining the exact candidate tarballs; reuse on retry
@@ -54,7 +54,7 @@ jobs:
           node --input-type=module <<'NODE'
           import {execFileSync} from 'node:child_process';
           const {GITHUB_EVENT_NAME:event,GITHUB_REF:ref,RELEASE_SHA:sha,RELEASE_TAG:tag,RELEASE_INTENT:intent}=process.env;
-          if(event!=='workflow_dispatch'||ref!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(sha??'')||!/^v2\.0\.0(?:-next\.\d+)?$/.test(tag??'')||!(intent==='major-prerelease'&&tag.includes('-next.')||intent==='stable-major'&&tag==='v2.0.0'))throw Error('Unauthorized release request');
+          if(event!=='workflow_dispatch'||ref!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(sha??'')||!/^v2\.0\.(?:0(?:-next\.\d+)?|1)$/.test(tag??'')||!(intent==='major-prerelease'&&tag.includes('-next.')||intent==='stable-major'&&tag==='v2.0.0'||intent==='stable-patch'&&tag==='v2.0.1'))throw Error('Unauthorized release request');
           const lines=execFileSync('git',['ls-remote','--exit-code','origin','refs/heads/main','refs/tags/'+tag,'refs/tags/'+tag+'^{}'],{encoding:'utf8'}).trim().split('\n').map(l=>l.split(/\s+/));
           const refs=new Map(lines.map(([oid,name])=>[name,oid]));
           if(refs.get('refs/heads/main')!==sha||(refs.get('refs/tags/'+tag+'^{}')??refs.get('refs/tags/'+tag))!==sha)throw Error('Requested SHA/tag is not current remote main');

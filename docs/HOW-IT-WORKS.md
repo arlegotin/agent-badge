@@ -12,6 +12,8 @@ All recorded repository work counts across contributors, branches, forks and wor
 
 `summary.json` separates known totals, unknown/partial units, conflicts and current-catalog API-equivalent valuation. Unknown models/rates are not zero; native Claude numeric amounts are omitted, Gemini saved-success coverage is partial and recognized Gemini models remain unpriced. No number is an invoice.
 
-`badge.svg` is generated on the data branch. Canonical GitHub setup inserts the fixed public raw SVG URL in the managed README badge, linked to data/coverage; HTTP/GitHub image caching can show old content after a confirmed sync. Local `status` and the accepted data commit distinguish synchronization from display refresh. Private authenticated image rendering has not passed an external gate; do not promise that a private README can fetch a raw SVG or recommend making private data public to work around it.
+New setup initializes `meta.presentationVersion: 2`: gold by default, optional hex colors and plain number labels. Unmarked accepted trees retain their exact 2.0.0 badge bytes during validation; an explicit configuration change promotes presentation without rewriting immutable usage records or changing coverage.
+
+`badge.svg` is generated on the data branch. Canonical GitHub setup inserts the fixed public raw SVG URL in the managed README badge, linked to the repository homepage; HTTP/GitHub image caching can show old content after a confirmed sync. Local `status` and the accepted data commit distinguish synchronization from display refresh. Private authenticated image rendering has not passed an external gate; do not promise that a private README can fetch a raw SVG or recommend making private data public to work around it.
 
 [Source contracts](ATTRIBUTION.md) · [Protocol design](superpowers/specs/2026-10-22-repo-native-design.md) · [Recovery](RECOVERY.md).

@@ -7,9 +7,7 @@
 <div align="center">
 
 <!-- agent-badge:start -->
-[![AI usage](https://raw.githubusercontent.com/arlegotin/agent-badge/refs/heads/agent-badge/data/badge.svg)](https://github.com/arlegotin/agent-badge/tree/agent-badge/data)
-
-[data and coverage](https://github.com/arlegotin/agent-badge/tree/agent-badge/data).
+[![AI usage](https://raw.githubusercontent.com/arlegotin/agent-badge/refs/heads/agent-badge/data/badge.svg)](https://github.com/arlegotin/agent-badge)
 <!-- agent-badge:end -->
 
 </div>
@@ -38,14 +36,14 @@ The usage data and `badge.svg` live on **`agent-badge/data`**. Your README stays
 
 These are **illustrative numbers**, rendered with the same SVG renderer as the live badge above. Labels are yours; the metric can be tokens or estimated cost.
 
-| Badge | What it shows |
-| --- | --- |
-| ![AI usage: 12.4M tokens](docs/assets/badges/tokens.svg) | Recorded tokens, with the default label. |
-| ![AI burn: 12.4M tokens](docs/assets/badges/burn.svg) | Same tokens. A less diplomatic label. |
-| ![AI Receipt: approximately $38.42](docs/assets/badges/receipt.svg) | Estimated API-equivalent cost. |
-| ![AI Bill: approximately $38.42](docs/assets/badges/bill.svg) | You can call it “AI Bill.” It's still an estimate, not your invoice. |
-| ![AI usage: 12.4M known tokens](docs/assets/badges/partial.svg) | Known tokens when some recorded usage is incomplete. |
-| ![AI spent: cost unknown](docs/assets/badges/unknown-cost.svg) | Recorded usage without a supported price. No invented dollar amount. |
+| Badge | Color | Metric |
+| --- | --- | --- |
+| ![AI usage: 12.4M tokens](docs/assets/badges/tokens.svg) | Gold `#E8A515` | Tokens |
+| ![AI burn: 12.4M tokens](docs/assets/badges/burn.svg) | Red `#DC2626` | Tokens |
+| ![AI Receipt: $38.42](docs/assets/badges/receipt.svg) | Blue `#2563EB` | Cost |
+| ![AI Bill: $38.42](docs/assets/badges/bill.svg) | Purple `#7C3AED` | Cost |
+| ![AI usage: 12.4M tokens](docs/assets/badges/tokens-pink.svg) | Pink `#DB2777` | Tokens |
+| ![AI spent: $38.42](docs/assets/badges/cost-teal.svg) | Teal `#0F766E` | Cost |
 
 [Badge configuration →](docs/CONFIGURATION.md)
 

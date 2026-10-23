@@ -1,6 +1,6 @@
 {
   "name": "create-agent-badge",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "npm initializer for bootstrapping agent-badge in a repository.",
   "type": "module",
   "license": "Apache-2.0",
@@ -39,6 +39,6 @@
     "dist"
   ],
   "dependencies": {
-    "@legotin/agent-badge": "2.0.0"
+    "@legotin/agent-badge": "2.0.1"
   }
 }

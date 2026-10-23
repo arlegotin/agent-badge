@@ -24,8 +24,9 @@ export function parsePublicRecord(input: unknown): PublicRecord {
 export const ledgerMetaSchema = z.object({ schemaVersion: z.literal(2), protocolVersion: z.literal(1),
   repositoryId: repositoryIdSchema, normalizationVersion: z.literal(1),
   catalogVersion: safeCounterSchema.refine((version) => version > 0), catalogHash: digestSchema,
-  policy: sharedPolicySchema }).strict().refine((meta) => meta.repositoryId === meta.policy.repositoryId &&
-    meta.normalizationVersion === meta.policy.normalizationVersion);
+  presentationVersion: z.literal(2).optional(), policy: sharedPolicySchema }).strict().refine((meta) => meta.repositoryId === meta.policy.repositoryId &&
+    meta.normalizationVersion === meta.policy.normalizationVersion &&
+    (meta.policy.badge.color === undefined || meta.presentationVersion === 2));
 export type LedgerMeta = z.infer<typeof ledgerMetaSchema>;
 export function parseLedgerMeta(input: unknown): LedgerMeta { return parseProtocol(ledgerMetaSchema, input); }
 

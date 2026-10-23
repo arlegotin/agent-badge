@@ -16,7 +16,8 @@ export function validateReleaseRequest(r: ReleaseRequest): 'next' | 'latest' {
   if (r.tag !== `v${r.version}`) throw Error('Exact version tag required');
   if (r.intent === 'major-prerelease' && /^2\.0\.0-next\.\d+$/.test(r.version)) return 'next';
   if (r.intent === 'stable-major' && r.version === '2.0.0') return 'latest';
-  throw Error('Explicit major prerelease or stable major intent required');
+  if (r.intent === 'stable-patch' && r.version === '2.0.1') return 'latest';
+  throw Error('Explicit major prerelease, stable major or exact stable patch intent required');
 }
 export type RegistryState = 'absent' | 'matching' | 'mismatch';
 /** Lookup must validate downloaded bytes, registry SRI and the intended dist-tag. */
@@ -83,7 +84,7 @@ function git(args: string[]): string { return execFileSync('git', args, { encodi
 export async function validateHostedRequest(candidate: Candidate): Promise<'next' | 'latest'> {
   // Validate untrusted workflow input before it can reach Git argument parsing.
   const sha = process.env.RELEASE_SHA ?? '', tag = process.env.RELEASE_TAG ?? '';
-  if (!/^[a-f0-9]{40}$/.test(sha) || !/^v2\.0\.0(?:-next\.\d+)?$/.test(tag)) throw Error('Invalid exact release input');
+  if (!/^[a-f0-9]{40}$/.test(sha) || !/^v2\.0\.(?:0(?:-next\.\d+)?|1)$/.test(tag)) throw Error('Invalid exact release input');
   if (process.env.GITHUB_EVENT_NAME !== 'workflow_dispatch' || process.env.GITHUB_REF !== 'refs/heads/main') throw Error('Release requires manual main dispatch');
   git(['fetch', '--no-tags', 'origin', '+refs/heads/main:refs/remotes/origin/main', `+refs/tags/${tag}:refs/tags/${tag}`]);
   const result = validateReleaseRequest({ event: process.env.GITHUB_EVENT_NAME, ref: process.env.GITHUB_REF, sha, head: git(['rev-parse', 'HEAD']), main: git(['rev-parse', 'refs/remotes/origin/main']), tagSha: git(['rev-parse', `${tag}^{commit}`]), tag, version: candidate.version, intent: process.env.RELEASE_INTENT ?? '' });

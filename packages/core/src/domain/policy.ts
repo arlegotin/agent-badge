@@ -11,7 +11,7 @@ export const svgLabelSchema = z.string().min(1).refine((label) => Array.from(lab
 export const sharedPolicySchema = z.object({ schemaVersion: z.literal(1), repositoryId: repositoryIdSchema,
   normalizationVersion: z.literal(1), discovery: z.literal("auto"),
   disabledProviders: z.array(providerIdSchema).max(providerIdSchema.options.length).refine((providers) => new Set(providers).size === providers.length),
-  badge: z.object({ label: svgLabelSchema, metric: z.enum(["tokens", "estimated-cost"]) }).strict()
+  badge: z.object({ label: svgLabelSchema, metric: z.enum(["tokens", "estimated-cost"]), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }).strict()
 }).strict();
 export type SharedPolicy = z.infer<typeof sharedPolicySchema>;
 export function parseSharedPolicy(input: unknown): SharedPolicy { return parseProtocol(sharedPolicySchema, input); }

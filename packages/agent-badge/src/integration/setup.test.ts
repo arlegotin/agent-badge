@@ -265,7 +265,7 @@ test.each(['https://github.com/example/repo.git','git@github.com:example/repo.gi
  const f=await fixture(),cwd=f.clones[0];await f.git(cwd,['remote','set-url','origin',remote]);
  const first=await planSetup({...options,cwd});
  const readme=first.changes.find(c=>c.path==='README.md')!.after;
- expect(readme).toContain('[![AI usage](https://raw.githubusercontent.com/example/repo/refs/heads/agent-badge/data/badge.svg)](https://github.com/example/repo/tree/agent-badge/data)');
+ expect(readme).toContain('[![AI usage](https://raw.githubusercontent.com/example/repo/refs/heads/agent-badge/data/badge.svg)](https://github.com/example/repo)');
  await applySetup(first);const repeated=await planSetup({...options,cwd});expect(repeated.changes.find(c=>c.path==='README.md')).toBeUndefined();
  expect((await readFile(join(cwd,'README.md'),'utf8')).match(/raw\.githubusercontent\.com/g)).toHaveLength(1);
  expect(first.badge).toEqual({status:'public-route',privateImageSupport:'unverified'});
@@ -273,4 +273,17 @@ test.each(['https://github.com/example/repo.git','git@github.com:example/repo.gi
 test('non-GitHub setup never guesses a GitHub image URL or claims private rendering',async()=>{
  const f=await fixture(),cwd=f.clones[0];const plan=await planSetup({...options,cwd,declaredUrl:'https://git.example/example/repo'});
  expect(plan.changes.find(c=>c.path==='README.md')!.after).not.toContain('raw.githubusercontent.com');expect(plan.badge).toEqual({status:'unsupported-host',privateImageSupport:'unverified'});
+});
+
+
+test('new GitHub setup links the SVG to its own homepage and initializes presentation version 2', async () => {
+  const f = await fixture(), cwd = f.clones[0];
+  let initialization: unknown;
+  const plan = await planSetup({...options,cwd,declaredUrl:'https://github.com/another-owner/another-repo',runInitialOperation:async request=>{initialization=request.initialize;return {status:'queued',acknowledgedCount:0,queuedCount:null,pendingReconciliation:true,exitCode:1};}});
+  await applySetup(plan);
+  const readme = await readFile(join(cwd,'README.md'),'utf8');
+  expect(readme).toContain('[![AI usage](https://raw.githubusercontent.com/another-owner/another-repo/refs/heads/agent-badge/data/badge.svg)](https://github.com/another-owner/another-repo)');
+  expect(readme).not.toContain('/tree/agent-badge/data');
+  expect(readme).not.toContain('[data and coverage]');
+  expect(initialization).toMatchObject({meta:{presentationVersion:2,policy:{badge:{label:'AI usage',metric:'tokens'}}}});
 });

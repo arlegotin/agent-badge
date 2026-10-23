@@ -6,6 +6,7 @@ import type { ReducedLedger, ReducedUnit } from "../ledger/reduce.js";
 import { catalogHash, contentHash, defaultCatalog, parsePriceCatalog, stableJson } from "../pricing/catalog.js";
 import type { PriceCatalog } from "../pricing/catalog.js";
 import { compilePricing } from "../pricing/price.js";
+import { renderLegacySvg } from "./legacy-svg.js";
 import { renderReport } from "./report.js";
 import { compactInteger, compactMicroUsd, renderSvg } from "./svg.js";
 export type LedgerSummary=Omit<ReducedLedger,'records'|'recordHashes'|'units'>;
@@ -47,12 +48,16 @@ export function renderDerivedArtifacts(ledger:LedgerSummary,valuation:LedgerValu
   const partial = ledger.unknownTokenUnits > 0 || ledger.conflictingUnits > 0 || ledger.partialUnits > 0;
   const unknownTokensOnly = ledger.includedUnits > 0 && valuation.unknownTokenOnlyUnits===ledger.includedUnits;
   const unknownPriceOnly = ledger.includedUnits > 0 && price.pricedSegments === 0 && price.unpricedSegments > 0;
-  const value = meta.policy.badge.metric === "tokens"
+  const legacyValue = meta.policy.badge.metric === "tokens"
     ? unknownTokensOnly ? "usage unknown" : `${compactInteger(ledger.knownTokens)}${partial ? " known" : ""} tokens`
     : unknownPriceOnly ? "cost unknown" : `~${compactMicroUsd(price.knownMicroUsd)}${price.unpricedUnits > 0 || partial ? " known" : ""}`;
+  const value = meta.policy.badge.metric === "tokens"
+    ? unknownTokensOnly ? "— tokens" : `${compactInteger(ledger.knownTokens)} tokens`
+    : unknownPriceOnly ? "$—" : compactMicroUsd(price.knownMicroUsd);
   const artifacts = new Map<string, Uint8Array>();
   const add = (path: string, value: string) => artifacts.set(path, Buffer.from(value, "utf8"));
   add("meta.json", stableJson(meta)); add("catalog.json", stableJson(catalog)); add("summary.json", stableJson(summary));
-  add("badge.svg", renderSvg(meta.policy, value, ledger.inputSetHash)); add("README.md", renderReport(ledger, price, catalog));
+  add("badge.svg", meta.presentationVersion === 2 ? renderSvg(meta.policy, value, ledger.inputSetHash)
+    : renderLegacySvg(meta.policy, legacyValue, ledger.inputSetHash)); add("README.md", renderReport(ledger, price, catalog));
   return new Map([...artifacts].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
 }

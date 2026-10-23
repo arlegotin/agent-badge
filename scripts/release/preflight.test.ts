@@ -67,3 +67,10 @@ it('actual npm subprocess console cannot contaminate JSON output',async()=>{
   expect(JSON.parse(output)).toEqual({publication:'synthetic'});
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+
+it('authorizes only the exact stable presentation patch with explicit intent', () => {
+  expect(release.validateReleaseRequest({...request,intent:'stable-patch',version:'2.0.1',tag:'v2.0.1'})).toBe('latest');
+  for(const version of ['2.0.0','2.0.2','2.1.0','3.0.0','2.0.1-next.0']) expect(()=>release.validateReleaseRequest({...request,intent:'stable-patch',version,tag:`v${version}`})).toThrow();
+  for(const intent of ['stable-major','major-prerelease','', 'patch']) expect(()=>release.validateReleaseRequest({...request,intent,version:'2.0.1',tag:'v2.0.1'})).toThrow();
+});
