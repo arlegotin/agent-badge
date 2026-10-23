@@ -5,6 +5,6 @@
     "node": "^24.0.0 || ^26.0.0"
   },
   "dependencies": {
-    "@legotin/agent-badge": "2.0.0"
+    "@legotin/agent-badge": "2.0.1"
   }
 }

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T12:39:52.819Z",
+  "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+  "identityCheck": "exact-subject-source-workflow",
+  "signatureVerification": "npm audit signatures; see public-initializer-verification.json",
+  "packages": [
+    {
+      "name": "@legotin/agent-badge-core",
+      "version": "2.0.1",
+      "attestationUrl": "https://registry.npmjs.org/-/npm/v1/attestations/@legotin%2fagent-badge-core@2.0.1",
+      "subjectSha512": "bd13b9e4e769d34e681ad6f532f6ca491352a867bee71c1e34277c440411fd6dc3a273c61c537438708184d9ca5a2a3766f8c16ebf94f0a660775a6b4466ba3a",
+      "workflow": {
+        "ref": "refs/heads/main",
+        "repository": "https://github.com/arlegotin/agent-badge",
+        "path": ".github/workflows/release.yml"
+      },
+      "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+      "invocationId": "https://github.com/arlegotin/agent-badge/actions/runs/39953986570/attempts/1"
+    },
+    {
+      "name": "@legotin/agent-badge",
+      "version": "2.0.1",
+      "attestationUrl": "https://registry.npmjs.org/-/npm/v1/attestations/@legotin%2fagent-badge@2.0.1",
+      "subjectSha512": "e96ab44c79a36683a2474cc9c057d5d8e57888016100b565986dd09a9f3a64f64c399e86738361eecef88777f9bf66712f2992a05555643f4cd9d02bf1d514e9",
+      "workflow": {
+        "ref": "refs/heads/main",
+        "repository": "https://github.com/arlegotin/agent-badge",
+        "path": ".github/workflows/release.yml"
+      },
+      "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+      "invocationId": "https://github.com/arlegotin/agent-badge/actions/runs/39953986570/attempts/2"
+    },
+    {
+      "name": "create-agent-badge",
+      "version": "2.0.1",
+      "attestationUrl": "https://registry.npmjs.org/-/npm/v1/attestations/create-agent-badge@2.0.1",
+      "subjectSha512": "b522f9d542911a503d4f415afa3bcc2c64466cabd98cc32e121530fd219d12f09ab2c04a1297c1c7c586e0e47dae00a9f083618085515e9ba2da6b764a9f43f0",
+      "workflow": {
+        "ref": "refs/heads/main",
+        "repository": "https://github.com/arlegotin/agent-badge",
+        "path": ".github/workflows/release.yml"
+      },
+      "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+      "invocationId": "https://github.com/arlegotin/agent-badge/actions/runs/39953986570/attempts/3"
+    }
+  ]
+}

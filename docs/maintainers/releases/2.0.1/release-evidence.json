@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-23T12:48:31.354905+00:00",
+  "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+  "tag": "v2.0.1",
+  "candidateRunId": 39952632318,
+  "candidateArtifactId": 12501400939,
+  "candidateArchiveDigest": "sha256:2a6d120832fec675a594d6c074533f4ae607fa0c6f719e021b32f229d0b8bf15",
+  "publicationRunId": 39953986570,
+  "publicationAttempts": [
+    {
+      "attempt": 1,
+      "jobId": 120415124333,
+      "conclusion": "failure",
+      "accepted": "core"
+    },
+    {
+      "attempt": 2,
+      "jobId": 120416082052,
+      "conclusion": "failure",
+      "accepted": "cli"
+    },
+    {
+      "attempt": 3,
+      "jobId": 120417717581,
+      "conclusion": "failure",
+      "accepted": "initializer"
+    },
+    {
+      "attempt": 4,
+      "jobId": 120418515369,
+      "conclusion": "success",
+      "npmWrites": 0
+    }
+  ],
+  "assets": [
+    {
+      "name": "candidate.json",
+      "size": 1148,
+      "sha256": "1f5afdd5ba65290d95db95066f51748521416c21fe2b5b3440f820d4cc7074e6"
+    },
+    {
+      "name": "legotin-agent-badge-core-2.0.1.tgz",
+      "size": 139227,
+      "sha256": "92569eb274ffe51ff9094e1f6634060e3939e4c2e3770b1370216e9fd6149c09"
+    },
+    {
+      "name": "legotin-agent-badge-2.0.1.tgz",
+      "size": 50672,
+      "sha256": "8257d9db77ca3165a73174bc4e19b3b8d93cff8d7389f114c95653edaa7d7da7"
+    },
+    {
+      "name": "create-agent-badge-2.0.1.tgz",
+      "size": 7051,
+      "sha256": "8dc98d2cfe2e00fbcf84a0bbe4271ab1ab61097c7491254df4e709020c2eb84f"
+    },
+    {
+      "name": "validation-summary.json",
+      "size": 16662,
+      "sha256": "79305fa793c9521b7650077a76d9d4e5ac330fe009f9b17c9b8766872a841441"
+    },
+    {
+      "name": "publish-result.json",
+      "size": 1101,
+      "sha256": "f16e6fae67793a8f0063834796146a97cdfa286a682eccf4745d62250c584bcb"
+    },
+    {
+      "name": "public-registry-verification.json",
+      "size": 1645,
+      "sha256": "6b83cc67a82a416dbf7cf4eee898d2f86a6782692c8664869a6b2ec8743cc338"
+    },
+    {
+      "name": "public-provenance-verification.json",
+      "size": 2331,
+      "sha256": "daf4493ff3c3ee86cf0d730882ebb43c7f2e38ca9e6d063230627e2f9621b658"
+    },
+    {
+      "name": "public-initializer-verification.json",
+      "size": 3768,
+      "sha256": "80f339295dcdf7535e6cc33093844e6a6e2a325248f2004de071e37dfa942c26"
+    },
+    {
+      "name": "live-upgrade-verification.json",
+      "size": 1521,
+      "sha256": "5b12e48cd2dac3e50e8f21c3c8347a34f62fdaa514356108acadf7fabc16eee1"
+    },
+    {
+      "name": "live-public-verification.json",
+      "size": 1329,
+      "sha256": "f90762b7cc850666ab5607a815e1c9693168a91f03fb6259764fc235344b9662"
+    },
+    {
+      "name": "release-validation-evidence.tar.gz",
+      "size": 167579,
+      "sha256": "510d53140dea6f1327b0d3e42d6cbbe5c2b52381ff87ef4c0f7a1075656b596f"
+    }
+  ]
+}

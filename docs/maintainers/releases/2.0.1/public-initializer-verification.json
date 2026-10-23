@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T12:39:57.060Z",
+  "runtime": "v24.0.0",
+  "platform": "darwin",
+  "source": "public-registry",
+  "exactVersion": "2.0.1",
+  "freshProject": true,
+  "isolatedHomeAndProviderRoots": true,
+  "initializerCommand": "npm init agent-badge@2.0.1 -- --help",
+  "rootHelp": true,
+  "noSetupWrites": true,
+  "packages": [
+    {
+      "name": "@legotin/agent-badge-core",
+      "version": "2.0.1"
+    },
+    {
+      "name": "@legotin/agent-badge",
+      "version": "2.0.1"
+    },
+    {
+      "name": "create-agent-badge",
+      "version": "2.0.1"
+    }
+  ],
+  "signatureAudit": "audited 6 packages in 1s\n\n6 packages have verified registry signatures\n\n4 packages have verified attestations",
+  "commands": [
+    {
+      "command": "git",
+      "args": [
+        "init",
+        "--quiet"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": "npm",
+      "args": [
+        "install",
+        "--save-exact",
+        "create-agent-badge@2.0.1",
+        "--registry=https://registry.npmjs.org",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exitCode": 0,
+      "stdout": "\nadded 6 packages in 1s\n",
+      "stderr": ""
+    },
+    {
+      "command": "npm",
+      "args": [
+        "init",
+        "agent-badge@2.0.1",
+        "--",
+        "--help"
+      ],
+      "exitCode": 0,
+      "stdout": "\n> npx\n> create-agent-badge --help\n\nUsage: agent-badge [options] [command]\n\nRecord supported local AI usage in a repository-owned ledger.\n\nOptions:\n  --version                                 output the version number\n  -h, --help                                display help for command\n\nCommands:\n  init [options]                            Install and explicitly activate repository-owned setup.\n  setup [options]                           Install and explicitly activate repository-owned setup.\n  collect [options]                         Capture/reproject local usage into the durable queue; no remote writes.\n  sync [options]                            Incremental capture and bounded Git synchronization.\n  status [options]                          Read local totals, coverage, queue and accepted sync state without network.\n  doctor [options]                          Check setup and sources; optional read-only remote validation.\n  explain [options] <local-id>              Explain private journal attribution using an opaque local ID; redacted.\n  include [options] <local-id-or-unit-key>  Persist an explicit opaque-key control against validated current accepted control heads.\n  exclude [options] <local-id-or-unit-key>  Persist an explicit opaque-key control against validated current accepted control heads.\n  contribute [options]                      Write a sanitized immutable public contribution for normal PR staging.\n  import [options]                          Import a strict public contribution or explicit private normalized source.\n  configure [options]                       Explicit shared metadata/catalog revision-CAS change.\n  upgrade [options]                         Deliberately approve an exact runtime and optional supported metadata/catalog update.\n  uninstall [options]                       Deactivate and remove owned integrations; retain unsynced private data and shared history.\n  help [command]                            display help for command\n",
+      "stderr": ""
+    },
+    {
+      "command": "npm",
+      "args": [
+        "audit",
+        "signatures",
+        "--registry=https://registry.npmjs.org"
+      ],
+      "exitCode": 0,
+      "stdout": "audited 6 packages in 1s\n\n6 packages have verified registry signatures\n\n4 packages have verified attestations\n\n",
+      "stderr": ""
+    }
+  ]
+}

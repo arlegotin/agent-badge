@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "files": {
-    ".agent-badge/config.json": "4b9dfed4131c26a7ac43f8cb39c4fb9fcc52269aa36545096078af443bbe257a",
+    ".agent-badge/config.json": "88705f953b8b1b3f4812a8c76302b47f56d7d5fe8f83e651f59ab393c7a3b8aa",
     ".agent-badge/run.cjs": "bb11a59e4ed180dcde72e6ff0fc83a685a817abcfbcf0412bd9a5f2c8b0d3be4",
-    ".agent-badge/runtime/package.json": "d7f9b4dec6cee4ae2379d520b243326c06753e838aa6de56af5bbc8b42597e32",
-    ".agent-badge/runtime/package-lock.json": "cc11530d5a23d42274a4a207bb3204220d90e88f08df6a6ed1a1833a52c0bc60",
+    ".agent-badge/runtime/package.json": "b5996fa381a142643cf7ecfedf0678760cb81e11cfe665b30b93e4bac10156ea",
+    ".agent-badge/runtime/package-lock.json": "f4709fa2bf518fb6d743f18300a12a7f62989e7d5a2885c45b9bef2ff870dc51",
     ".agent-badge/README.md": "2424491d9a54565db78058c314183a4f9df69893f35a90e471506740d717a2d8"
   },
   "readmeBlock": "agent-badge"

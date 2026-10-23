@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+  "runId": 39952632318,
+  "candidateArtifactId": 12501400939,
+  "candidateArchiveDigest": "sha256:2a6d120832fec675a594d6c074533f4ae607fa0c6f719e021b32f229d0b8bf15",
+  "cells": [
+    {
+      "cell": "evidence-macos-latest-node-24.0.0",
+      "logSha256": "3662785a34b4744d80e0f322ceed1b2571a9289d902aadd01982193c7034256c",
+      "logBytes": 59125,
+      "summary": [
+        "Documentation verification passed: 14 documents, 71 local links, 36 CLI examples, 14 commands, 7 capabilities.",
+        "Test Files  76 passed (76)",
+        "Tests  861 passed | 1 skipped (862)",
+        "{\"status\":\"retained-pack-check-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v24.0.0\",\"platform\":\"darwin\",\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}",
+        "{\"status\":\"candidate-registry-smoke-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v24.0.0\",\"actualWorker\":{\"node\":\"v24.0.0\",\"execPath\":\"/Users/runner/hostedtoolcache/node/24.0.0/arm64/bin/node\"},\"platform\":\"darwin/arm64\",\"initializerOnly\":true,\"scripts\":\"default-enabled\",\"projectUplinks\":false,\"externalRoutes\":false,\"checks\":[\"single-command-npm-init\",\"same-registry-transitive-dependencies\",\"installed-core-workflow-generation\",\"repository-owned-setup\",\"partial-runtime-repair\",\"fresh-clone-local-native-config\",\"fresh-clone-tracked-reviewed-native-config\",\"manual-cli-core-worker-runtime-proof\",\"persistent-setup-json\",\"nonmutating-fresh-dry-run\",\"standalone-fork-setup\",\"indexed-status\",\"owned-doctor-worker\"],\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}"
+      ]
+    },
+    {
+      "cell": "evidence-macos-latest-node-26.0.0",
+      "logSha256": "dc962c3f03738a0f71bf1f6b8c486c486ed7be9c32cb67ed16ce2f508c8245cf",
+      "logBytes": 55736,
+      "summary": [
+        "Documentation verification passed: 14 documents, 71 local links, 36 CLI examples, 14 commands, 7 capabilities.",
+        "Test Files  76 passed (76)",
+        "Tests  861 passed | 1 skipped (862)",
+        "{\"status\":\"retained-pack-check-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v26.0.0\",\"platform\":\"darwin\",\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}",
+        "{\"status\":\"candidate-registry-smoke-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v26.0.0\",\"actualWorker\":{\"node\":\"v26.0.0\",\"execPath\":\"/Users/runner/hostedtoolcache/node/26.0.0/arm64/bin/node\"},\"platform\":\"darwin/arm64\",\"initializerOnly\":true,\"scripts\":\"default-enabled\",\"projectUplinks\":false,\"externalRoutes\":false,\"checks\":[\"single-command-npm-init\",\"same-registry-transitive-dependencies\",\"installed-core-workflow-generation\",\"repository-owned-setup\",\"partial-runtime-repair\",\"fresh-clone-local-native-config\",\"fresh-clone-tracked-reviewed-native-config\",\"manual-cli-core-worker-runtime-proof\",\"persistent-setup-json\",\"nonmutating-fresh-dry-run\",\"standalone-fork-setup\",\"indexed-status\",\"owned-doctor-worker\"],\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}"
+      ]
+    },
+    {
+      "cell": "evidence-ubuntu-latest-node-24.0.0",
+      "logSha256": "dbe5ff27bc3550362021c6f2991085642825017d88f9e2555b3d74c891df8e4c",
+      "logBytes": 40461,
+      "summary": [
+        "Documentation verification passed: 14 documents, 71 local links, 36 CLI examples, 14 commands, 7 capabilities.",
+        "Test Files  76 passed (76)",
+        "Tests  861 passed | 1 skipped (862)",
+        "{\"status\":\"retained-pack-check-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v24.0.0\",\"platform\":\"linux\",\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}",
+        "{\"status\":\"candidate-registry-smoke-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v24.0.0\",\"actualWorker\":{\"node\":\"v24.0.0\",\"execPath\":\"/opt/hostedtoolcache/node/24.0.0/x64/bin/node\"},\"platform\":\"linux/x64\",\"initializerOnly\":true,\"scripts\":\"default-enabled\",\"projectUplinks\":false,\"externalRoutes\":false,\"checks\":[\"single-command-npm-init\",\"same-registry-transitive-dependencies\",\"installed-core-workflow-generation\",\"repository-owned-setup\",\"partial-runtime-repair\",\"fresh-clone-local-native-config\",\"fresh-clone-tracked-reviewed-native-config\",\"manual-cli-core-worker-runtime-proof\",\"persistent-setup-json\",\"nonmutating-fresh-dry-run\",\"standalone-fork-setup\",\"indexed-status\",\"owned-doctor-worker\"],\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}"
+      ]
+    },
+    {
+      "cell": "evidence-ubuntu-latest-node-26.0.0",
+      "logSha256": "4b9d976b39f724e464bfe484da50995735f12ea616f54e05fecd4eb83c649d3a",
+      "logBytes": 35500,
+      "summary": [
+        "Documentation verification passed: 14 documents, 71 local links, 36 CLI examples, 14 commands, 7 capabilities.",
+        "Test Files  76 passed (76)",
+        "Tests  861 passed | 1 skipped (862)",
+        "{\"status\":\"retained-pack-check-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v26.0.0\",\"platform\":\"linux\",\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}",
+        "{\"status\":\"candidate-registry-smoke-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v26.0.0\",\"actualWorker\":{\"node\":\"v26.0.0\",\"execPath\":\"/opt/hostedtoolcache/node/26.0.0/x64/bin/node\"},\"platform\":\"linux/x64\",\"initializerOnly\":true,\"scripts\":\"default-enabled\",\"projectUplinks\":false,\"externalRoutes\":false,\"checks\":[\"single-command-npm-init\",\"same-registry-transitive-dependencies\",\"installed-core-workflow-generation\",\"repository-owned-setup\",\"partial-runtime-repair\",\"fresh-clone-local-native-config\",\"fresh-clone-tracked-reviewed-native-config\",\"manual-cli-core-worker-runtime-proof\",\"persistent-setup-json\",\"nonmutating-fresh-dry-run\",\"standalone-fork-setup\",\"indexed-status\",\"owned-doctor-worker\"],\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}"
+      ]
+    },
+    {
+      "cell": "evidence-windows-latest-node-24.0.0",
+      "logSha256": "8e130343a01f9d11ac68835f0118b3d306e535f72660ef2e507b578e94d94de6",
+      "logBytes": 6962,
+      "summary": [
+        "Documentation verification passed: 14 documents, 71 local links, 36 CLI examples, 14 commands, 7 capabilities.",
+        "Test Files  4 passed (4)",
+        "Tests  41 passed (41)",
+        "{\"status\":\"retained-pack-check-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v24.0.0\",\"platform\":\"win32\",\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}",
+        "{\"status\":\"candidate-registry-smoke-passed\",\"support\":\"unsupported-platform\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v24.0.0\",\"actualWorker\":null,\"platform\":\"win32/x64\",\"initializerOnly\":true,\"scripts\":\"default-enabled\",\"projectUplinks\":false,\"externalRoutes\":false,\"checks\":[\"single-command-npm-init\",\"same-registry-transitive-dependencies\",\"unsupported-platform-exit3\",\"no-public-or-private-setup-writes\"],\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}"
+      ]
+    },
+    {
+      "cell": "evidence-windows-latest-node-26.0.0",
+      "logSha256": "25c82c3bc55d208378fd6bbdf65ad2d6d458c39401734c640ad7278b04c80f32",
+      "logBytes": 6838,
+      "summary": [
+        "Documentation verification passed: 14 documents, 71 local links, 36 CLI examples, 14 commands, 7 capabilities.",
+        "Test Files  4 passed (4)",
+        "Tests  41 passed (41)",
+        "{\"status\":\"retained-pack-check-passed\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v26.0.0\",\"platform\":\"win32\",\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}",
+        "{\"status\":\"candidate-registry-smoke-passed\",\"support\":\"unsupported-platform\",\"sha\":\"d821dd4bb529e0e8f02cacc0b44fd31e19c058a5\",\"runtime\":\"v26.0.0\",\"actualWorker\":null,\"platform\":\"win32/x64\",\"initializerOnly\":true,\"scripts\":\"default-enabled\",\"projectUplinks\":false,\"externalRoutes\":false,\"checks\":[\"single-command-npm-init\",\"same-registry-transitive-dependencies\",\"unsupported-platform-exit3\",\"no-public-or-private-setup-writes\"],\"artifacts\":[{\"name\":\"@legotin/agent-badge-core\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-core-2.0.1.tgz\",\"size\":139227,\"integrity\":\"sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==\"},{\"name\":\"@legotin/agent-badge\",\"version\":\"2.0.1\",\"filename\":\"legotin-agent-badge-2.0.1.tgz\",\"size\":50672,\"integrity\":\"sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==\"},{\"name\":\"create-agent-badge\",\"version\":\"2.0.1\",\"filename\":\"create-agent-badge-2.0.1.tgz\",\"size\":7051,\"integrity\":\"sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==\"}]}"
+      ]
+    }
+  ],
+  "knownDiagnostics": [
+    "Node SQLite ExperimentalWarning retained in logs",
+    "one pre-existing opt-in OS-namespace test skipped on POSIX"
+  ]
+}

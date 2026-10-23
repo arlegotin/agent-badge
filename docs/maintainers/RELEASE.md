@@ -1,7 +1,8 @@
 # Release preparation and exact artifact publication
 
-Stable **2.0.0** is published on `latest`; the
-[release record](releases/2.0.0/README.md) contains actual hosted and public evidence.
+Stable **2.0.1** is published on `latest`; the
+[release record](releases/2.0.1/README.md) contains actual hosted and public evidence.
+The original [2.0.0 record](releases/2.0.0/README.md) remains historical evidence.
 The original `2.0.0-next.0` preparation remains historical and was not published.
 Future planning, local commits and fixture registries do not authorize publication,
 tagging, pushing, hosted configuration changes or deployment. Publication requires
@@ -12,7 +13,7 @@ The three public packages form one Changesets fixed group. Testkit stays private
 Apache-2.0 is the retained root license; each public tarball includes its identical
 LICENSE. Every workspace uses Node `^24.0.0 || ^26.0.0`. The initializer entry point
 remains `npm init agent-badge@latest`; the exact published stable version can be
-selected with `npm init agent-badge@2.0.0`. An unpublished prerelease cannot be
+selected with `npm init agent-badge@2.0.1`. An unpublished prerelease cannot be
 installed from the public registry.
 
 ## Prepare once, then validate the same files

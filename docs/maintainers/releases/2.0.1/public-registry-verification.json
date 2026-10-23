@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T12:39:29.175Z",
+  "sourceSha": "d821dd4bb529e0e8f02cacc0b44fd31e19c058a5",
+  "allMatching": true,
+  "packages": [
+    {
+      "name": "@legotin/agent-badge-core",
+      "version": "2.0.1",
+      "state": "matching",
+      "size": 139227,
+      "integrity": "sha512-vRO55Odp005oGtb1MvbKSRNSqGe+5xweNCd8RAQR/W3DonPGHFN0OHCBhNnKWio3ZvjBbr+U8KZgd1prRGa6Og==",
+      "latest": "2.0.1",
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@legotin%2fagent-badge-core@2.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      }
+    },
+    {
+      "name": "@legotin/agent-badge",
+      "version": "2.0.1",
+      "state": "matching",
+      "size": 50672,
+      "integrity": "sha512-6Wq0THmjZoOiR0zJwFfV2OV4iAFhALVlmG3Qmp86ZPZMOZ6Gc4Nh7s74h3f5v2ZxLymSoFVVZD9M2dAr8dUU6Q==",
+      "latest": "2.0.1",
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/@legotin%2fagent-badge@2.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      }
+    },
+    {
+      "name": "create-agent-badge",
+      "version": "2.0.1",
+      "state": "matching",
+      "size": 7051,
+      "integrity": "sha512-tSL51UKRGlA9T0Fa+jvMLGRGbKvZjMMuEhUw/SGdEvCassBKEpfBx8WG4OR9rgCp8INhgIVRXpui2mt2Sp9D8A==",
+      "latest": "2.0.1",
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/create-agent-badge@2.0.1",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T12:45:07.047378+00:00",
+  "approvedPublishedRuntime": "2.0.1",
+  "beforeUpgradeCommit": "a781b5f0ec2b343b257fb13b912f15d4ebf4d34e",
+  "afterUpgradeCommit": "d30344c470ac9785840c973b37433fe6b6e0d1de",
+  "presentationCommit": "dd8ec66416b0c370055848fd2b0e1baaf3746aba",
+  "originalImmutableRecords": 966,
+  "immutableRecordsAfterCollection": 1949,
+  "allOriginalRecordBlobsPreserved": true,
+  "allRecordsUnchangedByPresentation": true,
+  "catalogAndNumericAccountingUnchangedByPresentation": true,
+  "tokenTotalBeforePresentation": "187431823",
+  "tokenTotalAfterPresentation": "187431823",
+  "displayedTokens": "187M tokens",
+  "presentationVersion": 2,
+  "color": "#E8A515",
+  "metadataRevision": "722a2c2d8dc48addb598dfb1b93b757e6c45b70257daf98f43bfcc4079b7a804",
+  "status": {
+    "exitCode": 0,
+    "state": "partial",
+    "states": [
+      "recorded",
+      "synced",
+      "partial"
+    ],
+    "queuedRecords": 0,
+    "pendingReconciliation": true
+  },
+  "doctor": {
+    "exitCode": 0,
+    "status": "healthy",
+    "requiredChecksPassed": 7,
+    "nativeTrust": "not-inspected"
+  },
+  "limits": [
+    "coverage remains partial; pending reconciliation is not an upload backlog",
+    "native agent project trust remains user-reviewed; no grants were changed"
+  ],
+  "checkerCorrection": "Initial public checker incorrectly expected 187.4M above 100M; unchanged compactInteger uses 187M. Corrected checker passed against accepted SVG bytes; no product code change."
+}

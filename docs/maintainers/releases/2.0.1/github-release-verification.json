@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T12:49:16.376532+00:00",
+  "releaseId": 421835897,
+  "tag": "v2.0.1",
+  "url": "https://github.com/arlegotin/agent-badge/releases/tag/v2.0.1",
+  "draft": false,
+  "prerelease": false,
+  "allSizesAndServerDigestsMatch": true,
+  "assets": [
+    {
+      "name": "candidate.json",
+      "id": 669110626,
+      "size": 1148,
+      "digest": "sha256:1f5afdd5ba65290d95db95066f51748521416c21fe2b5b3440f820d4cc7074e6",
+      "state": "uploaded"
+    },
+    {
+      "name": "legotin-agent-badge-core-2.0.1.tgz",
+      "id": 669110622,
+      "size": 139227,
+      "digest": "sha256:92569eb274ffe51ff9094e1f6634060e3939e4c2e3770b1370216e9fd6149c09",
+      "state": "uploaded"
+    },
+    {
+      "name": "legotin-agent-badge-2.0.1.tgz",
+      "id": 669110624,
+      "size": 50672,
+      "digest": "sha256:8257d9db77ca3165a73174bc4e19b3b8d93cff8d7389f114c95653edaa7d7da7",
+      "state": "uploaded"
+    },
+    {
+      "name": "create-agent-badge-2.0.1.tgz",
+      "id": 669110627,
+      "size": 7051,
+      "digest": "sha256:8dc98d2cfe2e00fbcf84a0bbe4271ab1ab61097c7491254df4e709020c2eb84f",
+      "state": "uploaded"
+    },
+    {
+      "name": "validation-summary.json",
+      "id": 669110625,
+      "size": 16662,
+      "digest": "sha256:79305fa793c9521b7650077a76d9d4e5ac330fe009f9b17c9b8766872a841441",
+      "state": "uploaded"
+    },
+    {
+      "name": "publish-result.json",
+      "id": 669110650,
+      "size": 1101,
+      "digest": "sha256:f16e6fae67793a8f0063834796146a97cdfa286a682eccf4745d62250c584bcb",
+      "state": "uploaded"
+    },
+    {
+      "name": "public-registry-verification.json",
+      "id": 669110659,
+      "size": 1645,
+      "digest": "sha256:6b83cc67a82a416dbf7cf4eee898d2f86a6782692c8664869a6b2ec8743cc338",
+      "state": "uploaded"
+    },
+    {
+      "name": "public-provenance-verification.json",
+      "id": 669110655,
+      "size": 2331,
+      "digest": "sha256:daf4493ff3c3ee86cf0d730882ebb43c7f2e38ca9e6d063230627e2f9621b658",
+      "state": "uploaded"
+    },
+    {
+      "name": "public-initializer-verification.json",
+      "id": 669110657,
+      "size": 3768,
+      "digest": "sha256:80f339295dcdf7535e6cc33093844e6a6e2a325248f2004de071e37dfa942c26",
+      "state": "uploaded"
+    },
+    {
+      "name": "live-upgrade-verification.json",
+      "id": 669110664,
+      "size": 1521,
+      "digest": "sha256:5b12e48cd2dac3e50e8f21c3c8347a34f62fdaa514356108acadf7fabc16eee1",
+      "state": "uploaded"
+    },
+    {
+      "name": "live-public-verification.json",
+      "id": 669110683,
+      "size": 1329,
+      "digest": "sha256:f90762b7cc850666ab5607a815e1c9693168a91f03fb6259764fc235344b9662",
+      "state": "uploaded"
+    },
+    {
+      "name": "release-validation-evidence.tar.gz",
+      "id": 669110673,
+      "size": 167579,
+      "digest": "sha256:510d53140dea6f1327b0d3e42d6cbbe5c2b52381ff87ef4c0f7a1075656b596f",
+      "state": "uploaded"
+    }
+  ]
+}

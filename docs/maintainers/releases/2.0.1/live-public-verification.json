@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-10-23T12:44:40.231Z",
+  "acceptedCommit": "dd8ec66416b0c370055848fd2b0e1baaf3746aba",
+  "liveSvg": {
+    "url": "https://raw.githubusercontent.com/arlegotin/agent-badge/refs/heads/agent-badge/data/badge.svg",
+    "httpStatus": 200,
+    "contentType": "image/svg+xml",
+    "gitBlob": "de189696195ce4f90524ec3002496c05f79d9c88",
+    "color": "#E8A515",
+    "value": "187M tokens",
+    "numericQualifiers": false
+  },
+  "readme": {
+    "httpStatus": 200,
+    "badgeTarget": "https://github.com/arlegotin/agent-badge",
+    "dataTreeLinks": 0
+  },
+  "examples": [
+    {
+      "file": "tokens.svg",
+      "color": "#E8A515",
+      "value": "12.4M tokens",
+      "httpStatus": 200
+    },
+    {
+      "file": "burn.svg",
+      "color": "#DC2626",
+      "value": "12.4M tokens",
+      "httpStatus": 200
+    },
+    {
+      "file": "receipt.svg",
+      "color": "#2563EB",
+      "value": "$38.42",
+      "httpStatus": 200
+    },
+    {
+      "file": "bill.svg",
+      "color": "#7C3AED",
+      "value": "$38.42",
+      "httpStatus": 200
+    },
+    {
+      "file": "tokens-pink.svg",
+      "color": "#DB2777",
+      "value": "12.4M tokens",
+      "httpStatus": 200
+    },
+    {
+      "file": "cost-teal.svg",
+      "color": "#0F766E",
+      "value": "$38.42",
+      "httpStatus": 200
+    }
+  ]
+}
