@@ -1,5 +1,7 @@
 # Repository-native candidate verification
 
+Current platform scope is amended by the [stable release platform decision](../superpowers/specs/2026-10-23-release-platform-scope.md): Linux/macOS execution; safe rejection on native Windows. Prior reports and hashes below retain their historical scope and do not certify native Windows support.
+
 Final whole-branch review at `2f784de63844ead663200e4b0eb535a2d45d295c`
 found three Important and four Minor issues. The single combined fix wave is
 implemented and locally validated. The scoped review accepted six findings and

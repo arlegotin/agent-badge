@@ -1,5 +1,7 @@
 # Uninstall
 
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+
 With a v2 runtime installed:
 
 ```sh

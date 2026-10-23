@@ -1,3 +1,4 @@
+import { UnsupportedPlatformError } from '../packages/agent-badge/src/integration/platform.ts';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -35,7 +36,7 @@ for(const file of files){
   const sentinel=new Error('validated-command');const program=buildProgram().exitOverride().hook('preAction',()=>{throw sentinel;});
   for(const child of [program,...program.commands])child.configureOutput({writeOut:()=>{},writeErr:()=>{}});
   try{await program.parseAsync(tokens,{from:'user'});errors.push(`${file}: command executed during validation`);}
-  catch(error){if(error!==sentinel&&!['commander.helpDisplayed','commander.version'].includes(error.code))errors.push(`${file}: invalid CLI example ${tokens[0]} (${error.code??'invalid'})`);}
+  catch(error){if(error!==sentinel&&!(process.platform==='win32'&&error instanceof UnsupportedPlatformError)&&!['commander.helpDisplayed','commander.version'].includes(error.code))errors.push(`${file}: invalid CLI example ${tokens[0]} (${error.code??'invalid'})`);}
   examples++;
  }
 }

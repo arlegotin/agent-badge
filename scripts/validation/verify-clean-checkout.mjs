@@ -10,8 +10,8 @@ function run(command, args) {
 const candidate = resolve(process.argv[2] ?? 'artifacts/candidate'), closure = resolve(process.argv[3] ?? 'artifacts/dependency-closure');
 for (const name of ['typecheck', 'build', 'docs:check', 'pack:check']) run(npm, ['run', name]);
 if (process.platform === 'win32') {
-  // Automatic supervision is unsupported. Receiver/process-group tests remain POSIX-only.
-  run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', 'packages/agent-badge/src/integration/hooks.test.ts', '-t', 'Windows automatic', '--maxWorkers=1']);
+  // Native actions are unsupported. Exercise safe parser, API and launcher rejection.
+  run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', 'packages/agent-badge/src/cli/platform.test.ts', 'scripts/smoke/windows-setup-result.test.ts', 'scripts/validation/isolation.test.ts', 'scripts/validation/platform-docs.test.ts', '--maxWorkers=1']);
 } else run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run', '--maxWorkers=1']);
 run(process.execPath, ['scripts/smoke/verify-packed-install.mjs', candidate]);
 run(process.execPath, ['scripts/smoke/verify-initializer-install.mjs', candidate, closure]);

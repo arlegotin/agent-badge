@@ -57,7 +57,7 @@ jobs:
       - run: node scripts/validation/run-isolated.mjs npm ci
       - name: Separately acquire locked public production dependency closure
         run: node scripts/validation/run-isolated.mjs node scripts/smoke/seed-dependencies.mjs artifacts/dependency-closure
-      - name: Validate source and exact install artifact (Windows manual scope only)
+      - name: Validate source and exact install artifact (native Windows rejects actions before writes)
         run: node scripts/validation/run-isolated.mjs node scripts/validation/verify-clean-checkout.mjs artifacts/candidate artifacts/dependency-closure > matrix-evidence.log 2>&1
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()

@@ -1,5 +1,7 @@
 # Repository-native agent-badge Implementation Plan
 
+Current platform scope is amended by the [stable release platform decision](../specs/2026-10-23-release-platform-scope.md): Linux/macOS execution; safe rejection on native Windows. Prior reports and hashes below retain their historical scope and do not certify native Windows support.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking. Implementation is approved and complete through Tasks 1–18 on the refactor branch. Task 17 has passed independent review with the recorded latency exception. Tasks 1–18 and their task reviews are complete. The final review corrections and focused executable-deadline closure have passed independent review. No Critical or Important finding remains open; Minor N1 private remote-diagnostic cleanup is explicitly deferred; see [candidate verification](../../maintainers/RELEASE-VERIFICATION.md); publishing/deployment are not authorized. External hosted/Linux/Windows/private-image gates remain unverified.
 
 Original task checkboxes below preserve the approved instructions; the [final review record](../../maintainers/reviews/2026-10-23-repo-native/README.md) records completion and exceptions.

@@ -1,3 +1,4 @@
+import { UNSUPPORTED_PLATFORM_MESSAGE } from './platform.js';
 import { lstat, readFile, readlink, realpath, mkdir, rename, rm, open, chmod, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
@@ -87,7 +88,7 @@ export async function planHooks(repository: RepositoryContext, runtime: RuntimeL
   const hook = join(repository.hooksPath, 'pre-push'), actionItems: string[] = [];
   const ownership = await owned(runtime.privateDir), before = await snapshot(hook);
   if (resolve(runtime.privateDir) !== repository.privateDir || !isAbsolute(runtime.nodePath)) throw new Error('Runtime location must be approved and repository private.');
-  if ((runtime.platform ?? process.platform) === 'win32') actionItems.push('Windows automatic hooks are unsupported; use manual sync.');
+  if ((runtime.platform ?? process.platform) === 'win32') actionItems.push(UNSUPPORTED_PLATFORM_MESSAGE);
   const config = await execute('git', ['config', '--show-scope', '--get', 'core.hooksPath'], { cwd: repository.worktreeRoot, env: gitEnvironment(), timeout: 2000 }).catch(e => { if (e.code === 1) return { stdout: '' }; throw e; });
   if (config.stdout && !/^(local|worktree)\s/.test(config.stdout)) actionItems.push('Shared/global core.hooksPath requires a repository-local integration; configure one explicitly.');
   if (!within(repository.commonDir, repository.hooksPath) && !within(repository.worktreeRoot, repository.hooksPath)) actionItems.push('Shared hooks directory cannot be replaced; choose a repository-local core.hooksPath.');

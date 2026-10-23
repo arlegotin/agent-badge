@@ -1,5 +1,7 @@
 # Storage and performance boundaries
 
+Current platform scope is amended by the [stable release platform decision](../superpowers/specs/2026-10-23-release-platform-scope.md): Linux/macOS execution; safe rejection on native Windows. Prior reports and hashes below retain their historical scope and do not certify native Windows support.
+
 Repository-private immutable journal entries, source-free controls, and confirmed
 acknowledgement receipts are durable authority. SQLite files under the private
 `cache` directory are disposable query indexes. They never authorize collection,

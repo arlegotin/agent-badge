@@ -1,5 +1,7 @@
 # FAQ
 
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+
 ## Which version do I need?
 
 The repository-native commands require **2.0.0 or newer**. The initializer is `npm init agent-badge@latest`; check [release status](maintainers/RELEASE-STATUS.md) for publication evidence. Version 1 uses Gists and does not provide these commands or an automatic migration.

@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { loadArtifacts, tarFiles } from './verify-packed-install.mjs';
-import { assertWindowsManualSetup } from './windows-setup-result.mjs';
+import { assertWindowsUnsupportedPlatform } from './windows-setup-result.mjs';
 const execute = promisify(execFile);
 const directory = resolve(process.argv[2] ?? 'artifacts/candidate'), closure = resolve(process.argv[3] ?? 'artifacts/dependency-closure');
 const { candidate, entries } = await loadArtifacts(directory);
@@ -23,7 +23,7 @@ let registry;
 const env = { ...process.env, HOME: home, USERPROFILE: home, npm_config_cache: cache, npm_config_userconfig: join(root, 'user.npmrc'), npm_config_globalconfig: join(root, 'global.npmrc'), GIT_CONFIG_GLOBAL: join(root, 'gitconfig'), npm_config_ignore_scripts: 'false', GIT_AUTHOR_NAME: 'Synthetic fixture', GIT_AUTHOR_EMAIL: 'fixture@example.invalid', GIT_COMMITTER_NAME: 'Synthetic fixture', GIT_COMMITTER_EMAIL: 'fixture@example.invalid' };
 const npm = 'npm';
 function successfulResult(execution, command) {
-  if (process.platform === 'win32' && ['init', 'setup'].includes(command)) return assertWindowsManualSetup(execution, command, 'json');
+  if (process.platform === 'win32' && ['init', 'setup'].includes(command)) return assertWindowsUnsupportedPlatform(execution, command, 'json');
   assert.equal(execution.code, 0);
   const result = execution.stdout.split(/\r?\n/).flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } }).find(value => value.schemaVersion === 1 && value.command === command);
   assert(result, 'Missing stable command JSON');
@@ -31,33 +31,16 @@ function successfulResult(execution, command) {
   return result;
 }
 function successfulSetup(execution) {
-  if (process.platform === 'win32') return assertWindowsManualSetup(execution, 'setup', 'plaintext');
+  if (process.platform === 'win32') return assertWindowsUnsupportedPlatform(execution, 'setup', 'plaintext');
   assert.equal(execution.code, 0); assert.match(execution.stdout, /^agent-badge: setup unchanged\./m);
-}
-// Only this smoke's fresh, credential-free fixture is eligible for raw diagnostics.
-// The installed CLI keeps its static privacy boundary and the original failure remains fatal.
-async function diagnoseSyntheticInitialSetup(cwd) {
-  const installs = await readdir(join(cache, '_npx')).catch(() => []);
-  for (const install of installs) {
-    const module = join(cache, '_npx', install, 'node_modules/@legotin/agent-badge/dist/commands/init.js');
-    try { await readFile(module); } catch { continue; }
-    const script = `const {runInitCommand}=await import(${JSON.stringify(pathToFileURL(module).href)});try{await runInitCommand({cwd:process.cwd(),runtimeVersion:${JSON.stringify(candidate.version)},declaredUrl:'https://github.com/example/synthetic',target:'origin'});console.error('Synthetic diagnostic retry returned without an exception');}catch(error){console.error(JSON.stringify({syntheticSetupFailure:true,name:error?.name,code:error?.code,message:String(error?.message),stack:String(error?.stack).slice(0,3000)}));process.exitCode=1;}`;
-    let diagnostic;
-    try { diagnostic = await execute(process.execPath, ['--input-type=module', '-e', script], { cwd, env, timeout: 120000, maxBuffer: 64 * 1024 }); }
-    catch (error) { diagnostic = error; }
-    console.error('Controlled synthetic setup diagnosis:', (String(diagnostic.stderr ?? '') + String(diagnostic.stdout ?? '')).replaceAll(root, '<synthetic-smoke>').slice(0, 5000));
-    return;
-  }
-  console.error('Controlled synthetic setup diagnosis: installed command unavailable');
 }
 async function run(command, args, cwd = root, windowsSetupCommand) {
   if (command === npm && process.platform === 'win32') { command = process.execPath; args = [join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'), ...args]; }
   try { return { ...await execute(command, args, { cwd, env, timeout: 120000, maxBuffer: 4 * 1024 * 1024 }), code: 0 }; }
   catch (error) {
-    if (process.platform === 'win32' && windowsSetupCommand && error.code === 1) {
+    if (process.platform === 'win32' && windowsSetupCommand && error.code === 3) {
       const result = { stdout: String(error.stdout ?? ''), stderr: String(error.stderr ?? ''), code: error.code };
-      try { assertWindowsManualSetup(result, windowsSetupCommand, windowsSetupCommand === 'init' || args.includes('--json') ? 'json' : 'plaintext'); }
-      catch (failure) { if (windowsSetupCommand === 'init') await diagnoseSyntheticInitialSetup(cwd); throw failure; }
+      assertWindowsUnsupportedPlatform(result, windowsSetupCommand, windowsSetupCommand === 'init' || args.includes('--json') ? 'json' : 'plaintext');
       return result;
     }
     console.error(String(error.stderr ?? '').slice(0, 4000), String(error.stdout ?? '').slice(0, 4000)); throw new Error('Synthetic smoke command failed: ' + command + ' ' + args.slice(0, 2).join(' '));
@@ -97,6 +80,13 @@ try {
   await run('git', ['remote', 'add', 'origin', join(root, 'remote.git')], project);
   // npm init requests only create-agent-badge; core/CLI resolve transitively from the same registry.
   const initialized = await run(npm, ['init', '--yes', 'agent-badge@' + candidate.version, '--', '--repository-url', 'https://github.com/example/synthetic', '--target', 'origin', '--json'], project, 'init');
+  if (process.platform === 'win32') {
+    assertWindowsUnsupportedPlatform(initialized, 'init', 'json');
+    assert(!(await readdir(project)).includes('.agent-badge'), 'Unsupported setup wrote public state');
+    assert(!(await readdir(join(project,'.git'))).includes('agent-badge'), 'Unsupported setup wrote private state');
+    for (const a of candidate.artifacts) assert(requests.some(route => route === '/artifacts/' + a.filename));
+    console.log(JSON.stringify({ status:'candidate-registry-smoke-passed', support:'unsupported-platform', sha:candidate.sha, runtime:process.version, actualWorker:null, platform:`${process.platform}/${process.arch}`, initializerOnly:true, scripts:'default-enabled', projectUplinks:false, externalRoutes:false, checks:['single-command-npm-init','same-registry-transitive-dependencies','unsupported-platform-exit3','no-public-or-private-setup-writes'], artifacts:candidate.artifacts }));
+  } else {
   successfulResult(initialized, 'init');
   const privateDir = join(project, '.git/agent-badge'), activation = JSON.parse(await readFile(join(privateDir, 'local.json'), 'utf8'));
   const runtime = join(privateDir, 'runtime', activation.lockHash, 'node_modules/@legotin/agent-badge');
@@ -167,6 +157,7 @@ try {
   }
   for (const a of candidate.artifacts) assert(requests.some(route => route === '/artifacts/' + a.filename));
   console.log(JSON.stringify({ status: 'candidate-registry-smoke-passed', sha: candidate.sha, runtime: process.version, actualWorker, platform: `${process.platform}/${process.arch}`, initializerOnly: true, scripts: 'default-enabled', projectUplinks: false, externalRoutes: false, checks: ['single-command-npm-init', 'same-registry-transitive-dependencies', 'installed-core-workflow-generation', 'repository-owned-setup', 'partial-runtime-repair', 'fresh-clone-local-native-config', 'fresh-clone-tracked-reviewed-native-config', 'manual-cli-core-worker-runtime-proof', 'persistent-setup-json', 'nonmutating-fresh-dry-run', 'standalone-fork-setup', 'indexed-status', ...(process.platform === 'win32' ? [] : ['owned-doctor-worker'])], artifacts: candidate.artifacts }));
+  }
 } finally {
   if (registry) await new Promise(accept => registry.close(accept));
   await rm(root, { recursive: true, force: true });

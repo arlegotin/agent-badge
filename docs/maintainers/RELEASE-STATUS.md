@@ -25,7 +25,15 @@ progress; this document does not yet claim npm publication or hosted CI success.
   [verification](RELEASE-VERIFICATION.md) and the
   [review record](reviews/2026-10-23-repo-native/README.md).
 
-Known scope remains: Windows automatic execution is unsupported; unverified native
+Hosted run 39931707158 passed Linux/macOS Node 24/26 validation, while native
+Windows initial setup failed. Controlled synthetic diagnosis in run 39932491268
+identified `EPERM` at setup directory `fsync`. Native Windows never established
+successful durable manual operation. The
+[platform amendment](../superpowers/specs/2026-10-23-release-platform-scope.md)
+requires early `unsupported-platform`/exit 3 rejection instead of weakening fsync.
+Fresh hosted validation of that gate remains pending; no WSL2 execution is claimed.
+
+Known scope remains: Linux/macOS execution only; native Windows unsupported; unverified native
 amounts are omitted; private badge rendering is unverified. Minor N1 can leave
 private transport resources after forcibly terminated remote diagnostics. The
 historical 250 ms optimization goal is unmet; the two-second automatic limit stays.

@@ -47,11 +47,14 @@ manual CLI core-worker Node and workflow generation from
 installed core resources. Production dependencies are JS-only (`zod`, Commander,
 `@iarna/toml`); SQLite comes from the chosen Node runtime. No external native build
 step is needed by this graph. Git is required. POSIX automatic-supervision/receiver
-tests stay off Windows; Windows automatic execution remains unsupported. Its smoke
-accepts only that exact disclosed setup action with zero queued/pending usage,
-the expected native-trust review action and a successful installed manual sync;
-unrelated setup/provider errors still fail. Local fixture tests cover that result
-classification; actual Windows CI remains unexecuted here.
+tests stay off Windows. Linux/macOS are supported; native Windows actions must
+return the exact `unsupported-platform`/exit 3 result before writes. The Windows
+matrix runs platform/API/launcher and isolation tests, exact package loading, and
+an installed npm-init-only smoke which proves no public setup or private
+activation was created. It reports no worker execution. Keep full positive setup,
+runtime, worker and contributor checks on POSIX. See the
+[platform amendment](../superpowers/specs/2026-10-23-release-platform-scope.md).
+Actual fresh hosted results remain required before publication.
 
 Retain the candidate directory: `candidate.json` records the exact source commit,
 tag, versions, sizes and SHA-512 SRI for all three files. Pack once; `smoke:pack`

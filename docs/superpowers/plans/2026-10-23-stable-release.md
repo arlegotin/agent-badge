@@ -14,7 +14,7 @@
 - No provider-history discovery or collection, credentials in output, raw transcripts, or production badge usage generated from synthetic fixtures.
 - Keep the public packages fixed at the same exact version and exact internal dependencies, Apache-2.0 and Node `^24.0.0 || ^26.0.0`.
 - Publish only retained bytes from successful same-repository main-push CI at the tagged current-main SHA. No local token publication or unpublish/force-push fallback.
-- Test synthetic sources with the tracked isolation wrapper and exact target Node. Run Windows only within its documented manual scope; private images and unsupported accounting remain unsupported/unverified.
+- Test synthetic sources with the tracked isolation wrapper and exact target Node. Linux/macOS are supported; native Windows must reject actions before writes per the [release platform amendment](../specs/2026-10-23-release-platform-scope.md). Private images and unsupported accounting remain unsupported/unverified.
 - Existing Minor N1 (temporary private transport resources after a killed remote doctor) stays explicitly deferred; no unrelated transport-ownership redesign.
 
 ## Review focus
@@ -48,3 +48,17 @@
 ## Initial access evidence
 
 GitHub account `arlegotin` has repository admin/push access; Actions is enabled. Remote main is `d209a47a128eb1451002cacfa4030466c9833e92`, matching the refactor base. No remote refactor branch or v2.0.0 tag exists. Public npm metadata has all three packages owned by `legotin` at latest1.1.20; 2.0.0 is absent. `npm-release` environment is absent. Local `npm trust list` returned401; the user has been asked to confirm/add exact trusted publishers while independent release preparation continues. This is not a test of hosted OIDC authorization.
+
+### Task 4: Enforce the evidenced native platform scope (blocks Task 2)
+
+**Spec:** [Release platform amendment](../specs/2026-10-23-release-platform-scope.md).
+**Files:** CLI platform/error boundary, setup API and generated launcher; platform tests; Windows smoke/validation; current install/support documentation.
+**Interfaces:** consumes Task1 stable2.0.0 metadata and the existing privacy/error contract; produces unsupported-platform/exit3 before writes for Task2's actual Windows matrix. POSIX and exact artifact contracts stay unchanged.
+
+- [x] Write/run failing behavioral tests for all CLI actions on native Windows, help/version parsing, direct setup APIs and actual generated launcher before side effects.
+- [x] Add one shared static platform contract and early guards; preserve safe JSON/plaintext errors and automatic failure-soft behavior. Do not skip or weaken directory fsync.
+- [x] Replace the unverified Windows-manual smoke expectation with actual installed unsupported-platform/no-write verification. Remove the temporary raw diagnostic retry once its evidence is retained.
+- [x] Update current docs/workflow labels and link historical scope to the amendment without rewriting old logs/hashes. Fix generated repository instructions to use the repository-owned launcher.
+- [ ] Run covering Node24/26 tests, type/build/docs/pack and a scoped independent review. Commit source/docs with hooks disabled; root will push and require the fresh full hosted matrix before merge.
+
+Local covering checks and package gates passed on Node24/26. Scoped independent review and the fresh hosted full matrix remain root-coordinated release gates.

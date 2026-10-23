@@ -1,5 +1,7 @@
 # Repository-native refactor: final local acceptance
 
+Current platform scope is amended by the [stable release platform decision](../../../superpowers/specs/2026-10-23-release-platform-scope.md): Linux/macOS execution; safe rejection on native Windows. Prior reports and hashes below retain their historical scope and do not certify native Windows support.
+
 Implementation and independent review are complete on
 `refactor/repo-native-agent-badge`. All 18 tasks and the final corrections are
 accepted locally. No Critical or Important review finding remains open. Minor N1

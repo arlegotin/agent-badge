@@ -1,3 +1,4 @@
+import { UNSUPPORTED_PLATFORM_MESSAGE } from './platform.js';
 import { lstat, mkdir, readFile, rename, rm, open, link } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { parse as parseToml } from '@iarna/toml';
@@ -24,7 +25,7 @@ const quote = (s: string) => "'" + s.replaceAll("'", "'\"'\"'") + "'";
  * killable owned group; its elapsed time is deducted from the same hook budget. */
 const locator = String.raw`'use strict';
 const deadline=Number(process.hrtime.bigint()/1000000n)+2000,cp=require('node:child_process'),path=require('node:path');
-if(process.platform==='win32'){console.error('agent-badge: Windows automatic hooks unsupported; use manual sync.');process.exit(0);}
+if(process.platform==='win32'){console.error(${JSON.stringify(UNSUPPORTED_PLATFORM_MESSAGE)});process.exit(0);}
 if(!/^(24|26)\./.test(process.versions.node)){console.error('agent-badge: Node 24 or 26 required on provider PATH.');process.exit(0);}
 const env={...process.env};for(const k of ['GIT_DIR','GIT_COMMON_DIR','GIT_WORK_TREE','GIT_INDEX_FILE','GIT_PREFIX','GIT_OBJECT_DIRECTORY','GIT_ALTERNATE_OBJECT_DIRECTORIES','GIT_NAMESPACE','GIT_SHALLOW_FILE','GIT_IMPLICIT_WORK_TREE','GIT_GRAFT_FILE','GIT_REPLACE_REF_BASE'])delete env[k];
 env.GIT_OPTIONAL_LOCKS='0';env.GIT_TERMINAL_PROMPT='0';

@@ -1,5 +1,7 @@
 # Installation
 
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+
 These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](maintainers/RELEASE-STATUS.md) for publication and verification evidence.
 
 Use Node.js **24 or 26** (`^24.0.0 || ^26.0.0`), npm and Git. A globally installed Badge runtime is unnecessary. Each repository owns its declaration and exact nested runtime lock; each Git common directory owns private activation. Linked worktrees share that private state, while provider configuration can still require worktree-specific review.
@@ -32,7 +34,7 @@ node .agent-badge/run.cjs doctor --json
 
 Fresh clones do not inherit runtime approval. Review `.codex/hooks.json`, `.claude/settings.json` and `.gemini/settings.json` in the native provider, grant project trust deliberately, and restart the provider as required. Setup does not grant native trust or mutate global settings. On the inspected Codex source generation, linked worktrees load project hooks from the primary checkout; setup and review that checkout explicitly.
 
-Supported existing pre-push hooks run immediately with streamed complete input and keep control of push failure. Shared/global hooks paths, edited ownership, unsupported hook managers or legacy marker blocks produce action items. Badge only retains a bounded 1 MiB copy until EOF; incomplete, oversized or expired input can skip its own wakeup. Windows automatic hooks are unsupported; use manual collection/sync.
+Supported existing pre-push hooks run immediately with streamed complete input and keep control of push failure. Shared/global hooks paths, edited ownership, unsupported hook managers or legacy marker blocks produce action items. Badge only retains a bounded 1 MiB copy until EOF; incomplete, oversized or expired input can skip its own wakeup. Native Windows is unsupported; use Linux/WSL2 or macOS.
 
 Codex and Claude native handler timeout `10` is seconds. Gemini `10000` is milliseconds. These host cleanup windows do not increase Badge's two-second internal automatic budget.
 

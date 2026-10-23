@@ -14,7 +14,7 @@
 
 Use `status --json` for local accounting and `doctor --json` for required setup checks and safe source capability codes. `doctor --remote --json` opts into bounded read-only validation. Read access does not prove write access, signing, branch-rule acceptance or hosted private-image support.
 
-Native provider trust/review is explicit and may require restart. On the inspected Codex snapshot, linked worktree hooks load from the primary checkout. Review that checkout instead of assuming a local config alone activates hooks. Codex/Claude native timeout `10` is seconds; Gemini `10000` is milliseconds; Badge keeps its own two-second budget. Windows uses manual synchronization.
+Native provider trust/review is explicit and may require restart. On the inspected Codex snapshot, linked worktree hooks load from the primary checkout. Review that checkout instead of assuming a local config alone activates hooks. Codex/Claude native timeout `10` is seconds; Gemini `10000` is milliseconds; Badge keeps its own two-second budget. Native Windows is unsupported. Run both the coding agent and Badge inside Linux/WSL2, or use macOS.
 
 Native Claude amounts are unknown/omitted. OpenCode presence does not certify additive fork/import usage. Cursor context occupancy is not spend. Missing explicit roots are unavailable, not zero. Gemini saved successful requests remain partial and recognized models can be unpriced. [Exact support boundaries](ATTRIBUTION.md).
 

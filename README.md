@@ -1,5 +1,7 @@
 # Agent Badge
 
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+
 Local-first AI coding usage, recorded in your repository. Supported local observations become sanitized, immutable receipts on `agent-badge/data`; `summary.json`, a coverage report and `badge.svg` are derived from that ledger.
 
 These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](docs/maintainers/RELEASE-STATUS.md) for publication and verification evidence.

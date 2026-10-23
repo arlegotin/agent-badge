@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { assertSupportedPlatform, UnsupportedPlatformError, UNSUPPORTED_PLATFORM_MESSAGE } from '../integration/platform.js';
 import { setupOptions } from './setup-options.js';
 import { assertSupportedNode, UnsupportedNodeError, UNSUPPORTED_NODE_MESSAGE } from '../integration/manifest.js';
 import { formatPlaintext } from './format.js';
@@ -14,6 +15,7 @@ export interface CliOptions {cwd?:string;write?(line:string):void}
 const collect=(value:string,previous:string[]=[])=>[...previous,value];
 export function buildProgram(context:CliOptions={}):Command {
   const program=new Command().name('agent-badge').description('Record supported local AI usage in a repository-owned ledger.').version(version(),'--version');
+  program.hook('preAction',(_program,command)=>assertSupportedPlatform(command.name()));
   const cwd=context.cwd;
   function emit<C extends keyof CliResults>(command:C,value:CliResults[C],json?:boolean) {
     const result={schemaVersion:1,command,...value};
@@ -69,16 +71,17 @@ export async function run(argv:string[]=process.argv,options:{nodeVersion?:strin
   try{await program.parseAsync(argv);}
   catch(error){
     if((error as {code?:string})?.code?.startsWith('commander.')||!argv.slice(2).includes('--json'))throw error;
-    const command=program.commands.find(candidate=>candidate.name()===argv[2])?.name()??'unknown';
-    const status=error instanceof CommandFailure?error.reason:error instanceof Error&&error.name==='ProtocolError'?'unsupported-data':'operation-unavailable';
-    const exitCode=status==='unsupported-data'?3:status==='invalid-input'?64:1;
-    console.log(JSON.stringify({schemaVersion:1,command,status,exitCode}));process.exitCode=exitCode;
+    const command=error instanceof UnsupportedPlatformError?error.command??'unknown':program.commands.find(candidate=>candidate.name()===argv[2])?.name()??'unknown';
+    const status=error instanceof UnsupportedPlatformError?'unsupported-platform':error instanceof CommandFailure?error.reason:error instanceof Error&&error.name==='ProtocolError'?'unsupported-data':'operation-unavailable';
+    const exitCode=status==='unsupported-data'||status==='unsupported-platform'?3:status==='invalid-input'?64:1;
+    console.log(JSON.stringify({schemaVersion:1,command,status,...(error instanceof UnsupportedPlatformError?{message:UNSUPPORTED_PLATFORM_MESSAGE}:{}),exitCode}));process.exitCode=exitCode;
   }
 }
 export function handleRunError(error:unknown,stderr:Pick<typeof console,'error'>=console):void {
   const code=(error as {code?:string})?.code;
   if(code==='commander.helpDisplayed'||code==='commander.version')return;
   if(code?.startsWith('commander.')){process.exitCode=64;return;}
+  if(error instanceof UnsupportedPlatformError){stderr.error(UNSUPPORTED_PLATFORM_MESSAGE);process.exitCode=3;return;}
   stderr.error(error instanceof UnsupportedNodeError?UNSUPPORTED_NODE_MESSAGE:error instanceof CommandFailure?error.message:'agent-badge: operation unavailable; run doctor.');process.exitCode=1;
 }
 export function isDirectExecution(argv:readonly string[]=process.argv):boolean {try{return typeof argv[1]==='string'&&fileURLToPath(import.meta.url)===realpathSync(argv[1]);}catch{return false;}}

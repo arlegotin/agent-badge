@@ -1,3 +1,4 @@
+import { UNSUPPORTED_PLATFORM_MESSAGE } from './platform.js';
 import { setupOptions } from '../cli/setup-options.js';
 /** Explicit user entry. Automatic hooks must start private bootstrap.cjs instead. */
 export const launcherSource = String.raw`#!/usr/bin/env node
@@ -44,6 +45,12 @@ function main() {
     const version = JSON.parse(fs.readFileSync(path.join(root, '.agent-badge/config.json'), 'utf8')).runtimeVersion;
     if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) throw new Error('Invalid exact runtime version.');
     console.log(version); return;
+  }
+  if (process.platform === 'win32') {
+    const message = ${JSON.stringify(UNSUPPORTED_PLATFORM_MESSAGE)};
+    if (process.argv.slice(3).includes('--json')) console.log(JSON.stringify({schemaVersion:1,command,status:'unsupported-platform',message,exitCode:3}));
+    else console.error(message);
+    process.exitCode = 3; return;
   }
   let declaration, manifest, lock;
   try {
@@ -128,7 +135,7 @@ export const bootstrapSource = String.raw`#!/usr/bin/env node
 async function runBootstrap(options={}) {
   const started = performance.now();
   if (!/^(24|26)\./.test(process.versions.node)) { console.error('agent-badge: Node 24 or 26 required.'); return {exitCode:0}; }
-  if (process.platform === 'win32') { console.error('agent-badge: Windows automatic hooks unsupported; use manual sync.'); return {exitCode:0}; }
+  if (process.platform === 'win32') { console.error(${JSON.stringify(UNSUPPORTED_PLATFORM_MESSAGE)}); return {exitCode:0}; }
   const path = require('node:path');
   const { pathToFileURL } = require('node:url');
   const privateDir = __dirname;

@@ -1,5 +1,7 @@
 # CLI reference
 
+Supported execution requires Linux or macOS. Native Windows actions return `unsupported-platform` (exit 3) before setup or usage writes. WSL2 requires both the coding agent and Badge to run inside Linux; it does not imply discovery of native Windows histories.
+
 These commands require Agent Badge **2.0.0 or newer**. Version 1 uses the previous Gist architecture and has no automatic migration. See [release status](maintainers/RELEASE-STATUS.md) for publication and verification evidence.
 
 Examples assume an explicitly installed v2 runtime on PATH, or replace `agent-badge` with `node .agent-badge/run.cjs` after activation. Help, version and invalid argument parsing do not install, collect, probe credentials or change files. There are no compatibility aliases for removed commands.
@@ -60,7 +62,7 @@ Accepted history streams one self-contained envelope per atomic ledger batch. `c
 
 Include/exclude require successful current accepted-ledger validation. Offline, unbound or wrong-target requests refuse with `current-ledger-required`; the requested inclusion/exclusion was not deferred or applied. A persisted control retains its original causal heads through retries. If a concurrent later control defeats the requested inclusion/exclusion, the command returns conflict with `recordConfirmed` true instead of silently rebasing intent. Concurrent later exclusions cannot be silently superseded by routine sync or unchanged saved attribution. Remote-only unit keys use source-free private control intent, never fabricated provider observations.
 
-Exit codes: `0` completed requested operation; `1` incomplete/queued/unavailable/setup action required; `2` causal/identity/metadata conflict or wrong destination; `3` unsupported data/schema; `4` accepted configuration differs from the local declaration; `64` invalid CLI arguments. Explicit operation results and coverage are separate: partial provider coverage can accompany a confirmed sync. Doctor returns nonzero for failing required checks. A successful read does not prove write permission, branch-rule acceptance, signing capability, native trust or private image rendering; those checks remain unverified.
+Exit codes: `0` completed requested operation; `1` incomplete/queued/unavailable/setup action required; `2` causal/identity/metadata conflict or wrong destination; `3` unsupported data/schema or native platform; `4` accepted configuration differs from the local declaration; `64` invalid CLI arguments. Explicit operation results and coverage are separate: partial provider coverage can accompany a confirmed sync. Doctor returns nonzero for failing required checks. A successful read does not prove write permission, branch-rule acceptance, signing capability, native trust or private image rendering; those checks remain unverified.
 
 Status exposes primary `state` plus overlapping `states`: `recorded`, `pending`, `synced`, `partial`, `conflicted`; unavailable and unsupported data are distinct. `lastConfirmedSync` is a commit, not a cache-refresh time. Pending configuration is uncertainty; `drift` compares the actual declaration with accepted metadata. Older branches can have an absent declaration while retaining approved private activation.
 
@@ -82,3 +84,5 @@ is terminated at its diagnostic deadline, including CPU and filesystem stages.
 Status capability entries are reader maxima from static manifests; `not-inspected`
 means local provider presence was not examined. Doctor performs the explicit local
 capability checks. Stored provider outcomes and accounting remain separate.
+
+Native Windows JSON errors contain only `schemaVersion: 1`, the actual `command`, `status: "unsupported-platform"`, `exitCode: 3`, and the static platform guidance in `message`. Help/version and invalid-argument parsing remain available. Unsupported Node retains precedence. Direct core library use on native Windows is unsupported and has no durability guarantee.
