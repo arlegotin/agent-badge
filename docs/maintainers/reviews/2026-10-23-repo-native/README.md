@@ -46,6 +46,10 @@ and references to the temporary plan workspace. This page records their final
 disposition. Ruling 74 documents the narrow continuation beyond the workflow's
 normal final-wave cap; the whole-branch audit was not repeated.
 
+Earlier tracked reports for [Task 3](task-3-report.md), [Task 4](task-4-report.md)
+and [Task 5](task-5-report.md) were relocated here unchanged when their temporary
+plan workspace was removed.
+
 All 75 decisions and their costs survive in the
 [ordered decision record](../../../superpowers/research/2026-10-22-repo-native-decisions.md)
 and the [full ruling text](rulings-full.md). Original plan checkboxes remain as
